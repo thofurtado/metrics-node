@@ -17,8 +17,9 @@ export class InMemoryAccountsRepository implements AccountsRepository {
 
             //se for entrada acrescente, se for transferencia ou despesa sai
             isIncome ? account.balance +=value : account.balance -=value
+            return true
         }
-        return null
+        return false
     }
     async findByName(name: string) {
         const account = this.items.find(item => item.name === name)
