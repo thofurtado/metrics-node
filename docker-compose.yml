@@ -1,0 +1,13 @@
+# docker run --name metrics -e POSTGRESQL_USERNAME=docker -e POSTGRESQL_PASSWORD=docker -e 
+# POSTGRESQL_DATABASE=metrics -p 5432:5432 bitnami/postgresql
+version : '3'
+
+services: 
+  db:
+    image: bitnami/postgresql
+    ports: 
+      - 5432:5432
+    environment:
+      - POSTGRES_USERNAME=docker
+      - POSTGRES_PASSWORD=docker
+      - POSTGRES_DATABASE=db

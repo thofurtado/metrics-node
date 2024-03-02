@@ -1,0 +1,225 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// npm i prisma -D
+// npx prisma generate
+// npm i @prisma/client 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String @id @default(uuid())
+  name          String
+  email         String @unique
+  password_hash String
+
+  interactions Interaction[]
+
+  @@map("users")
+}
+
+model Client {
+  id             String  @id @default(uuid())
+  name           String
+  identification String  @unique
+  phone          String?
+  email          String
+  contract       Boolean @default(false)
+
+  addresses  Address?
+  treatments Treatment[]
+  equipments Equipment[] //camel case
+
+  @@map("clients")
+}
+
+model Address {
+  id           String @id @default(uuid())
+  client_id    String @unique
+  street       String
+  number       Int
+  neighborhood String
+  city         String
+  state        String
+  zipcode      Int?
+
+  client Client @relation(fields: [client_id], references: [id])
+
+  @@map("addresses")
+}
+
+model Treatment {
+  id           String   @id @default(uuid())
+  opening      DateTime
+  contact      String?
+  client_id    String?
+  equipment_id String?
+  request      String
+  finished     Boolean  @default(false)
+  amount       Float    @default(0)
+  observations String?
+
+  clients       Client?         @relation(fields: [client_id], references: [id])
+  equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
+  items         TreatmentItem[]
+  interactions  Interaction[]
+  paymentEntrys PaymentEntry[]
+
+  @@map("treatments")
+}
+
+model TreatmentItem {
+  id           String @id @default(uuid())
+  item_id      String
+  treatment_id String
+  quantity     Float
+  discount     Float?
+
+  items      Item      @relation(fields: [item_id], references: [id])
+  treatments Treatment @relation(fields: [treatment_id], references: [id])
+
+  @@map("treatmentItens")
+}
+
+model Interaction {
+  id           String   @id @default(uuid())
+  user_id      String
+  treatment_id String
+  date         DateTime
+  description  String
+
+  treatments Treatment @relation(fields: [treatment_id], references: [id])
+  users      User      @relation(fields: [user_id], references: [id])
+
+  @@map("interactions")
+}
+
+model Item {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  cost        Float
+  price       Float
+  stock       Float
+  active      Boolean @default(true)
+  isItem      Boolean @default(true)
+
+  stocks         Stock[]
+  treatmentItems TreatmentItem[]
+
+  @@map("items")
+}
+
+model Stock {
+  id          String  @id @default(uuid())
+  item_id     String
+  quantity    Float
+  operation   String
+  description String?
+
+  items Item @relation(fields: [item_id], references: [id])
+
+  @@map("stocks")
+}
+
+model Equipment {
+  id             String   @id @default(uuid())
+  client_id      String
+  type           String
+  brand          String?
+  identification String?
+  details        String?
+  entry          DateTime
+
+  client     Client      @relation(fields: [client_id], references: [id])
+  treatments Treatment[]
+
+  @@map("equipments")
+}
+
+model Payment {
+  id         String  @id @default(uuid())
+  name       String
+  is_credit  Boolean
+  account_id String?
+
+  accounts      Account?       @relation(fields: [account_id], references: [id])
+  paymentEntrys PaymentEntry[]
+
+  @@map("payments")
+}
+
+model PaymentEntry {
+  id           String @id @default(uuid())
+  payment_id   String
+  treatment_id String
+  occurrences  Int
+  amount       Float
+
+  payments   Payment   @relation(fields: [payment_id], references: [id])
+  treatments Treatment @relation(fields: [treatment_id], references: [id])
+
+  @@map("paymentEntrys")
+}
+
+model Account {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  balance     Float
+  goal        Float?
+
+  payments            Payment[]
+  transactions        Transaction[]
+  TransferTransaction TransferTransaction[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  operation   String
+  date        DateTime @default(now())
+  amount      Float
+  account_id  String
+  sector_id   String?
+  description String?
+  confirmed   Boolean  @default(false)
+
+  accounts            Account               @relation(fields: [account_id], references: [id])
+  sectors             Sector?               @relation(fields: [sector_id], references: [id])
+  TransferTransaction TransferTransaction[]
+
+  @@map("transactions")
+}
+
+model TransferTransaction {
+  id                     String @id @default(uuid())
+  destination_account_id String
+  transaction_id         String
+
+  accounts    Account     @relation(fields: [destination_account_id], references: [id])
+  transaction Transaction @relation(fields: [transaction_id], references: [id])
+
+  @@map("transfertransactions")
+}
+
+model Sector {
+  id     String @id @default(uuid())
+  name   String
+  budget Float?
+
+  transactions Transaction[]
+
+  @@map("sectors")
+}
