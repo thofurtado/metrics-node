@@ -10,6 +10,8 @@ import {z} from 'zod'
 const envSchema = z.object({
     // Quais são as opções de ambiente para o node rodar
     NODE_ENV: z.enum(['dev', 'test', 'production']).default('dev'),
+    // chave secreta
+    JWT_SECRET: z.string(),
     // coerce força a conversão, fazendo com que mesmo que seja string, entre como numero a porta
     PORT: z.coerce.number().default(3333),
 })

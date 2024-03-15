@@ -4,7 +4,7 @@ import { PrismaTransferTransactionsRepository } from '@/repositories/prisma/pris
 import { PrismaAccountsRepository } from '@/repositories/prisma/prisma-accounts-repository'
 
 
-export function makeTransactionUseCase () {
+export function MakeTransactionUseCase () {
 
     const transactionsRepository = new PrismaTransactionsRepository()
     const transferTransactionsRepository = new PrismaTransferTransactionsRepository()

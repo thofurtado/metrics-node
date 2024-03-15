@@ -7,6 +7,9 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTransferTransactionsRepository implements TransferTransactionsRepository {
+    findByAccount(account_id: string): Promise<{ id: string; destination_account_id: string; transaction_id: string }[]> {
+        throw new Error('Method not implemented.')
+    }
 
     public items: TransferTransaction[] = []
 

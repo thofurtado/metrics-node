@@ -4,7 +4,7 @@ import { AccountUseCase } from '../account'
 
 
 
-export function makeAccountuseCase() {
+export function MakeAccountUseCase() {
     const accountsRepository = new PrismaAccountsRepository()
     const accountUseCase = new AccountUseCase(accountsRepository)
     return accountUseCase

@@ -1,11 +1,8 @@
 import {expect, describe, it,beforeEach} from 'vitest'
 import { AccountUseCase } from './account'
-
-
-
 import { InMemoryAccountsRepository } from '@/repositories/in-memory/in-memory-accounts-repository'
 import { ThisNameAlreadyExistsError } from './errors/this-name-already-exists-error'
-import { NoNegativeValuesAllowedError } from './errors/no-negative-values-allowed-error'
+import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 
 
 
@@ -48,7 +45,7 @@ describe('Account Use Case', () => {
             description: 'Dinheiro físico',
             goal: 200,
             balance: -1
-        })).rejects.toBeInstanceOf(NoNegativeValuesAllowedError)
+        })).rejects.toBeInstanceOf(OnlyNaturalNumbersError)
     })
 
 })

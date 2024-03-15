@@ -4,6 +4,7 @@ import { InMemoryTransactionsRepository } from '@/repositories/in-memory/in-memo
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
 import { InMemoryAccountsRepository } from '@/repositories/in-memory/in-memory-accounts-repository'
 import { InMemoryTransferTransactionsRepository } from '@/repositories/in-memory/in-memory-transfer-transactions-repository'
+import { resourceUsage } from 'process'
 
 
 let transactionsRepository: InMemoryTransactionsRepository
@@ -20,11 +21,14 @@ describe('Transaction Use Case', () => {
         transactionUseCase = new TransactionUseCase(transactionsRepository, transferTransactionsRepository, accountsRepository)
     })
     it('should be able to create transaction', async () => {
-
+        const account = await accountsRepository.create({
+            name:'Carteira',
+            balance: 0
+        })
         const {transaction} = await transactionUseCase.execute({
             operation: 'income',
             amount: 50,
-            account_id: 'account-1',
+            account_id: account.id,
             date: new Date(),
             sector_id: 'sector-1',
             description: 'Visita minima',
@@ -32,12 +36,40 @@ describe('Transaction Use Case', () => {
         })
         expect(transaction.id).toEqual(expect.any(String))
     })
-    it('should not be able to create transaction if the operation is rather than income or expense or transfer', async () => {
+    it('should not be able to create transaction with a invalid account', async () => {
 
+        await expect(transactionUseCase.execute({
+            operation: 'income',
+            amount: 50,
+            account_id: 'account.id',
+            date: new Date(),
+            sector_id: 'sector-1',
+            description: 'Visita minima',
+            confirmed: true
+        })).rejects.toBeInstanceOf(ResourceNotFoundError)
+
+    })
+    it('should not be able to create transaction with no account', async () => {
+
+        await expect(transactionUseCase.execute({
+            operation: 'income',
+            amount: 50,
+            date: new Date(),
+            sector_id: 'sector-1',
+            description: 'Visita minima',
+            confirmed: true
+        })).rejects.toBeInstanceOf(ResourceNotFoundError)
+
+    })
+    it('should not be able to create transaction if the operation is rather than income or expense or transfer', async () => {
+        const account = await accountsRepository.create({
+            name:'Carteira',
+            balance: 0
+        })
         await transactionUseCase.execute({
             operation: 'income',
             amount: 50,
-            account_id: 'account-1',
+            account_id: account.id,
             date: new Date(),
             sector_id: 'sector-empresa',
             description: 'Visita minima',
@@ -46,7 +78,7 @@ describe('Transaction Use Case', () => {
         await transactionUseCase.execute({
             operation: 'expense',
             amount: 75,
-            account_id: 'account-1',
+            account_id: account.id,
             date: new Date(),
             sector_id: 'sector-transporte',
             description: 'Troca da camara do pneu',
@@ -57,7 +89,7 @@ describe('Transaction Use Case', () => {
         await expect(transactionUseCase.execute({
             operation: 'entry',
             amount: 50,
-            account_id: 'account-1',
+            account_id: account.id,
             date: new Date(),
             description: 'Visita minima',
             confirmed: true

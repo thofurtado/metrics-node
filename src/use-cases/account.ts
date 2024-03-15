@@ -1,12 +1,12 @@
 import { AccountsRepository } from '@/repositories/accounts-repository'
 import { Account } from '@prisma/client'
 import { ThisNameAlreadyExistsError } from './errors/this-name-already-exists-error'
-import {  NoNegativeValuesAllowedError } from './errors/no-negative-values-allowed-error'
+import {  OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 
 interface AccountUseCaseRequest {
     name: string;
-    description: string | undefined;
-    goal: number | undefined;
+    description?: string | null;
+    goal?: number | null;
     balance: number;
 }
 
@@ -29,7 +29,7 @@ export class AccountUseCase {
         }
 
         if(balance<0) {
-            throw new NoNegativeValuesAllowedError()
+            throw new OnlyNaturalNumbersError()
         }
         const account = await this.accountsRepository.create({
             name,

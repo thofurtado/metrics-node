@@ -16,21 +16,18 @@ export class RegisterUseCase {
 
     constructor(
         private usersRepository: UsersRepository
-    ){ }
-    async execute ({
+    ) { }
+    async execute({
         name, email, password
     }: RegistryUseCaseRequest): Promise<RegisterUseCaseResponse> {
 
         const userWithSameEmail = await this.usersRepository.findByEmail(email)
 
-        if(userWithSameEmail) {
+        if (userWithSameEmail) {
             throw new UserAlreadyExistsError()
         }
 
         const password_hash = await hash(password, 6)
-
-
-
         const user = await this.usersRepository.create({
             name,
             email,

@@ -10,13 +10,20 @@ export class InMemoryAccountsRepository implements AccountsRepository {
 
     public items: Account[] = []
 
-    async changeBalance(id: string, value: number, isIncome: boolean){
+    async findMany(): Promise<{ id: string; name: string; description: string | null; balance: number; goal: number | null; }[]> {
+        const accounts = this.items
+
+        return accounts
+    }
+
+
+    async changeBalance(id: string, value: number, isIncome: boolean) {
         const account = await this.findById(id)
 
-        if(account) {
+        if (account) {
 
             //se for entrada acrescente, se for transferencia ou despesa sai
-            isIncome ? account.balance +=value : account.balance -=value
+            isIncome ? account.balance += value : account.balance -= value
             return true
         }
         return false

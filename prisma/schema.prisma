@@ -24,6 +24,7 @@ model User {
   password_hash String
 
   interactions Interaction[]
+  Treatment    Treatment[]
 
   @@map("users")
 }
@@ -53,22 +54,25 @@ model Address {
   state        String
   zipcode      Int?
 
-  client Client @relation(fields: [client_id], references: [id])
+  clients Client @relation(fields: [client_id], references: [id])
 
   @@map("addresses")
 }
 
 model Treatment {
-  id           String   @id @default(uuid())
-  opening      DateTime
+  id           String    @id @default(uuid())
+  opening_date DateTime  @default(now())
+  ending_date  DateTime?
   contact      String?
+  user_id      String?
   client_id    String?
   equipment_id String?
   request      String
-  finished     Boolean  @default(false)
-  amount       Float    @default(0)
+  finished     Boolean   @default(false)
+  amount       Float     @default(0)
   observations String?
 
+  users         User?           @relation(fields: [user_id], references: [id])
   clients       Client?         @relation(fields: [client_id], references: [id])
   equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
   items         TreatmentItem[]
@@ -79,13 +83,15 @@ model Treatment {
 }
 
 model TreatmentItem {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   item_id      String
   treatment_id String
+  stock_id     String?
   quantity     Float
-  discount     Float?
+  salesValue   Float?
 
   items      Item      @relation(fields: [item_id], references: [id])
+  stocks     Stock?    @relation(fields: [stock_id], references: [id])
   treatments Treatment @relation(fields: [treatment_id], references: [id])
 
   @@map("treatmentItens")
@@ -105,14 +111,14 @@ model Interaction {
 }
 
 model Item {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   cost        Float
   price       Float
-  stock       Float
-  active      Boolean @default(true)
-  isItem      Boolean @default(true)
+  stock       Float?
+  active      Boolean? @default(true)
+  isItem      Boolean? @default(true)
 
   stocks         Stock[]
   treatmentItems TreatmentItem[]
@@ -121,13 +127,15 @@ model Item {
 }
 
 model Stock {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   item_id     String
   quantity    Float
   operation   String
   description String?
+  created_at  DateTime @default(now())
 
-  items Item @relation(fields: [item_id], references: [id])
+  items         Item            @relation(fields: [item_id], references: [id])
+  TreatmentItem TreatmentItem[]
 
   @@map("stocks")
 }
@@ -148,13 +156,15 @@ model Equipment {
 }
 
 model Payment {
-  id         String  @id @default(uuid())
-  name       String
-  is_credit  Boolean
-  account_id String?
+  id                String  @id @default(uuid())
+  name              String
+  installment_limit Int
+  in_sight          Boolean
+  account_id        String?
 
-  accounts      Account?       @relation(fields: [account_id], references: [id])
-  paymentEntrys PaymentEntry[]
+  accounts           Account?             @relation(fields: [account_id], references: [id])
+  paymentEntrys      PaymentEntry[]
+  InstallmentPayment InstallmentPayment[]
 
   @@map("payments")
 }
@@ -172,6 +182,18 @@ model PaymentEntry {
   @@map("paymentEntrys")
 }
 
+model InstallmentPayment {
+  id                 String @id @default(uuid())
+  payment_id         String
+  transaction_id     String
+  installment_number Int
+
+  payments     Payment     @relation(fields: [payment_id], references: [id])
+  transactions Transaction @relation(fields: [transaction_id], references: [id])
+
+  @@map("installmentPayments")
+}
+
 model Account {
   id          String  @id @default(uuid())
   name        String
@@ -181,7 +203,7 @@ model Account {
 
   payments            Payment[]
   transactions        Transaction[]
-  TransferTransaction TransferTransaction[]
+  transferTransaction TransferTransaction[]
 
   @@map("accounts")
 }
@@ -199,6 +221,7 @@ model Transaction {
   accounts            Account               @relation(fields: [account_id], references: [id])
   sectors             Sector?               @relation(fields: [sector_id], references: [id])
   TransferTransaction TransferTransaction[]
+  InstallmentPayment  InstallmentPayment[]
 
   @@map("transactions")
 }
