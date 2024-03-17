@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1710341659623" clover="3.2.0">
-  <project timestamp="1710341659624" name="All files">
-    <metrics statements="2505" coveredstatements="1429" conditionals="298" coveredconditionals="240" methods="180" coveredmethods="95" elements="2983" coveredelements="1764" complexity="0" loc="2505" ncloc="2505" packages="15" files="87" classes="87"/>
+<coverage generated="1710686785712" clover="3.2.0">
+  <project timestamp="1710686785713" name="All files">
+    <metrics statements="4353" coveredstatements="1701" conditionals="423" coveredconditionals="302" methods="254" coveredmethods="121" elements="5030" coveredelements="2124" complexity="0" loc="4353" ncloc="4353" packages="18" files="147" classes="147"/>
     <package name="metrics">
       <metrics statements="79" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
       <file name="teste-de-filtro.js" path="C:\Users\Thomás\Desktop\nodejs\metrics\teste-de-filtro.js">
@@ -219,9 +219,9 @@
       </file>
     </package>
     <package name="metrics.src">
-      <metrics statements="41" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
+      <metrics statements="57" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
       <file name="app.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\app.ts">
-        <metrics statements="31" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="47" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -253,6 +253,22 @@
         <line num="29" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
         <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
       </file>
       <file name="server.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\server.ts">
         <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -302,10 +318,10 @@
         <line num="28" count="0" type="stmt"/>
       </file>
     </package>
-    <package name="metrics.src.http.controllers.financial">
-      <metrics statements="40" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
-      <file name="createSector.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\createSector.ts">
-        <metrics statements="31" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+    <package name="metrics.src.http.controllers.clients">
+      <metrics statements="160" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+      <file name="address.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\clients\address.ts">
+        <metrics statements="40" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -337,9 +353,18 @@
         <line num="29" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
         <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
       </file>
-      <file name="financialRoutes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\financialRoutes.ts">
-        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <file name="client.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\clients\client.ts">
+        <metrics statements="41" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -349,11 +374,252 @@
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+      </file>
+      <file name="equipment.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\clients\equipment.ts">
+        <metrics statements="43" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+      </file>
+      <file name="getClients.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\clients\getClients.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="routes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\clients\routes.ts">
+        <metrics statements="19" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
       </file>
     </package>
-    <package name="metrics.src.http.controllers.users">
-      <metrics statements="109" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="4" coveredmethods="0"/>
-      <file name="authenticate.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\authenticate.ts">
+    <package name="metrics.src.http.controllers.financial">
+      <metrics statements="294" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="10" coveredmethods="0"/>
+      <file name="account.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\account.ts">
+        <metrics statements="38" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+      </file>
+      <file name="getAccount.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\getAccount.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="getSector.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\getSector.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="getTransaction.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\getTransaction.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="getTransferTransaction.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\getTransferTransaction.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="payment.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\payment.ts">
         <metrics statements="39" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
@@ -395,6 +661,580 @@
         <line num="38" count="0" type="stmt"/>
         <line num="39" count="0" type="stmt"/>
       </file>
+      <file name="paymentEntry.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\paymentEntry.ts">
+        <metrics statements="39" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+      </file>
+      <file name="routes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\routes.ts">
+        <metrics statements="30" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+      </file>
+      <file name="sector.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\sector.ts">
+        <metrics statements="32" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+      </file>
+      <file name="transaction.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\financial\transaction.ts">
+        <metrics statements="48" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="metrics.src.http.controllers.items">
+      <metrics statements="147" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+      <file name="getItemHistory.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\items\getItemHistory.ts">
+        <metrics statements="23" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+      </file>
+      <file name="getItems.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\items\getItems.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\items\item.ts">
+        <metrics statements="45" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+      </file>
+      <file name="routes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\items\routes.ts">
+        <metrics statements="21" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+      </file>
+      <file name="stock.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\items\stock.ts">
+        <metrics statements="41" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="metrics.src.http.controllers.treatments">
+      <metrics statements="166" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+      <file name="getTreatments.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\treatments\getTreatments.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+      </file>
+      <file name="remove-treatment-item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\treatments\remove-treatment-item.ts">
+        <metrics statements="33" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+      </file>
+      <file name="routes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\treatments\routes.ts">
+        <metrics statements="21" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+      </file>
+      <file name="treatment-item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\treatments\treatment-item.ts">
+        <metrics statements="42" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+      </file>
+      <file name="treatment.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\treatments\treatment.ts">
+        <metrics statements="53" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="metrics.src.http.controllers.users">
+      <metrics statements="168" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+      <file name="authenticate.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\authenticate.ts">
+        <metrics statements="58" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+      </file>
       <file name="profile.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\profile.ts">
         <metrics statements="20" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -417,6 +1257,48 @@
         <line num="18" count="0" type="stmt"/>
         <line num="19" count="0" type="stmt"/>
         <line num="20" count="0" type="stmt"/>
+      </file>
+      <file name="refresh.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\refresh.ts">
+        <metrics statements="39" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
       </file>
       <file name="register.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\register.ts">
         <metrics statements="33" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -455,7 +1337,7 @@
         <line num="33" count="0" type="stmt"/>
       </file>
       <file name="routes.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\controllers\users\routes.ts">
-        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="18" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -473,10 +1355,11 @@
         <line num="15" count="0" type="stmt"/>
         <line num="16" count="0" type="stmt"/>
         <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
       </file>
     </package>
     <package name="metrics.src.http.middlewares">
-      <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <metrics statements="19" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
       <file name="verify-jwt.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\middlewares\verify-jwt.ts">
         <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -488,6 +1371,19 @@
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="verify-user-role.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\http\middlewares\verify-user-role.ts">
+        <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
       </file>
     </package>
     <package name="metrics.src.lib">
@@ -504,9 +1400,9 @@
       </file>
     </package>
     <package name="metrics.src.repositories">
-      <metrics statements="138" coveredstatements="0" conditionals="15" coveredconditionals="0" methods="15" coveredmethods="0"/>
+      <metrics statements="145" coveredstatements="0" conditionals="15" coveredconditionals="0" methods="15" coveredmethods="0"/>
       <file name="accounts-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\accounts-repository.ts">
-        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -516,6 +1412,8 @@
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
       </file>
       <file name="addresses-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\addresses-repository.ts">
         <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -620,7 +1518,7 @@
         <line num="10" count="0" type="stmt"/>
       </file>
       <file name="stocks-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\stocks-repository.ts">
-        <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -631,9 +1529,10 @@
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
         <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
       </file>
       <file name="transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\transactions-repository.ts">
-        <metrics statements="8" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -642,18 +1541,20 @@
         <line num="6" count="0" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
       </file>
       <file name="transfer-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\transfer-transactions-repository.ts">
-        <metrics statements="6" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="7" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
         <line num="4" count="0" type="stmt"/>
         <line num="5" count="0" type="stmt"/>
         <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
       </file>
       <file name="treatmentItems-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\treatmentItems-repository.ts">
-        <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -664,9 +1565,10 @@
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
         <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
       </file>
       <file name="treatments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\treatments-repository.ts">
-        <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -677,6 +1579,7 @@
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
         <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
       </file>
       <file name="users-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\users-repository.ts">
         <metrics statements="7" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -690,7 +1593,7 @@
       </file>
     </package>
     <package name="metrics.src.repositories.in-memory">
-      <metrics statements="751" coveredstatements="531" conditionals="121" coveredconditionals="108" methods="88" coveredmethods="48"/>
+      <metrics statements="803" coveredstatements="605" conditionals="159" coveredconditionals="135" methods="95" coveredmethods="59"/>
       <file name="in-memory-accounts-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-accounts-repository.ts">
         <metrics statements="60" coveredstatements="59" conditionals="18" coveredconditionals="17" methods="6" coveredmethods="6"/>
         <line num="1" count="1" type="stmt"/>
@@ -701,9 +1604,9 @@
         <line num="6" count="1" type="stmt"/>
         <line num="7" count="1" type="stmt"/>
         <line num="8" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="9" count="23" type="stmt"/>
-        <line num="10" count="23" type="stmt"/>
-        <line num="11" count="23" type="stmt"/>
+        <line num="9" count="26" type="stmt"/>
+        <line num="10" count="26" type="stmt"/>
+        <line num="11" count="26" type="stmt"/>
         <line num="12" count="1" type="stmt"/>
         <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
         <line num="14" count="1" type="stmt"/>
@@ -713,16 +1616,16 @@
         <line num="18" count="1" type="stmt"/>
         <line num="19" count="1" type="stmt"/>
         <line num="20" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="21" count="5" type="stmt"/>
-        <line num="22" count="5" type="stmt"/>
-        <line num="23" count="5" type="stmt"/>
-        <line num="24" count="5" type="stmt"/>
-        <line num="25" count="5" type="stmt"/>
-        <line num="26" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="27" count="5" type="stmt"/>
-        <line num="28" count="5" type="cond" truecount="0" falsecount="1"/>
+        <line num="21" count="8" type="stmt"/>
+        <line num="22" count="8" type="stmt"/>
+        <line num="23" count="8" type="stmt"/>
+        <line num="24" count="8" type="stmt"/>
+        <line num="25" count="8" type="stmt"/>
+        <line num="26" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="8" type="stmt"/>
+        <line num="28" count="8" type="cond" truecount="0" falsecount="1"/>
         <line num="29" count="0" type="stmt"/>
-        <line num="30" count="5" type="stmt"/>
+        <line num="30" count="8" type="stmt"/>
         <line num="31" count="1" type="cond" truecount="1" falsecount="0"/>
         <line num="32" count="4" type="cond" truecount="1" falsecount="0"/>
         <line num="33" count="4" type="stmt"/>
@@ -732,26 +1635,26 @@
         <line num="37" count="1" type="stmt"/>
         <line num="38" count="4" type="stmt"/>
         <line num="39" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="40" count="20" type="stmt"/>
-        <line num="41" count="20" type="cond" truecount="1" falsecount="0"/>
-        <line num="42" count="20" type="stmt"/>
-        <line num="43" count="20" type="cond" truecount="1" falsecount="0"/>
-        <line num="44" count="4" type="stmt"/>
-        <line num="45" count="4" type="cond" truecount="1" falsecount="0"/>
-        <line num="46" count="16" type="stmt"/>
-        <line num="47" count="20" type="stmt"/>
+        <line num="40" count="23" type="stmt"/>
+        <line num="41" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="42" count="23" type="stmt"/>
+        <line num="43" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="44" count="3" type="stmt"/>
+        <line num="45" count="3" type="cond" truecount="1" falsecount="0"/>
+        <line num="46" count="20" type="stmt"/>
+        <line num="47" count="23" type="stmt"/>
         <line num="48" count="1" type="stmt"/>
         <line num="49" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="50" count="23" type="stmt"/>
-        <line num="51" count="23" type="stmt"/>
-        <line num="52" count="23" type="stmt"/>
-        <line num="53" count="23" type="cond" truecount="1" falsecount="0"/>
-        <line num="54" count="23" type="cond" truecount="2" falsecount="0"/>
-        <line num="55" count="23" type="stmt"/>
-        <line num="56" count="23" type="stmt"/>
-        <line num="57" count="23" type="stmt"/>
-        <line num="58" count="23" type="stmt"/>
-        <line num="59" count="23" type="stmt"/>
+        <line num="50" count="26" type="stmt"/>
+        <line num="51" count="26" type="stmt"/>
+        <line num="52" count="26" type="stmt"/>
+        <line num="53" count="26" type="cond" truecount="1" falsecount="0"/>
+        <line num="54" count="26" type="cond" truecount="2" falsecount="0"/>
+        <line num="55" count="26" type="stmt"/>
+        <line num="56" count="26" type="stmt"/>
+        <line num="57" count="26" type="stmt"/>
+        <line num="58" count="26" type="stmt"/>
+        <line num="59" count="26" type="stmt"/>
         <line num="60" count="1" type="stmt"/>
       </file>
       <file name="in-memory-addressess-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-addressess-repository.ts">
@@ -809,28 +1712,28 @@
         <line num="51" count="1" type="stmt"/>
       </file>
       <file name="in-memory-clients-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-clients-repository.ts">
-        <metrics statements="61" coveredstatements="34" conditionals="9" coveredconditionals="9" methods="8" coveredmethods="3"/>
+        <metrics statements="61" coveredstatements="40" conditionals="12" coveredconditionals="10" methods="8" coveredmethods="4"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
         <line num="4" count="1" type="stmt"/>
         <line num="5" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="6" count="12" type="stmt"/>
-        <line num="7" count="12" type="stmt"/>
-        <line num="8" count="12" type="stmt"/>
+        <line num="6" count="13" type="stmt"/>
+        <line num="7" count="13" type="stmt"/>
+        <line num="8" count="13" type="stmt"/>
         <line num="9" count="1" type="stmt"/>
         <line num="10" count="0" type="stmt"/>
         <line num="11" count="0" type="stmt"/>
         <line num="12" count="0" type="stmt"/>
-        <line num="13" count="1" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="cond" truecount="0" falsecount="1"/>
         <line num="17" count="0" type="stmt"/>
         <line num="18" count="0" type="stmt"/>
-        <line num="19" count="0" type="stmt"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="21" count="1" type="stmt"/>
         <line num="22" count="1" type="stmt"/>
         <line num="23" count="0" type="stmt"/>
         <line num="24" count="0" type="stmt"/>
@@ -859,17 +1762,17 @@
         <line num="47" count="0" type="stmt"/>
         <line num="48" count="0" type="stmt"/>
         <line num="49" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="50" count="6" type="stmt"/>
-        <line num="51" count="6" type="stmt"/>
-        <line num="52" count="6" type="stmt"/>
-        <line num="53" count="6" type="stmt"/>
-        <line num="54" count="6" type="stmt"/>
-        <line num="55" count="6" type="cond" truecount="1" falsecount="0"/>
-        <line num="56" count="6" type="cond" truecount="1" falsecount="0"/>
-        <line num="57" count="6" type="stmt"/>
-        <line num="58" count="6" type="stmt"/>
-        <line num="59" count="6" type="stmt"/>
-        <line num="60" count="6" type="stmt"/>
+        <line num="50" count="10" type="stmt"/>
+        <line num="51" count="10" type="stmt"/>
+        <line num="52" count="10" type="stmt"/>
+        <line num="53" count="10" type="stmt"/>
+        <line num="54" count="10" type="stmt"/>
+        <line num="55" count="10" type="cond" truecount="1" falsecount="0"/>
+        <line num="56" count="10" type="cond" truecount="1" falsecount="0"/>
+        <line num="57" count="10" type="stmt"/>
+        <line num="58" count="10" type="stmt"/>
+        <line num="59" count="10" type="stmt"/>
+        <line num="60" count="10" type="stmt"/>
         <line num="61" count="1" type="stmt"/>
       </file>
       <file name="in-memory-equipments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-equipments-repository.ts">
@@ -986,7 +1889,7 @@
         <line num="50" count="1" type="stmt"/>
       </file>
       <file name="in-memory-items-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-items-repository.ts">
-        <metrics statements="99" coveredstatements="62" conditionals="14" coveredconditionals="11" methods="9" coveredmethods="4"/>
+        <metrics statements="99" coveredstatements="75" conditionals="23" coveredconditionals="16" methods="9" coveredmethods="6"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -995,25 +1898,25 @@
         <line num="6" count="1" type="stmt"/>
         <line num="7" count="1" type="stmt"/>
         <line num="8" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="9" count="19" type="stmt"/>
-        <line num="10" count="19" type="stmt"/>
+        <line num="9" count="26" type="stmt"/>
+        <line num="10" count="26" type="stmt"/>
         <line num="11" count="1" type="stmt"/>
         <line num="12" count="0" type="stmt"/>
         <line num="13" count="0" type="stmt"/>
         <line num="14" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="15" count="13" type="stmt"/>
-        <line num="16" count="13" type="stmt"/>
-        <line num="17" count="13" type="stmt"/>
-        <line num="18" count="13" type="cond" truecount="2" falsecount="0"/>
-        <line num="19" count="13" type="stmt"/>
-        <line num="20" count="13" type="stmt"/>
-        <line num="21" count="13" type="stmt"/>
-        <line num="22" count="13" type="cond" truecount="0" falsecount="1"/>
-        <line num="23" count="13" type="cond" truecount="0" falsecount="1"/>
-        <line num="24" count="13" type="stmt"/>
-        <line num="25" count="13" type="stmt"/>
-        <line num="26" count="13" type="stmt"/>
-        <line num="27" count="13" type="stmt"/>
+        <line num="15" count="21" type="stmt"/>
+        <line num="16" count="21" type="stmt"/>
+        <line num="17" count="21" type="stmt"/>
+        <line num="18" count="21" type="cond" truecount="2" falsecount="0"/>
+        <line num="19" count="21" type="stmt"/>
+        <line num="20" count="21" type="stmt"/>
+        <line num="21" count="21" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="21" type="cond" truecount="0" falsecount="1"/>
+        <line num="23" count="21" type="cond" truecount="0" falsecount="1"/>
+        <line num="24" count="21" type="stmt"/>
+        <line num="25" count="21" type="stmt"/>
+        <line num="26" count="21" type="stmt"/>
+        <line num="27" count="21" type="stmt"/>
         <line num="28" count="1" type="cond" truecount="1" falsecount="0"/>
         <line num="29" count="8" type="stmt"/>
         <line num="30" count="8" type="stmt"/>
@@ -1040,23 +1943,23 @@
         <line num="51" count="8" type="cond" truecount="2" falsecount="0"/>
         <line num="52" count="8" type="stmt"/>
         <line num="53" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="54" count="12" type="cond" truecount="1" falsecount="0"/>
-        <line num="55" count="12" type="cond" truecount="1" falsecount="0"/>
-        <line num="56" count="12" type="stmt"/>
+        <line num="54" count="14" type="cond" truecount="1" falsecount="0"/>
+        <line num="55" count="14" type="cond" truecount="1" falsecount="0"/>
+        <line num="56" count="14" type="stmt"/>
         <line num="57" count="1" type="stmt"/>
-        <line num="58" count="1" type="stmt"/>
-        <line num="59" count="0" type="stmt"/>
-        <line num="60" count="0" type="stmt"/>
-        <line num="61" count="0" type="stmt"/>
+        <line num="58" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="59" count="1" type="stmt"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="61" count="1" type="cond" truecount="0" falsecount="1"/>
         <line num="62" count="0" type="stmt"/>
         <line num="63" count="0" type="stmt"/>
-        <line num="64" count="0" type="stmt"/>
-        <line num="65" count="0" type="stmt"/>
+        <line num="64" count="1" type="stmt"/>
+        <line num="65" count="1" type="cond" truecount="0" falsecount="1"/>
         <line num="66" count="0" type="stmt"/>
         <line num="67" count="0" type="stmt"/>
-        <line num="68" count="0" type="stmt"/>
-        <line num="69" count="0" type="stmt"/>
-        <line num="70" count="0" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="69" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="70" count="1" type="stmt"/>
         <line num="71" count="1" type="stmt"/>
         <line num="72" count="1" type="stmt"/>
         <line num="73" count="1" type="stmt"/>
@@ -1068,14 +1971,14 @@
         <line num="79" count="0" type="stmt"/>
         <line num="80" count="0" type="stmt"/>
         <line num="81" count="1" type="stmt"/>
-        <line num="82" count="1" type="stmt"/>
-        <line num="83" count="0" type="stmt"/>
-        <line num="84" count="0" type="stmt"/>
-        <line num="85" count="0" type="stmt"/>
-        <line num="86" count="0" type="stmt"/>
+        <line num="82" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="83" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="84" count="2" type="stmt"/>
+        <line num="85" count="2" type="stmt"/>
+        <line num="86" count="2" type="cond" truecount="0" falsecount="1"/>
         <line num="87" count="0" type="stmt"/>
         <line num="88" count="0" type="stmt"/>
-        <line num="89" count="0" type="stmt"/>
+        <line num="89" count="2" type="stmt"/>
         <line num="90" count="1" type="stmt"/>
         <line num="91" count="1" type="stmt"/>
         <line num="92" count="0" type="stmt"/>
@@ -1125,7 +2028,7 @@
         <line num="34" count="1" type="stmt"/>
       </file>
       <file name="in-memory-payments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-payments-repository.ts">
-        <metrics statements="34" coveredstatements="30" conditionals="9" coveredconditionals="8" methods="6" coveredmethods="4"/>
+        <metrics statements="34" coveredstatements="32" conditionals="10" coveredconditionals="9" methods="6" coveredmethods="5"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -1133,18 +2036,18 @@
         <line num="5" count="1" type="stmt"/>
         <line num="6" count="1" type="stmt"/>
         <line num="7" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="8" count="9" type="stmt"/>
+        <line num="8" count="10" type="stmt"/>
         <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="10" count="6" type="stmt"/>
-        <line num="11" count="6" type="stmt"/>
-        <line num="12" count="6" type="stmt"/>
-        <line num="13" count="6" type="stmt"/>
-        <line num="14" count="6" type="stmt"/>
-        <line num="15" count="6" type="cond" truecount="0" falsecount="1"/>
-        <line num="16" count="6" type="stmt"/>
-        <line num="17" count="6" type="stmt"/>
-        <line num="18" count="6" type="stmt"/>
-        <line num="19" count="6" type="stmt"/>
+        <line num="10" count="9" type="stmt"/>
+        <line num="11" count="9" type="stmt"/>
+        <line num="12" count="9" type="stmt"/>
+        <line num="13" count="9" type="stmt"/>
+        <line num="14" count="9" type="stmt"/>
+        <line num="15" count="9" type="cond" truecount="0" falsecount="1"/>
+        <line num="16" count="9" type="stmt"/>
+        <line num="17" count="9" type="stmt"/>
+        <line num="18" count="9" type="stmt"/>
+        <line num="19" count="9" type="stmt"/>
         <line num="20" count="1" type="stmt"/>
         <line num="21" count="0" type="stmt"/>
         <line num="22" count="0" type="stmt"/>
@@ -1156,9 +2059,9 @@
         <line num="28" count="5" type="cond" truecount="1" falsecount="0"/>
         <line num="29" count="5" type="cond" truecount="1" falsecount="0"/>
         <line num="30" count="5" type="stmt"/>
-        <line num="31" count="1" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="33" count="0" type="stmt"/>
+        <line num="31" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="33" count="1" type="stmt"/>
         <line num="34" count="1" type="stmt"/>
       </file>
       <file name="in-memory-sectors-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-sectors-repository.ts">
@@ -1209,7 +2112,7 @@
         <line num="44" count="1" type="stmt"/>
       </file>
       <file name="in-memory-stocks-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-stocks-repository.ts">
-        <metrics statements="62" coveredstatements="32" conditionals="8" coveredconditionals="8" methods="6" coveredmethods="3"/>
+        <metrics statements="86" coveredstatements="64" conditionals="19" coveredconditionals="12" methods="7" coveredmethods="5"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -1217,64 +2120,88 @@
         <line num="5" count="1" type="stmt"/>
         <line num="6" count="1" type="stmt"/>
         <line num="7" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="8" count="19" type="stmt"/>
-        <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="10" count="4" type="stmt"/>
-        <line num="11" count="4" type="stmt"/>
-        <line num="12" count="4" type="stmt"/>
-        <line num="13" count="4" type="stmt"/>
-        <line num="14" count="4" type="stmt"/>
-        <line num="15" count="4" type="cond" truecount="1" falsecount="0"/>
-        <line num="16" count="4" type="cond" truecount="2" falsecount="0"/>
-        <line num="17" count="4" type="stmt"/>
-        <line num="18" count="4" type="stmt"/>
-        <line num="19" count="4" type="stmt"/>
-        <line num="20" count="4" type="stmt"/>
-        <line num="21" count="1" type="stmt"/>
-        <line num="22" count="1" type="stmt"/>
-        <line num="23" count="0" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
-        <line num="25" count="0" type="stmt"/>
+        <line num="8" count="22" type="stmt"/>
+        <line num="9" count="22" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="13" count="2" type="stmt"/>
+        <line num="14" count="2" type="stmt"/>
+        <line num="15" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="17" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="21" count="2" type="stmt"/>
+        <line num="22" count="2" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="25" count="2" type="cond" truecount="0" falsecount="1"/>
         <line num="26" count="0" type="stmt"/>
         <line num="27" count="0" type="stmt"/>
-        <line num="28" count="0" type="stmt"/>
-        <line num="29" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="31" count="0" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="33" count="0" type="stmt"/>
-        <line num="34" count="0" type="stmt"/>
-        <line num="35" count="0" type="stmt"/>
-        <line num="36" count="0" type="stmt"/>
-        <line num="37" count="0" type="stmt"/>
-        <line num="38" count="0" type="stmt"/>
-        <line num="39" count="0" type="stmt"/>
-        <line num="40" count="0" type="stmt"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="42" count="0" type="stmt"/>
-        <line num="43" count="0" type="stmt"/>
-        <line num="44" count="1" type="stmt"/>
-        <line num="45" count="0" type="stmt"/>
-        <line num="46" count="0" type="stmt"/>
-        <line num="47" count="1" type="stmt"/>
-        <line num="48" count="0" type="stmt"/>
-        <line num="49" count="0" type="stmt"/>
+        <line num="28" count="2" type="stmt"/>
+        <line num="29" count="2" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="31" count="2" type="stmt"/>
+        <line num="32" count="2" type="stmt"/>
+        <line num="33" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="34" count="11" type="stmt"/>
+        <line num="35" count="11" type="stmt"/>
+        <line num="36" count="11" type="stmt"/>
+        <line num="37" count="11" type="stmt"/>
+        <line num="38" count="11" type="stmt"/>
+        <line num="39" count="11" type="cond" truecount="1" falsecount="0"/>
+        <line num="40" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="11" type="stmt"/>
+        <line num="42" count="11" type="stmt"/>
+        <line num="43" count="11" type="stmt"/>
+        <line num="44" count="11" type="stmt"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="46" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="47" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="48" count="1" type="stmt"/>
+        <line num="49" count="1" type="cond" truecount="0" falsecount="1"/>
         <line num="50" count="0" type="stmt"/>
         <line num="51" count="0" type="stmt"/>
-        <line num="52" count="0" type="stmt"/>
-        <line num="53" count="0" type="stmt"/>
-        <line num="54" count="0" type="stmt"/>
-        <line num="55" count="1" type="stmt"/>
-        <line num="56" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="57" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="58" count="2" type="stmt"/>
-        <line num="59" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="60" count="2" type="stmt"/>
-        <line num="61" count="1" type="stmt"/>
-        <line num="62" count="1" type="stmt"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="53" count="1" type="stmt"/>
+        <line num="54" count="1" type="stmt"/>
+        <line num="55" count="1" type="cond" truecount="0" falsecount="2"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="1" type="stmt"/>
+        <line num="66" count="1" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="70" count="0" type="stmt"/>
+        <line num="71" count="1" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="78" count="0" type="stmt"/>
+        <line num="79" count="1" type="stmt"/>
+        <line num="80" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="81" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="82" count="2" type="stmt"/>
+        <line num="83" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="84" count="2" type="stmt"/>
+        <line num="85" count="1" type="stmt"/>
+        <line num="86" count="1" type="stmt"/>
       </file>
       <file name="in-memory-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-transactions-repository.ts">
-        <metrics statements="47" coveredstatements="45" conditionals="10" coveredconditionals="7" methods="5" coveredmethods="4"/>
+        <metrics statements="47" coveredstatements="40" conditionals="11" coveredconditionals="11" methods="6" coveredmethods="4"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -1284,39 +2211,39 @@
         <line num="7" count="1" type="stmt"/>
         <line num="8" count="1" type="stmt"/>
         <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="10" count="11" type="stmt"/>
-        <line num="11" count="11" type="stmt"/>
-        <line num="12" count="11" type="stmt"/>
-        <line num="13" count="11" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
+        <line num="10" count="13" type="stmt"/>
+        <line num="11" count="13" type="stmt"/>
+        <line num="12" count="13" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="14" count="1" type="stmt"/>
         <line num="15" count="0" type="stmt"/>
-        <line num="16" count="11" type="stmt"/>
-        <line num="17" count="11" type="stmt"/>
-        <line num="18" count="11" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="18" count="1" type="stmt"/>
         <line num="19" count="1" type="stmt"/>
         <line num="20" count="1" type="stmt"/>
-        <line num="21" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="22" count="11" type="stmt"/>
-        <line num="23" count="11" type="stmt"/>
-        <line num="24" count="11" type="stmt"/>
-        <line num="25" count="11" type="stmt"/>
-        <line num="26" count="11" type="stmt"/>
-        <line num="27" count="11" type="cond" truecount="0" falsecount="1"/>
-        <line num="28" count="11" type="cond" truecount="0" falsecount="1"/>
-        <line num="29" count="11" type="cond" truecount="1" falsecount="0"/>
-        <line num="30" count="11" type="cond" truecount="0" falsecount="1"/>
-        <line num="31" count="11" type="stmt"/>
-        <line num="32" count="11" type="stmt"/>
-        <line num="33" count="11" type="stmt"/>
-        <line num="34" count="11" type="stmt"/>
-        <line num="35" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="36" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="24" count="13" type="stmt"/>
+        <line num="25" count="13" type="stmt"/>
+        <line num="26" count="13" type="stmt"/>
+        <line num="27" count="13" type="stmt"/>
+        <line num="28" count="13" type="stmt"/>
+        <line num="29" count="13" type="cond" truecount="2" falsecount="0"/>
+        <line num="30" count="13" type="cond" truecount="1" falsecount="0"/>
+        <line num="31" count="13" type="cond" truecount="1" falsecount="0"/>
+        <line num="32" count="13" type="cond" truecount="1" falsecount="0"/>
+        <line num="33" count="13" type="stmt"/>
+        <line num="34" count="13" type="stmt"/>
+        <line num="35" count="13" type="stmt"/>
+        <line num="36" count="13" type="stmt"/>
         <line num="37" count="1" type="stmt"/>
-        <line num="38" count="1" type="stmt"/>
-        <line num="39" count="1" type="stmt"/>
-        <line num="40" count="1" type="stmt"/>
-        <line num="41" count="1" type="stmt"/>
-        <line num="42" count="1" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
         <line num="43" count="1" type="cond" truecount="1" falsecount="0"/>
         <line num="44" count="2" type="cond" truecount="1" falsecount="0"/>
         <line num="45" count="2" type="cond" truecount="1" falsecount="0"/>
@@ -1324,7 +2251,40 @@
         <line num="47" count="1" type="stmt"/>
       </file>
       <file name="in-memory-transfer-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-transfer-transactions-repository.ts">
-        <metrics statements="25" coveredstatements="25" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <metrics statements="30" coveredstatements="27" conditionals="3" coveredconditionals="3" methods="4" coveredmethods="3"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="10" count="12" type="stmt"/>
+        <line num="11" count="12" type="stmt"/>
+        <line num="12" count="12" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="22" count="6" type="stmt"/>
+        <line num="23" count="6" type="stmt"/>
+        <line num="24" count="6" type="stmt"/>
+        <line num="25" count="6" type="stmt"/>
+        <line num="26" count="6" type="stmt"/>
+        <line num="27" count="6" type="stmt"/>
+        <line num="28" count="6" type="stmt"/>
+        <line num="29" count="6" type="stmt"/>
+        <line num="30" count="1" type="stmt"/>
+      </file>
+      <file name="in-memory-treatmentItems-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-treatmentItems-repository.ts">
+        <metrics statements="56" coveredstatements="39" conditionals="11" coveredconditionals="10" methods="8" coveredmethods="4"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -1336,106 +2296,92 @@
         <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
         <line num="10" count="10" type="stmt"/>
         <line num="11" count="10" type="stmt"/>
-        <line num="12" count="10" type="stmt"/>
-        <line num="13" count="10" type="stmt"/>
-        <line num="14" count="10" type="stmt"/>
-        <line num="15" count="1" type="stmt"/>
-        <line num="16" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="17" count="3" type="stmt"/>
-        <line num="18" count="3" type="stmt"/>
-        <line num="19" count="3" type="stmt"/>
-        <line num="20" count="3" type="stmt"/>
-        <line num="21" count="3" type="stmt"/>
-        <line num="22" count="3" type="stmt"/>
-        <line num="23" count="3" type="stmt"/>
-        <line num="24" count="3" type="stmt"/>
-        <line num="25" count="1" type="stmt"/>
-      </file>
-      <file name="in-memory-treatmentItems-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-treatmentItems-repository.ts">
-        <metrics statements="42" coveredstatements="27" conditionals="4" coveredconditionals="3" methods="6" coveredmethods="2"/>
-        <line num="1" count="1" type="stmt"/>
-        <line num="2" count="1" type="stmt"/>
-        <line num="3" count="1" type="stmt"/>
-        <line num="4" count="1" type="stmt"/>
-        <line num="5" count="1" type="stmt"/>
-        <line num="6" count="1" type="stmt"/>
-        <line num="7" count="1" type="stmt"/>
-        <line num="8" count="1" type="stmt"/>
-        <line num="9" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="10" count="7" type="stmt"/>
-        <line num="11" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="12" count="2" type="stmt"/>
-        <line num="13" count="2" type="stmt"/>
+        <line num="12" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="13" count="2" type="cond" truecount="1" falsecount="0"/>
         <line num="14" count="2" type="stmt"/>
         <line num="15" count="2" type="stmt"/>
-        <line num="16" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="17" count="2" type="stmt"/>
-        <line num="18" count="2" type="cond" truecount="0" falsecount="1"/>
-        <line num="19" count="2" type="stmt"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="17" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
         <line num="20" count="2" type="stmt"/>
-        <line num="21" count="2" type="stmt"/>
-        <line num="22" count="2" type="stmt"/>
-        <line num="23" count="1" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
-        <line num="25" count="0" type="stmt"/>
-        <line num="26" count="0" type="stmt"/>
-        <line num="27" count="1" type="stmt"/>
-        <line num="28" count="0" type="stmt"/>
-        <line num="29" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="31" count="1" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="33" count="0" type="stmt"/>
-        <line num="34" count="1" type="stmt"/>
-        <line num="35" count="0" type="stmt"/>
-        <line num="36" count="0" type="stmt"/>
-        <line num="37" count="0" type="stmt"/>
+        <line num="21" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="22" count="5" type="cond" truecount="1" falsecount="0"/>
+        <line num="23" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="5" type="stmt"/>
+        <line num="25" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="26" count="4" type="stmt"/>
+        <line num="27" count="4" type="stmt"/>
+        <line num="28" count="4" type="stmt"/>
+        <line num="29" count="4" type="stmt"/>
+        <line num="30" count="4" type="cond" truecount="1" falsecount="0"/>
+        <line num="31" count="4" type="stmt"/>
+        <line num="32" count="4" type="cond" truecount="1" falsecount="0"/>
+        <line num="33" count="4" type="stmt"/>
+        <line num="34" count="4" type="stmt"/>
+        <line num="35" count="4" type="stmt"/>
+        <line num="36" count="4" type="stmt"/>
+        <line num="37" count="1" type="stmt"/>
         <line num="38" count="0" type="stmt"/>
         <line num="39" count="0" type="stmt"/>
         <line num="40" count="0" type="stmt"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="42" count="1" type="stmt"/>
+        <line num="41" count="1" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="1" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="1" type="stmt"/>
       </file>
       <file name="in-memory-treatments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-treatments-repository.ts">
-        <metrics statements="50" coveredstatements="33" conditionals="14" coveredconditionals="13" methods="7" coveredmethods="3"/>
+        <metrics statements="59" coveredstatements="45" conditionals="19" coveredconditionals="17" methods="8" coveredmethods="5"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
         <line num="4" count="1" type="stmt"/>
         <line num="5" count="1" type="stmt"/>
         <line num="6" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="7" count="22" type="stmt"/>
-        <line num="8" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="9" count="16" type="stmt"/>
-        <line num="10" count="16" type="stmt"/>
-        <line num="11" count="16" type="cond" truecount="2" falsecount="0"/>
-        <line num="12" count="16" type="cond" truecount="0" falsecount="1"/>
-        <line num="13" count="16" type="cond" truecount="1" falsecount="0"/>
-        <line num="14" count="16" type="cond" truecount="1" falsecount="0"/>
-        <line num="15" count="16" type="cond" truecount="1" falsecount="0"/>
-        <line num="16" count="16" type="cond" truecount="1" falsecount="0"/>
-        <line num="17" count="16" type="stmt"/>
-        <line num="18" count="16" type="stmt"/>
-        <line num="19" count="16" type="stmt"/>
-        <line num="20" count="16" type="cond" truecount="1" falsecount="0"/>
-        <line num="21" count="16" type="stmt"/>
-        <line num="22" count="16" type="stmt"/>
-        <line num="23" count="16" type="stmt"/>
-        <line num="24" count="16" type="stmt"/>
-        <line num="25" count="1" type="stmt"/>
-        <line num="26" count="0" type="stmt"/>
-        <line num="27" count="0" type="stmt"/>
-        <line num="28" count="1" type="stmt"/>
+        <line num="7" count="26" type="stmt"/>
+        <line num="8" count="26" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="23" type="stmt"/>
+        <line num="12" count="23" type="stmt"/>
+        <line num="13" count="23" type="stmt"/>
+        <line num="14" count="23" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="23" type="cond" truecount="0" falsecount="1"/>
+        <line num="16" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="17" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="18" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="19" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="20" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="21" count="23" type="stmt"/>
+        <line num="22" count="23" type="cond" truecount="1" falsecount="0"/>
+        <line num="23" count="23" type="stmt"/>
+        <line num="24" count="23" type="stmt"/>
+        <line num="25" count="23" type="stmt"/>
+        <line num="26" count="23" type="stmt"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
         <line num="29" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
+        <line num="30" count="1" type="stmt"/>
         <line num="31" count="0" type="stmt"/>
-        <line num="32" count="1" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
         <line num="33" count="0" type="stmt"/>
-        <line num="34" count="0" type="stmt"/>
-        <line num="35" count="0" type="stmt"/>
-        <line num="36" count="1" type="stmt"/>
-        <line num="37" count="0" type="stmt"/>
-        <line num="38" count="0" type="stmt"/>
+        <line num="34" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="35" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="36" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
         <line num="39" count="0" type="stmt"/>
         <line num="40" count="0" type="stmt"/>
         <line num="41" count="0" type="stmt"/>
@@ -1443,11 +2389,20 @@
         <line num="43" count="0" type="stmt"/>
         <line num="44" count="0" type="stmt"/>
         <line num="45" count="0" type="stmt"/>
-        <line num="46" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="47" count="12" type="cond" truecount="1" falsecount="0"/>
-        <line num="48" count="12" type="cond" truecount="2" falsecount="0"/>
-        <line num="49" count="12" type="stmt"/>
-        <line num="50" count="1" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="49" count="12" type="cond" truecount="1" falsecount="0"/>
+        <line num="50" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="51" count="12" type="stmt"/>
+        <line num="52" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="53" count="4" type="stmt"/>
+        <line num="54" count="4" type="stmt"/>
+        <line num="55" count="4" type="stmt"/>
+        <line num="56" count="4" type="stmt"/>
+        <line num="57" count="4" type="stmt"/>
+        <line num="58" count="4" type="stmt"/>
+        <line num="59" count="1" type="stmt"/>
       </file>
       <file name="in-memory-users-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\in-memory\in-memory-users-repository.ts">
         <metrics statements="35" coveredstatements="35" conditionals="11" coveredconditionals="11" methods="4" coveredmethods="4"/>
@@ -1489,9 +2444,9 @@
       </file>
     </package>
     <package name="metrics.src.repositories.prisma">
-      <metrics statements="231" coveredstatements="0" conditionals="8" coveredconditionals="0" methods="8" coveredmethods="0"/>
+      <metrics statements="763" coveredstatements="0" conditionals="15" coveredconditionals="0" methods="15" coveredmethods="0"/>
       <file name="prisma-accounts-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-accounts-repository.ts">
-        <metrics statements="47" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="66" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -1539,59 +2494,28 @@
         <line num="45" count="0" type="stmt"/>
         <line num="46" count="0" type="stmt"/>
         <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="66" count="0" type="stmt"/>
       </file>
       <file name="prisma-addresses-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-addresses-repository.ts">
-        <metrics statements="22" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
-        <line num="2" count="0" type="stmt"/>
-        <line num="3" count="0" type="stmt"/>
-        <line num="4" count="0" type="stmt"/>
-        <line num="5" count="0" type="stmt"/>
-        <line num="6" count="0" type="stmt"/>
-        <line num="7" count="0" type="stmt"/>
-        <line num="8" count="0" type="stmt"/>
-        <line num="9" count="0" type="stmt"/>
-        <line num="10" count="0" type="stmt"/>
-        <line num="11" count="0" type="stmt"/>
-        <line num="12" count="0" type="stmt"/>
-        <line num="13" count="0" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
-        <line num="17" count="0" type="stmt"/>
-        <line num="18" count="0" type="stmt"/>
-        <line num="19" count="0" type="stmt"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="22" count="0" type="stmt"/>
-      </file>
-      <file name="prisma-clients-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-clients-repository.ts">
-        <metrics statements="22" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
-        <line num="2" count="0" type="stmt"/>
-        <line num="3" count="0" type="stmt"/>
-        <line num="4" count="0" type="stmt"/>
-        <line num="5" count="0" type="stmt"/>
-        <line num="6" count="0" type="stmt"/>
-        <line num="7" count="0" type="stmt"/>
-        <line num="8" count="0" type="stmt"/>
-        <line num="9" count="0" type="stmt"/>
-        <line num="10" count="0" type="stmt"/>
-        <line num="11" count="0" type="stmt"/>
-        <line num="12" count="0" type="stmt"/>
-        <line num="13" count="0" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
-        <line num="17" count="0" type="stmt"/>
-        <line num="18" count="0" type="stmt"/>
-        <line num="19" count="0" type="stmt"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="22" count="0" type="stmt"/>
-      </file>
-      <file name="prisma-equipments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-equipments-repository.ts">
-        <metrics statements="26" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="28" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -1618,9 +2542,11 @@
         <line num="24" count="0" type="stmt"/>
         <line num="25" count="0" type="stmt"/>
         <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
       </file>
-      <file name="prisma-sectors-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-sectors-repository.ts">
-        <metrics statements="35" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <file name="prisma-clients-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-clients-repository.ts">
+        <metrics statements="40" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -1656,9 +2582,14 @@
         <line num="33" count="0" type="stmt"/>
         <line num="34" count="0" type="stmt"/>
         <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
       </file>
-      <file name="prisma-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-transactions-repository.ts">
-        <metrics statements="30" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <file name="prisma-equipments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-equipments-repository.ts">
+        <metrics statements="45" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -1689,9 +2620,24 @@
         <line num="28" count="0" type="stmt"/>
         <line num="29" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
       </file>
-      <file name="prisma-transfer-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-transfer-transactions-repository.ts">
-        <metrics statements="19" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+      <file name="prisma-interactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-interactions-repository.ts">
+        <metrics statements="34" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="2" count="0" type="stmt"/>
         <line num="3" count="0" type="stmt"/>
@@ -1711,6 +2657,568 @@
         <line num="17" count="0" type="stmt"/>
         <line num="18" count="0" type="stmt"/>
         <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-items-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-items-repository.ts">
+        <metrics statements="101" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="66" count="0" type="stmt"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="70" count="0" type="stmt"/>
+        <line num="71" count="0" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="78" count="0" type="stmt"/>
+        <line num="79" count="0" type="stmt"/>
+        <line num="80" count="0" type="stmt"/>
+        <line num="81" count="0" type="stmt"/>
+        <line num="82" count="0" type="stmt"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="85" count="0" type="stmt"/>
+        <line num="86" count="0" type="stmt"/>
+        <line num="87" count="0" type="stmt"/>
+        <line num="88" count="0" type="stmt"/>
+        <line num="89" count="0" type="stmt"/>
+        <line num="90" count="0" type="stmt"/>
+        <line num="91" count="0" type="stmt"/>
+        <line num="92" count="0" type="stmt"/>
+        <line num="93" count="0" type="stmt"/>
+        <line num="94" count="0" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="96" count="0" type="stmt"/>
+        <line num="97" count="0" type="stmt"/>
+        <line num="98" count="0" type="stmt"/>
+        <line num="99" count="0" type="stmt"/>
+        <line num="100" count="0" type="stmt"/>
+        <line num="101" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-payment-entrys-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-payment-entrys-repository.ts">
+        <metrics statements="24" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-payments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-payments-repository.ts">
+        <metrics statements="32" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-sectors-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-sectors-repository.ts">
+        <metrics statements="45" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-stocks-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-stocks-repository.ts">
+        <metrics statements="82" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="66" count="0" type="stmt"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="70" count="0" type="stmt"/>
+        <line num="71" count="0" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="78" count="0" type="stmt"/>
+        <line num="79" count="0" type="stmt"/>
+        <line num="80" count="0" type="stmt"/>
+        <line num="81" count="0" type="stmt"/>
+        <line num="82" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-transactions-repository.ts">
+        <metrics statements="78" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="66" count="0" type="stmt"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="70" count="0" type="stmt"/>
+        <line num="71" count="0" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="78" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-transfer-transactions-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-transfer-transactions-repository.ts">
+        <metrics statements="31" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-treatment-items-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-treatment-items-repository.ts">
+        <metrics statements="52" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+      </file>
+      <file name="prisma-treatments-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-treatments-repository.ts">
+        <metrics statements="75" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="33" count="0" type="stmt"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="39" count="0" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
+        <line num="47" count="0" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="stmt"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="66" count="0" type="stmt"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="70" count="0" type="stmt"/>
+        <line num="71" count="0" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
+        <line num="75" count="0" type="stmt"/>
       </file>
       <file name="prisma-users-repository.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\repositories\prisma\prisma-users-repository.ts">
         <metrics statements="30" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -1747,7 +3255,7 @@
       </file>
     </package>
     <package name="metrics.src.use-cases">
-      <metrics statements="863" coveredstatements="863" conditionals="125" coveredconditionals="125" methods="40" coveredmethods="40"/>
+      <metrics statements="1056" coveredstatements="1056" conditionals="159" coveredconditionals="159" methods="54" coveredmethods="54"/>
       <file name="account.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\account.ts">
         <metrics statements="44" coveredstatements="44" conditionals="6" coveredconditionals="6" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
@@ -2000,6 +3508,81 @@
         <line num="21" count="1" type="stmt"/>
         <line num="22" count="1" type="stmt"/>
       </file>
+      <file name="get-clients.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-clients.ts">
+        <metrics statements="22" coveredstatements="22" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+      </file>
+      <file name="get-items.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-items.ts">
+        <metrics statements="22" coveredstatements="22" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+      </file>
+      <file name="get-payments.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-payments.ts">
+        <metrics statements="22" coveredstatements="22" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+      </file>
       <file name="get-sectors.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-sectors.ts">
         <metrics statements="23" coveredstatements="23" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
@@ -2026,6 +3609,35 @@
         <line num="22" count="1" type="stmt"/>
         <line num="23" count="1" type="stmt"/>
       </file>
+      <file name="get-stock-by-item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-stock-by-item.ts">
+        <metrics statements="26" coveredstatements="26" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="14" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="1" type="stmt"/>
+        <line num="24" count="1" type="stmt"/>
+        <line num="25" count="1" type="stmt"/>
+        <line num="26" count="1" type="stmt"/>
+      </file>
       <file name="get-transactions.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-transactions.ts">
         <metrics statements="19" coveredstatements="19" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
@@ -2047,6 +3659,54 @@
         <line num="17" count="1" type="stmt"/>
         <line num="18" count="1" type="stmt"/>
         <line num="19" count="1" type="stmt"/>
+      </file>
+      <file name="get-transfer-transactions.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-transfer-transactions.ts">
+        <metrics statements="19" coveredstatements="19" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="1" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+      </file>
+      <file name="get-treatments.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-treatments.ts">
+        <metrics statements="23" coveredstatements="23" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="11" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="14" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="1" type="stmt"/>
       </file>
       <file name="get-user-profile.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\get-user-profile.ts">
         <metrics statements="34" coveredstatements="34" conditionals="3" coveredconditionals="3" methods="2" coveredmethods="2"/>
@@ -2134,7 +3794,7 @@
         <line num="45" count="1" type="stmt"/>
       </file>
       <file name="item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\item.ts">
-        <metrics statements="66" coveredstatements="66" conditionals="13" coveredconditionals="13" methods="2" coveredmethods="2"/>
+        <metrics statements="70" coveredstatements="70" conditionals="13" coveredconditionals="13" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -2166,21 +3826,21 @@
         <line num="29" count="8" type="stmt"/>
         <line num="30" count="8" type="stmt"/>
         <line num="31" count="8" type="stmt"/>
-        <line num="32" count="8" type="cond" truecount="2" falsecount="0"/>
-        <line num="33" count="7" type="stmt"/>
-        <line num="34" count="7" type="stmt"/>
-        <line num="35" count="8" type="cond" truecount="2" falsecount="0"/>
-        <line num="36" count="6" type="stmt"/>
-        <line num="37" count="6" type="stmt"/>
-        <line num="38" count="8" type="cond" truecount="1" falsecount="0"/>
+        <line num="32" count="8" type="stmt"/>
+        <line num="33" count="8" type="stmt"/>
+        <line num="34" count="8" type="cond" truecount="1" falsecount="0"/>
+        <line num="35" count="1" type="stmt"/>
+        <line num="36" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="37" count="7" type="stmt"/>
+        <line num="38" count="7" type="stmt"/>
         <line num="39" count="8" type="cond" truecount="2" falsecount="0"/>
-        <line num="40" count="8" type="cond" truecount="1" falsecount="0"/>
-        <line num="41" count="3" type="stmt"/>
-        <line num="42" count="3" type="cond" truecount="2" falsecount="0"/>
-        <line num="43" count="2" type="stmt"/>
-        <line num="44" count="2" type="stmt"/>
-        <line num="45" count="2" type="stmt"/>
-        <line num="46" count="2" type="stmt"/>
+        <line num="40" count="6" type="stmt"/>
+        <line num="41" count="6" type="stmt"/>
+        <line num="42" count="8" type="cond" truecount="1" falsecount="0"/>
+        <line num="43" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="44" count="8" type="cond" truecount="1" falsecount="0"/>
+        <line num="45" count="3" type="stmt"/>
+        <line num="46" count="3" type="cond" truecount="2" falsecount="0"/>
         <line num="47" count="2" type="stmt"/>
         <line num="48" count="2" type="stmt"/>
         <line num="49" count="2" type="stmt"/>
@@ -2192,15 +3852,19 @@
         <line num="55" count="2" type="stmt"/>
         <line num="56" count="2" type="stmt"/>
         <line num="57" count="2" type="stmt"/>
-        <line num="58" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="59" count="1" type="stmt"/>
-        <line num="60" count="1" type="stmt"/>
-        <line num="61" count="1" type="stmt"/>
-        <line num="62" count="1" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+        <line num="59" count="2" type="stmt"/>
+        <line num="60" count="2" type="stmt"/>
+        <line num="61" count="2" type="stmt"/>
+        <line num="62" count="2" type="cond" truecount="1" falsecount="0"/>
         <line num="63" count="1" type="stmt"/>
         <line num="64" count="1" type="stmt"/>
-        <line num="65" count="8" type="stmt"/>
+        <line num="65" count="1" type="stmt"/>
         <line num="66" count="1" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="69" count="8" type="stmt"/>
+        <line num="70" count="1" type="stmt"/>
       </file>
       <file name="payment.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\payment.ts">
         <metrics statements="48" coveredstatements="48" conditionals="8" coveredconditionals="8" methods="2" coveredmethods="2"/>
@@ -2254,7 +3918,7 @@
         <line num="48" count="1" type="stmt"/>
       </file>
       <file name="paymentEntry.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\paymentEntry.ts">
-        <metrics statements="47" coveredstatements="47" conditionals="9" coveredconditionals="9" methods="2" coveredmethods="2"/>
+        <metrics statements="49" coveredstatements="49" conditionals="9" coveredconditionals="9" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -2288,20 +3952,22 @@
         <line num="31" count="5" type="cond" truecount="2" falsecount="0"/>
         <line num="32" count="4" type="stmt"/>
         <line num="33" count="4" type="stmt"/>
-        <line num="34" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="35" count="3" type="stmt"/>
-        <line num="36" count="5" type="cond" truecount="1" falsecount="0"/>
-        <line num="37" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="38" count="1" type="stmt"/>
-        <line num="39" count="1" type="stmt"/>
+        <line num="34" count="4" type="stmt"/>
+        <line num="35" count="4" type="stmt"/>
+        <line num="36" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="37" count="3" type="stmt"/>
+        <line num="38" count="5" type="cond" truecount="1" falsecount="0"/>
+        <line num="39" count="5" type="cond" truecount="2" falsecount="0"/>
         <line num="40" count="1" type="stmt"/>
         <line num="41" count="1" type="stmt"/>
         <line num="42" count="1" type="stmt"/>
         <line num="43" count="1" type="stmt"/>
         <line num="44" count="1" type="stmt"/>
         <line num="45" count="1" type="stmt"/>
-        <line num="46" count="5" type="stmt"/>
+        <line num="46" count="1" type="stmt"/>
         <line num="47" count="1" type="stmt"/>
+        <line num="48" count="5" type="stmt"/>
+        <line num="49" count="1" type="stmt"/>
       </file>
       <file name="register.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\register.ts">
         <metrics statements="40" coveredstatements="40" conditionals="4" coveredconditionals="4" methods="2" coveredmethods="2"/>
@@ -2346,6 +4012,34 @@
         <line num="39" count="4" type="stmt"/>
         <line num="40" count="1" type="stmt"/>
       </file>
+      <file name="remove-treatment-item.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\remove-treatment-item.ts">
+        <metrics statements="25" coveredstatements="25" conditionals="6" coveredconditionals="6" methods="2" coveredmethods="2"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="1" type="stmt"/>
+        <line num="10" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="11" count="3" type="stmt"/>
+        <line num="12" count="3" type="stmt"/>
+        <line num="13" count="3" type="stmt"/>
+        <line num="14" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="15" count="3" type="stmt"/>
+        <line num="16" count="3" type="stmt"/>
+        <line num="17" count="3" type="stmt"/>
+        <line num="18" count="3" type="cond" truecount="1" falsecount="0"/>
+        <line num="19" count="1" type="stmt"/>
+        <line num="20" count="3" type="cond" truecount="1" falsecount="0"/>
+        <line num="21" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="2" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="3" type="stmt"/>
+        <line num="25" count="1" type="stmt"/>
+      </file>
       <file name="sector.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\sector.ts">
         <metrics statements="36" coveredstatements="36" conditionals="4" coveredconditionals="4" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
@@ -2386,7 +4080,7 @@
         <line num="36" count="1" type="stmt"/>
       </file>
       <file name="stock.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\stock.ts">
-        <metrics statements="41" coveredstatements="41" conditionals="7" coveredconditionals="7" methods="2" coveredmethods="2"/>
+        <metrics statements="56" coveredstatements="56" conditionals="14" coveredconditionals="14" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -2406,31 +4100,46 @@
         <line num="17" count="1" type="stmt"/>
         <line num="18" count="1" type="stmt"/>
         <line num="19" count="1" type="stmt"/>
-        <line num="20" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="21" count="5" type="stmt"/>
-        <line num="22" count="5" type="stmt"/>
-        <line num="23" count="5" type="stmt"/>
-        <line num="24" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="25" count="5" type="stmt"/>
-        <line num="26" count="5" type="stmt"/>
-        <line num="27" count="5" type="stmt"/>
-        <line num="28" count="5" type="stmt"/>
-        <line num="29" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="30" count="4" type="stmt"/>
-        <line num="31" count="5" type="cond" truecount="1" falsecount="0"/>
-        <line num="32" count="5" type="cond" truecount="1" falsecount="0"/>
-        <line num="33" count="5" type="cond" truecount="1" falsecount="0"/>
-        <line num="34" count="1" type="stmt"/>
-        <line num="35" count="1" type="stmt"/>
-        <line num="36" count="1" type="stmt"/>
-        <line num="37" count="1" type="stmt"/>
-        <line num="38" count="1" type="stmt"/>
-        <line num="39" count="1" type="stmt"/>
-        <line num="40" count="5" type="stmt"/>
-        <line num="41" count="1" type="stmt"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="21" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="22" count="7" type="stmt"/>
+        <line num="23" count="7" type="stmt"/>
+        <line num="24" count="7" type="stmt"/>
+        <line num="25" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="26" count="7" type="stmt"/>
+        <line num="27" count="7" type="stmt"/>
+        <line num="28" count="7" type="stmt"/>
+        <line num="29" count="7" type="stmt"/>
+        <line num="30" count="7" type="stmt"/>
+        <line num="31" count="7" type="stmt"/>
+        <line num="32" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="6" type="stmt"/>
+        <line num="34" count="6" type="stmt"/>
+        <line num="35" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="36" count="4" type="stmt"/>
+        <line num="37" count="7" type="cond" truecount="1" falsecount="0"/>
+        <line num="38" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="39" count="3" type="stmt"/>
+        <line num="40" count="7" type="cond" truecount="1" falsecount="0"/>
+        <line num="41" count="2" type="stmt"/>
+        <line num="42" count="2" type="stmt"/>
+        <line num="43" count="2" type="stmt"/>
+        <line num="44" count="2" type="stmt"/>
+        <line num="45" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="46" count="2" type="stmt"/>
+        <line num="47" count="2" type="stmt"/>
+        <line num="48" count="2" type="stmt"/>
+        <line num="49" count="2" type="stmt"/>
+        <line num="50" count="2" type="stmt"/>
+        <line num="51" count="7" type="cond" truecount="3" falsecount="0"/>
+        <line num="52" count="2" type="stmt"/>
+        <line num="53" count="2" type="stmt"/>
+        <line num="54" count="2" type="stmt"/>
+        <line num="55" count="7" type="stmt"/>
+        <line num="56" count="1" type="stmt"/>
       </file>
       <file name="transaction.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\transaction.ts">
-        <metrics statements="66" coveredstatements="66" conditionals="16" coveredconditionals="16" methods="2" coveredmethods="2"/>
+        <metrics statements="77" coveredstatements="77" conditionals="25" coveredconditionals="25" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -2454,49 +4163,60 @@
         <line num="21" count="1" type="stmt"/>
         <line num="22" count="1" type="stmt"/>
         <line num="23" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="24" count="7" type="stmt"/>
-        <line num="25" count="7" type="stmt"/>
-        <line num="26" count="7" type="stmt"/>
-        <line num="27" count="7" type="stmt"/>
+        <line num="24" count="8" type="stmt"/>
+        <line num="25" count="8" type="stmt"/>
+        <line num="26" count="8" type="stmt"/>
+        <line num="27" count="8" type="stmt"/>
         <line num="28" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="29" count="10" type="stmt"/>
-        <line num="30" count="10" type="stmt"/>
-        <line num="31" count="10" type="stmt"/>
-        <line num="32" count="10" type="stmt"/>
-        <line num="33" count="10" type="cond" truecount="3" falsecount="0"/>
+        <line num="29" count="11" type="stmt"/>
+        <line num="30" count="11" type="stmt"/>
+        <line num="31" count="11" type="stmt"/>
+        <line num="32" count="11" type="stmt"/>
+        <line num="33" count="11" type="cond" truecount="3" falsecount="0"/>
         <line num="34" count="1" type="stmt"/>
         <line num="35" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="36" count="9" type="stmt"/>
-        <line num="37" count="9" type="stmt"/>
-        <line num="38" count="10" type="cond" truecount="2" falsecount="0"/>
-        <line num="39" count="7" type="stmt"/>
-        <line num="40" count="7" type="stmt"/>
-        <line num="41" count="7" type="stmt"/>
-        <line num="42" count="10" type="cond" truecount="2" falsecount="0"/>
-        <line num="43" count="10" type="cond" truecount="1" falsecount="0"/>
-        <line num="44" count="4" type="stmt"/>
-        <line num="45" count="4" type="stmt"/>
-        <line num="46" count="4" type="cond" truecount="1" falsecount="0"/>
-        <line num="47" count="7" type="stmt"/>
-        <line num="48" count="7" type="stmt"/>
-        <line num="49" count="7" type="stmt"/>
-        <line num="50" count="7" type="stmt"/>
-        <line num="51" count="7" type="stmt"/>
-        <line num="52" count="10" type="cond" truecount="2" falsecount="0"/>
-        <line num="53" count="2" type="stmt"/>
-        <line num="54" count="2" type="stmt"/>
-        <line num="55" count="2" type="stmt"/>
-        <line num="56" count="2" type="stmt"/>
-        <line num="57" count="2" type="stmt"/>
-        <line num="58" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="59" count="1" type="stmt"/>
-        <line num="60" count="1" type="stmt"/>
-        <line num="61" count="2" type="cond" truecount="1" falsecount="0"/>
-        <line num="62" count="7" type="stmt"/>
-        <line num="63" count="7" type="stmt"/>
-        <line num="64" count="7" type="stmt"/>
-        <line num="65" count="10" type="stmt"/>
-        <line num="66" count="1" type="stmt"/>
+        <line num="36" count="10" type="stmt"/>
+        <line num="37" count="10" type="stmt"/>
+        <line num="38" count="10" type="stmt"/>
+        <line num="39" count="10" type="stmt"/>
+        <line num="40" count="10" type="stmt"/>
+        <line num="41" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="42" count="10" type="stmt"/>
+        <line num="43" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="44" count="8" type="stmt"/>
+        <line num="45" count="8" type="stmt"/>
+        <line num="46" count="8" type="stmt"/>
+        <line num="47" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="48" count="11" type="stmt"/>
+        <line num="49" count="11" type="stmt"/>
+        <line num="50" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="51" count="6" type="stmt"/>
+        <line num="52" count="6" type="stmt"/>
+        <line num="53" count="6" type="cond" truecount="1" falsecount="0"/>
+        <line num="54" count="8" type="stmt"/>
+        <line num="55" count="8" type="stmt"/>
+        <line num="56" count="8" type="stmt"/>
+        <line num="57" count="8" type="stmt"/>
+        <line num="58" count="8" type="stmt"/>
+        <line num="59" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="60" count="11" type="stmt"/>
+        <line num="61" count="11" type="stmt"/>
+        <line num="62" count="11" type="cond" truecount="4" falsecount="0"/>
+        <line num="63" count="11" type="cond" truecount="1" falsecount="0"/>
+        <line num="64" count="8" type="stmt"/>
+        <line num="65" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="66" count="2" type="stmt"/>
+        <line num="67" count="2" type="stmt"/>
+        <line num="68" count="2" type="stmt"/>
+        <line num="69" count="2" type="stmt"/>
+        <line num="70" count="2" type="stmt"/>
+        <line num="71" count="2" type="stmt"/>
+        <line num="72" count="2" type="cond" truecount="1" falsecount="0"/>
+        <line num="73" count="8" type="stmt"/>
+        <line num="74" count="8" type="stmt"/>
+        <line num="75" count="8" type="stmt"/>
+        <line num="76" count="11" type="stmt"/>
+        <line num="77" count="1" type="stmt"/>
       </file>
       <file name="transferTransaction.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\transferTransaction.ts">
         <metrics statements="45" coveredstatements="45" conditionals="6" coveredconditionals="6" methods="2" coveredmethods="2"/>
@@ -2610,7 +4330,7 @@
         <line num="60" count="1" type="stmt"/>
       </file>
       <file name="treatmentItem.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\treatmentItem.ts">
-        <metrics statements="59" coveredstatements="59" conditionals="11" coveredconditionals="11" methods="2" coveredmethods="2"/>
+        <metrics statements="61" coveredstatements="61" conditionals="11" coveredconditionals="11" methods="2" coveredmethods="2"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="stmt"/>
         <line num="3" count="1" type="stmt"/>
@@ -2668,12 +4388,14 @@
         <line num="55" count="2" type="stmt"/>
         <line num="56" count="2" type="stmt"/>
         <line num="57" count="2" type="stmt"/>
-        <line num="58" count="7" type="stmt"/>
-        <line num="59" count="1" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+        <line num="59" count="2" type="stmt"/>
+        <line num="60" count="7" type="stmt"/>
+        <line num="61" count="1" type="stmt"/>
       </file>
     </package>
     <package name="metrics.src.use-cases.errors">
-      <metrics statements="35" coveredstatements="35" conditionals="7" coveredconditionals="7" methods="7" coveredmethods="7"/>
+      <metrics statements="40" coveredstatements="40" conditionals="8" coveredconditionals="8" methods="8" coveredmethods="8"/>
       <file name="invalid-credentials-error.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\errors\invalid-credentials-error.ts">
         <metrics statements="5" coveredstatements="5" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
         <line num="1" count="1" type="stmt"/>
@@ -2710,8 +4432,16 @@
         <metrics statements="5" coveredstatements="5" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
         <line num="1" count="1" type="stmt"/>
         <line num="2" count="1" type="cond" truecount="1" falsecount="0"/>
-        <line num="3" count="20" type="stmt"/>
-        <line num="4" count="20" type="stmt"/>
+        <line num="3" count="21" type="stmt"/>
+        <line num="4" count="21" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+      </file>
+      <file name="stock-cannot-be-negative-error.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\errors\stock-cannot-be-negative-error.ts">
+        <metrics statements="5" coveredstatements="5" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="cond" truecount="1" falsecount="0"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
         <line num="5" count="1" type="stmt"/>
       </file>
       <file name="this-name-already-exists-error.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\errors\this-name-already-exists-error.ts">
@@ -2732,7 +4462,7 @@
       </file>
     </package>
     <package name="metrics.src.use-cases.factories">
-      <metrics statements="61" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="6" coveredmethods="0"/>
+      <metrics statements="308" coveredstatements="0" conditionals="26" coveredconditionals="0" methods="26" coveredmethods="0"/>
       <file name="make-account-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-account-use-case.ts">
         <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -2747,6 +4477,22 @@
         <line num="10" count="0" type="stmt"/>
         <line num="11" count="0" type="stmt"/>
       </file>
+      <file name="make-address-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-address-use-case.ts">
+        <metrics statements="13" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+      </file>
       <file name="make-authenticate-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-authenticate-use-case.ts">
         <metrics statements="10" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -2760,6 +4506,131 @@
         <line num="9" count="0" type="stmt"/>
         <line num="10" count="0" type="stmt"/>
       </file>
+      <file name="make-client-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-client-use-case.ts">
+        <metrics statements="11" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+      </file>
+      <file name="make-equipment-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-equipment-use-case.ts">
+        <metrics statements="13" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-accounts-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-accounts-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-clients-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-clients-use-case.ts">
+        <metrics statements="8" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-item-stocks-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-item-stocks-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-items-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-items-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-sectors-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-sectors-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-transactions-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-transactions-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-transfer-transactions-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-transfer-transactions-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
+      <file name="make-get-treatments-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-treatments-use-case.ts">
+        <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+      </file>
       <file name="make-get-user-profile-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-get-user-profile-use-case.ts">
         <metrics statements="8" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -2770,6 +4641,74 @@
         <line num="6" count="0" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
+      </file>
+      <file name="make-interaction-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-interaction-use-case.ts">
+        <metrics statements="15" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+      </file>
+      <file name="make-item-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-item-use-case.ts">
+        <metrics statements="13" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+      </file>
+      <file name="make-payment-entry-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-payment-entry-use-case.ts">
+        <metrics statements="15" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+      </file>
+      <file name="make-payment-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-payment-use-case.ts">
+        <metrics statements="13" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
       </file>
       <file name="make-register-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-register-use-case.ts">
         <metrics statements="9" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -2783,6 +4722,25 @@
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
       </file>
+      <file name="make-remove-treatment-item-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-remove-treatment-item-use-case.ts">
+        <metrics statements="16" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+      </file>
       <file name="make-sector-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-sector-use-case.ts">
         <metrics statements="8" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
@@ -2793,6 +4751,22 @@
         <line num="6" count="0" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
+      </file>
+      <file name="make-stock-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-stock-use-case.ts">
+        <metrics statements="13" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
       </file>
       <file name="make-transaction-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-transaction-use-case.ts">
         <metrics statements="15" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
@@ -2811,6 +4785,69 @@
         <line num="13" count="0" type="stmt"/>
         <line num="14" count="0" type="stmt"/>
         <line num="15" count="0" type="stmt"/>
+      </file>
+      <file name="make-transfer-transaction-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-transfer-transaction-use-case.ts">
+        <metrics statements="15" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+      </file>
+      <file name="make-treatment-item-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-treatment-item-use-case.ts">
+        <metrics statements="22" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="18" count="0" type="stmt"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+      </file>
+      <file name="make-treatment-use-case.ts" path="C:\Users\Thomás\Desktop\nodejs\metrics\src\use-cases\factories\make-treatment-use-case.ts">
+        <metrics statements="17" coveredstatements="0" conditionals="1" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <line num="1" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="2" count="0" type="stmt"/>
+        <line num="3" count="0" type="stmt"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="stmt"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="16" count="0" type="stmt"/>
+        <line num="17" count="0" type="stmt"/>
       </file>
     </package>
   </project>

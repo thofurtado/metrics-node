@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.74% </span>
+                <span class="strong">85.1% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>45/47</span>
+                <span class='fraction'>40/47</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">70% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/10</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/5</span>
+                <span class='fraction'>4/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">95.74% </span>
+                <span class="strong">85.1% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>45/47</span>
+                <span class='fraction'>40/47</span>
             </div>
         
             
@@ -119,31 +119,13 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -151,7 +133,25 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -166,16 +166,18 @@ import { randomUUID } from 'node:crypto'
 &nbsp;
 &nbsp;
 export class InMemoryTransactionsRepository implements TransactionsRepository {
-    update(data: Prisma.TransactionUncheckedUpdateInput): Promise&lt;{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }&gt; {
-        throw new Error('Method not implemented.')
-    }
-<span class="fstat-no" title="function not covered" >    findMany(operation?: string | undefined, paid?: boolean | undefined, sector_id?: string | undefined, account_id?: string | undefined): Promise&lt;{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }[] | null&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        throw new Error('Method not implemented.')</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
 &nbsp;
 &nbsp;
     public items: Transaction[] = []
 &nbsp;
+<span class="fstat-no" title="function not covered" >    update(data: Prisma.TransactionUncheckedUpdateInput): Promise&lt;{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error('Method not implemented.')</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+    async findMany(operation?: string | undefined, paid?: boolean | undefined, sector_id?: string | undefined, account_id?: string | undefined): Promise&lt;Transaction[] | null&gt; {
+        const transaction = this.items
+&nbsp;
+        return transaction
+    }
 &nbsp;
     async create(data: Prisma.TransactionUncheckedCreateInput) {
         const transaction = {
@@ -183,23 +185,21 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             operation: data.operation,
             amount: data.amount,
             account_id: data.account_id,
-            date: data.date ? new Date(data.date<span class="branch-0 cbranch-no" title="branch not covered" >) : new Date() ,</span>
-            sector_id: data.<span class="branch-0 cbranch-no" title="branch not covered" >sector_id ?? null,</span>
+            date: data.date ? new Date(data.date) : new Date(),
+            sector_id: data.sector_id ?? null,
             description: data.description ?? null,
-            confirmed: data.<span class="branch-0 cbranch-no" title="branch not covered" >confirmed ?? false,</span>
+            confirmed: data.confirmed ?? false,
         }
         this.items.push(transaction)
         return transaction
     }
-    async all() {
-&nbsp;
-        // if(sector_id &amp;&amp; account_id)
-        //     const transaction = this.items.find((item) =&gt; item.sector_id === sector_id || item.account_id === account_id)
-        const transaction = this.items
-&nbsp;
-        return transaction
-    }
-    async findById(id:string):Promise&lt;Transaction | null&gt; {
+<span class="fstat-no" title="function not covered" >    async all() {</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        // if(sector_id &amp;&amp; account_id)</span>
+<span class="cstat-no" title="statement not covered" >        //     const transaction = this.items.find((item) =&gt; item.sector_id === sector_id || item.account_id === account_id)</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+    async findById(id: string): Promise&lt;Transaction | null&gt; {
         const transaction = this.items.find(item =&gt; item.id === id)
         return transaction || null
     }
@@ -211,7 +211,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2024-03-13T14:54:19.243Z
+                at 2024-03-17T14:46:25.255Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

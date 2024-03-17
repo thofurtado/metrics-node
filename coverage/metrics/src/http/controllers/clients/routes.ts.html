@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for metrics/src/http/controllers/financial/createSector.ts</title>
+    <title>Code coverage report for metrics/src/http/controllers/clients/routes.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../../../../prettify.css" />
     <link rel="stylesheet" href="../../../../../base.css" />
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../../../../index.html">All files</a> / <a href="index.html">metrics/src/http/controllers/financial</a> createSector.ts</h1>
+        <h1><a href="../../../../../index.html">All files</a> / <a href="index.html">metrics/src/http/controllers/clients</a> routes.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>0/19</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>0/19</span>
             </div>
         
             
@@ -82,21 +82,7 @@
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
 <a name='L19'></a><a href='#L19'>19</a>
-<a name='L20'></a><a href='#L20'>20</a>
-<a name='L21'></a><a href='#L21'>21</a>
-<a name='L22'></a><a href='#L22'>22</a>
-<a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a>
-<a name='L25'></a><a href='#L25'>25</a>
-<a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a>
-<a name='L29'></a><a href='#L29'>29</a>
-<a name='L30'></a><a href='#L30'>30</a>
-<a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a>
-<a name='L34'></a><a href='#L34'>34</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L20'></a><a href='#L20'>20</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -115,53 +101,25 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import {FastifyRequest, FastifyReply} from 'fastify'</span></span></span>
-<span class="cstat-no" title="statement not covered" >import {z} from 'zod'</span>
-<span class="cstat-no" title="statement not covered" >import { UserAlreadyExistsError } from '@/use-cases/errors/user-already-exists-error'</span>
-<span class="cstat-no" title="statement not covered" >import { makeSectorUseCase } from '@/use-cases/factories/make-sector-use-case'</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { FastifyInstance } from 'fastify'</span></span></span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >import { verifyJWT } from '@/http/middlewares/verify-jwt'</span>
+<span class="cstat-no" title="statement not covered" >import { createClient } from './client'</span>
+<span class="cstat-no" title="statement not covered" >import { createEquipment } from './equipment'</span>
+<span class="cstat-no" title="statement not covered" >import { createAddress } from './address'</span>
+<span class="cstat-no" title="statement not covered" >import { getClient } from './getClients'</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >export async function createSector (request: FastifyRequest, reply: FastifyReply) {</span>
+<span class="cstat-no" title="statement not covered" >export async function clientsRoutes(app: FastifyInstance) {</span>
+<span class="cstat-no" title="statement not covered" >    app.addHook('onRequest', verifyJWT)</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const registerBodySchema = z.object({</span>
-<span class="cstat-no" title="statement not covered" >        name: z.string(),</span>
-<span class="cstat-no" title="statement not covered" >        budget: z.number(),</span>
-<span class="cstat-no" title="statement not covered" >    })</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    const {name, budget} = registerBodySchema.parse(request.body)</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >        const sectorUseCase = makeSectorUseCase()</span>
-<span class="cstat-no" title="statement not covered" >        await sectorUseCase.execute({</span>
-<span class="cstat-no" title="statement not covered" >            name,</span>
-<span class="cstat-no" title="statement not covered" >            budget,</span>
-<span class="cstat-no" title="statement not covered" >        })</span>
-<span class="cstat-no" title="statement not covered" >    } catch(err){</span>
-<span class="cstat-no" title="statement not covered" >        if(err instanceof UserAlreadyExistsError){</span>
-<span class="cstat-no" title="statement not covered" >            return reply.status(409).send({message: err.message})</span>
-<span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" >        throw err</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    return reply.status(200).send()</span>
+<span class="cstat-no" title="statement not covered" >    app.post('/client', createClient)</span>
+<span class="cstat-no" title="statement not covered" >    app.post('/equipment', createEquipment)</span>
+<span class="cstat-no" title="statement not covered" >    app.post('/address', createAddress)</span>
+<span class="cstat-no" title="statement not covered" >    app.get('/clients', getClient)</span>
 <span class="cstat-no" title="statement not covered" >}</span>
-&nbsp;
-&nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -169,7 +127,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2024-03-13T14:54:19.243Z
+                at 2024-03-17T14:46:25.255Z
             </div>
         <script src="../../../../../prettify.js"></script>
         <script>

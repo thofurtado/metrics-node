@@ -4,20 +4,22 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTreatmentsRepository implements TreatmentsRepository {
+
     public items: Treatment[] = []
+
     async create(data: Prisma.TreatmentUncheckedCreateInput): Promise<Treatment> {
         const treatment = {
             id: randomUUID(),
             request: data.request,
             opening_date: data.opening_date ? new Date(data.opening_date) : new Date(),
-            ending_date:  data.ending_date ? new Date(data.ending_date) : null,
+            ending_date: data.ending_date ? new Date(data.ending_date) : null,
             contact: data.contact || null,
             user_id: data.user_id || null,
             client_id: data.client_id || null,
             equipment_id: data.equipment_id || null,
             finished: data.finished || false,
             amount: data.amount || 0,
-            observations:data.observations || null
+            observations: data.observations || null
         }
         this.items.push(treatment)
         return treatment
@@ -43,9 +45,16 @@ export class InMemoryTreatmentsRepository implements TreatmentsRepository {
             throw new Error(`Treatment with ID ${id} not found`)
         }
     }
-    async findById(id:string):Promise<Treatment | null>{
+    async findById(id: string): Promise<Treatment | null> {
         const treatment = this.items.find(item => item.id === id)
         return treatment ? treatment : null
+    }
+    async changeValue(id: string, value: number, entry: boolean): Promise<void> {
+
+        // const treatment = await this.findById(id)
+        // treatment?.amount = entry ? treatment.amount + value : treatment.amount - value
+
+        // this.items.push(treatment)
     }
 }
 

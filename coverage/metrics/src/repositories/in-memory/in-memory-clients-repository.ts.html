@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">55.73% </span>
+                <span class="strong">65.57% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>34/61</span>
+                <span class='fraction'>40/61</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>10/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">37.5% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/8</span>
+                <span class='fraction'>4/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">55.73% </span>
+                <span class="strong">65.57% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>34/61</span>
+                <span class='fraction'>40/61</span>
             </div>
         
             
@@ -129,22 +129,22 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">12x</span>
-<span class="cline-any cline-yes">12x</span>
-<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -173,17 +173,17 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Client, Prisma } from '@prisma/client'
 import { ClientsRepository } from '../clients-repository'
@@ -197,15 +197,15 @@ export class InMemoryClientsRepository implements ClientsRepository {
 <span class="cstat-no" title="statement not covered" >        const clients = this.items.filter((item) =&gt; item.name.toLowerCase().includes(name.toLowerCase()))</span>
 <span class="cstat-no" title="statement not covered" >        return clients.length ? clients : null</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="fstat-no" title="function not covered" >    async findMany(is_contract?: boolean | undefined): Promise&lt;{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        let filteredClients = this.items.slice() // Create a copy to avoid modifying original array</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        if (is_contract !== undefined) {</span>
+    async findMany(is_contract?: boolean | undefined): Promise&lt;{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null&gt; {
+        let filteredClients = this.items.slice() // Create a copy to avoid modifying original array
+&nbsp;
+        if (is_contract !== undefined) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >            filteredClients = filteredClients.filter((item) =&gt; item.contract === is_contract)</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >        return filteredClients.length ? filteredClients : null</span>
-<span class="cstat-no" title="statement not covered" >    }</span>
+&nbsp;
+        return filteredClients.length ? <span class="branch-0 cbranch-no" title="branch not covered" >filteredClients : null</span>
+    }
 <span class="fstat-no" title="function not covered" >    async update(data: Prisma.ClientUpdateInput): Promise&lt;{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[]&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        throw new Error('Method not implemented.')</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
@@ -253,7 +253,7 @@ export class InMemoryClientsRepository implements ClientsRepository {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2024-03-13T14:54:19.243Z
+                at 2024-03-17T14:46:25.255Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

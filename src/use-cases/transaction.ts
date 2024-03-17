@@ -48,7 +48,7 @@ export class TransactionUseCase {
 
 
         if (confirmed === true || operation === 'transfer') {
-            console.log('change balance')
+
             await this.accountsRepository.changeBalance(account_id, amount, isIncome)
         }
 

@@ -29,7 +29,9 @@ export async function createPaymentEntry(request: FastifyRequest, reply: Fastify
         })
     } catch (err) {
 
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
 
         throw err
     }

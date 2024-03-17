@@ -4,7 +4,7 @@ import { InMemoryTransactionsRepository } from '@/repositories/in-memory/in-memo
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
 import { InMemoryAccountsRepository } from '@/repositories/in-memory/in-memory-accounts-repository'
 import { InMemoryTransferTransactionsRepository } from '@/repositories/in-memory/in-memory-transfer-transactions-repository'
-import { resourceUsage } from 'process'
+
 
 
 let transactionsRepository: InMemoryTransactionsRepository
@@ -30,6 +30,22 @@ describe('Transaction Use Case', () => {
             amount: 50,
             account_id: account.id,
             date: new Date(),
+            sector_id: 'sector-1',
+            description: 'Visita minima',
+            confirmed: true
+        })
+        expect(transaction.id).toEqual(expect.any(String))
+    })
+    it('should be able to create transaction without a date', async () => {
+        const account = await accountsRepository.create({
+            name:'Carteira',
+            balance: 0
+        })
+        const {transaction} = await transactionUseCase.execute({
+            operation: 'income',
+            amount: 50,
+            account_id: account.id,
+            date: null,
             sector_id: 'sector-1',
             description: 'Visita minima',
             confirmed: true
@@ -169,8 +185,8 @@ describe('Transaction Use Case', () => {
             confirmed: false,
             destination_account_id: conta2.id
         })
-        expect(conta1).toHaveProperty('balance', 100)
-        expect(conta2).toHaveProperty('balance', 200)
+        expect(conta1).toHaveProperty('balance', 50)
+        expect(conta2).toHaveProperty('balance', 250)
         expect(transaction.transaction.id).toEqual(expect.any(String))
     })
 })

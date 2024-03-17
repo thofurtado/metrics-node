@@ -7,4 +7,5 @@ export interface StocksRepository {
     // *** can only be deleted if there is no relation with itemTreatments ***
     update(data: Prisma.UserUncheckedUpdateInput):void
     delete(id:string):void
+    getItemBalance(item_id: string):Promise<number>
 }

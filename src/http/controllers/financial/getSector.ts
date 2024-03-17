@@ -7,7 +7,10 @@ export async function getSector(request: FastifyRequest, reply: FastifyReply) {
         const getSectorUseCase = MakeGetSectorsUseCase()
         sectors = await getSectorUseCase.execute()
     } catch (err) {
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
+
         throw err
     }
     return reply.status(200).send(sectors)

@@ -5,6 +5,7 @@ import { InMemoryItemsRepository } from '@/repositories/in-memory/in-memory-item
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 import { InvalidOptionError } from './errors/invalid-option-error'
+import { StockCannotBeNegativaError } from './errors/stock-cannot-be-negative-error'
 
 
 
@@ -31,6 +32,26 @@ describe('Stock Use Case', () => {
             item_id: item.id,
             quantity: 5,
             operation: 'input'
+        })
+
+        expect(stock.id).toEqual(expect.any(String))
+    })
+    it('should be able to create a output stock', async () => {
+        const item = await itemsRepository.create({
+            name: 'produto',
+            cost: 1,
+            price: 2,
+            stock: 4
+        })
+        await stocksRepository.create({
+            item_id: item.id,
+            quantity: 4,
+            operation: 'input'
+        })
+        const { stock } = await stockUseCase.execute({
+            item_id: item.id,
+            quantity: 1,
+            operation: 'output'
         })
 
         expect(stock.id).toEqual(expect.any(String))
@@ -82,5 +103,24 @@ describe('Stock Use Case', () => {
             operation: 'exchange'
         })).rejects.toBeInstanceOf(InvalidOptionError)
     })
+    it('should not be able to create an output stock gratier then the item stock', async () => {
+        const item = await itemsRepository.create({
+            name: 'produto',
+            cost: 1,
+            price: 2,
+            stock: 5
+        })
 
+        await stocksRepository.create({
+            item_id: item.id,
+            quantity: 5,
+            operation: 'input'
+        })
+
+        await expect(stockUseCase.execute({
+            item_id: item.id,
+            quantity: 6,
+            operation: 'output'
+        })).rejects.toBeInstanceOf(StockCannotBeNegativaError)
+    })
 })

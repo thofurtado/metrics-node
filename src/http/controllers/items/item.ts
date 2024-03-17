@@ -35,7 +35,9 @@ export async function createItem(request: FastifyRequest, reply: FastifyReply) {
         })
     } catch (err) {
 
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
 
         throw err
     }

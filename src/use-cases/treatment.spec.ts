@@ -72,7 +72,7 @@ describe('Treatment Use Case', () => {
             observations: 'O computador de cima não da sinal no monitor, thais já tentou retirar os cabos, passei o passo a passo para desernegizar',
             client_id: client.id
         })
-        console.log(treatment)
+
         expect(treatment.id).toEqual(expect.any(String))
     })
     it('should be able to create a treatment with an equipment', async () => {

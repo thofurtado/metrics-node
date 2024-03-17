@@ -37,7 +37,11 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         })
     } catch (err) {
 
-        return reply.status(409).send(err)
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
+
+        throw err
 
     }
     return reply.status(200).send(transaction)

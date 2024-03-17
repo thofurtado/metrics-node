@@ -7,5 +7,6 @@ export interface TreatmentsRepository {
     findByStatus(status:boolean):Promise<Treatment[] | null>
     findById(id:string):Promise<Treatment | null>
     close(id:string):Promise<Treatment | null>
+    changeValue(id:string, value: number, entry:boolean):Promise<void>
 }
 

@@ -1,0 +1,10 @@
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'TECHNICIAN');
+
+-- AlterTable
+ALTER TABLE "items" ALTER COLUMN "active" DROP NOT NULL,
+ALTER COLUMN "isItem" DROP NOT NULL,
+ALTER COLUMN "stock" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "role" "Role" NOT NULL DEFAULT 'TECHNICIAN';

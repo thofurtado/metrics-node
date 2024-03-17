@@ -9,10 +9,11 @@ import { getTransaction } from './getTransaction'
 import { getTransferTransaction } from './getTransferTransaction'
 import { createPayment } from './payment'
 import { createPaymentEntry } from './paymentEntry'
+import { verifyUserRole } from '@/http/middlewares/verify-user-role'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest',verifyJWT)
-    app.post('/sector', createSector)
+    app.post('/sector', {onRequest: [verifyUserRole('ADMIN')]} ,createSector)
     app.get('/sectors', getSector)
 
     app.post('/account', createAccount)

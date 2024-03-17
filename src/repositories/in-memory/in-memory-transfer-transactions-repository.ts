@@ -7,12 +7,17 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTransferTransactionsRepository implements TransferTransactionsRepository {
-    findByAccount(account_id: string): Promise<{ id: string; destination_account_id: string; transaction_id: string }[]> {
-        throw new Error('Method not implemented.')
-    }
+
 
     public items: TransferTransaction[] = []
-
+    async findMany(): Promise<{ id: string; destination_account_id: string; transaction_id: string; }[] | null> {
+        const transferTransactions =  this.items
+        return transferTransactions
+    }
+    async findByAccount(account_id: string): Promise<{ id: string; destination_account_id: string; transaction_id: string }[]> {
+        const transferTransactions =  this.items.filter(item => item.destination_account_id === account_id)
+        return transferTransactions
+    }
     async create(data: Prisma.TransferTransactionUncheckedCreateInput) {
         const transaction = {
             id: randomUUID(),

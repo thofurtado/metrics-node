@@ -22,9 +22,10 @@ export async function createSector (request: FastifyRequest, reply: FastifyReply
             budget,
         })
     } catch(err){
-        if(err instanceof UserAlreadyExistsError){
+        if(err instanceof Error ){
             return reply.status(409).send({message: err.message})
         }
+
         throw err
     }
     return reply.status(200).send()

@@ -29,7 +29,7 @@ export class ItemUseCase {
 
         const existentName = await this.itemsRepository.findByName(name)
 
-        console.log(existentName)
+
 
         if (existentName) {
             throw new ThisNameAlreadyExistsError()

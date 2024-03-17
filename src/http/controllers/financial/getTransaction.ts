@@ -7,7 +7,10 @@ export async function getTransaction(request: FastifyRequest, reply: FastifyRepl
         const getTransactionUseCase = MakeGetTransactionsUseCase()
         transactions = await getTransactionUseCase.execute()
     } catch (err) {
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
+
         throw err
     }
     return reply.status(200).send(transactions)

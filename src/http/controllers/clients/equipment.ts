@@ -33,7 +33,9 @@ export async function createEquipment(request: FastifyRequest, reply: FastifyRep
         })
     } catch (err) {
 
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
 
         throw err
     }

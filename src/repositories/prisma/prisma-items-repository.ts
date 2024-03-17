@@ -30,7 +30,7 @@ export class PrismaItemsRepository implements ItemsRepository {
             })
         }
 
-        if(item.length === 0)
+        if (item.length === 0)
             return null
         return item
     }
@@ -62,21 +62,24 @@ export class PrismaItemsRepository implements ItemsRepository {
             }
         })
     }
-    async changeStock(id: string, stock: number): Promise<void> {
+    async changeStock(id: string, stock: number, operationType: boolean): Promise<void> {
+
         const findedStock = await prisma.item.findFirst({
             where: {
                 id
             }
         })
+        let updatedItem
         if (findedStock)
-            prisma.item.update({
-                where: {
-                    id
-                },
+            updatedItem = await prisma.item.update({
+                where: { id },
                 data: {
-                    stock: findedStock?.stock + stock
+                    stock: {
+                        increment: operationType ? stock : -stock,
+                    }
                 }
             })
+        console.log(updatedItem)
     }
     async setActive(id: string, commutator: boolean): Promise<void> {
         const findedStock = await prisma.item.findFirst({

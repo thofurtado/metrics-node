@@ -34,7 +34,7 @@ describe('Get Treatments Use Case', () => {
             finished: false
         })
         const  treatments  = await getTreatmentsUseCase.execute()
-
+        console.log('Treatments Lenght: '+treatments.treatments?.length)
         expect(treatments.treatments?.length).toEqual(3)
     })
 

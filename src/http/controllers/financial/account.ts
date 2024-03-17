@@ -28,8 +28,9 @@ export async function createAccount(request: FastifyRequest, reply: FastifyReply
             goal: goal || null
         })
     } catch (err) {
-
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
 
         throw err
     }

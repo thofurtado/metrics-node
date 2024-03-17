@@ -49,9 +49,11 @@ export class TreatmentItemUseCase {
             throw new OnlyNaturalNumbersError()
 
 
+
         const treatmentItem = await this.treatmentItemsRepository.create({
             treatment_id, item_id, stock_id, quantity, salesValue
         })
+        this.treatmentsRepository.changeValue(treatment_id, salesValue, true)
         return {
             treatmentItem
         }

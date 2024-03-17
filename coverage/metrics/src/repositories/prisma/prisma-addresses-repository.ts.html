@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/28</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>0/28</span>
             </div>
         
             
@@ -85,7 +85,19 @@
 <a name='L20'></a><a href='#L20'>20</a>
 <a name='L21'></a><a href='#L21'>21</a>
 <a name='L22'></a><a href='#L22'>22</a>
-<a name='L23'></a><a href='#L23'>23</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -108,20 +120,26 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" ><span class="branch-0 cbranch-no" title="branch not covered" >import { prisma } from '@/lib/prisma'</span></span></span>
-<span class="cstat-no" title="statement not covered" >import { Prisma } from '@prisma/client'</span>
+<span class="cstat-no" title="statement not covered" >import { Address, Prisma } from '@prisma/client'</span>
 <span class="cstat-no" title="statement not covered" >import { AddressesRepository } from '../addresses-repository'</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >export class PrismaAddressesRepository implements AddressesRepository{</span>
-<span class="cstat-no" title="statement not covered" >    async findByClientId(client_id: string) {</span>
-<span class="cstat-no" title="statement not covered" >        const address = await prisma.address.findUnique({</span>
+<span class="cstat-no" title="statement not covered" >    update(data: Prisma.AddressUncheckedUpdateInput): Promise&lt;{ id: string; client_id: string; street: string; number: number; neighborhood: string; city: string; state: string; zipcode: number | null }&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error('Method not implemented.')</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    async findByDetails(neighborhood?: string | undefined, city?: string | undefined): Promise&lt;{ id: string; client_id: string; street: string; number: number; neighborhood: string; city: string; state: string; zipcode: number | null }[] | null&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error('Method not implemented.')</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >    async findByClientId(client_id: string):Promise&lt;Address[] | null&gt; {</span>
+<span class="cstat-no" title="statement not covered" >        const address = await prisma.address.findMany({</span>
 <span class="cstat-no" title="statement not covered" >            where: {</span>
 <span class="cstat-no" title="statement not covered" >                client_id</span>
 <span class="cstat-no" title="statement not covered" >            }</span>
 <span class="cstat-no" title="statement not covered" >        })</span>
 <span class="cstat-no" title="statement not covered" >        return address</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
-<span class="cstat-no" title="statement not covered" >    async create(data: Prisma.AddressCreateInput) {</span>
+<span class="cstat-no" title="statement not covered" >    async create(data: Prisma.AddressUncheckedCreateInput) {</span>
 <span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >        const address = await prisma.address.create({</span>
 <span class="cstat-no" title="statement not covered" >            data</span>
@@ -136,7 +154,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2024-03-13T14:54:19.243Z
+                at 2024-03-17T14:46:25.255Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

@@ -5,7 +5,31 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryStocksRepository implements StocksRepository {
+
     public items: Stock[] = []
+    async getItemBalance(item_id: string): Promise<number> {
+        let inputQuantity = 0
+        let outputQuantity = 0
+
+        // Ensure item_id exists and has associated stocks
+        const itemStocks = this.items.filter((item) => item.item_id === item_id)
+
+        if (itemStocks.length === 0) {
+            throw new Error(`Item with ID ${item_id} not found`) // Throw a clear error for missing item
+        }
+
+        // Accumulate quantities
+        for (const stock of itemStocks) {
+            if (stock.operation === 'input') {
+                inputQuantity += stock.quantity
+            } else if (stock.operation === 'output') {
+                outputQuantity += stock.quantity
+            }
+        }
+
+        const balance = inputQuantity - outputQuantity
+        return balance
+    }
     async create(data: Prisma.StockUncheckedCreateInput): Promise<Stock> {
         const stock = {
             id: randomUUID(),

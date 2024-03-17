@@ -7,7 +7,10 @@ export async function getAccount(request: FastifyRequest, reply: FastifyReply) {
         const getAccountUseCase = MakeGetAccountsUseCase()
         accounts = await getAccountUseCase.execute()
     } catch (err) {
-        return reply.status(409).send()
+        if(err instanceof Error ){
+            return reply.status(409).send({message: err.message})
+        }
+
         throw err
     }
     return reply.status(200).send(accounts)

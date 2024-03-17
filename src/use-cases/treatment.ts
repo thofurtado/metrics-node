@@ -46,7 +46,6 @@ export class TreatmentUseCase {
         let equipment
         if (equipment_id){
             equipment = await this.equipmentsRepository.findById(equipment_id)
-            console.log(equipment)
             if (!equipment)
                 throw new ResourceNotFoundError()
         }

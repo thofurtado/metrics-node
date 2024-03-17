@@ -7,7 +7,21 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTreatmentItemsRepository implements TreatmentItemsRepository {
+
     public items: TreatmentItem[] = []
+    async remove(id: string): Promise<void> {
+        const index = this.items.findIndex((item) => item.id === id)
+
+        if (index !== -1) {
+            this.items.splice(index, 1) // Remove the item at the found index
+        } else {
+            throw new Error(`Treatment item with ID ${id} not found`) // Throw error for missing item
+        }
+    }
+    async findById(id: string): Promise<{ id: string; item_id: string; treatment_id: string; stock_id: string | null; quantity: number; salesValue: number | null } | null> {
+        const foundItem = this.items.find((item) => item.id === id)
+        return foundItem ? { ...foundItem } : null // Return a copy to avoid mutation
+    }
     async create(data: Prisma.TreatmentItemUncheckedCreateInput): Promise<TreatmentItem> {
         const treatmentItem = {
             id: randomUUID(),

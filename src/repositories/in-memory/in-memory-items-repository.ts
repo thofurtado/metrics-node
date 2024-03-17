@@ -25,7 +25,7 @@ export class InMemoryItemsRepository implements ItemsRepository {
         this.items.push(item)
         return item
     }
-    async findByName(name: string, is_active?: string | undefined): Promise<{ id: string; name: string; description: string | null; cost: number; price: number; stock: number; active: boolean; isItem: boolean }[] | null> {
+    async findByName(name: string, is_active?: boolean | undefined): Promise<Item[] | null> {
         let filteredItems = this.items.slice() // Create a copy to avoid modifying original array
 
         if (is_active !== undefined) {

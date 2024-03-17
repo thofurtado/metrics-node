@@ -8,6 +8,15 @@ import { prisma } from '@/lib/prisma'
 
 
 export class PrismaTreatmentItemsRepository implements TreatmentItemsRepository {
+    async findById(id: string): Promise<{ id: string; item_id: string; treatment_id: string; stock_id: string | null; quantity: number; salesValue: number | null; } | null> {
+        const treatmentItem = await prisma.treatmentItem.findFirst({where:{id}})
+        return treatmentItem
+    }
+    async remove(id: string): Promise<void> {
+        await prisma.treatmentItem.delete({
+            where: {id}
+        })
+    }
     async findByTreatment(treatment_id: string): Promise<{ id: string; item_id: string; treatment_id: string; stock_id: string | null; quantity: number; salesValue: number | null }[] | null> {
         const treatmentItems = prisma.treatmentItem.findMany({
             where: {
