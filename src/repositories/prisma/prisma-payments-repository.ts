@@ -20,17 +20,8 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         })
         return payment
     }
-    async findMany(data?: { page?: number, quantity?: number }): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }[] | null> {
-        const { page = 1, quantity: take = 10 } = data ?? {}
-        let skip: number = 0;
-        if(page > 1){
-            skip = (page * take) - take
-        }
-        const payments = await prisma.payment.findMany({ skip, take }).catch((error: any) =>{
-            console.log(JSON.stringify(error))
-            return []
-        })
-
+    async findMany(): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }[] | null> {
+        const payments = await prisma.payment.findMany()
         return payments
     }
     async findByName(name: string): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null } | null> {
