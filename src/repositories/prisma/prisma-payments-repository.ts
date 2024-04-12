@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { Payment, Prisma } from '@prisma/client'
 import { PaymentsRepository } from '../payments-repository'
+import { PaymentDoc, PaymentFindRequest, PaymentFindResponse } from './prisma-interfaces.interfaces'
 
 export class PrismaPaymentsRepository implements PaymentsRepository {
     async create(data: Prisma.PaymentUncheckedCreateInput): Promise<Payment> {
@@ -20,18 +21,41 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         })
         return payment
     }
-    async findMany(data?: { page?: number, quantity?: number }): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }[] | null> {
-        const { page = 1, quantity: take = 10 } = data ?? {}
+    async findMany(data?: PaymentFindRequest): Promise<PaymentFindResponse> {
+        const { from = null, to = null, page = 1, quantity: take = 10 } = data ?? {}
         let skip: number = 0;
         if (page > 1) {
             skip = (page * take) - take
         }
-        const payments = await prisma.payment.findMany({ skip, take }).catch((error: any) => {
+        let filter: { where?: { createdAt?: any }, orderBy?: any } = {}
+        if (from) {
+            filter.where = {
+                createdAt: to ?
+                    {
+                        gte: new Date(from),
+                        lte: new Date(to)
+                    } :
+                    {
+                        gte: new Date(from)
+                    }
+            }
+        } else {
+            if (to) {
+                filter.where = { createdAt: { lte: new Date(to) } }
+            }
+        }
+        filter.orderBy = {
+            //createdAt: { sort: 'desc' } => caso queira ver os mais recentes primeiro
+            createdAt: { sort: 'asc' }
+        }
+        const total = filter.where ?
+            prisma.payment.count({ where: filter.where }) :
+            prisma.payment.count()
+        const payments = await prisma.payment.findMany({ ...filter, skip, take }).catch((error: any) => {
             console.log(JSON.stringify(error))
             return []
-        })
-
-        return payments
+        }) as PaymentDoc[]
+        return { docs: payments, total, page, pages: total ? Math.ceil(total / take) : 1 }
     }
     async findByName(name: string): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null } | null> {
         const payments = await prisma.payment.findFirst({ where: { name } })
