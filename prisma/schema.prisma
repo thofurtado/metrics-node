@@ -23,11 +23,12 @@ enum Role {
 }
 
 model User {
-  id            String @id @default(uuid())
+  id            String  @id @default(uuid())
   name          String
-  role          Role   @default(TECHNICIAN)
-  email         String @unique
+  role          Role    @default(TECHNICIAN)
+  email         String  @unique
   password_hash String
+  introduction  String?
 
   interactions Interaction[]
   Treatment    Treatment[]
@@ -38,9 +39,9 @@ model User {
 model Client {
   id             String  @id @default(uuid())
   name           String
-  identification String  @unique
+  identification String? @unique
   phone          String?
-  email          String
+  email          String?
   contract       Boolean @default(false)
 
   addresses  Address?
@@ -74,7 +75,7 @@ model Treatment {
   client_id    String?
   equipment_id String?
   request      String
-  finished     Boolean   @default(false)
+  status       String    @default("pending")
   amount       Float     @default(0)
   observations String?
 
@@ -95,6 +96,7 @@ model TreatmentItem {
   stock_id     String?
   quantity     Float
   salesValue   Float?
+  discount     Float?
 
   items      Item      @relation(fields: [item_id], references: [id])
   stocks     Stock?    @relation(fields: [stock_id], references: [id])
@@ -244,10 +246,10 @@ model TransferTransaction {
 }
 
 model Sector {
-  id     String @id @default(uuid())
-  name   String
-  budget Float?
-
+  id           String        @id @default(uuid())
+  name         String
+  budget       Float?
+  type         String        @default("in")
   transactions Transaction[]
 
   @@map("sectors")

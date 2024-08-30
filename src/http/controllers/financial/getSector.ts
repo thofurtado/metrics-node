@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { MakeGetSectorsUseCase } from '@/use-cases/factories/make-get-sectors-use-case'
 
 export async function getSector(request: FastifyRequest, reply: FastifyReply) {
+
     let sectors
     try {
         const getSectorUseCase = MakeGetSectorsUseCase()

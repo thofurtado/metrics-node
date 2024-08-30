@@ -27,7 +27,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
             role: user.role
         }, {
             sign: {
-                sub: user.id
+                sub: user.id,
+                expiresIn: '7d'
             }
         })
         const refreshToken = await reply.jwtSign({
@@ -47,7 +48,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
                 httpOnly: true
             })
             .status(200)
-            .send({ token, })
+            .send({ token, refreshToken})
     } catch (err) {
         if (err instanceof InvalidCredentialsError) {
             return reply.status(400).send({ message: err.message })

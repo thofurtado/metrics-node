@@ -36,7 +36,14 @@ export class PrismaSectorsRepository implements SectorsRepository {
         return sector
     }
     async findMany(): Promise<{ id: string; name: string; budget: number | null }[]> {
-        const sectors = await prisma.sector.findMany()
+        const sectors = await prisma.sector.findMany({
+            orderBy: [
+                {
+                    name: 'asc'
+                }
+            ],
+
+        })
         return sectors
     }
     compareBudget(month?: number | undefined, sector_id?: string | undefined): Promise<number> {

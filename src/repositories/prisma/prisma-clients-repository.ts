@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client'
 import { ClientsRepository } from '../clients-repository'
 
 
-export class PrismaClientsRepository implements ClientsRepository{
-    findByName(name: string): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null> {
+export class PrismaClientsRepository implements ClientsRepository {
+    async findByName(name: string): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null> {
         throw new Error('Method not implemented.')
     }
     async findMany(is_contract?: boolean | undefined): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null> {
@@ -12,14 +12,19 @@ export class PrismaClientsRepository implements ClientsRepository{
             include: {
                 equipments: true,
                 addresses: true
-            }
+            },
+            orderBy: [
+                {
+                    name: 'asc'
+                }
+            ]
         })
         return clients
     }
-    update(data: Prisma.ClientUpdateInput): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[]> {
+    async update(data: Prisma.ClientUpdateInput): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[]> {
         throw new Error('Method not implemented.')
     }
-    delete(id: string): void {
+    async delete(id: string): void {
         throw new Error('Method not implemented.')
     }
     async findById(id: string) {

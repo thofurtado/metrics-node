@@ -6,7 +6,14 @@ export class PrismaAccountsRepository implements AccountsRepository {
 
 
     async findMany() {
-        const accounts = await prisma.account.findMany()
+        const accounts = await prisma.account.findMany({
+            orderBy: [
+                {
+                    name: 'asc'
+                }
+            ],
+
+        })
         return accounts
     }
     async create(data: Prisma.AccountCreateInput) {

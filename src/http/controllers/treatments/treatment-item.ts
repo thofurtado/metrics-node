@@ -13,10 +13,11 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
         item_id: z.string(),
         stock_id: z.string().nullish(),
         quantity: z.number(),
-        value: z.number()
+        value: z.number(),
+        discount: z.number().nullish()
     })
 
-    const { treatment_id, item_id, stock_id,quantity,value } = registerBodySchema.parse(request.body)
+    const { treatment_id, item_id, stock_id,quantity,value, discount } = registerBodySchema.parse(request.body)
 
     let itemTreatment
     try {
@@ -28,7 +29,8 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
             item_id,
             stock_id: stock_id ? stock_id : undefined,
             quantity,
-            salesValue: value
+            salesValue: value,
+            discount: discount ? discount : 0
         })
     } catch (err) {
 

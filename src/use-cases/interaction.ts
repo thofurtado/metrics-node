@@ -26,10 +26,12 @@ export class InteractionUseCase {
 
         const user = await this.usersRepository.findById(user_id)
         if(!user) {
+            console.log('usuario não encontrado')
             throw new ResourceNotFoundError()
         }
         const treatment = await this.treatmentsRepository.findById(treatment_id)
         if(!treatment) {
+            console.log('atendimento não encontrado')
             throw new ResourceNotFoundError()
         }
         const interaction = await this.interactionsRepository.create({

@@ -12,6 +12,7 @@ interface TreatmentItemUseCaseRequest {
     stock_id?: string
     quantity: number
     salesValue: number
+    discount?: number
 }
 interface TreatmentItemUseCaseResponse {
     treatmentItem: TreatmentItem
@@ -25,7 +26,7 @@ export class TreatmentItemUseCase {
         private stocksRepository: StocksRepository
     ) { }
     async execute({
-        item_id, treatment_id, stock_id, quantity, salesValue
+        item_id, treatment_id, stock_id, quantity, salesValue, discount
     }: TreatmentItemUseCaseRequest): Promise<TreatmentItemUseCaseResponse> {
         let item
         if (item_id) {
@@ -51,9 +52,9 @@ export class TreatmentItemUseCase {
 
 
         const treatmentItem = await this.treatmentItemsRepository.create({
-            treatment_id, item_id, stock_id, quantity, salesValue
+            treatment_id, item_id, stock_id, quantity, salesValue,  discount
         })
-        this.treatmentsRepository.changeValue(treatment_id, salesValue, true)
+        this.treatmentsRepository.changeValue(treatment_id, quantity*salesValue, true)
         return {
             treatmentItem
         }

@@ -4,6 +4,20 @@ import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTreatmentsRepository implements TreatmentsRepository {
+    update(data: Prisma.TreatmentUncheckedUpdateInput): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }> {
+        throw new Error('Method not implemented.')
+    }
+    async findByActive(): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }[] | null> {
+        const activeTreatments = this.items.filter((treatment) => {
+            return (
+                treatment.status === 'pending' ||
+              treatment.status === 'in_progress' ||
+              treatment.status === 'on_hold' ||
+              treatment.status === 'follow_up'
+            )
+        })
+        return activeTreatments
+    }
 
     public items: Treatment[] = []
 
@@ -17,28 +31,25 @@ export class InMemoryTreatmentsRepository implements TreatmentsRepository {
             user_id: data.user_id || null,
             client_id: data.client_id || null,
             equipment_id: data.equipment_id || null,
-            finished: data.finished || false,
+            status: data.status || 'pending',
             amount: data.amount || 0,
             observations: data.observations || null
         }
         this.items.push(treatment)
         return treatment
     }
-    update(data: Prisma.TreatmentUncheckedUpdateInput): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; finished: boolean; amount: number; observations: string | null }> {
-        throw new Error('Method not implemented.')
-    }
     async findByClient(client_id: string): Promise<Treatment[] | null> {
         const treatments = this.items.filter((item) => item.client_id === client_id)
         return treatments.length ? treatments : null
     }
-    async findByStatus(status: boolean): Promise<Treatment[] | null> {
-        const treatments = this.items.filter((item) => item.finished === status)
+    async findByStatus(status: string): Promise<Treatment[] | null> {
+        const treatments = this.items.filter((item) => item.status === status)
         return treatments.length ? treatments : null
     }
     async close(id: string): Promise<Treatment | null> {
         const index = this.items.findIndex((item) => item.id === id)
         if (index !== -1) {
-            this.items[index].finished = true
+            this.items[index].status = 'resolved'
             this.items[index].ending_date = new Date() // Assuming closing sets the ending date
             return this.items[index]
         } else {

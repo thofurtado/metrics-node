@@ -14,11 +14,13 @@ export class RemoveTreatmentItemUseCase {
     async execute({
         id
     }: RemoveTreatmentItemUseCaseRequest): Promise<void> {
+
         const treatmentItem = await this.treatmentItemsRepository.findById(id)
         if (!treatmentItem) {
             throw new ResourceNotFoundError()
         } else {
-            await this.treatmentsRepository.changeValue(treatmentItem.treatment_id, treatmentItem.salesValue ? treatmentItem.salesValue : 0, false)
+            console.log(treatmentItem.salesValue)
+            await this.treatmentsRepository.changeValue(treatmentItem.treatment_id, treatmentItem.salesValue ? treatmentItem.salesValue * treatmentItem.quantity : 0, false)
             await this.treatmentItemsRepository.remove(id)
         }
     }

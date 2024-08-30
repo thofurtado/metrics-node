@@ -1,23 +1,28 @@
+import { GetTreatmentDTO } from '@/repositories/DTO/get-treatments-dto'
 import { TreatmentsRepository } from '@/repositories/treatments-repository'
-import { Treatment } from '@prisma/client'
 
 
-
-interface GetTreatmentsUseCaseResponse {
-    treatments: Treatment[] | null
+interface GetTreatmentsUseCaseRequest {
+    pageIndex: number,
+    perPage?: number
+    treatmentId?: string,
+    clientName?:string,
+    status?: string
 }
+
+
 export class GetTreatmentsUseCase {
 
     constructor(
         private treatmentsRepository: TreatmentsRepository
     ) { }
-    async execute(): Promise<GetTreatmentsUseCaseResponse> {
+    async execute({pageIndex, perPage, treatmentId, clientName, status}:GetTreatmentsUseCaseRequest): Promise<GetTreatmentDTO | null> {
 
-        const treatments = await this.treatmentsRepository.findByStatus(false)
-
-
+        if(!perPage)
+            perPage = 6
+        const treatments = await this.treatmentsRepository.findByActive(pageIndex, perPage, treatmentId, clientName, status)
         return {
-            treatments
+            treatments,
         }
     }
 }

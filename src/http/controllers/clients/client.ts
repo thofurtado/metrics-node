@@ -10,9 +10,9 @@ export async function createClient(request: FastifyRequest, reply: FastifyReply)
 
     const registerBodySchema = z.object({
         name: z.string(),
-        identification: z.string(),
-        phone: z.string(),
-        email: z.string(),
+        identification: z.string().nullish(),
+        phone: z.string().nullish(),
+        email: z.string().nullish(),
         contract: z.boolean().nullish(),
     })
 
@@ -24,9 +24,9 @@ export async function createClient(request: FastifyRequest, reply: FastifyReply)
 
         client = await clientUseCase.execute({
             name,
-            identification,
-            phone,
-            email,
+            identification: identification ? identification : null,
+            phone: phone ? phone : null,
+            email: email ? email : null,
             contract: contract ? contract : false
         })
     } catch (err) {

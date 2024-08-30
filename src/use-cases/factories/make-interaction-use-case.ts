@@ -6,7 +6,7 @@ import { PrismaTreatmentsRepository } from '@/repositories/prisma/prisma-treatme
 
 
 
-export function makeInteractionuseCase() {
+export function MakeInteractionUseCase() {
     const interactionsRepository = new PrismaInteractionsRepository()
     const usersRepository = new PrismaUsersRepository()
     const treatmentsRepository = new PrismaTreatmentsRepository()

@@ -11,15 +11,17 @@ export async function createSector (request: FastifyRequest, reply: FastifyReply
     const registerBodySchema = z.object({
         name: z.string(),
         budget: z.number(),
+        type: z.string()
     })
 
-    const {name, budget} = registerBodySchema.parse(request.body)
+    const {name, budget, type} = registerBodySchema.parse(request.body)
 
     try {
         const sectorUseCase = MakeSectorUseCase()
         await sectorUseCase.execute({
             name,
             budget,
+            type
         })
     } catch(err){
         if(err instanceof Error ){

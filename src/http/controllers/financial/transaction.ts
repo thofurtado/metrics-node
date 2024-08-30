@@ -12,14 +12,15 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         operation: z.string(),
         amount: z.number(),
         account_id: z.string(),
-        date: z.date().nullish(),
+        date: z.coerce.date().nullish(),
         sector_id: z.string().nullish(),
         description: z.string().nullish(),
         confirmed: z.boolean().nullish(),
         destination_account_id: z.string().nullish()
     })
-
+    console.log(request.body)
     const { operation, amount, account_id, date, sector_id, description, confirmed, destination_account_id } = registerBodySchema.parse(request.body)
+    console.log('aqui')
     let transaction
     try {
 

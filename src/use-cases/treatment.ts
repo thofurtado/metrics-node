@@ -13,7 +13,7 @@ interface TreatmentUseCaseRequest {
     client_id?: string,
     equipment_id?: string,
     request: string,
-    finished?: boolean,
+    status?: string,
     amount?: number,
     observations?: string
 }
@@ -29,7 +29,7 @@ export class TreatmentUseCase {
         private usersRepository: UsersRepository
     ) { }
     async execute({
-        opening_date, contact, client_id, equipment_id, user_id,request, finished, amount, observations, ending_date
+        opening_date, contact, client_id, equipment_id, user_id,request, status, amount, observations, ending_date
     }: TreatmentUseCaseRequest): Promise<TreatmentUseCaseResponse> {
         let user
         if (user_id) {
@@ -51,7 +51,7 @@ export class TreatmentUseCase {
         }
 
         const treatment = await this.treatmentsRepository.create({
-            opening_date, contact, client_id, equipment_id, request, finished, amount, observations, ending_date
+            opening_date, contact, client_id, equipment_id, request, status, amount, observations, ending_date
         })
         return {
             treatment

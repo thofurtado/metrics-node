@@ -2,8 +2,8 @@ import { ClientsRepository } from '@/repositories/clients-repository'
 import { Client } from '@prisma/client'
 interface ClientUseCaseRequest {
     name: string
-    email: string
-    identification: string,
+    email?: string
+    identification?: string,
     phone?: string,
     contract?: boolean,
 }
@@ -15,8 +15,8 @@ export class ClientUseCase {
 
     constructor(
         private clientsRepository: ClientsRepository
-    ){ }
-    async execute ({
+    ) { }
+    async execute({
         name, email, identification, phone, contract
     }: ClientUseCaseRequest): Promise<ClientUseCaseResponse> {
 

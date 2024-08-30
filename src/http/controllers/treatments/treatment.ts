@@ -9,19 +9,19 @@ import { z } from 'zod'
 export async function createTreatment(request: FastifyRequest, reply: FastifyReply) {
 
     const registerBodySchema = z.object({
-        opening_date: z.date().nullish(),
-        ending_date: z.date().nullish(),
+        opening_date: z.coerce.date().nullish(),
+        ending_date: z.coerce.date().nullish(),
         contact: z.string().nullish(),
         user_id: z.string().nullish(),
         client_id: z.string().nullish(),
         equipment_id: z.string().nullish(),
         request: z.string(),
-        finished: z.boolean().nullish(),
+        status: z.string().nullish(),
         amount: z.number().nullish(),
         observations: z.string().nullish(),
     })
 
-    const { opening_date, ending_date, contact, user_id, client_id, equipment_id, finished, amount, observations } = registerBodySchema.parse(request.body)
+    const { opening_date, ending_date, contact, user_id, client_id, equipment_id, status, amount, observations } = registerBodySchema.parse(request.body)
     const test = registerBodySchema.parse(request.body)
 
     let treatment
@@ -37,7 +37,7 @@ export async function createTreatment(request: FastifyRequest, reply: FastifyRep
             client_id: client_id ? client_id : undefined,
             equipment_id: equipment_id ? equipment_id : undefined,
             request: test.request,
-            finished: finished ? finished : undefined,
+            status: status ? status : 'pending',
             amount: amount ? amount : 0,
             observations: observations ? observations : undefined
         })

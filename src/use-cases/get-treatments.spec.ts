@@ -23,15 +23,15 @@ describe('Get Treatments Use Case', () => {
         })
         await treatmentsRepository.create({
             request: 'solicitação 3',
-            finished: true
+            status: 'resolved'
         })
         await treatmentsRepository.create({
             request: 'solicitação 4',
-            finished: true
+            status: 'resolved'
         })
         await treatmentsRepository.create({
             request: 'solicitação 5',
-            finished: false
+            status: 'in_progress'
         })
         const  treatments  = await getTreatmentsUseCase.execute()
         console.log('Treatments Lenght: '+treatments.treatments?.length)

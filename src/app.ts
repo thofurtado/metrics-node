@@ -8,10 +8,15 @@ import { clientsRoutes } from './http/controllers/clients/routes'
 import { itemsRoutes } from './http/controllers/items/routes'
 import { treatmentsRoutes } from './http/controllers/treatments/routes'
 import fastifyCookie from '@fastify/cookie'
+import cors from '@fastify/cors'
+import { metricsRoutes } from './http/controllers/metrics/routes'
+
+export const app = fastify({ logger: true })
 
 
-export const app = fastify()
-
+app.register(cors, {
+    origin: 'http://localhost:5173'
+})
 app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
     cookie: {
@@ -19,7 +24,7 @@ app.register(fastifyJwt, {
         signed: false
     },
     sign: {
-        expiresIn: '10m',
+        expiresIn: '10d',
     }
 }
 )
@@ -30,6 +35,7 @@ app.register(financialRoutes)
 app.register(clientsRoutes)
 app.register(itemsRoutes)
 app.register(treatmentsRoutes)
+app.register(metricsRoutes)
 
 app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {
