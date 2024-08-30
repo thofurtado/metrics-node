@@ -1,0 +1,22 @@
+export interface PaymentFindRequest: {
+    from ?: string
+    to ?: string
+    page ?: number
+    quantity ?: number
+}
+
+//essa interface pode estar exportada como tipo no arquivo da sua modelagem
+export interface PaymentDoc {
+    id: string
+    name: string
+    installment_limit: number
+    in_sight: boolean
+    account_id: string
+}
+
+export interface PaymentFindResponse {
+    payments: PaymentDoc[]
+    total: numer
+    page: number
+    pages: number
+}
