@@ -15,7 +15,10 @@ export const app = fastify({ logger: true })
 
 
 app.register(cors, {
-    origin: 'http://localhost:5173'
+    origin: [
+        'http://localhost:5173',          // Ambiente de Desenvolvimento Local
+        'https://metrics-sigma.vercel.app', // Ambiente de Produção na Vercel
+    ],
 })
 app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
