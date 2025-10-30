@@ -9,7 +9,6 @@ import { z } from 'zod'
 export async function createAddress(request: FastifyRequest, reply: FastifyReply) {
 
     const registerBodySchema = z.object({
-
         client_id: z.string(),
         street: z.string(),
         number: z.number(),

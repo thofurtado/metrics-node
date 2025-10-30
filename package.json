@@ -23,7 +23,6 @@
     "cpf-cnpj-validator": "1.0.3",
     "eslint": "8.56.0",
     "prisma": "5.14.0",
-    "tsup": "8.0.2",
     "tsx": "4.7.1",
     "typescript": "5.3.3",
     "vite-tsconfig-paths": "4.3.1",
@@ -40,6 +39,7 @@
     "fastify": "4.26.1",
     "fastify-cors": "6.1.0",
     "fastify-pagination": "0.1.2",
+    "tsup": "8.5.0",
     "zod": "3.22.4"
   }
 }
