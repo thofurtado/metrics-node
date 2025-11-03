@@ -17,6 +17,8 @@ export const app = fastify({ logger: true })
 app.register(cors, {
     origin: [
         'http://localhost:5173',          // Ambiente de Desenvolvimento Local
+        'http://192.168.1.8:5173',
+        'https://www.eurecatech.com.br/',
         'https://metrics-sigma.vercel.app', // Ambiente de Produção na Vercel
     ],
 })
