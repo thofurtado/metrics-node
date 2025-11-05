@@ -63,6 +63,8 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                         { status: { equals: 'on_hold' } },
                         { status: { equals: 'follow_up' } },
                         { status: { equals: 'in_workbench' } },
+                        { status: { equals: 'resolved' } },
+                        { status: { equals: 'cancelled' } },
                     ],
                     AND: [
                         {
