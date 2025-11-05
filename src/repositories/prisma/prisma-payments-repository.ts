@@ -28,5 +28,4 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         const payments = await prisma.payment.findFirst({ where: { name } })
         return payments
     }
-
 }

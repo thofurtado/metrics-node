@@ -1,23 +1,10 @@
 import { PaymentsRepository } from '@/repositories/payments-repository'
-import { Payment } from '@prisma/client'
 
-
-interface GetPaymentsUseCaseResponse {
-    payments: Payment[] | null
-}
 export class GetPaymentsUseCase {
+    constructor(private paymentsRepository: PaymentsRepository) {}
 
-    constructor(
-        private paymentsRepository: PaymentsRepository
-    ) { }
-    async execute(): Promise<GetPaymentsUseCaseResponse> {
-
+    async execute() {
         const payments = await this.paymentsRepository.findMany()
-
-
-        return {
-            payments
-        }
+        return payments
     }
 }
-

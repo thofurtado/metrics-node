@@ -12,6 +12,7 @@ import { createPaymentEntry } from './paymentEntry'
 import { verifyUserRole } from '@/http/middlewares/verify-user-role'
 import { changeTransactionStatus } from './changeTransactionPayment'
 import { deleteTransaction } from './deleteTransaction'
+import { getPayments } from './getPayments'
 
 
 export async function financialRoutes(app: FastifyInstance) {
@@ -30,7 +31,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.post('/payment', createPayment)
     app.post('/payment-entry', createPaymentEntry)
     app.patch('/switch-transaction/:id', changeTransactionStatus)
-
+    app.get('/payments', getPayments) 
 
 
 
