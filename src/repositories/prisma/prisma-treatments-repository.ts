@@ -26,8 +26,8 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 AND: [
                     {
                         opening_date: {
-                            gte: new Date(thisMonthYear, (thisMonthNumber-1) - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, (thisMonthNumber-1), 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1), // Start of month
+                            lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1), // End of month (excluding the last day)
                         },
                     },
                 ]
@@ -35,7 +35,7 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
         })
 
         const diffFromMonths = lastMonthTreatmentsAmount && thisMonthTreatmentsAmount ?
-            (thisMonthTreatmentsAmount * 100) / lastMonthTreatmentsAmount :null
+            (thisMonthTreatmentsAmount * 100) / lastMonthTreatmentsAmount : null
 
         return {
             amount: thisMonthTreatmentsAmount,
@@ -43,139 +43,68 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
         }
     }
     async findByActive(pageIndex?: number, perPage?: number, treatmentId?: string, clientName?: string, status?: string): Promise<GetTreatmentDTO | null> {
-        if (!pageIndex)
-            pageIndex = 1
+        if (!pageIndex) pageIndex = 1
         let take = 6
-        if (perPage)
-            take = perPage
+        if (perPage) take = perPage
         let skip: number = 0
         if (pageIndex >= 1) {
             skip = (pageIndex * take) - take
         }
 
-        let totalCount
-        if (!status) {
-            totalCount = await prisma.treatment.count({
-                where: {
-                    OR: [
-                        { status: { equals: 'pending' } },
-                        { status: { equals: 'in_progress' } },
-                        { status: { equals: 'on_hold' } },
-                        { status: { equals: 'follow_up' } },
-                        { status: { equals: 'in_workbench' } },
-                        { status: { equals: 'resolved' } },
-                        { status: { equals: 'cancelled' } },
-                    ],
-                    AND: [
-                        {
-                            id: { contains: treatmentId }
-                        },
-                        {
-                            clients: {
-                                name: {
-                                    contains: clientName,
-                                    mode: 'insensitive'
-                                }
-                            }
-                        },
-                        {
-                            status: { equals: status }
-                        }
-                    ]
+        // Construir condições WHERE dinamicamente
+        const whereConditions: any = {}
 
-                }
-            })
-        } else {
-            totalCount = await prisma.treatment.count({
-                where: {
-                    AND: [
-                        {
-                            id: { contains: treatmentId }
-                        },
-                        {
-                            clients: {
-                                name: {
-                                    contains: clientName,
-                                    mode: 'insensitive'
-                                }
-                            }
-                        },
-                        {
-                            status: { equals: status }
-                        }
-                    ]
-                },
-            })
+        // Condição para treatmentId
+        if (treatmentId) {
+            whereConditions.id = { contains: treatmentId }
         }
-        let treatments
-        if (status) {
-            treatments = await prisma.treatment.findMany({
-                skip, take,
-                where: {
-                    AND: [
-                        {
-                            id: { contains: treatmentId }
-                        },
-                        {
-                            clients: {
-                                name: {
-                                    contains: clientName,
-                                    mode: 'insensitive'
-                                }
-                            }
-                        },
-                        {
-                            status: { equals: status }
-                        }
-                    ]
-                },
-                orderBy: [
-                    {
-                        opening_date: 'asc'
-                    }
-                ],
-                include: {
-                    clients: true
+
+        // Condição para clientName
+        if (clientName) {
+            whereConditions.clients = {
+                name: {
+                    contains: clientName,
+                    mode: 'insensitive'
                 }
-            })
-        } else {
-            treatments = await prisma.treatment.findMany({
-                skip, take,
-                where: {
-                    OR: [
-                        { status: { equals: 'pending' } },
-                        { status: { equals: 'in_progress' } },
-                        { status: { equals: 'on_hold' } },
-                        { status: { equals: 'follow_up' } },
-                        { status: { equals: 'in_workbench' } },
-                    ],
-                    AND: [
-                        {
-                            id: { contains: treatmentId }
-                        },
-                        {
-                            clients: {
-                                name: {
-                                    contains: clientName,
-                                    mode: 'insensitive'
-                                }
-                            }
-                        },
-                        {
-                            status: { equals: status }
-                        }
-                    ]
-                },
-                orderBy: [
-                    {
-                        opening_date: 'asc'
-                    }
-                ],
-                include: {
-                    clients: true
-                }
-            })
+            }
         }
+
+        // Condição para status - CORREÇÃO PRINCIPAL
+        if (status && status !== 'all') {
+            whereConditions.status = { equals: status }
+        } else if (!status || status === 'all') {
+            // Quando status é 'all' ou não informado, busca todos os status
+            whereConditions.OR = [
+                { status: { equals: 'pending' } },
+                { status: { equals: 'in_progress' } },
+                { status: { equals: 'on_hold' } },
+                { status: { equals: 'follow_up' } },
+                { status: { equals: 'in_workbench' } },
+                { status: { equals: 'resolved' } },
+                { status: { equals: 'canceled' } }, // CORREÇÃO: estava 'cancelled' no count
+            ]
+        }
+
+        // Count total
+        const totalCount = await prisma.treatment.count({
+            where: whereConditions
+        })
+
+        // Buscar tratamentos
+        const treatments = await prisma.treatment.findMany({
+            skip,
+            take,
+            where: whereConditions,
+            orderBy: [
+                {
+                    opening_date: 'asc'
+                }
+            ],
+            include: {
+                clients: true
+            }
+        })
+
         return {
             treatments,
             totalCount,
