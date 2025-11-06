@@ -15,7 +15,14 @@ export async function usersRoutes(app: FastifyInstance) {
 
     app.patch('/token/refresh', refresh)
     //** Authenticated  */
-    app.get('/me', {onRequest: [verifyJWT]} ,profile)
+    app.get('/me', { onRequest: [verifyJWT] }, profile)
 
-    app.put('/profile', {onRequest: [verifyJWT]}, updateProfile)
+    app.put('/profile', { onRequest: [verifyJWT] }, updateProfile)
+
+    // ✅ Solução Fastify
+    app.get('/health', async (request, reply) => {
+        
+        reply.status(200).send({ status: 'ok' });
+
+    });
 }
