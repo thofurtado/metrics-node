@@ -2,6 +2,7 @@ import { Prisma, Transaction } from '@prisma/client'
 import { TransactionsRepository } from '../transactions-repository'
 import { prisma } from '@/lib/prisma'
 import { GetTransactionsDTO } from '../DTO/get-transactions-dto'
+import { ResourceNotFoundError } from '@/use-cases/errors/resource-not-found-error'
 
 
 
@@ -282,25 +283,29 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
     }
 
     async changeTransactionStatus(id: string): Promise<void> {
-        const findedTransaction = await prisma.transaction.findFirst({ where: { id } })
-        if (findedTransaction?.confirmed) {
-            await prisma.transaction.update({
-                where: { id },
-                data: {
-                    confirmed: false
-                }
-            })
-        } else {
-            await prisma.transaction.update({
-                where: { id },
-                data: {
-                    confirmed: true
-                }
-            })
+        // 1. Busca a transação de forma única e verifica a existência
+        // 'update' é usado aqui porque é mais atômico para o que queremos fazer
+
+        const findedTransaction = await prisma.transaction.findUnique({
+            where: { id },
+            select: { confirmed: true } // Seleciona apenas o campo 'confirmed' para eficiência
+        })
+
+        if (!findedTransaction) {
+            // Lança um erro se a transação não for encontrada
+            throw new ResourceNotFoundError()
         }
+
+        // 2. Executa a atualização, invertendo o status
+        await prisma.transaction.update({
+            where: { id },
+            data: {
+                confirmed: !findedTransaction.confirmed // Inverte o valor booleano
+            }
+        })
     }
 
-    update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }> {
+    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }> {
         throw new Error('Method not implemented.')
     }
     // findMany(operation?: string | undefined, paid?: boolean | undefined, sector_id?: string | undefined, account_id?: string | undefined): Promise<{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }[] | null> {

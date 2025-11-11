@@ -2,26 +2,41 @@ import { MakeChangeTransactionStatusUseCase } from '@/use-cases/factories/make-c
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 
-export async function changeTransactionStatus(request: FastifyRequest, reply: FastifyReply) {
-
-    const idUpdateTreatmentBodySchema = z.object({
-        id: z.string().uuid()
+export async function changeTransactionStatus(
+    request: FastifyRequest,
+    reply: FastifyReply,
+) {
+    // 1. Schema Renomeado para validar os Parâmetros da Rota
+    const switchTransactionParamsSchema = z.object({
+        id: z.string().uuid(),
     })
 
-    const { id } = idUpdateTreatmentBodySchema.parse(request.params)
+    // Valida e extrai o ID dos parâmetros da rota (URL)
+    const { id } = switchTransactionParamsSchema.parse(request.params)
 
     try {
         const changeTransactionStatusUseCase = MakeChangeTransactionStatusUseCase()
+        console.log('iniciando use case')
+        // Executa a lógica de negócio para alterar o status da transação
         await changeTransactionStatusUseCase.execute({
             id,
         })
+
+        // Retorno de Sucesso (200 OK sem conteúdo, pois é um PATCH sem retorno de dados)
+        return reply.status(200).send()
     } catch (err) {
-        if (err) {
-            return reply.status(409).send({ message: err.message })
+        // 2. Tratamento de Erro mais robusto
+        if (err instanceof Error) {
+            // Se o Use Case lançar um erro informando que a transação não foi encontrada
+            if (err.message.includes('Transaction not found')) {
+                return reply.status(404).send({ message: err.message })
+            }
+            // Outros erros de lógica de negócio ou de validação
+            return reply.status(400).send({ message: err.message })
         }
-        throw err
+
+        // Erro inesperado no servidor
+        console.error(err)
+        return reply.status(500).send({ message: 'Internal Server Error' })
     }
-    return reply.status(200).send()
 }
-
-
