@@ -17,6 +17,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         monthlyExpenses: number;
         pendingIncome: number;
         pendingExpenses: number;
+        overdueIncome: number;    // A receber vencido (todos os meses)
+        overdueExpenses: number;  // A pagar vencido (todos os meses)
     }> {
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
@@ -24,31 +26,38 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const startOfMonth = new Date(currentYear, currentMonth, 1);
         const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1);
 
+        // 🔥 CORREÇÃO: Criar startOfToday (00:00:00 do dia atual)
+        const startOfToday = new Date(currentDate);
+        startOfToday.setHours(0, 0, 0, 0);
+
         // Executa todas as consultas em paralelo
         const [
             totalBalance,
             monthlyIncomeResult,
             monthlyExpensesResult,
             pendingIncomeResult,
-            pendingExpensesResult
+            pendingExpensesResult,
+            overdueIncomeResult,
+            overdueExpensesResult
         ] = await Promise.all([
             this.getBalance(),
+            // Entradas totais do mês
             prisma.transaction.aggregate({
                 where: {
                     operation: 'income',
-                    confirmed: true,
                     date: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
+            // Saídas totais do mês
             prisma.transaction.aggregate({
                 where: {
                     operation: 'expense',
-                    confirmed: true,
                     date: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
+            // A receber do mês (pendentes)
             prisma.transaction.aggregate({
                 where: {
                     operation: 'income',
@@ -57,11 +66,30 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 },
                 _sum: { amount: true }
             }),
+            // A pagar do mês (pendentes)
             prisma.transaction.aggregate({
                 where: {
                     operation: 'expense',
                     confirmed: false,
                     date: { gte: startOfMonth, lt: startOfNextMonth }
+                },
+                _sum: { amount: true }
+            }),
+            // 🔥 CORREÇÃO: A receber vencido (usando startOfToday)
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'income',
+                    confirmed: false,
+                    date: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
+                },
+                _sum: { amount: true }
+            }),
+            // 🔥 CORREÇÃO: A pagar vencido (usando startOfToday)
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'expense',
+                    confirmed: false,
+                    date: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
                 },
                 _sum: { amount: true }
             })
@@ -72,7 +100,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             monthlyIncome: monthlyIncomeResult._sum.amount || 0,
             monthlyExpenses: monthlyExpensesResult._sum.amount || 0,
             pendingIncome: pendingIncomeResult._sum.amount || 0,
-            pendingExpenses: pendingExpensesResult._sum.amount || 0
+            pendingExpenses: pendingExpensesResult._sum.amount || 0,
+            overdueIncome: overdueIncomeResult._sum.amount || 0,    // A receber vencido
+            overdueExpenses: overdueExpensesResult._sum.amount || 0 // A pagar vencido
         };
     }
     async getBalance(): Promise<number> {

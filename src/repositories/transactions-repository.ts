@@ -19,5 +19,7 @@ export interface TransactionsRepository {
         monthlyExpenses: number;
         pendingIncome: number;
         pendingExpenses: number;
+        overdueIncome: number;   
+        overdueExpenses: number;
     }>
 }

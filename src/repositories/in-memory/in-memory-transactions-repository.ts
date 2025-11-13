@@ -13,6 +13,10 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         const startOfMonth = new Date(currentYear, currentMonth, 1)
         const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1)
 
+        // 🔥 CORREÇÃO: Criar startOfToday (00:00:00 do dia atual)
+        const startOfToday = new Date(currentDate)
+        startOfToday.setHours(0, 0, 0, 0)
+
         // Filtrar transações do mês atual
         const currentMonthTransactions = this.items.filter(transaction => {
             const transactionDate = new Date(transaction.date)
@@ -28,24 +32,34 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
                     : sum - transaction.amount
             }, 0)
 
-        // Entradas do mês (confirmadas)
+        // Entradas totais do mês (confirmadas + pendentes)
         const monthlyIncome = currentMonthTransactions
-            .filter(t => t.operation === 'income' && t.confirmed)
+            .filter(t => t.operation === 'income')
             .reduce((sum, t) => sum + t.amount, 0)
 
-        // Saídas do mês (confirmadas)
+        // Saídas totais do mês (confirmadas + pendentes)
         const monthlyExpenses = currentMonthTransactions
-            .filter(t => t.operation === 'expense' && t.confirmed)
+            .filter(t => t.operation === 'expense')
             .reduce((sum, t) => sum + t.amount, 0)
 
-        // Total a receber (entradas pendentes)
+        // Total a receber do mês (pendentes)
         const pendingIncome = currentMonthTransactions
             .filter(t => t.operation === 'income' && !t.confirmed)
             .reduce((sum, t) => sum + t.amount, 0)
 
-        // Total a pagar (saídas pendentes)
+        // Total a pagar do mês (pendentes)
         const pendingExpenses = currentMonthTransactions
             .filter(t => t.operation === 'expense' && !t.confirmed)
+            .reduce((sum, t) => sum + t.amount, 0)
+
+        // 🔥 CORREÇÃO: A receber vencido (todos os meses - não confirmado e data ANTERIOR a startOfToday)
+        const overdueIncome = this.items
+            .filter(t => t.operation === 'income' && !t.confirmed && new Date(t.date) < startOfToday)
+            .reduce((sum, t) => sum + t.amount, 0)
+
+        // 🔥 CORREÇÃO: A pagar vencido (todos os meses - não confirmado e data ANTERIOR a startOfToday)
+        const overdueExpenses = this.items
+            .filter(t => t.operation === 'expense' && !t.confirmed && new Date(t.date) < startOfToday)
             .reduce((sum, t) => sum + t.amount, 0)
 
         return {
@@ -53,7 +67,9 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             monthlyIncome,
             monthlyExpenses,
             pendingIncome,
-            pendingExpenses
+            pendingExpenses,
+            overdueIncome,
+            overdueExpenses
         }
     }
 
