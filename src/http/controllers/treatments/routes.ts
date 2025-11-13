@@ -9,6 +9,7 @@ import { RemoveTreatmentItem } from './remove-treatment-item'
 import { getTreatment } from './getTreatment'
 import { updateTreatment } from './updateTreatment'
 import { createInteraction } from './interaction'
+import { getServiceManagementData } from './get-service-management-data'
 
 
 
@@ -23,5 +24,5 @@ export async function treatmentsRoutes(app: FastifyInstance) {
     app.post('/treatment', createTreatment)
     app.post('/treatment-item', createItemTreatment)
     app.delete('/treatment-item/:id', RemoveTreatmentItem)
-
+    app.get('/service-management', getServiceManagementData)
 }

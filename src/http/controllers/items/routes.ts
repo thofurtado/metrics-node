@@ -6,6 +6,7 @@ import { createItem } from './item'
 import { createStock } from './stock'
 import { getItems } from './getItems'
 import { getItemHistory } from './getItemHistory'
+import { getInventorySummary } from './get-inventory-summary'
 
 
 
@@ -17,5 +18,5 @@ export async function itemsRoutes(app: FastifyInstance) {
     app.post('/stock', createStock)
     app.get('/items', getItems)
     app.get('/item-stocks/:id', getItemHistory)
-
+    app.get('/inventory-summary', getInventorySummary)
 }

@@ -10,6 +10,71 @@ import { ResourceNotFoundError } from '@/use-cases/errors/resource-not-found-err
 
 
 export class PrismaTransactionsRepository implements TransactionsRepository {
+    // Versão otimizada com Promise.all (mais rápida)
+    async getFinancialSummary(): Promise<{
+        totalBalance: number;
+        monthlyIncome: number;
+        monthlyExpenses: number;
+        pendingIncome: number;
+        pendingExpenses: number;
+    }> {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+        const startOfMonth = new Date(currentYear, currentMonth, 1);
+        const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1);
+
+        // Executa todas as consultas em paralelo
+        const [
+            totalBalance,
+            monthlyIncomeResult,
+            monthlyExpensesResult,
+            pendingIncomeResult,
+            pendingExpensesResult
+        ] = await Promise.all([
+            this.getBalance(),
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'income',
+                    confirmed: true,
+                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                },
+                _sum: { amount: true }
+            }),
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'expense',
+                    confirmed: true,
+                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                },
+                _sum: { amount: true }
+            }),
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'income',
+                    confirmed: false,
+                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                },
+                _sum: { amount: true }
+            }),
+            prisma.transaction.aggregate({
+                where: {
+                    operation: 'expense',
+                    confirmed: false,
+                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                },
+                _sum: { amount: true }
+            })
+        ]);
+
+        return {
+            totalBalance,
+            monthlyIncome: monthlyIncomeResult._sum.amount || 0,
+            monthlyExpenses: monthlyExpensesResult._sum.amount || 0,
+            pendingIncome: pendingIncomeResult._sum.amount || 0,
+            pendingExpenses: pendingExpensesResult._sum.amount || 0
+        };
+    }
     async getBalance(): Promise<number> {
         const totalExpense = await prisma.transaction.aggregate({
             where: {
@@ -46,11 +111,10 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         return balance
 
     }
-    async getMonthIncomeByDays(): Promise<[{ day: string; revenue: number; }]> {
+    async getMonthIncomeByDays(): Promise<{ day: string; revenue: number; }[]> {
         const month = new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
-
 
         const dailyIncomes = await prisma.transaction.groupBy({
             by: ['date'],
@@ -61,8 +125,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1) // Add 1 day to include the last day
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1)
                         },
                     },
                     {
@@ -76,15 +140,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         })
 
         return dailyIncomes.map((income) => ({
-            day: income.date.toISOString().substring(5, 10), // Format date as YYYY-MM-DD
-            revenue: income._sum.amount,
+            day: income.date.toISOString().substring(5, 10),
+            revenue: income._sum.amount || 0, // Garante que não seja null
         }))
     }
-    async getMonthExpenseBySector(): Promise<[{ sector_name: string; amount: number; }]> {
+    async getMonthExpenseBySector(): Promise<{ sector_name: string; amount: number; }[]> {
         const month = new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
-
 
         const sectorExpenses = await prisma.transaction.groupBy({
             by: ['sector_id'],
@@ -95,8 +158,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1)// Add 1 day to include the last day
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1)
                         },
                     },
                     {
@@ -104,25 +167,43 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     },
                 ],
             },
-
         })
 
-        const sectorIds = sectorExpenses.map((expense) => expense.sector_id) // Extract sector IDs
+        const sectorIds = sectorExpenses.map((expense) => expense.sector_id)
 
-        // Use Promise.all to execute sector lookups in parallel
+        // CORREÇÃO: Filtrar apenas sector_ids válidos (não nulos)
+        const validSectorIds = sectorIds.filter((id): id is string => id !== null)
+
+        // CORREÇÃO: Buscar apenas setores com IDs válidos
         const sectors = await Promise.all(
-            sectorIds.map((id) => prisma.sector.findFirst({ where: { id } }))
+            validSectorIds.map((id) => prisma.sector.findFirst({ where: { id } }))
         )
 
-        // Destructure sector names from the fetched sectors
-        const sectorNames = sectors.map((sector) => sector?.name || '') // Handle missing sectors
+        // CORREÇÃO: Mapear corretamente os setores com as despesas
+        return sectorExpenses.map((expense) => {
+            // Para despesas sem setor (sector_id = null)
+            if (expense.sector_id === null) {
+                return {
+                    sector_name: 'Sem setor',
+                    amount: Number((expense._sum.amount || 0).toFixed(2)),
+                }
+            }
 
-        return sectorExpenses.map((expense, index) => ({
-            sector_name: sectorNames[index],
-            amount: Number(expense._sum.amount?.toFixed(2)),
-        }))
+            // Encontrar o setor correspondente
+            const sectorIndex = validSectorIds.indexOf(expense.sector_id)
+            const sectorName = sectorIndex !== -1 ? sectors[sectorIndex]?.name : 'Setor não encontrado'
+
+            return {
+                sector_name: sectorName || 'Setor não encontrado',
+                amount: Number((expense._sum.amount || 0).toFixed(2)),
+            }
+        })
     }
-    async getMonthExpenseAmount(): Promise<{ monthExpenseAmount: number; diffFromLastMonth: number; alreadyPaid: number }> {
+    async getMonthExpenseAmount(): Promise<{
+        monthExpenseAmount: number;
+        diffFromLastMonth: number;
+        alreadyPaid: number
+    }> {
         const month = new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
@@ -135,8 +216,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
                     },
                     {
@@ -157,8 +238,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
                     },
                     {
@@ -167,7 +248,6 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 ]
             }
         })
-
 
         const lastMonthTransactionsAmount = await prisma.transaction.aggregate({
             _sum: {
@@ -177,8 +257,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1),
+                            lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1),
                         },
                     },
                     {
@@ -188,22 +268,36 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             }
         })
 
+        // CORREÇÃO: Tratar valores nulos
+        const thisMonthAmount = thisMonthTransactionsAmount._sum.amount || 0;
+        const lastMonthAmount = lastMonthTransactionsAmount._sum.amount || 0;
+        const alreadyPaid = thisMonthTransactionsPaidAmount._sum.amount || 0;
 
-
-        const diffFromMonths = lastMonthTransactionsAmount && thisMonthTransactionsAmount ?
-            (thisMonthTransactionsAmount._sum.amount * 100) / lastMonthTransactionsAmount._sum.amount : null
+        // CORREÇÃO: Cálculo seguro da diferença
+        let diffFromLastMonth = 0;
+        if (lastMonthAmount > 0) {
+            diffFromLastMonth = Number((((thisMonthAmount - lastMonthAmount) / lastMonthAmount) * 100).toFixed(2));
+        } else if (thisMonthAmount > 0) {
+            // Se último mês foi 0 e este mês tem valor, é 100% de aumento
+            diffFromLastMonth = 100;
+        }
 
         return {
-            monthExpenseAmount: thisMonthTransactionsAmount._sum.amount,
-            alreadyPaid: thisMonthTransactionsPaidAmount._sum.amount,
-            diffFromLastMonth: diffFromMonths ? Number((diffFromMonths - 100).toFixed(2)) : 0
+            monthExpenseAmount: thisMonthAmount,
+            alreadyPaid,
+            diffFromLastMonth
         }
     }
-    async getMonthIncomeAmount(): Promise<{ monthIncomeAmount: number; diffFromLastMonth: number; alreadyPaid: number }> {
+    async getMonthIncomeAmount(): Promise<{
+        monthIncomeAmount: number;
+        diffFromLastMonth: number;
+        alreadyPaid: number
+    }> {
         const month = new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
 
+        // CORREÇÃO: Adicionei as declarações das variáveis
         const thisMonthTransactionsPaidAmount = await prisma.transaction.aggregate({
             _sum: {
                 amount: true
@@ -212,8 +306,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
                     },
                     {
@@ -234,8 +328,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, thisMonthNumber, 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
+                            lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
                     },
                     {
@@ -253,8 +347,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 AND: [
                     {
                         date: {
-                            gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1), // Start of month
-                            lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1), // End of month (excluding the last day)
+                            gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1),
+                            lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1),
                         },
                     },
                     {
@@ -264,13 +358,24 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             }
         })
 
-        const diffFromMonths = lastMonthTransactionsAmount && thisMonthTransactionsAmount ?
-            (thisMonthTransactionsAmount._sum.amount * 100) / lastMonthTransactionsAmount._sum.amount : null
+        // CORREÇÃO: Tratar valores nulos
+        const thisMonthAmount = thisMonthTransactionsAmount._sum.amount || 0;
+        const lastMonthAmount = lastMonthTransactionsAmount._sum.amount || 0;
+        const alreadyPaid = thisMonthTransactionsPaidAmount._sum.amount || 0;
+
+        // CORREÇÃO: Cálculo seguro da diferença
+        let diffFromLastMonth = 0;
+        if (lastMonthAmount > 0) {
+            diffFromLastMonth = Number((((thisMonthAmount - lastMonthAmount) / lastMonthAmount) * 100).toFixed(2));
+        } else if (thisMonthAmount > 0) {
+            // Se último mês foi 0 e este mês tem valor, é 100% de aumento
+            diffFromLastMonth = 100;
+        }
 
         return {
-            monthIncomeAmount: thisMonthTransactionsAmount._sum.amount,
-            alreadyPaid: thisMonthTransactionsPaidAmount._sum.amount,
-            diffFromLastMonth: diffFromMonths ? Number((diffFromMonths - 100).toFixed(2)) : 0
+            monthIncomeAmount: thisMonthAmount,
+            alreadyPaid,
+            diffFromLastMonth
         }
     }
     async delete(id: string): Promise<void> {
@@ -305,13 +410,58 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         })
     }
 
-    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }> {
-        throw new Error('Method not implemented.')
+    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{
+        id: string;
+        operation: string;
+        date: Date;
+        amount: number;
+        account_id: string;
+        sector_id: string | null;
+        description: string | null;
+        confirmed: boolean
+    }> {
+        // Verifica se o ID foi fornecido
+        if (!data.id) {
+            throw new Error('Transaction ID is required for update');
+        }
+
+        // CORREÇÃO: Preparar os dados de atualização sem as relações
+        const updateData: Prisma.TransactionUncheckedUpdateInput = {
+            operation: data.operation,
+            date: data.date,
+            amount: data.amount,
+            description: data.description,
+            confirmed: data.confirmed,
+        };
+
+        // CORREÇÃO: Se account_id foi fornecido, atualiza diretamente
+        if (data.account_id !== undefined) {
+            updateData.account_id = data.account_id;
+        }
+
+        // CORREÇÃO: Se sector_id foi fornecido, atualiza diretamente
+        if (data.sector_id !== undefined) {
+            updateData.sector_id = data.sector_id;
+        }
+
+        const updatedTransaction = await prisma.transaction.update({
+            where: {
+                id: data.id as string
+            },
+            data: updateData
+        });
+
+        return {
+            id: updatedTransaction.id,
+            operation: updatedTransaction.operation,
+            date: updatedTransaction.date,
+            amount: updatedTransaction.amount,
+            account_id: updatedTransaction.account_id,
+            sector_id: updatedTransaction.sector_id,
+            description: updatedTransaction.description,
+            confirmed: updatedTransaction.confirmed
+        };
     }
-    // findMany(operation?: string | undefined, paid?: boolean | undefined, sector_id?: string | undefined, account_id?: string | undefined): Promise<{ id: string; operation: string; date: Date; amount: number; account_id: string; sector_id: string | null; description: string | null; confirmed: boolean }[] | null> {
-    //     const transactions = prisma.transaction.findMany()
-    //     return transactions
-    // }
     async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string): Promise<GetTransactionsDTO | null> {
 
         if (!pageIndex)

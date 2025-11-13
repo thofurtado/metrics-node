@@ -8,6 +8,7 @@ import { getMonthExpenseAmount } from './getMonthExpenseAmount'
 import { getMonthIncomeByDay } from './getMonthIncomeByDay'
 import { getMonthExpenseBySector } from './getMonthExpenseBySector'
 import { getGeneralBalance } from './getGeneralBalance'
+import { getBalanceProjection } from './get-balance-projection'
 
 
 
@@ -20,4 +21,5 @@ export async function metricsRoutes(app: FastifyInstance) {
     app.get('/metrics/month-income-by-days', getMonthIncomeByDay)
     app.get('/metrics/month-expense-by-sector', getMonthExpenseBySector)
     app.get('/metrics/general-balance', getGeneralBalance)
+    app.get('/balance-projection', getBalanceProjection)
 }
