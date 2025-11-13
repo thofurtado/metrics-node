@@ -106,40 +106,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         };
     }
     async getBalance(): Promise<number> {
-        const totalExpense = await prisma.transaction.aggregate({
-            where: {
-                AND: [
-                    {
-                        operation: 'expense',
-                    },
-                    {
-                        confirmed: true
-                    }
-                ]
-            },
+        // Usando aggregate para soma direta no banco
+        const balanceResult = await prisma.account.aggregate({
             _sum: {
-                amount: true // Include amount field in the sum
-            }
-        })
-        const totalRenevue = await prisma.transaction.aggregate({
-            where: {
-                AND: [
-                    {
-                        operation: 'income',
-                    },
-                    {
-                        confirmed: true
-                    }
-                ]
-            },
-            _sum: {
-                amount: true // Include amount field in the sum
+                balance: true
             }
         })
 
-        const balance = Number(totalRenevue ? totalRenevue._sum.amount : 0) - Number(totalExpense ? totalExpense._sum.amount : 0)
-        return balance
-
+        return Number(balanceResult._sum.balance) || 0
     }
     async getMonthIncomeByDays(): Promise<{ day: string; revenue: number; }[]> {
         const month = new Date()
