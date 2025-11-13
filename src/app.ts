@@ -12,15 +12,15 @@ import cors from '@fastify/cors'
 import { metricsRoutes } from './http/controllers/metrics/routes'
 
 export const app = fastify({ logger: true })
-
+// [
+//         'http://localhost:5173',
+//         'http://192.168.1.2:5173',
+//         'https://www.eurecatech.com.br',
+//         'https://metrics-sigma.vercel.app',
+//     ],
 
 app.register(cors, {
-    origin: [
-        'http://localhost:5173',
-        'http://192.168.1.8:5173',
-        'https://www.eurecatech.com.br',
-        'https://metrics-sigma.vercel.app',
-    ],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // ← ADD ESTA LINHA
     credentials: true // ← importante para cookies/tokens
 })
