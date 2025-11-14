@@ -3,6 +3,7 @@ import { TransactionsRepository } from '../transactions-repository'
 import { prisma } from '@/lib/prisma'
 import { GetTransactionsDTO } from '../DTO/get-transactions-dto'
 import { ResourceNotFoundError } from '@/use-cases/errors/resource-not-found-error'
+import { ChangeTransactionStatusParams } from '../DTO/change-transaction-status-params-dto'
 
 
 
@@ -391,27 +392,66 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         }
     }
 
-    async changeTransactionStatus(id: string): Promise<void> {
-        // 1. Busca a transação de forma única e verifica a existência
-        // 'update' é usado aqui porque é mais atômico para o que queremos fazer
+    async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {
+        // Agora só desestrutura id, amount e date
+        const { id, amount: newAmount, date } = data
 
-        const findedTransaction = await prisma.transaction.findUnique({
+        // 1. Busca a transação original para verificar a existência e o status
+        const existingTransaction = await prisma.transaction.findUnique({
             where: { id },
-            select: { confirmed: true } // Seleciona apenas o campo 'confirmed' para eficiência
         })
 
-        if (!findedTransaction) {
-            // Lança um erro se a transação não for encontrada
+        if (!existingTransaction) {
             throw new ResourceNotFoundError()
         }
 
-        // 2. Executa a atualização, invertendo o status
-        await prisma.transaction.update({
-            where: { id },
-            data: {
-                confirmed: !findedTransaction.confirmed // Inverte o valor booleano
-            }
-        })
+        // Se a transação JÁ estiver confirmada, não fazemos nada (Use Case deve garantir isso, mas é uma segurança)
+        if (existingTransaction.confirmed) {
+            return
+        }
+
+        // 2. Determinar o valor a ser adicionado/removido do saldo da conta
+        // Como a transação estava PENDENTE (confirmed: false) e está sendo liquidada com newAmount,
+        // aplicamos o newAmount no saldo.
+        let accountBalanceChange = 0;
+
+        if (existingTransaction.operation === 'income') {
+            // É uma receita. Aumenta o saldo.
+            accountBalanceChange = newAmount
+        } else if (existingTransaction.operation === 'expense') {
+            // É uma despesa. Diminui o saldo.
+            accountBalanceChange = -newAmount
+        }
+
+        // 3. Executa a transação de banco de dados (atomicidade)
+        try {
+            await prisma.$transaction(async (tx) => {
+                // a) Atualiza a Transação Original: Confirma com o novo valor e a data de liquidação
+                await tx.transaction.update({
+                    where: { id },
+                    data: {
+                        amount: newAmount, // Novo valor (pago parcial ou total)
+                        date, // Nova data de liquidação (data de liquidação efetiva)
+                        confirmed: true, // Hardcoded: a função é para liquidar/confirmar
+                    },
+                })
+
+                // b) Atualiza o Saldo da Conta
+                await tx.account.update({
+                    where: { id: existingTransaction.account_id },
+                    data: {
+                        balance: {
+                            // Adiciona/Remove o valor liquidado do saldo existente
+                            increment: accountBalanceChange,
+                        },
+                    },
+                })
+            })
+        } catch (error) {
+            console.error('Erro na transação de liquidação:', error)
+            // Relançar o erro, possivelmente encapsulado
+            throw new Error('Falha ao liquidar a transação e atualizar o saldo da conta.')
+        }
     }
 
     async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{
