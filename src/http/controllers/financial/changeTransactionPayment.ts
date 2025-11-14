@@ -27,11 +27,12 @@ export async function changeTransactionStatus(
     // Valida e extrai o ID dos parâmetros da rota (URL)
     const { id } = switchTransactionParamsSchema.parse(request.params)
 
+    
     // Valida e extrai os dados do corpo da requisição (Body)
     const { amount, date, remainingDate } = switchTransactionBodySchema.parse(
         request.body,
     )
-
+    console.log({amount, date, remainingDate})
     try {
         const changeTransactionStatusUseCase = MakeChangeTransactionStatusUseCase()
         
