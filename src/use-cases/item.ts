@@ -4,6 +4,7 @@ import { ThisNameAlreadyExistsError } from './errors/this-name-already-exists-er
 import { StocksRepository } from '@/repositories/stocks-repository'
 import { PriceCannotBeLowerThanCost } from './errors/price-cannot-be-lower-than-cost-error'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
+import { prisma } from '@/lib/prisma'
 
 interface ItemUseCaseRequest {
     name: string,
@@ -11,8 +12,12 @@ interface ItemUseCaseRequest {
     cost: number,
     price: number,
     stock?: number,
+    min_stock?: number,
+    barcode?: string,
+    category?: string,
     active?: boolean,
-    isItem?: boolean
+    isItem?: boolean,
+    display_id?: number
 }
 interface ItemUseCaseResponse {
     item: Item
@@ -24,12 +29,10 @@ export class ItemUseCase {
         private stockRepository: StocksRepository
     ) { }
     async execute({
-        name, description, cost, price, stock, active, isItem
+        name, description, cost, price, stock, min_stock, barcode, category, active, isItem, display_id
     }: ItemUseCaseRequest): Promise<ItemUseCaseResponse> {
 
         const existentName = await this.itemsRepository.findByName(name)
-
-
 
         if (existentName) {
             throw new ThisNameAlreadyExistsError()
@@ -41,31 +44,47 @@ export class ItemUseCase {
 
         if (cost < 0 || price < 0)
             throw new OnlyNaturalNumbersError()
-        if (stock) {
-            if (stock < 0)
-                throw new OnlyNaturalNumbersError()
+
+        return await prisma.$transaction(async (tx) => {
+            if (stock) {
+                if (stock < 0)
+                    throw new OnlyNaturalNumbersError()
+
+                let finalDisplayId = display_id
+                if (!finalDisplayId || isNaN(finalDisplayId)) {
+                    finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId()
+                }
+
+                const item = await this.itemsRepository.create({
+                    name, description, cost, price, stock, min_stock, barcode, category, active, isItem, display_id: finalDisplayId
+                }, tx)
+
+                if (stock !== 0)
+                    await this.stockRepository.create({
+                        item_id: item.id,
+                        quantity: stock,
+                        operation: 'IN',
+                        description: 'AJUSTE_POSITIVO',
+                        created_at: new Date()
+                    }, tx)
+
+                return {
+                    item
+                }
+            }
+
+            let finalDisplayId = display_id
+            if (!finalDisplayId || isNaN(finalDisplayId)) {
+                finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId()
+            }
 
             const item = await this.itemsRepository.create({
-                name, description, cost, price, stock, active, isItem
-            })
-            if (stock !== 0)
-                this.stockRepository.create({
-                    item_id: item.id,
-                    quantity: stock,
-                    operation: 'input',
-                    description: 'Cadastro Inicial',
-                    created_at: new Date()
-                })
+                name, description, cost, price, stock: 0, min_stock, barcode, category, active, isItem, display_id: finalDisplayId
+            }, tx)
+
             return {
                 item
             }
-        }
-        const item = await this.itemsRepository.create({
-            name, description, cost, price, stock: 0, active, isItem
         })
-        return {
-            item
-        }
     }
 }
-

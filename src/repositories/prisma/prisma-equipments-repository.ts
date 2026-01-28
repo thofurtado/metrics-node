@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, Equipment } from '@prisma/client'
 import { EquipmentsRepository } from '../equipments-repository'
 
 
@@ -24,7 +24,7 @@ export class PrismaEquipmentsRepository implements EquipmentsRepository {
         })
         return equipment
     }
-    findByClient(client_id: string): Promise<{ id: string; client_id: string; type: string; brand: string | null; identification: string | null; details: string | null; entry: Date }[] | null> {
+    findByClient(client_id: string): Promise<Equipment[] | null> {
         const equiepments = prisma.equipment.findMany({
             where: {
                 client_id
@@ -32,7 +32,7 @@ export class PrismaEquipmentsRepository implements EquipmentsRepository {
         })
         return equiepments
     }
-    findMany(type?: string | undefined, brand?: string | undefined, identification?: string | undefined): Promise<{ id: string; client_id: string; type: string; brand: string | null; identification: string | null; details: string | null; entry: Date }[] | null> {
+    findMany(type?: string | undefined, brand?: string | undefined, identification?: string | undefined): Promise<Equipment[] | null> {
         const equiepments = prisma.equipment.findMany({
             where: {
                 type,

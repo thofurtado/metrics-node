@@ -12,7 +12,7 @@ export class InMemoryPaymentEntrysRepository implements PaymentEntrysRepository 
         const paymentEntry = {
             id: randomUUID(),
             payment_id: data.payment_id,
-            treatment_id:data.treatment_id,
+            treatment_id: data.treatment_id,
             occurrences: data.occurrences,
             amount: data.amount
         }
@@ -27,8 +27,13 @@ export class InMemoryPaymentEntrysRepository implements PaymentEntrysRepository 
         return paymentEntry || null
     }
 
-    async findMany():Promise<PaymentEntry[] | null>{
+    async findMany(): Promise<PaymentEntry[] | null> {
         const paymentEntrys = this.items.slice()
         return paymentEntrys || null
+    }
+
+    async findByTreatmentId(treatmentId: string) {
+        const entries = this.items.filter(item => item.treatment_id === treatmentId)
+        return entries
     }
 }

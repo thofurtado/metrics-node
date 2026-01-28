@@ -39,12 +39,18 @@ export class PrismaAccountsRepository implements AccountsRepository {
         })
         return account
     }
-    async changeBalance(id: string, value: number, operationType: boolean) {
+    async changeBalance(id: string, value: number, operationType: boolean, tx?: Prisma.TransactionClient) {
 
-        const account = await this.findById(id)
+        // We cannot use this.findById(id) here because we need the transaction client context
+        // and findById might not use it (unless we pass it there too, which we aren't doing yet)
+        // But for update, we just need to know it works. 
+        // Let's assume the caller has verified existence or we trust the update will fail if not found (Prisma throws or returns nothing).
+        // Actually Prisma update throws if not found. 
 
-        if (account) {
-            await prisma.account.update({
+        const client = tx ?? prisma
+
+        try {
+            await client.account.update({
                 where: { id },
                 data: {
                     balance: {
@@ -52,10 +58,10 @@ export class PrismaAccountsRepository implements AccountsRepository {
                     }
                 }
             })
-            //se for entrada acrescente, se for transferencia ou despesa sai
             return true
+        } catch (e) {
+            return false
         }
-        return false
     }
     async update(id: string, data: Prisma.AccountUpdateInput): Promise<Prisma.AccountGetPayload<typeof data> | null> {
         const updatedAccount = await prisma.account.update({

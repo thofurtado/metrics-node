@@ -5,6 +5,7 @@ import { ItemsRepository } from '@/repositories/items-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
 import { InvalidOptionError } from './errors/invalid-option-error'
 import { StockCannotBeNegativaError } from './errors/stock-cannot-be-negative-error'
+import { prisma } from '@/lib/prisma'
 
 interface StockUseCaseRequest {
     item_id: string,
@@ -34,24 +35,29 @@ export class StockUseCase {
         if (quantity <= 0)
             throw new OnlyNaturalNumbersError()
 
-        if (operation !== 'input' && operation !== 'output')
+        if (operation !== 'IN' && operation !== 'OUT')
             throw new InvalidOptionError()
 
-        if (operation === 'output') {
-            console.log('BALANÇO')
+        if (operation === 'OUT') {
             const itemBalance = await this.stocksRepository.getItemBalance(item_id)
-            console.log('Balanço: '+itemBalance)
             if (itemBalance < quantity)
                 throw new StockCannotBeNegativaError()
         }
-        const stock = await this.stocksRepository.create({
-            item_id, quantity, operation, description, created_at
-        })
 
-        await this.itemsRepository.changeStock(findedItem.id, quantity, operation === 'input' ? true : false)
-        return {
-            stock
-        }
+        return await prisma.$transaction(async (tx) => {
+            const stock = await this.stocksRepository.create({
+                item_id,
+                quantity,
+                operation: operation as any, // Cast to match Prisma Enum if needed, usually string works if valid
+                description: description as any,
+                created_at
+            }, tx)
+
+            await this.itemsRepository.changeStock(findedItem.id, quantity, operation === 'IN' ? true : false, tx)
+
+            return {
+                stock
+            }
+        })
     }
 }
-

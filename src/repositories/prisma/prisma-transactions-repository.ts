@@ -628,7 +628,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         return transaction
     }
 
-    async create(data: Prisma.TransactionUncheckedCreateInput) {
+    async create(data: Prisma.TransactionUncheckedCreateInput, tx?: Prisma.TransactionClient) {
         if (!data.date) {
             data.date = new Date()
         }
@@ -640,9 +640,11 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             account_id: undefined,
             sector_id: undefined
         }
+        const client = tx ?? prisma
+
         let transaction
         if (!data.sector_id) {
-            transaction = await prisma.transaction.create({
+            transaction = await client.transaction.create({
                 data: {
                     ...createTransaction,
                     accounts: {
@@ -652,7 +654,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
             })
         } else {
-            transaction = await prisma.transaction.create({
+            transaction = await client.transaction.create({
                 data: {
                     ...createTransaction,
                     accounts: {

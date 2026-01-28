@@ -15,6 +15,11 @@ import { deleteTransaction } from './deleteTransaction'
 import { getPayments } from './getPayments'
 import { getFinancialSummary } from './get-financial-summary'
 
+import { updateAccount } from './updateAccount'
+import { deleteAccount } from './deleteAccount'
+import { updatePayment } from './updatePayment'
+import { deletePayment } from './deletePayment'
+import { adjustAccountBalance } from './adjustAccountBalance'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJWT)
@@ -23,6 +28,9 @@ export async function financialRoutes(app: FastifyInstance) {
 
     app.post('/account', createAccount)
     app.get('/accounts', getAccount)
+    app.patch('/account/:id/adjust-balance', adjustAccountBalance)
+    app.put('/account/:id', updateAccount)
+    app.delete('/account/:id', deleteAccount)
 
     app.post('/transaction', createTransaction)
     app.get('/transactions', getTransactions)
@@ -33,5 +41,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.post('/payment-entry', createPaymentEntry)
     app.patch('/switch-transaction/:id', changeTransactionStatus)
     app.get('/payments', getPayments)
+    app.put('/payment/:id', updatePayment)
+    app.delete('/payment/:id', deletePayment)
     app.get('/summary', getFinancialSummary)
 }

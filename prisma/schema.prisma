@@ -43,6 +43,8 @@ model Client {
   phone          String?
   email          String?
   contract       Boolean @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   addresses  Address?
   treatments Treatment[]
@@ -120,11 +122,15 @@ model Interaction {
 
 model Item {
   id          String   @id @default(uuid())
+  display_id  Int      @unique @default(autoincrement())
   name        String
   description String?
   cost        Float
   price       Float
-  stock       Float?
+  stock       Float?   @default(0)
+  min_stock   Float?   @default(0)
+  barcode     String?
+  category    String?
   active      Boolean? @default(true)
   isItem      Boolean? @default(true)
 
@@ -134,12 +140,29 @@ model Item {
   @@map("items")
 }
 
+enum StockReason {
+  COMPRA
+  AJUSTE_POSITIVO
+  DEVOLUCAO
+  VENDA
+  QUEBRA
+  PERDA
+  CORTESIA
+  CONSUMO_INTERNO
+  AJUSTE_NEGATIVO
+}
+
+enum StockOperation {
+  IN
+  OUT
+}
+
 model Stock {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   item_id     String
   quantity    Float
-  operation   String
-  description String?
+  operation   StockOperation
+  description StockReason?
   created_at  DateTime @default(now())
 
   items         Item            @relation(fields: [item_id], references: [id])
@@ -156,6 +179,8 @@ model Equipment {
   identification String?
   details        String?
   entry          DateTime
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   client     Client      @relation(fields: [client_id], references: [id])
   treatments Treatment[]

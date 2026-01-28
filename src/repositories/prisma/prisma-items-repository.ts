@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { Item, Prisma } from '@prisma/client'
 import { ItemsRepository } from '../items-repository'
+import { GetItemsDTO } from '../DTO/get-items-dto'
 
 export class PrismaItemsRepository implements ItemsRepository {
-    async create(data: Prisma.ItemCreateInput): Promise<{ id: string; name: string; description: string | null; cost: number; price: number; stock: number; active: boolean; isItem: boolean }> {
-        const item = await prisma.item.create({
+    async create(data: Prisma.ItemCreateInput, tx?: Prisma.TransactionClient): Promise<Item> {
+        const client = tx ?? prisma
+        const item = await client.item.create({
             data
         })
         return item
@@ -34,7 +36,7 @@ export class PrismaItemsRepository implements ItemsRepository {
             return null
         return item
     }
-    async findById(id: string): Promise<{ id: string; name: string; description: string | null; cost: number; price: number; stock: number; active: boolean; isItem: boolean } | null> {
+    async findById(id: string): Promise<Item | null> {
         const item = await prisma.item.findFirst({
             where: {
                 id
@@ -42,53 +44,103 @@ export class PrismaItemsRepository implements ItemsRepository {
         })
         return item
     }
-    async findMany(is_active?: boolean | undefined, is_product?: boolean | undefined): Promise<{ id: string; name: string; description: string | null; cost: number; price: number; stock: number; active: boolean; isItem: boolean }[] | null> {
+    async findMany(is_active?: boolean | undefined, is_product?: boolean | undefined, pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
+        const page = Math.max(1, pageIndex || 1)
+        const limit = perPage || 10
+        const skip = (page - 1) * limit
 
-        const item = await prisma.item.findMany({
-            where: {
-                isItem: is_product,
-                active: is_active
+        const where: Prisma.ItemWhereInput = {}
+        if (is_active !== undefined) where.active = is_active
+        if (is_product !== undefined) where.isItem = is_product
+        if (name) where.name = { contains: name, mode: 'insensitive' }
+        // @ts-ignore: Prisma types might be stale regarding display_id
+        if (display_id) (where as any).display_id = display_id
+
+        if (below_min_stock) {
+            // Prisma doesn't natively support field vs field comparison in where clause easily
+            // So we fetch IDs of items where stock <= min_stock via raw query
+            // This is safe because we just fetch IDs
+            // We use quotes for "isItem" to ensure case sensitivity in Postgres if strictly needed, 
+            // though Prisma usually maps it correctly.
+            const criticalItems = await prisma.$queryRaw<{ id: string }[]>`
+                SELECT id FROM items WHERE stock <= min_stock AND "isItem" = true
+             `
+            const criticalIds = criticalItems.map(i => i.id)
+
+            if (where.id) {
+                // If there's already an ID filter (unlikely here but good practice), we intersect
+                // But since where.id is usually a string, we might need composite logic.
+                // For now, we assume no other ID filter conflicts in findMany usage.
+                // Actually safer to use AND
+                where.AND = [
+                    ...(Array.isArray(where.AND) ? where.AND : []),
+                    { id: { in: criticalIds } }
+                ]
+            } else {
+                where.id = { in: criticalIds }
             }
+        }
+
+        const [items, totalCount] = await Promise.all([
+            prisma.item.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: {
+                    name: 'asc'
+                }
+            }),
+            prisma.item.count({
+                where
+            })
+        ])
+
+        return {
+            items,
+            meta: {
+                totalCount,
+                perPage: limit,
+                pageIndex: page
+            }
+        }
+    }
+    async update(data: Prisma.ItemUpdateInput, tx?: Prisma.TransactionClient): Promise<Item> {
+        const client = tx ?? prisma
+        const item = await client.item.update({
+            where: {
+                id: data.id as string
+            },
+            data
         })
         return item
     }
-    update(data: Prisma.ItemUpdateInput): Promise<{ id: string; name: string; description: string | null; cost: number; price: number; stock: number; active: boolean; isItem: boolean }> {
-        throw new Error('Method not implemented.')
-    }
-    async remove(id: string): Promise<void> {
-        await prisma.item.delete({
+    async remove(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+        const client = tx ?? prisma
+        await client.item.delete({
             where: {
                 id
             }
         })
     }
-    async changeStock(id: string, stock: number, operationType: boolean): Promise<void> {
+    async changeStock(id: string, stock: number, operationType: boolean, tx?: Prisma.TransactionClient): Promise<void> {
+        const client = tx ?? prisma
 
-        const findedStock = await prisma.item.findFirst({
-            where: {
-                id
+        await client.item.update({
+            where: { id },
+            data: {
+                stock: operationType ? { increment: stock } : { decrement: stock }
             }
         })
-        let updatedItem
-        if (findedStock)
-            updatedItem = await prisma.item.update({
-                where: { id },
-                data: {
-                    stock: {
-                        increment: operationType ? stock : -stock,
-                    }
-                }
-            })
-        console.log(updatedItem)
     }
-    async setActive(id: string, commutator: boolean): Promise<void> {
-        const findedStock = await prisma.item.findFirst({
+    async setActive(id: string, commutator: boolean, tx?: Prisma.TransactionClient): Promise<void> {
+        const client = tx ?? prisma
+        const findedStock = await client.item.findFirst({
             where: {
                 id
             }
         })
         if (findedStock)
-            prisma.item.update({
+            await client.item.update({
                 where: {
                     id
                 },
@@ -98,4 +150,36 @@ export class PrismaItemsRepository implements ItemsRepository {
             })
     }
 
+    async findMaxDisplayId(): Promise<number> {
+        const item = await prisma.item.findFirst({
+            orderBy: {
+                // @ts-ignore
+                display_id: 'desc'
+            }
+        })
+        return (item as any)?.display_id ?? 0
+    }
+
+    async findNextAvailableDisplayId(): Promise<number> {
+        // Fetch all display_ids ordered ascending
+        const items = await prisma.item.findMany({
+            // @ts-ignore
+            select: { display_id: true },
+            // @ts-ignore
+            orderBy: { display_id: 'asc' }
+        })
+
+        const ids = items.map((i: any) => i.display_id)
+
+        // Find first gap
+        let expected = 1
+        for (const id of ids) {
+            if (id === expected) {
+                expected++
+            } else if (id > expected) {
+                return expected
+            }
+        }
+        return expected
+    }
 }

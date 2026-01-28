@@ -200,8 +200,9 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
 
         return treatments
     }
-    async close(id: string): Promise<Treatment | null> {
-        const treatment = await prisma.treatment.update({
+    async close(id: string, tx?: Prisma.TransactionClient): Promise<Treatment | null> {
+        const client = tx ?? prisma
+        const treatment = await client.treatment.update({
             where: { id },
             data: {
                 ending_date: new Date(),

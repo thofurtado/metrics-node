@@ -1,13 +1,13 @@
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, Client } from '@prisma/client'
 import { ClientsRepository } from '../clients-repository'
 
 
 export class PrismaClientsRepository implements ClientsRepository {
-    async findByName(name: string): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null> {
+    async findByName(name: string): Promise<Client[] | null> {
         throw new Error('Method not implemented.')
     }
-    async findMany(is_contract?: boolean | undefined): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[] | null> {
+    async findMany(is_contract?: boolean | undefined): Promise<Client[] | null> {
         const clients = await prisma.client.findMany({
             include: {
                 equipments: true,
@@ -21,10 +21,10 @@ export class PrismaClientsRepository implements ClientsRepository {
         })
         return clients
     }
-    async update(data: Prisma.ClientUpdateInput): Promise<{ id: string; name: string; identification: string; phone: string | null; email: string; contract: boolean }[]> {
+    async update(data: Prisma.ClientUpdateInput): Promise<Client[]> {
         throw new Error('Method not implemented.')
     }
-    async delete(id: string): void {
+    async delete(id: string): Promise<void> {
         throw new Error('Method not implemented.')
     }
     async findById(id: string) {

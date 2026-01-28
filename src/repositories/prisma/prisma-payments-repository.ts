@@ -9,10 +9,19 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         })
         return payment
     }
-    update(data: Prisma.PaymentUpdateInput): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }> {
-        throw new Error('Method not implemented.')
+    async update(id: string, data: Prisma.PaymentUncheckedUpdateInput): Promise<Payment> {
+        const payment = await prisma.payment.update({
+            where: { id },
+            data
+        })
+        return payment
     }
-    async findById(id: string): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null } | null> {
+    async delete(id: string): Promise<void> {
+        await prisma.payment.delete({
+            where: { id }
+        })
+    }
+    async findById(id: string): Promise<Payment | null> {
         const payment = await prisma.payment.findFirst({
             where: {
                 id
@@ -20,11 +29,15 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         })
         return payment
     }
-    async findMany(): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }[] | null> {
-        const payments = await prisma.payment.findMany()
+    async findMany(): Promise<Payment[] | null> {
+        const payments = await prisma.payment.findMany({
+            include: {
+                accounts: true
+            }
+        })
         return payments
     }
-    async findByName(name: string): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null } | null> {
+    async findByName(name: string): Promise<Payment | null> {
         const payments = await prisma.payment.findFirst({ where: { name } })
         return payments
     }

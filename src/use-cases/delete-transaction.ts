@@ -1,5 +1,6 @@
 import { TransactionsRepository } from '@/repositories/transactions-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
+import { TransactionAlreadyConfirmedError } from './errors/transaction-already-confirmed-error'
 
 interface DeleteTransactionUseCaseRequest {
     id: string
@@ -16,10 +17,13 @@ export class DeleteTransactionUseCase {
         const transaction = await this.transactionsRepository.findById(id)
         if (!transaction) {
             throw new ResourceNotFoundError()
-        } else {
-
-            await this.transactionsRepository.delete(id)
         }
+
+        if (transaction.confirmed) {
+            throw new TransactionAlreadyConfirmedError()
+        }
+
+        await this.transactionsRepository.delete(id)
     }
 }
 

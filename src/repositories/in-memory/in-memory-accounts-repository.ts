@@ -57,4 +57,30 @@ export class InMemoryAccountsRepository implements AccountsRepository {
         this.items.push(account)
         return account
     }
+
+    async update(id: string, data: Prisma.AccountUpdateInput): Promise<Account | null> {
+        const index = this.items.findIndex((item) => item.id === id)
+
+        if (index === -1) {
+            return null
+        }
+
+        const account = this.items[index]
+
+        const updatedAccount = {
+            ...account,
+            ...data,
+        } as unknown as Account
+
+        this.items[index] = updatedAccount
+
+        return updatedAccount
+    }
+
+    async delete(id: string): Promise<void> {
+        const index = this.items.findIndex((item) => item.id === id)
+        if (index !== -1) {
+            this.items.splice(index, 1)
+        }
+    }
 }

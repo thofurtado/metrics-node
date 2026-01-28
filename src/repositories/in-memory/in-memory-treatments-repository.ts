@@ -1,22 +1,48 @@
 import { Treatment, Prisma } from '@prisma/client'
 import { TreatmentsRepository } from '../treatments-repository'
+import { GetTreatmentDTO } from '../DTO/get-treatments-dto'
 import { randomUUID } from 'node:crypto'
 
 
 export class InMemoryTreatmentsRepository implements TreatmentsRepository {
-    update(data: Prisma.TreatmentUncheckedUpdateInput): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }> {
-        throw new Error('Method not implemented.')
+    async update(id: string, data: Prisma.TreatmentUncheckedUpdateInput): Promise<Treatment> {
+        const index = this.items.findIndex((item) => item.id === id)
+
+        if (index === -1) {
+            throw new Error('Treatment not found.')
+        }
+
+        const treatment = this.items[index]
+
+        const updatedTreatment = {
+            ...treatment,
+            ...data,
+        }
+
+        this.items[index] = updatedTreatment as Treatment
+
+        return updatedTreatment as Treatment
     }
-    async findByActive(): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }[] | null> {
+    async findByActive(pageIndex?: number, perPage?: number, treatmentId?: string, clientName?: string, status?: string): Promise<GetTreatmentDTO | null> {
         const activeTreatments = this.items.filter((treatment) => {
             return (
                 treatment.status === 'pending' ||
-              treatment.status === 'in_progress' ||
-              treatment.status === 'on_hold' ||
-              treatment.status === 'follow_up'
+                treatment.status === 'in_progress' ||
+                treatment.status === 'on_hold' ||
+                treatment.status === 'follow_up'
             )
         })
-        return activeTreatments
+
+        if (!activeTreatments.length) {
+            return null
+        }
+
+        return {
+            treatments: activeTreatments,
+            totalCount: activeTreatments.length,
+            pageIndex: pageIndex || 1,
+            perPage: perPage || 20
+        }
     }
 
     public items: Treatment[] = []
@@ -67,6 +93,10 @@ export class InMemoryTreatmentsRepository implements TreatmentsRepository {
 
         // this.items.push(treatment)
     }
+    async getMonthTreatmentsAmount(): Promise<{ amount: number; diffFromLastMonth: number }> {
+        return { amount: 0, diffFromLastMonth: 0 }
+    }
 }
+
 
 

@@ -17,8 +17,18 @@ export class InMemoryPaymentsRepository implements PaymentsRepository {
         this.items.push(payment)
         return payment
     }
-    async update(data: Prisma.PaymentUpdateInput): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null }> {
-        throw new Error('Method not implemented.')
+    async update(id: string, data: Prisma.PaymentUpdateInput) {
+        const index = this.items.findIndex(item => item.id === id)
+        const payment = this.items[index]
+        const updatedPayment = { ...payment, ...data } as Payment
+        this.items[index] = updatedPayment
+        return updatedPayment
+    }
+    async delete(id: string) {
+        const index = this.items.findIndex(item => item.id === id)
+        if (index >= 0) {
+            this.items.splice(index, 1)
+        }
     }
     async findById(id: string): Promise<{ id: string; name: string; installment_limit: number; in_sight: boolean; account_id: string | null } | null> {
         const payment = this.items.find((item) => item.id === id)

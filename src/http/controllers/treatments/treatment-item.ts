@@ -1,7 +1,7 @@
 import { MakeTreatmentItemUseCase } from '@/use-cases/factories/make-treatment-item-use-case'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-
+import { InsufficientStockError } from '@/use-cases/errors/insufficient-stock-error'
 
 
 
@@ -17,7 +17,8 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
         discount: z.number().nullish()
     })
 
-    const { treatment_id, item_id, stock_id,quantity,value, discount } = registerBodySchema.parse(request.body)
+    console.log('Controller createItemTreatment body:', request.body)
+    const { treatment_id, item_id, stock_id, quantity, value, discount } = registerBodySchema.parse(request.body)
 
     let itemTreatment
     try {
@@ -33,9 +34,11 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
             discount: discount ? discount : 0
         })
     } catch (err) {
-
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof InsufficientStockError) {
+            return reply.status(400).send({ message: err.message })
+        }
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err

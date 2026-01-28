@@ -2,6 +2,7 @@ import { Transaction, Prisma } from '@prisma/client'
 import { TransactionsRepository } from '../transactions-repository'
 import { randomUUID } from 'node:crypto'
 import { FinancialSummaryData } from '../DTO/get-financial-dashboard-dto'
+import { ChangeTransactionStatusParams } from '../DTO/change-transaction-status-params-dto'
 
 export class InMemoryTransactionsRepository implements TransactionsRepository {
     public items: Transaction[] = []
@@ -186,7 +187,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
     async create(data: Prisma.TransactionUncheckedCreateInput) {
         const transaction = {
-            id: randomUUID(),
+            id: data.id ? data.id as string : randomUUID(),
             operation: data.operation as string,
             amount: data.amount as number,
             account_id: data.account_id as string,
@@ -301,10 +302,12 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         }
     }
 
-    async changeTransactionStatus(id: string): Promise<void> {
-        const transaction = this.items.find(item => item.id === id)
-        if (transaction) {
-            transaction.confirmed = !transaction.confirmed
+    async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {
+        const transactionIndex = this.items.findIndex(item => item.id === data.id)
+        if (transactionIndex !== -1) {
+            this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
+            this.items[transactionIndex].amount = data.amount
+            this.items[transactionIndex].date = data.date
         }
     }
 }

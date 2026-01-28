@@ -5,6 +5,7 @@ import { StocksRepository } from '@/repositories/stocks-repository'
 import { ItemsRepository } from '@/repositories/items-repository'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 import { TreatmentsRepository } from '@/repositories/treatments-repository'
+import { InsufficientStockError } from './errors/insufficient-stock-error'
 
 interface TreatmentItemUseCaseRequest {
     item_id: string
@@ -46,18 +47,24 @@ export class TreatmentItemUseCase {
             if (!stock)
                 throw new ResourceNotFoundError()
         }
-        if(quantity <= 0 || salesValue <= 0)
+        if (quantity <= 0 || salesValue < 0)
             throw new OnlyNaturalNumbersError()
+        // Check if item should be treated as a product (has physical stock)
+        // Services (isItem = false) or items with name starting with 'Serviço'/'Clonagem' (safeguard) should skip stock check
+        const isService = !item?.isItem || item?.name?.toLowerCase().includes('clonagem') || item?.category?.toLowerCase().includes('servi')
 
-
+        if (item && !isService && item.stock !== null && quantity > item.stock) {
+            console.error(`[TreatmentItemUseCase] Stock Blocked: Item ${item.name} (isItem: ${item.isItem}), Stock: ${item.stock}, Req: ${quantity}`)
+            throw new InsufficientStockError(`Estoque insuficiente. Disponível: ${item.stock}, Requisitado: ${quantity}`)
+        }
 
         const treatmentItem = await this.treatmentItemsRepository.create({
-            treatment_id, item_id, stock_id, quantity, salesValue,  discount
+            treatment_id, item_id, stock_id, quantity, salesValue, discount
         })
-        this.treatmentsRepository.changeValue(treatment_id, quantity*salesValue, true)
+        const totalValue = (quantity * salesValue) - (discount ?? 0)
+        this.treatmentsRepository.changeValue(treatment_id, totalValue, true)
         return {
             treatmentItem
         }
     }
 }
-

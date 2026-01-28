@@ -3,7 +3,7 @@ import { GetTransactionsDTO } from './DTO/get-transactions-dto'
 import { ChangeTransactionStatusParams } from './DTO/change-transaction-status-params-dto'
 
 export interface TransactionsRepository {
-    create(data: Prisma.TransactionUncheckedCreateInput): Promise<Transaction>
+    create(data: Prisma.TransactionUncheckedCreateInput, tx?: Prisma.TransactionClient): Promise<Transaction>
     update(data: Prisma.TransactionUncheckedUpdateInput): Promise<Transaction> // Atualizado: recebe o ID e os dados para atualização
     changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void>
     findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string): Promise<GetTransactionsDTO | null>
