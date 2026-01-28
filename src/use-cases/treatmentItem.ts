@@ -61,7 +61,7 @@ export class TreatmentItemUseCase {
         const treatmentItem = await this.treatmentItemsRepository.create({
             treatment_id, item_id, stock_id, quantity, salesValue, discount
         })
-        const totalValue = (quantity * salesValue) - (discount ?? 0)
+        const totalValue = Number(((quantity * salesValue) - (discount ?? 0)).toFixed(2))
         this.treatmentsRepository.changeValue(treatment_id, totalValue, true)
         return {
             treatmentItem
