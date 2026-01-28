@@ -30,6 +30,9 @@ model User {
   password_hash String
   introduction  String?
 
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
   interactions Interaction[]
   Treatment    Treatment[]
 
@@ -44,7 +47,7 @@ model Client {
   email          String?
   contract       Boolean @default(false)
   created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  updated_at     DateTime @default(now()) @updatedAt
 
   addresses  Address?
   treatments Treatment[]
@@ -63,6 +66,9 @@ model Address {
   state        String
   zipcode      Int?
 
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
   clients Client @relation(fields: [client_id], references: [id])
 
   @@map("addresses")
@@ -80,6 +86,9 @@ model Treatment {
   status       String    @default("pending")
   amount       Float     @default(0)
   observations String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   users         User?           @relation(fields: [user_id], references: [id])
   clients       Client?         @relation(fields: [client_id], references: [id])
@@ -104,15 +113,18 @@ model TreatmentItem {
   stocks     Stock?    @relation(fields: [stock_id], references: [id])
   treatments Treatment @relation(fields: [treatment_id], references: [id])
 
-  @@map("treatmentItens")
+  @@map("treatment_items")
 }
 
 model Interaction {
   id           String   @id @default(uuid())
   user_id      String
   treatment_id String
-  date         DateTime
+  date         DateTime @default(now())
   description  String
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   treatments Treatment @relation(fields: [treatment_id], references: [id])
   users      User      @relation(fields: [user_id], references: [id])
@@ -133,6 +145,9 @@ model Item {
   category    String?
   active      Boolean? @default(true)
   isItem      Boolean? @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   stocks         Stock[]
   treatmentItems TreatmentItem[]
@@ -163,7 +178,7 @@ model Stock {
   quantity    Float
   operation   StockOperation
   description StockReason?
-  created_at  DateTime @default(now())
+  created_at  DateTime       @default(now())
 
   items         Item            @relation(fields: [item_id], references: [id])
   TreatmentItem TreatmentItem[]
@@ -178,9 +193,9 @@ model Equipment {
   brand          String?
   identification String?
   details        String?
-  entry          DateTime
+  entry          DateTime @default(now())
   created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  updated_at     DateTime @default(now()) @updatedAt
 
   client     Client      @relation(fields: [client_id], references: [id])
   treatments Treatment[]
@@ -194,6 +209,9 @@ model Payment {
   installment_limit Int
   in_sight          Boolean
   account_id        String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   accounts           Account?             @relation(fields: [account_id], references: [id])
   paymentEntrys      PaymentEntry[]
@@ -212,7 +230,7 @@ model PaymentEntry {
   payments   Payment   @relation(fields: [payment_id], references: [id])
   treatments Treatment @relation(fields: [treatment_id], references: [id])
 
-  @@map("paymentEntrys")
+  @@map("payment_entries")
 }
 
 model InstallmentPayment {
@@ -224,7 +242,7 @@ model InstallmentPayment {
   payments     Payment     @relation(fields: [payment_id], references: [id])
   transactions Transaction @relation(fields: [transaction_id], references: [id])
 
-  @@map("installmentPayments")
+  @@map("installment_payments")
 }
 
 model Account {
@@ -233,6 +251,9 @@ model Account {
   description String?
   balance     Float
   goal        Float?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   payments            Payment[]
   transactions        Transaction[]
@@ -250,6 +271,7 @@ model Transaction {
   sector_id   String?
   description String?
   confirmed   Boolean  @default(false)
+  created_at  DateTime @default(now())
 
   accounts            Account               @relation(fields: [account_id], references: [id])
   sectors             Sector?               @relation(fields: [sector_id], references: [id])
@@ -267,7 +289,7 @@ model TransferTransaction {
   accounts    Account     @relation(fields: [destination_account_id], references: [id])
   transaction Transaction @relation(fields: [transaction_id], references: [id])
 
-  @@map("transfertransactions")
+  @@map("transfer_transactions")
 }
 
 model Sector {
@@ -275,6 +297,10 @@ model Sector {
   name         String
   budget       Float?
   type         String        @default("in")
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
   transactions Transaction[]
 
   @@map("sectors")
