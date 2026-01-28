@@ -38,6 +38,35 @@ export class FinishTreatmentUseCase {
             throw new Error('Treatment already finished')
         }
 
+        // --- SYNC LOGIC START ---
+        // Ensure treatment.amount is perfectly synced with items before Payment Validation
+        let calculatedTotal = 0
+        // @ts-ignore
+        if (treatment.items && treatment.items.length > 0) {
+            // @ts-ignore
+            calculatedTotal = treatment.items.reduce((acc, tItem) => {
+                const qty = tItem.quantity
+                const val = tItem.salesValue ?? 0
+                const disc = tItem.discount ?? 0
+                return acc + ((qty * val) - disc)
+            }, 0)
+        }
+
+        // Round to 2 decimals
+        calculatedTotal = Number(calculatedTotal.toFixed(2))
+
+        // If there is a discrepancy, update the treatment amount in DB (Self-healing)
+        if (Math.abs(treatment.amount - calculatedTotal) > 0.01) {
+            console.warn(`[FinishTreatment] Fixing treatment amount discrepancy. DB: ${treatment.amount}, Real: ${calculatedTotal}`)
+            await prisma.treatment.update({
+                where: { id: treatment_id },
+                data: { amount: calculatedTotal }
+            })
+            // Update local object for next steps
+            treatment.amount = calculatedTotal
+        }
+        // --- SYNC LOGIC END ---
+
         const paymentEntries = await this.paymentEntrysRepository.findByTreatmentId(treatment_id)
         // paymentEntries includes 'payments' relation now (via repository update)
 
