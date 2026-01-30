@@ -14,9 +14,11 @@ export async function createClient(request: FastifyRequest, reply: FastifyReply)
         phone: z.string().nullish(),
         email: z.string().nullish(),
         contract: z.boolean().nullish(),
+        contact: z.string().nullish(),
+        isEnterprise: z.boolean().nullish(),
     })
 
-    const { name, identification, phone, email,contract } = registerBodySchema.parse(request.body)
+    const { name, identification, phone, email, contract, contact, isEnterprise } = registerBodySchema.parse(request.body)
     let client
     try {
 
@@ -24,15 +26,17 @@ export async function createClient(request: FastifyRequest, reply: FastifyReply)
 
         client = await clientUseCase.execute({
             name,
-            identification: identification ? identification : null,
-            phone: phone ? phone : null,
-            email: email ? email : null,
-            contract: contract ? contract : false
+            identification: identification ? identification : undefined,
+            phone: phone ? phone : undefined,
+            email: email ? email : undefined,
+            contract: contract ? contract : false,
+            contact: contact ? contact : undefined,
+            isEnterprise: isEnterprise ? isEnterprise : false
         })
     } catch (err) {
 
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err

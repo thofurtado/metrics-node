@@ -46,6 +46,8 @@ model Client {
   phone          String?
   email          String?
   contract       Boolean @default(false)
+  contact        String?
+  isEnterprise   Boolean @default(false)
   created_at     DateTime @default(now())
   updated_at     DateTime @default(now()) @updatedAt
 
@@ -134,7 +136,7 @@ model Interaction {
 
 model Item {
   id          String   @id @default(uuid())
-  display_id  Int      @unique @default(autoincrement())
+  display_id  Int      @unique
   name        String
   description String?
   cost        Float

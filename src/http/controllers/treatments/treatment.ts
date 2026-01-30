@@ -31,7 +31,7 @@ export async function createTreatment(request: FastifyRequest, reply: FastifyRep
 
         treatment = await treatmentUseCase.execute({
             opening_date: opening_date ? opening_date : new Date(),
-            ending_date: ending_date ? ending_date : undefined,
+            ending_date: status === 'resolved' ? new Date() : undefined,
             contact: contact ? contact : undefined,
             user_id: user_id ? user_id : undefined,
             client_id: client_id ? client_id : undefined,
@@ -43,8 +43,8 @@ export async function createTreatment(request: FastifyRequest, reply: FastifyRep
         })
     } catch (err) {
 
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err

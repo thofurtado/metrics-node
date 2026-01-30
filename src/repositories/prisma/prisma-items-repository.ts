@@ -160,26 +160,34 @@ export class PrismaItemsRepository implements ItemsRepository {
         return (item as any)?.display_id ?? 0
     }
 
-    async findNextAvailableDisplayId(): Promise<number> {
-        // Fetch all display_ids ordered ascending
-        const items = await prisma.item.findMany({
-            // @ts-ignore
-            select: { display_id: true },
-            // @ts-ignore
-            orderBy: { display_id: 'asc' }
+    async findNextAvailableDisplayId(tx?: Prisma.TransactionClient): Promise<number> {
+        const client = tx ?? prisma
+
+        // 1. Check if ID 1 exists
+        const first = await client.item.findUnique({
+            where: { display_id: 1 }
         })
 
-        const ids = items.map((i: any) => i.display_id)
+        if (!first) return 1
 
-        // Find first gap
-        let expected = 1
-        for (const id of ids) {
-            if (id === expected) {
-                expected++
-            } else if (id > expected) {
-                return expected
-            }
+        // 2. Find the first gap using raw query
+        // "SELECT (t1.display_id + 1) as next_id FROM items t1 LEFT JOIN items t2 ON t1.display_id + 1 = t2.display_id WHERE t2.display_id IS NULL ORDER BY t1.display_id ASC LIMIT 1"
+        const result = await client.$queryRaw<{ next_id: number }[]>`
+            SELECT (t1.display_id + 1) as next_id 
+            FROM items t1 
+            LEFT JOIN items t2 ON t1.display_id + 1 = t2.display_id 
+            WHERE t2.display_id IS NULL 
+            ORDER BY t1.display_id ASC 
+            LIMIT 1
+        `
+
+        if (result.length > 0) {
+            return result[0].next_id
         }
-        return expected
+
+        // If no gaps found (unlikely given loop logic, but usually means table is fully sequential)
+        // Return max + 1
+        const max = await this.findMaxDisplayId()
+        return max + 1
     }
 }

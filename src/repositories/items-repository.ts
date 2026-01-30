@@ -10,5 +10,5 @@ export interface ItemsRepository {
     changeStock(id: string, stock: number, operationType: boolean, tx?: Prisma.TransactionClient): Promise<void>
     setActive(id: string, commutator: boolean, tx?: Prisma.TransactionClient): Promise<void>
     findMaxDisplayId(): Promise<number>
-    findNextAvailableDisplayId(): Promise<number>
+    findNextAvailableDisplayId(tx?: Prisma.TransactionClient): Promise<number>
 }

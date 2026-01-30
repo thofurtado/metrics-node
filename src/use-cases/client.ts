@@ -6,6 +6,8 @@ interface ClientUseCaseRequest {
     identification?: string,
     phone?: string,
     contract?: boolean,
+    contact?: string,
+    isEnterprise?: boolean
 }
 
 interface ClientUseCaseResponse {
@@ -17,7 +19,7 @@ export class ClientUseCase {
         private clientsRepository: ClientsRepository
     ) { }
     async execute({
-        name, email, identification, phone, contract
+        name, email, identification, phone, contract, contact, isEnterprise
     }: ClientUseCaseRequest): Promise<ClientUseCaseResponse> {
 
         const client = await this.clientsRepository.create({
@@ -25,7 +27,9 @@ export class ClientUseCase {
             email,
             identification,
             phone,
-            contract
+            contract,
+            contact,
+            isEnterprise
         })
         return {
             client

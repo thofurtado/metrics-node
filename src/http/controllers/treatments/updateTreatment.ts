@@ -26,10 +26,10 @@ export async function updateTreatment(request: FastifyRequest, reply: FastifyRep
     let treatment
     try {
         const updateTreatmentUseCase = MakeUpdateTreatmentUseCase()
-        treatment =  await updateTreatmentUseCase.execute({
+        treatment = await updateTreatmentUseCase.execute({
             id,
             opening_date: opening_date ? opening_date : undefined,
-            ending_date: ending_date ? ending_date : undefined,
+            ending_date: status === 'resolved' ? new Date() : (ending_date ? ending_date : undefined),
             contact: contact ? contact : undefined,
             user_id: user_id ? user_id : undefined,
             client_id: client_id ? client_id : undefined,

@@ -4,6 +4,7 @@ import { ThisNameAlreadyExistsError } from './errors/this-name-already-exists-er
 import { StocksRepository } from '@/repositories/stocks-repository'
 import { PriceCannotBeLowerThanCost } from './errors/price-cannot-be-lower-than-cost-error'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
+import { DisplayIdAlreadyExistsError } from './errors/display-id-already-exists-error'
 import { prisma } from '@/lib/prisma'
 
 interface ItemUseCaseRequest {
@@ -38,6 +39,13 @@ export class ItemUseCase {
             throw new ThisNameAlreadyExistsError()
         }
 
+        if (display_id) {
+            const existingWithId = await this.itemsRepository.findMany(undefined, undefined, 1, 1, undefined, display_id)
+            if (existingWithId && existingWithId.items && existingWithId.items.length > 0) {
+                throw new DisplayIdAlreadyExistsError()
+            }
+        }
+
         if (price < cost)
             throw new PriceCannotBeLowerThanCost()
 
@@ -52,7 +60,7 @@ export class ItemUseCase {
 
                 let finalDisplayId = display_id
                 if (!finalDisplayId || isNaN(finalDisplayId)) {
-                    finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId()
+                    finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId(tx)
                 }
 
                 const item = await this.itemsRepository.create({
@@ -75,7 +83,7 @@ export class ItemUseCase {
 
             let finalDisplayId = display_id
             if (!finalDisplayId || isNaN(finalDisplayId)) {
-                finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId()
+                finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId(tx)
             }
 
             const item = await this.itemsRepository.create({

@@ -1,36 +1,36 @@
-import {FastifyRequest, FastifyReply} from 'fastify'
-import {z} from 'zod'
+import { FastifyRequest, FastifyReply } from 'fastify'
+import { z } from 'zod'
 import { UserAlreadyExistsError } from '@/use-cases/errors/user-already-exists-error'
 import { MakeSectorUseCase } from '@/use-cases/factories/make-sector-use-case'
 
 
 
 
-export async function createSector (request: FastifyRequest, reply: FastifyReply) {
+export async function createSector(request: FastifyRequest, reply: FastifyReply) {
 
     const registerBodySchema = z.object({
         name: z.string(),
-        budget: z.number(),
+        budget: z.number().nullable().optional(),
         type: z.string()
     })
 
-    const {name, budget, type} = registerBodySchema.parse(request.body)
+    const { name, budget, type } = registerBodySchema.parse(request.body)
 
     try {
         const sectorUseCase = MakeSectorUseCase()
-        await sectorUseCase.execute({
+        const { sector } = await sectorUseCase.execute({
             name,
-            budget,
+            budget: budget ?? undefined,
             type
         })
-    } catch(err){
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        return reply.status(201).send(sector)
+    } catch (err) {
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err
     }
-    return reply.status(200).send()
 }
 
 
