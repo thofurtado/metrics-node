@@ -1,6 +1,7 @@
 import { ItemsRepository } from '@/repositories/items-repository'
 import { StocksRepository } from '@/repositories/stocks-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
+import { prisma } from '@/lib/prisma'
 
 interface DeleteItemUseCaseRequest {
     itemId: string
@@ -19,15 +20,22 @@ export class DeleteItemUseCase {
             throw new ResourceNotFoundError()
         }
 
-        // Check for active stock or history
-        const stockHistory = await this.stocksRepository.getItemHistory(itemId)
+        // Manual Cascade within a Transaction to ensure permanence
+        await prisma.$transaction(async (tx) => {
+            // Delete specialized records first
+            if (item.type === 'PRODUCT') {
+                await tx.product.deleteMany({ where: { id: itemId } })
+            } else if (item.type === 'SERVICE') {
+                await tx.service.deleteMany({ where: { id: itemId } })
+            } else if (item.type === 'SUPPLY') {
+                await tx.supply.deleteMany({ where: { id: itemId } })
+            }
 
-        // If there's any stock history (movements), preventing deletion ensures data integrity check
-        // Assuming getItemHistory returns null or empty array if no history
-        if (stockHistory && stockHistory.length > 0) {
-            throw new Error('Cannot delete item with stock history. Archive it instead.')
-        }
+            // Delete the parent Item record via repository to ensure state sync (InMemory)
+            // and participation in the transaction (Prisma)
+            await this.itemsRepository.remove(itemId, tx)
+        })
 
-        await this.itemsRepository.remove(itemId)
+        console.log(`[DeleteItem] Permanent removal successful for ID: ${itemId}`)
     }
 }

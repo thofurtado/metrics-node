@@ -1,5 +1,5 @@
 // repositories/prisma/prisma-inventory-repository.ts
-import { Prisma } from '@prisma/client'
+import { Prisma, ItemType } from '@prisma/client'
 import { InventoryRepository, InventorySummaryData } from '../inventory-repository'
 import { prisma } from '@/lib/prisma'
 
@@ -11,114 +11,106 @@ export class PrismaInventoryRepository implements InventoryRepository {
         const startOfMonth = new Date(currentYear, currentMonth, 1)
         const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1)
 
-        // 1. Patrimônio: soma de (stock * cost) para todos os produtos (isItem = true)
-        const items = await prisma.item.findMany({
-            where: {
-                isItem: true,
-                active: true
-            },
-            select: {
-                stock: true,
-                cost: true
-            }
-        })
+        // 1. Patrimônio
+        // Sum of (Product.stock * Product.price) + (Supply.stock * Supply.cost)
 
-        const patrimony = items.reduce((sum, item) => {
-            const itemStock = item.stock || 0
-            const itemCost = item.cost || 0
-            return sum + (itemStock * itemCost)
-        }, 0)
+        const [products, supplies] = await Promise.all([
+            prisma.product.findMany({
+                select: {
+                    stock: true,
+                    price: true
+                }
+            }),
+            prisma.supply.findMany({
+                select: {
+                    stock: true,
+                    cost: true
+                }
+            })
+        ])
 
-        // 2. Valor Total de Produtos Vendidos: soma de (quantity * salesValue) para itens (isItem = true)
-        const productsSoldResult = await prisma.treatmentItem.aggregate({
-            _sum: {
-                quantity: true
-            },
+        const productsValue = products.reduce((sum, p) => sum + ((p.stock || 0) * p.price), 0)
+        const suppliesValue = supplies.reduce((sum, s) => sum + ((s.stock || 0) * s.cost), 0)
+
+        const patrimony = productsValue + suppliesValue
+
+        // 2. Sales / Budgets
+        const salesStatuses = ['resolved', 'finished']
+
+        const monthlyItems = await prisma.treatmentItem.findMany({
             where: {
-                AND: [
-                    {
-                        treatments: {
-                            opening_date: {
-                                gte: startOfMonth,
-                                lt: startOfNextMonth
-                            }
-                        }
-                    },
-                    {
-                        items: {
-                            isItem: true
-                        }
+                treatments: {
+                    opening_date: {
+                        gte: startOfMonth,
+                        lt: startOfNextMonth
                     }
-                ]
-            }
-        })
-
-        // Buscar os TreatmentItems para calcular o valor total
-        const productItems = await prisma.treatmentItem.findMany({
-            where: {
-                AND: [
-                    {
-                        treatments: {
-                            opening_date: {
-                                gte: startOfMonth,
-                                lt: startOfNextMonth
-                            }
-                        }
-                    },
-                    {
-                        items: {
-                            isItem: true
-                        }
-                    }
-                ]
+                }
             },
             select: {
                 quantity: true,
-                salesValue: true
-            }
-        })
-
-        const productsSoldValue = productItems.reduce((sum, item) => {
-            const quantity = item.quantity || 0
-            const salesValue = item.salesValue || 0
-            return sum + (quantity * salesValue)
-        }, 0)
-
-        // 3. Valor Total de Serviços Vendidos: soma de (quantity * salesValue) para serviços (isItem = false)
-        const serviceItems = await prisma.treatmentItem.findMany({
-            where: {
-                AND: [
-                    {
-                        treatments: {
-                            opening_date: {
-                                gte: startOfMonth,
-                                lt: startOfNextMonth
-                            }
-                        }
-                    },
-                    {
-                        items: {
-                            isItem: false
-                        }
+                salesValue: true,
+                discount: true,
+                items: {
+                    select: {
+                        type: true
                     }
-                ]
-            },
-            select: {
-                quantity: true,
-                salesValue: true
+                },
+                treatments: {
+                    select: {
+                        status: true
+                    }
+                }
             }
         })
 
-        const servicesSoldValue = serviceItems.reduce((sum, item) => {
+        let productsSoldValue = 0
+        let servicesSoldValue = 0
+        let productsBudgetValue = 0
+        let servicesBudgetValue = 0
+
+        for (const item of monthlyItems) {
             const quantity = item.quantity || 0
             const salesValue = item.salesValue || 0
-            return sum + (quantity * salesValue)
-        }, 0)
+            const discount = item.discount || 0
+
+            // Valor Líquido = (Preço * Qtd) - Desconto
+            // salesValue comes from TreatmentItem snapshot.
+            const totalItemValue = (quantity * salesValue) - discount
+
+            const isProduct = item.items.type === ItemType.PRODUCT
+            const isService = item.items.type === ItemType.SERVICE
+            // What about Supply? Usually internal usage, not sold in treatments directly as revenue source? 
+            // If supply is added to treatment, it counts as product-like sale?
+            // Assuming Supply is treated similar to Product for "Products Sold" if present?
+            // Or ignored?
+            // Prompt says: "Refatore ... productsSold and servicesSold searching new tables Product and Service."
+            // So implicitly `isProduct` handles `PRODUCT`.
+            // I'll group `Supply` under `Product` if it happens? Or ignore.
+            // Safe bet: strict check.
+
+            const isSale = item.treatments.status && salesStatuses.includes(item.treatments.status)
+
+            if (isProduct) {
+                if (isSale) {
+                    productsSoldValue += totalItemValue
+                } else {
+                    productsBudgetValue += totalItemValue
+                }
+            } else if (isService) {
+                if (isSale) {
+                    servicesSoldValue += totalItemValue
+                } else {
+                    servicesBudgetValue += totalItemValue
+                }
+            }
+        }
 
         return {
             patrimony,
-            productsSold: productsSoldValue,
-            servicesSold: servicesSoldValue
+            productsSold: Number(productsSoldValue.toFixed(2)),
+            servicesSold: Number(servicesSoldValue.toFixed(2)),
+            productsBudget: Number(productsBudgetValue.toFixed(2)),
+            servicesBudget: Number(servicesBudgetValue.toFixed(2))
         }
     }
 }

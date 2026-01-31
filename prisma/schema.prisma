@@ -86,7 +86,6 @@ model Treatment {
   equipment_id String?
   request      String
   status       String    @default("pending")
-  amount       Float     @default(0)
   observations String?
 
   created_at DateTime @default(now())
@@ -134,27 +133,67 @@ model Interaction {
   @@map("interactions")
 }
 
+enum ItemType {
+  PRODUCT
+  SERVICE
+  SUPPLY
+}
+
 model Item {
   id          String   @id @default(uuid())
-  display_id  Int      @unique
   name        String
   description String?
-  cost        Float
-  price       Float
-  stock       Float?   @default(0)
-  min_stock   Float?   @default(0)
-  barcode     String?
   category    String?
   active      Boolean? @default(true)
-  isItem      Boolean? @default(true)
+  type        ItemType @default(PRODUCT)
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
+
+  product Product?
+  service Service?
+  supply  Supply?
 
   stocks         Stock[]
   treatmentItems TreatmentItem[]
 
   @@map("items")
+}
+
+model Product {
+  id         String @id
+  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  display_id Int     @unique
+  price      Float
+  stock      Float?  @default(0)
+  min_stock  Float?  @default(0)
+  barcode    String?
+  ncm        String?
+
+  @@map("products")
+}
+
+model Service {
+  id         String @id
+  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  display_id     Int     @unique
+  price          Float
+  estimated_time String?
+
+  @@map("services")
+}
+
+model Supply {
+  id         String @id
+  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  cost  Float
+  stock Float?  @default(0)
+  unit  String?
+
+  @@map("supplies")
 }
 
 enum StockReason {

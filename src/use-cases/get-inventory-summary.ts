@@ -6,6 +6,8 @@ interface GetInventorySummaryUseCaseResponse {
         patrimony: number
         productsSold: number
         servicesSold: number
+        productsBudget: number
+        servicesBudget: number
     }
 }
 

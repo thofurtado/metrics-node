@@ -394,7 +394,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
     async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {
         // Agora só desestrutura id, amount e date
-        const { id, amount: newAmount, date } = data
+        const { id, amount: newAmount, date, account_id } = data
 
         // 1. Busca a transação original para verificar a existência e o status
         const existingTransaction = await prisma.transaction.findUnique({
@@ -423,22 +423,26 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             accountBalanceChange = -newAmount
         }
 
+        const targetAccountId = account_id || existingTransaction.account_id
+
         // 3. Executa a transação de banco de dados (atomicidade)
         try {
             await prisma.$transaction(async (tx) => {
                 // a) Atualiza a Transação Original: Confirma com o novo valor e a data de liquidação
+                // Se account_id foi passado, atualiza também a conta vinculada.
                 await tx.transaction.update({
                     where: { id },
                     data: {
                         amount: newAmount, // Novo valor (pago parcial ou total)
                         date, // Nova data de liquidação (data de liquidação efetiva)
                         confirmed: true, // Hardcoded: a função é para liquidar/confirmar
+                        account_id: targetAccountId // Atualiza a conta se mudou
                     },
                 })
 
-                // b) Atualiza o Saldo da Conta
+                // b) Atualiza o Saldo da Conta (da conta FINAL, onde o pagamento ocorreu)
                 await tx.account.update({
-                    where: { id: existingTransaction.account_id },
+                    where: { id: targetAccountId },
                     data: {
                         balance: {
                             // Adiciona/Remove o valor liquidado do saldo existente
@@ -454,6 +458,62 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         }
     }
 
+    async revertTransactionStatus(id: string): Promise<void> {
+        // 1. Busca a transação original
+        const existingTransaction = await prisma.transaction.findUnique({
+            where: { id },
+        })
+
+        if (!existingTransaction) {
+            throw new ResourceNotFoundError()
+        }
+
+        // Se já estiver Pendente, não faz nada
+        if (!existingTransaction.confirmed) {
+            return
+        }
+
+        // 2. Determinar o impacto no saldo (Reverso da Liquidação)
+        let accountBalanceChange = 0;
+
+        if (existingTransaction.operation === 'income') {
+            // Era receita (+). Reverter significa retirar do saldo (-).
+            accountBalanceChange = -existingTransaction.amount
+        } else if (existingTransaction.operation === 'expense') {
+            // Era despesa (-). Reverter significa devolver ao saldo (+).
+            accountBalanceChange = existingTransaction.amount
+        }
+
+        const targetAccountId = existingTransaction.account_id
+
+        // 3. Executa a transação do banco de dados (atomicidade)
+        try {
+            await prisma.$transaction(async (tx) => {
+                // a) Atualiza a Transação: Marca como Pendente (false)
+                await tx.transaction.update({
+                    where: { id },
+                    data: {
+                        confirmed: false,
+                        // Não alteramos a data. A data que estava vira a data de vencimento.
+                    },
+                })
+
+                // b) Atualiza o Saldo da Conta
+                await tx.account.update({
+                    where: { id: targetAccountId },
+                    data: {
+                        balance: {
+                            increment: accountBalanceChange,
+                        },
+                    },
+                })
+            })
+        } catch (error) {
+            console.error('Erro na reversão da transação:', error)
+            throw new Error('Falha ao reverter a transação e atualizar o saldo.')
+        }
+    }
+
     async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{
         id: string;
         operation: string;
@@ -462,7 +522,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         account_id: string;
         sector_id: string | null;
         description: string | null;
-        confirmed: boolean
+        confirmed: boolean;
+        created_at: Date;
     }> {
         // Verifica se o ID foi fornecido
         if (!data.id) {
@@ -503,10 +564,11 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             account_id: updatedTransaction.account_id,
             sector_id: updatedTransaction.sector_id,
             description: updatedTransaction.description,
-            confirmed: updatedTransaction.confirmed
+            confirmed: updatedTransaction.confirmed,
+            created_at: updatedTransaction.created_at
         };
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date): Promise<GetTransactionsDTO | null> {
 
         if (!pageIndex)
             pageIndex = 1
@@ -529,78 +591,78 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         } else {
             account = account_id
         }
-        //const year = month.getFullYear()
+        // Status filter logic
+        let confirmedFilter: boolean | undefined = undefined;
+        if (status === 'pending') {
+            confirmedFilter = false;
+        } else if (status === 'completed') {
+            confirmedFilter = true;
+        }
+
         const year = month.getFullYear()
         const monthNumber = month.getMonth() + 1
-        const totalCount = await prisma.transaction.count({
-            where: {
-                AND: [
-                    {
-                        date: {
-                            gte: new Date(year, monthNumber - 1, 1), // Start of month
-                            lt: new Date(year, monthNumber, 1), // End of month (excluding the last day)
-                        },
-                    },
-                    {
-                        sectors: {
-                            id: { equals: sector }
-                        }
-                    },
-                    {
-                        accounts: {
-                            id: { equals: account }
-                        }
-                    },
-                    {
-                        description: {
-                            contains: description,
-                            mode: 'insensitive'
-                        }
-                    },
-                    {
-                        amount: {
-                            equals: value
-                        }
-                    }
-                ]
+
+        // Define date filter logic
+        let dateFilter: Prisma.DateTimeFilter<"Transaction"> | undefined;
+
+        if (status === 'pending') {
+            // Horizon Flow: "Todas as não pagas (independente data) + futuras até toDate"
+            // Se confirmado = false, buscamos tudo <= toDate (que inclui passado + futuro próximo)
+            // Se toDate não for passado, assumimos um padrão (ex: hoje + 7 dias - handled in Use Case usually, but here as fallback)
+            const targetDate = toDate || new Date(new Date().setDate(new Date().getDate() + 7));
+
+            // Set end of day for targetDate to be inclusive
+            targetDate.setHours(23, 59, 59, 999);
+
+            dateFilter = {
+                lte: targetDate
             }
+        } else {
+            // Default Month Flow (History)
+            dateFilter = {
+                gte: new Date(year, monthNumber - 1, 1), // Start of month
+                lt: new Date(year, monthNumber, 1), // End of month (excluding the last day)
+            }
+        }
+
+        const whereConditions: Prisma.TransactionWhereInput = {
+            AND: [
+                {
+                    date: dateFilter // Use dynamic date filter
+                },
+                {
+                    sectors: {
+                        id: { equals: sector }
+                    }
+                },
+                {
+                    accounts: {
+                        id: { equals: account }
+                    }
+                },
+                {
+                    description: {
+                        contains: description,
+                        mode: 'insensitive'
+                    }
+                },
+                {
+                    amount: {
+                        equals: value
+                    }
+                },
+                // Add confirmed filter if status is provided
+                ...(confirmedFilter !== undefined ? [{ confirmed: confirmedFilter }] : [])
+            ]
+        }
+
+        const totalCount = await prisma.transaction.count({
+            where: whereConditions
         })
-
-
 
         const transactions = await prisma.transaction.findMany({
             skip, take,
-            where: {
-                AND: [
-                    {
-                        date: {
-                            gte: new Date(year, monthNumber - 1, 1), // Start of month
-                            lt: new Date(year, monthNumber, 1), // End of month (excluding the last day)
-                        },
-                    },
-                    {
-                        sectors: {
-                            id: { equals: sector }
-                        }
-                    },
-                    {
-                        accounts: {
-                            id: { equals: account }
-                        }
-                    },
-                    {
-                        description: {
-                            contains: description,
-                            mode: 'insensitive'
-                        }
-                    },
-                    {
-                        amount: {
-                            equals: value
-                        }
-                    }
-                ]
-            },
+            where: whereConditions,
             orderBy: [
                 {
                     date: 'asc'

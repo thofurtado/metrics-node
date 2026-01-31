@@ -24,8 +24,22 @@ export class PrismaTransferTransactionsRepository implements TransferTransaction
 
         return transaction
     }
-    async findMany(): Promise<{ id: string; destination_account_id: string; transaction_id: string }[] | null> {
-        const transferTransactions = prisma.transferTransaction.findMany()
+    async findMany() {
+        const transferTransactions = await prisma.transferTransaction.findMany({
+            include: {
+                transaction: {
+                    include: {
+                        accounts: true
+                    }
+                },
+                accounts: true
+            },
+            orderBy: {
+                transaction: {
+                    date: 'desc'
+                }
+            }
+        })
         return transferTransactions
     }
 }

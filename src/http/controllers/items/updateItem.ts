@@ -9,20 +9,22 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
 
     const updateItemBodySchema = z.object({
         name: z.string().optional(),
-        description: z.string().nullish(),
-        cost: z.number().optional(),
-        price: z.number().optional(),
-        min_stock: z.number().nullish(),
-        barcode: z.string().nullish(),
-        category: z.string().nullish(),
-        active: z.boolean().optional(),
-        isItem: z.boolean().optional(),
+        description: z.string().nullable().optional(),
+        cost: z.number().nullable().optional(),
+        price: z.number().nullable().optional(),
+        min_stock: z.number().nullable().optional(),
+        barcode: z.string().nullable().optional(),
+        category: z.string().nullable().optional(),
+        active: z.boolean().nullable().optional(),
+        estimated_time: z.string().nullable().optional(),
+        unit: z.string().nullable().optional(),
+        display_id: z.preprocess((val) => (val === '' || val == null) ? undefined : Number(val), z.number().optional()),
+        ncm: z.string().nullable().optional(),
     })
 
-    const { id } = updateItemParamsSchema.parse(request.params)
-    const data = updateItemBodySchema.parse(request.body)
-
     try {
+        const { id } = updateItemParamsSchema.parse(request.params)
+        const data = updateItemBodySchema.parse(request.body)
         const updateItemUseCase = makeUpdateItemUseCase()
         const { item } = await updateItemUseCase.execute({
             id,
@@ -31,9 +33,22 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
             min_stock: data.min_stock ?? undefined,
             barcode: data.barcode ?? undefined,
             category: data.category ?? undefined,
+            estimated_time: data.estimated_time ?? undefined,
+            unit: data.unit ?? undefined,
+            display_id: data.display_id ?? undefined,
+            ncm: data.ncm ?? undefined,
         })
         return reply.status(200).send(item)
     } catch (err) {
+        console.error('[UpdateItem Error]:', err)
+
+        if (err instanceof z.ZodError) {
+            return reply.status(400).send({
+                message: 'Erro de validação nos campos: ' + err.issues.map(i => i.path.join('.')).join(', '),
+                issues: err.issues
+            })
+        }
+
         if (err instanceof Error) {
             return reply.status(400).send({ message: err.message })
         }

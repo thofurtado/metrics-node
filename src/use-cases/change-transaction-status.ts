@@ -9,6 +9,7 @@ interface ChangeTransactionUseCaseRequest {
     amount: number // Valor que está sendo pago/recebido (liquidação)
     date: Date // Data efetiva do pagamento/recebimento
     remainingDate?: Date // Data de vencimento da parcela restante (opcional)
+    account_id?: string // Conta selecionada para o pagamento (opcional)
 }
 
 // Função auxiliar para padronizar e limpar a descrição de parcelas restantes,
@@ -74,6 +75,7 @@ export class ChangeTransactionUseCase {
         amount: amountPaid,
         date,
         remainingDate,
+        account_id, // Recebe a conta
 
     }: ChangeTransactionUseCaseRequest): Promise<void> {
 
@@ -111,9 +113,11 @@ export class ChangeTransactionUseCase {
             const newDescription = getCleanRemainingDescription(originalTransaction);
 
             // Prepara os dados da transação remanescente
+            // OBS: O remanescente continua na conta original (pois é uma dívida pendente), 
+            // a menos que queiramos migrar tudo. Mas o account_id passado é para o PAGAMENTO.
             const remainingTransactionData: Prisma.TransactionUncheckedCreateInput = {
                 operation: originalTransaction.operation,
-                account_id: originalTransaction.account_id,
+                account_id: originalTransaction.account_id, // Mantém na conta original
                 sector_id: originalTransaction.sector_id,
 
                 amount: remainingAmount,
@@ -131,6 +135,7 @@ export class ChangeTransactionUseCase {
             id,
             amount: amountPaid,
             date,
+            account_id, // Passa a nova conta para a repository atualizar antes de confirmar
         })
     }
 }

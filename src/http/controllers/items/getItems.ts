@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { MakeGetItemsUseCase } from '@/use-cases/factories/make-get-items-use-case'
+import { ItemType } from '@prisma/client'
 
 export async function getItems(request: FastifyRequest, reply: FastifyReply) {
     const getItemsQuerySchema = z.object({
@@ -11,17 +12,13 @@ export async function getItems(request: FastifyRequest, reply: FastifyReply) {
             if (val === 'false') return false
             return undefined
         }),
-        is_product: z.enum(['true', 'false']).optional().transform((val) => {
-            if (val === 'true') return true
-            if (val === 'false') return false
-            return undefined
-        }),
+        type: z.nativeEnum(ItemType).optional(),
         name: z.string().optional(),
         display_id: z.coerce.number().optional(),
         below_min_stock: z.enum(['true', 'false']).optional().transform((val) => val === 'true')
     })
 
-    const { page, limit, is_active, is_product, name, display_id, below_min_stock } = getItemsQuerySchema.parse(request.query)
+    const { page, limit, is_active, type, name, display_id, below_min_stock } = getItemsQuerySchema.parse(request.query)
 
     try {
         const getItemUseCase = MakeGetItemsUseCase()
@@ -29,10 +26,10 @@ export async function getItems(request: FastifyRequest, reply: FastifyReply) {
             page,
             limit,
             is_active,
-            is_product,
+            type,
             name,
             display_id,
-            below_min_stock
+            below_min_stock: below_min_stock
         })
 
         return reply.status(200).send(result)

@@ -1,18 +1,26 @@
 import { prisma } from '@/lib/prisma'
-import { Item, Prisma } from '@prisma/client'
-import { ItemsRepository } from '../items-repository'
+import { Item, Prisma, ItemType } from '@prisma/client'
+import { ItemsRepository, ItemWithExtensions } from '../items-repository'
 import { GetItemsDTO } from '../DTO/get-items-dto'
 
 export class PrismaItemsRepository implements ItemsRepository {
-    async create(data: Prisma.ItemCreateInput, tx?: Prisma.TransactionClient): Promise<Item> {
+    async create(data: Prisma.ItemCreateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions> {
         const client = tx ?? prisma
         const item = await client.item.create({
-            data
+            data,
+            include: {
+                product: true,
+                service: true,
+                supply: true
+            }
         })
         return item
     }
-    async findByName(name: string, is_active?: boolean | undefined): Promise<Item[] | null> {
+
+    async findByName(name: string, is_active?: boolean | undefined): Promise<ItemWithExtensions[] | null> {
         let item
+        const include = { product: true, service: true, supply: true }
+
         if (is_active) {
             item = await prisma.item.findMany({
                 where: {
@@ -20,15 +28,16 @@ export class PrismaItemsRepository implements ItemsRepository {
                         { name: name },
                         { active: is_active }
                     ]
-
-                }
+                },
+                include
             })
         }
         else {
             item = await prisma.item.findMany({
                 where: {
                     name
-                }
+                },
+                include
             })
         }
 
@@ -36,42 +45,49 @@ export class PrismaItemsRepository implements ItemsRepository {
             return null
         return item
     }
-    async findById(id: string): Promise<Item | null> {
+
+    async findById(id: string): Promise<ItemWithExtensions | null> {
         const item = await prisma.item.findFirst({
             where: {
                 id
+            },
+            include: {
+                product: true,
+                service: true,
+                supply: true
             }
         })
         return item
     }
-    async findMany(is_active?: boolean | undefined, is_product?: boolean | undefined, pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
+
+    async findMany(is_active?: boolean | undefined, type?: ItemType, pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
         const page = Math.max(1, pageIndex || 1)
         const limit = perPage || 10
         const skip = (page - 1) * limit
 
         const where: Prisma.ItemWhereInput = {}
         if (is_active !== undefined) where.active = is_active
-        if (is_product !== undefined) where.isItem = is_product
+
+        if (type) {
+            where.type = type
+        }
+
         if (name) where.name = { contains: name, mode: 'insensitive' }
-        // @ts-ignore: Prisma types might be stale regarding display_id
-        if (display_id) (where as any).display_id = display_id
+
+        if (display_id) {
+            where.OR = [
+                { product: { display_id } },
+                { service: { display_id } }
+            ]
+        }
 
         if (below_min_stock) {
-            // Prisma doesn't natively support field vs field comparison in where clause easily
-            // So we fetch IDs of items where stock <= min_stock via raw query
-            // This is safe because we just fetch IDs
-            // We use quotes for "isItem" to ensure case sensitivity in Postgres if strictly needed, 
-            // though Prisma usually maps it correctly.
             const criticalItems = await prisma.$queryRaw<{ id: string }[]>`
-                SELECT id FROM items WHERE stock <= min_stock AND "isItem" = true
+                SELECT id FROM products WHERE stock <= min_stock
              `
             const criticalIds = criticalItems.map(i => i.id)
 
             if (where.id) {
-                // If there's already an ID filter (unlikely here but good practice), we intersect
-                // But since where.id is usually a string, we might need composite logic.
-                // For now, we assume no other ID filter conflicts in findMany usage.
-                // Actually safer to use AND
                 where.AND = [
                     ...(Array.isArray(where.AND) ? where.AND : []),
                     { id: { in: criticalIds } }
@@ -88,6 +104,11 @@ export class PrismaItemsRepository implements ItemsRepository {
                 take: limit,
                 orderBy: {
                     name: 'asc'
+                },
+                include: {
+                    product: true,
+                    service: true,
+                    supply: true
                 }
             }),
             prisma.item.count({
@@ -104,16 +125,23 @@ export class PrismaItemsRepository implements ItemsRepository {
             }
         }
     }
-    async update(data: Prisma.ItemUpdateInput, tx?: Prisma.TransactionClient): Promise<Item> {
+
+    async update(data: Prisma.ItemUpdateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions> {
         const client = tx ?? prisma
         const item = await client.item.update({
             where: {
                 id: data.id as string
             },
-            data
+            data,
+            include: {
+                product: true,
+                service: true,
+                supply: true
+            }
         })
         return item
     }
+
     async remove(id: string, tx?: Prisma.TransactionClient): Promise<void> {
         const client = tx ?? prisma
         await client.item.delete({
@@ -122,72 +150,74 @@ export class PrismaItemsRepository implements ItemsRepository {
             }
         })
     }
+
     async changeStock(id: string, stock: number, operationType: boolean, tx?: Prisma.TransactionClient): Promise<void> {
         const client = tx ?? prisma
 
-        await client.item.update({
-            where: { id },
-            data: {
-                stock: operationType ? { increment: stock } : { decrement: stock }
-            }
-        })
-    }
-    async setActive(id: string, commutator: boolean, tx?: Prisma.TransactionClient): Promise<void> {
-        const client = tx ?? prisma
-        const findedStock = await client.item.findFirst({
-            where: {
-                id
-            }
-        })
-        if (findedStock)
-            await client.item.update({
-                where: {
-                    id
-                },
+        const item = await client.item.findUnique({ where: { id } })
+        if (!item) return
+
+        if (item.type === 'PRODUCT') {
+            await client.product.update({
+                where: { id },
                 data: {
-                    active: commutator
+                    stock: operationType ? { increment: stock } : { decrement: stock }
                 }
             })
+        } else if (item.type === 'SUPPLY') {
+            await client.supply.update({
+                where: { id },
+                data: {
+                    stock: operationType ? { increment: stock } : { decrement: stock }
+                }
+            })
+        }
     }
 
-    async findMaxDisplayId(): Promise<number> {
-        const item = await prisma.item.findFirst({
-            orderBy: {
-                // @ts-ignore
-                display_id: 'desc'
-            }
+    async setActive(id: string, commutator: boolean, tx?: Prisma.TransactionClient): Promise<void> {
+        const client = tx ?? prisma
+        await client.item.update({
+            where: { id },
+            data: { active: commutator }
         })
-        return (item as any)?.display_id ?? 0
     }
 
-    async findNextAvailableDisplayId(tx?: Prisma.TransactionClient): Promise<number> {
+    async findMaxDisplayId(type: ItemType): Promise<number> {
+        if (type === 'PRODUCT') {
+            const prod = await prisma.product.findFirst({ orderBy: { display_id: 'desc' } })
+            return prod?.display_id ?? 0
+        } else if (type === 'SERVICE') {
+            const serv = await prisma.service.findFirst({ orderBy: { display_id: 'desc' } })
+            return serv?.display_id ?? 0
+        }
+        return 0
+    }
+
+    async findNextAvailableDisplayId(type: ItemType, tx?: Prisma.TransactionClient): Promise<number> {
         const client = tx ?? prisma
 
-        // 1. Check if ID 1 exists
-        const first = await client.item.findUnique({
-            where: { display_id: 1 }
-        })
+        const tableName = type === 'PRODUCT' ? 'products' : type === 'SERVICE' ? 'services' : null
 
-        if (!first) return 1
+        if (!tableName) return 0;
 
-        // 2. Find the first gap using raw query
-        // "SELECT (t1.display_id + 1) as next_id FROM items t1 LEFT JOIN items t2 ON t1.display_id + 1 = t2.display_id WHERE t2.display_id IS NULL ORDER BY t1.display_id ASC LIMIT 1"
-        const result = await client.$queryRaw<{ next_id: number }[]>`
+        const first = await client.$queryRawUnsafe<any[]>(`SELECT display_id FROM "${tableName}" WHERE display_id = 1 LIMIT 1`)
+
+        if (!first || first.length === 0) return 1
+
+        const result = await client.$queryRawUnsafe<{ next_id: number }[]>(`
             SELECT (t1.display_id + 1) as next_id 
-            FROM items t1 
-            LEFT JOIN items t2 ON t1.display_id + 1 = t2.display_id 
+            FROM "${tableName}" t1 
+            LEFT JOIN "${tableName}" t2 ON t1.display_id + 1 = t2.display_id 
             WHERE t2.display_id IS NULL 
             ORDER BY t1.display_id ASC 
             LIMIT 1
-        `
+        `)
 
         if (result.length > 0) {
             return result[0].next_id
         }
 
-        // If no gaps found (unlikely given loop logic, but usually means table is fully sequential)
-        // Return max + 1
-        const max = await this.findMaxDisplayId()
+        const max = await this.findMaxDisplayId(type)
         return max + 1
     }
 }

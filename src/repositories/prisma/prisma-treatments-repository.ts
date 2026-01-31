@@ -69,11 +69,10 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
             }
         }
 
-        // Condição para status - CORREÇÃO PRINCIPAL
+        // Condição para status
         if (status && status !== 'all') {
             whereConditions.status = { equals: status }
         } else if (!status || status === 'all') {
-            // Quando status é 'all' ou não informado, busca todos os status
             whereConditions.OR = [
                 { status: { equals: 'pending' } },
                 { status: { equals: 'in_progress' } },
@@ -81,7 +80,7 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 { status: { equals: 'follow_up' } },
                 { status: { equals: 'in_workbench' } },
                 { status: { equals: 'resolved' } },
-                { status: { equals: 'canceled' } }, // CORREÇÃO: estava 'cancelled' no count
+                { status: { equals: 'canceled' } },
             ]
         }
 
@@ -90,8 +89,8 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
             where: whereConditions
         })
 
-        // Buscar tratamentos
-        const treatments = await prisma.treatment.findMany({
+        // Buscar tratamentos - Incluindo Items para cálculo
+        const treatmentsRaw = await prisma.treatment.findMany({
             skip,
             take,
             where: whereConditions,
@@ -101,43 +100,51 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 }
             ],
             include: {
-                clients: true
+                clients: true,
+                items: {
+                    select: {
+                        quantity: true,
+                        salesValue: true,
+                        discount: true
+                    }
+                }
+            }
+        })
+
+        // Calcular amount dinamicamente para cada tratamento
+        const treatments = treatmentsRaw.map(t => {
+            const amount = t.items.reduce((acc, item) => {
+                const qty = item.quantity || 0
+                const val = item.salesValue || 0
+                const disc = item.discount || 0
+                return acc + (qty * val - disc)
+            }, 0)
+
+            // Remove items from result if not part of DTO, or keep if needed (DTO usually expects what is returned)
+            // But we need to inject 'amount' into the object to match the DTO expectation which probably still has 'amount'
+            return {
+                ...t,
+                amount: Number(amount.toFixed(2))
             }
         })
 
         return {
-            treatments,
+            treatments: treatments as any, // Cast to match DTO if necessary
             totalCount,
             perPage: take,
             pageIndex
         }
     }
 
-    async changeValue(id: string, value: number, entry: boolean): Promise<void> {
-        if (entry) {
-            await prisma.treatment.update({
-                where: { id },
-                data: {
-                    amount: { increment: value }
-                }
-            })
-        } else {
-            await prisma.treatment.update({
-                where: { id },
-                data: {
-                    amount: { decrement: value }
-                }
-            })
-        }
 
-    }
     async create(data: Prisma.TreatmentUncheckedCreateInput): Promise<Treatment> {
         const treatment = await prisma.treatment.create({
             data
         })
         return treatment
     }
-    async findById(id: string): Promise<Treatment | null> {
+
+    async findById(id: string): Promise<(Treatment & { amount: number }) | null> {
         const treatment = await prisma.treatment.findFirst({
             where: {
                 id
@@ -153,32 +160,32 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 interactions: true
             }
         })
-        return treatment
-    }
-    async update(id: string, data: Prisma.TreatmentUncheckedUpdateInput): Promise<{
-        id: string;
-        opening_date: Date;
-        ending_date: Date | null;
-        contact: string | null;
-        user_id: string | null;
-        client_id: string | null;
-        equipment_id: string | null;
-        request: string;
-        status: string;
-        amount: number;
-        observations: string | null;
-    }> {
-        // Validate input data (optional but recommended)
-        // You can add checks for required properties or specific data types
 
+        if (!treatment) return null
+
+        // Calculate total amount
+        const amount = treatment.items.reduce((acc, item) => {
+            const qty = item.quantity || 0
+            const val = item.salesValue || 0
+            const disc = item.discount || 0
+            return acc + (qty * val - disc)
+        }, 0)
+
+        return {
+            ...treatment,
+            amount: Number(amount.toFixed(2))
+        }
+    }
+
+    async update(id: string, data: Prisma.TreatmentUncheckedUpdateInput) {
         const updatedTreatment = await prisma.treatment.update({
-            where: { id }, // Ensure update targets the correct treatment
-            data, // Update data based on the provided input
+            where: { id },
+            data,
         })
 
         return updatedTreatment
     }
-    async findByClient(client_id: string): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }[] | null> {
+    async findByClient(client_id: string) {
         const treatments = await prisma.treatment.findMany({
             where: {
                 client_id
@@ -186,7 +193,7 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
         })
         return treatments
     }
-    async findByStatus(status: string): Promise<{ id: string; opening_date: Date; ending_date: Date | null; contact: string | null; user_id: string | null; client_id: string | null; equipment_id: string | null; request: string; status: string; amount: number; observations: string | null }[] | null> {
+    async findByStatus(status: string) {
         const treatments = prisma.treatment.findMany({
             where: {
                 status: status

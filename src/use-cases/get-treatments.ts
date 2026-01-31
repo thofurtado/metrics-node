@@ -20,9 +20,13 @@ export class GetTreatmentsUseCase {
         if (!perPage)
             perPage = 6
 
-        const result = await this.treatmentsRepository.findByActive(pageIndex, perPage, treatmentId, clientName, status)
-
-        return result
+        try {
+            const result = await this.treatmentsRepository.findByActive(pageIndex, perPage, treatmentId, clientName, status)
+            return result
+        } catch (error) {
+            console.error('[GetTreatmentsUseCase] Error executing repository query:', error)
+            return null
+        }
     }
 }
 

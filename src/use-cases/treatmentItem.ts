@@ -50,19 +50,22 @@ export class TreatmentItemUseCase {
         if (quantity <= 0 || salesValue < 0)
             throw new OnlyNaturalNumbersError()
         // Check if item should be treated as a product (has physical stock)
-        // Services (isItem = false) or items with name starting with 'Serviço'/'Clonagem' (safeguard) should skip stock check
-        const isService = !item?.isItem || item?.name?.toLowerCase().includes('clonagem') || item?.category?.toLowerCase().includes('servi')
+        // Services or items with name starting with 'Serviço'/'Clonagem' (safeguard) should skip stock check
+        const isService = item?.type === 'SERVICE' || item?.name?.toLowerCase().includes('clonagem') || item?.category?.toLowerCase().includes('servi')
 
-        if (item && !isService && item.stock !== null && quantity > item.stock) {
-            console.error(`[TreatmentItemUseCase] Stock Blocked: Item ${item.name} (isItem: ${item.isItem}), Stock: ${item.stock}, Req: ${quantity}`)
-            throw new InsufficientStockError(`Estoque insuficiente. Disponível: ${item.stock}, Requisitado: ${quantity}`)
+        let availableStock = 0
+        if (item?.product) availableStock = item.product.stock || 0
+        else if (item?.supply) availableStock = item.supply.stock || 0
+
+        if (item && !isService && quantity > availableStock) {
+            console.error(`[TreatmentItemUseCase] Stock Blocked: Item ${item.name} (Type: ${item.type}), Stock: ${availableStock}, Req: ${quantity}`)
+            throw new InsufficientStockError(`Estoque insuficiente. Disponível: ${availableStock}, Requisitado: ${quantity}`)
         }
 
         const treatmentItem = await this.treatmentItemsRepository.create({
             treatment_id, item_id, stock_id, quantity, salesValue, discount
         })
-        const totalValue = Number(((quantity * salesValue) - (discount ?? 0)).toFixed(2))
-        this.treatmentsRepository.changeValue(treatment_id, totalValue, true)
+
         return {
             treatmentItem
         }

@@ -19,13 +19,7 @@ export class RemoveTreatmentItemUseCase {
         if (!treatmentItem) {
             throw new ResourceNotFoundError()
         } else {
-            const quantity = treatmentItem.quantity
-            const salesValue = treatmentItem.salesValue ?? 0
-            const discount = treatmentItem.discount ?? 0
 
-            const totalValueToRemove = Number(((quantity * salesValue) - discount).toFixed(2))
-
-            await this.treatmentsRepository.changeValue(treatmentItem.treatment_id, totalValueToRemove, false)
             await this.treatmentItemsRepository.remove(id)
         }
     }

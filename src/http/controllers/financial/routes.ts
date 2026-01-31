@@ -20,6 +20,7 @@ import { deleteAccount } from './deleteAccount'
 import { updatePayment } from './updatePayment'
 import { deletePayment } from './deletePayment'
 import { adjustAccountBalance } from './adjustAccountBalance'
+import { revertTransactionStatus } from './revertTransactionStatus'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJWT)
@@ -40,6 +41,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.post('/payment', createPayment)
     app.post('/payment-entry', createPaymentEntry)
     app.patch('/switch-transaction/:id', changeTransactionStatus)
+    app.patch('/revert-transaction/:id', revertTransactionStatus)
     app.get('/payments', getPayments)
     app.put('/payment/:id', updatePayment)
     app.delete('/payment/:id', deletePayment)

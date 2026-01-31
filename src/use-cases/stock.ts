@@ -1,5 +1,5 @@
 import { StocksRepository } from '@/repositories/stocks-repository'
-import { Stock } from '@prisma/client'
+import { Stock, ItemType } from '@prisma/client'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 import { ItemsRepository } from '@/repositories/items-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
@@ -32,6 +32,10 @@ export class StockUseCase {
         if (!findedItem)
             throw new ResourceNotFoundError()
 
+        if (findedItem.type === ItemType.SERVICE) {
+            throw new Error('Serviços não possuem controle de estoque.')
+        }
+
         if (quantity <= 0)
             throw new OnlyNaturalNumbersError()
 
@@ -48,7 +52,7 @@ export class StockUseCase {
             const stock = await this.stocksRepository.create({
                 item_id,
                 quantity,
-                operation: operation as any, // Cast to match Prisma Enum if needed, usually string works if valid
+                operation: operation as any,
                 description: description as any,
                 created_at
             }, tx)

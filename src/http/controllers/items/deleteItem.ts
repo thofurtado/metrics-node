@@ -12,12 +12,19 @@ export async function deleteItem(request: FastifyRequest, reply: FastifyReply) {
     try {
         const deleteItemUseCase = makeDeleteItemUseCase()
         await deleteItemUseCase.execute({ itemId: id })
+        return reply.status(204).send()
     } catch (err) {
+        console.error('[DeleteItem Error]:', err)
+
         if (err instanceof Error) {
+            // Check for Prisma foreign key constraint violation
+            if ('code' in err && err.code === 'P2003') {
+                return reply.status(409).send({
+                    message: 'Não é possível excluir este item pois ele já possui vínculos no sistema (atendimentos ou movimentações). Tente desativá-lo.'
+                })
+            }
             return reply.status(400).send({ message: err.message })
         }
         throw err
     }
-
-    return reply.status(204).send()
 }

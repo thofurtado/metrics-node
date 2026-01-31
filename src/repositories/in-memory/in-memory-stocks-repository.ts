@@ -15,14 +15,16 @@ export class InMemoryStocksRepository implements StocksRepository {
         const itemStocks = this.items.filter((item) => item.item_id === item_id)
 
         if (itemStocks.length === 0) {
-            throw new Error(`Item with ID ${item_id} not found`) // Throw a clear error for missing item
+            return 0
         }
 
         // Accumulate quantities
         for (const stock of itemStocks) {
-            if (stock.operation === 'input') {
+            // @ts-ignore
+            if (stock.operation === 'IN' || stock.operation === 'input') {
                 inputQuantity += stock.quantity
-            } else if (stock.operation === 'output') {
+                // @ts-ignore
+            } else if (stock.operation === 'OUT' || stock.operation === 'output') {
                 outputQuantity += stock.quantity
             }
         }
