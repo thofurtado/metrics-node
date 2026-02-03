@@ -29,7 +29,7 @@ export class TreatmentUseCase {
         private usersRepository: UsersRepository
     ) { }
     async execute({
-        opening_date, contact, client_id, equipment_id, user_id,request, status, amount, observations, ending_date
+        opening_date, contact, client_id, equipment_id, user_id, request, status, amount, observations, ending_date
     }: TreatmentUseCaseRequest): Promise<TreatmentUseCaseResponse> {
         let user
         if (user_id) {
@@ -44,14 +44,14 @@ export class TreatmentUseCase {
                 throw new ResourceNotFoundError()
         }
         let equipment
-        if (equipment_id){
+        if (equipment_id) {
             equipment = await this.equipmentsRepository.findById(equipment_id)
             if (!equipment)
                 throw new ResourceNotFoundError()
         }
 
         const treatment = await this.treatmentsRepository.create({
-            opening_date, contact, client_id, equipment_id, request, status, amount, observations, ending_date
+            opening_date, contact, client_id, equipment_id, request, status, observations, ending_date
         })
         return {
             treatment

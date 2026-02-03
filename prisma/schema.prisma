@@ -103,16 +103,22 @@ model Treatment {
 
 model TreatmentItem {
   id           String  @id @default(uuid())
-  item_id      String
   treatment_id String
-  stock_id     String?
+  
+  product_id   String?
+  service_id   String?
+  supply_id    String?
+
   quantity     Float
   salesValue   Float?
   discount     Float?
+  stock_id     String?
 
-  items      Item      @relation(fields: [item_id], references: [id])
-  stocks     Stock?    @relation(fields: [stock_id], references: [id])
+  product    Product? @relation(fields: [product_id], references: [id])
+  service    Service? @relation(fields: [service_id], references: [id])
+  supply     Supply?  @relation(fields: [supply_id], references: [id])
   treatments Treatment @relation(fields: [treatment_id], references: [id])
+  stocks     Stock?    @relation(fields: [stock_id], references: [id])
 
   @@map("treatment_items")
 }
@@ -133,67 +139,89 @@ model Interaction {
   @@map("interactions")
 }
 
-enum ItemType {
-  PRODUCT
-  SERVICE
-  SUPPLY
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    Category? @relation(fields: [category_id], references: [id])
+  category_id String?
+  active      Boolean? @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
+
+  display_id   Int     @unique
+  cost         Float?  @default(0)
+  price        Float
+  stock        Float?  @default(0)
+  min_stock    Float?  @default(0)
+  barcode      String?
+  ncm          String?
+  is_composite Boolean @default(false)
+
+  stocks         Stock[]
+  treatmentItems TreatmentItem[]
+  compositions   Composition[]
+
+  @@map("products")
 }
 
-model Item {
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Service {
   id          String   @id @default(uuid())
   name        String
   description String?
   category    String?
   active      Boolean? @default(true)
-  type        ItemType @default(PRODUCT)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  product Product?
-  service Service?
-  supply  Supply?
-
-  stocks         Stock[]
-  treatmentItems TreatmentItem[]
-
-  @@map("items")
-}
-
-model Product {
-  id         String @id
-  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
-
-  display_id Int     @unique
-  price      Float
-  stock      Float?  @default(0)
-  min_stock  Float?  @default(0)
-  barcode    String?
-  ncm        String?
-
-  @@map("products")
-}
-
-model Service {
-  id         String @id
-  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
 
   display_id     Int     @unique
   price          Float
   estimated_time String?
 
+  treatmentItems TreatmentItem[]
+
   @@map("services")
 }
 
 model Supply {
-  id         String @id
-  item       Item   @relation(fields: [id], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String?
+  active      Boolean? @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
 
   cost  Float
   stock Float?  @default(0)
   unit  String?
 
+  stocks         Stock[]
+  treatmentItems TreatmentItem[]
+  compositions   Composition[]
+
   @@map("supplies")
+}
+
+model Composition {
+  id          String @id @default(uuid())
+  product_id  String
+  supply_id   String
+  quantity    Float
+
+  product Product @relation(fields: [product_id], references: [id])
+  supply  Supply  @relation(fields: [supply_id], references: [id])
+
+  @@map("compositions")
 }
 
 enum StockReason {
@@ -215,13 +243,17 @@ enum StockOperation {
 
 model Stock {
   id          String         @id @default(uuid())
-  item_id     String
+  product_id  String?
+  supply_id   String?
+  
   quantity    Float
   operation   StockOperation
   description StockReason?
   created_at  DateTime       @default(now())
 
-  items         Item            @relation(fields: [item_id], references: [id])
+  product Product? @relation(fields: [product_id], references: [id])
+  supply  Supply?  @relation(fields: [supply_id], references: [id])
+  
   TreatmentItem TreatmentItem[]
 
   @@map("stocks")

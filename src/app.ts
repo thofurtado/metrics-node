@@ -10,6 +10,10 @@ import { treatmentsRoutes } from './http/controllers/treatments/routes'
 import fastifyCookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import { metricsRoutes } from './http/controllers/metrics/routes'
+import { productsRoutes } from './http/controllers/products/routes'
+import { servicesRoutes } from './http/controllers/services/routes'
+import { suppliesRoutes } from './http/controllers/supplies/routes'
+import { categoriesRoutes } from './http/controllers/categories/routes'
 
 export const app = fastify({ logger: true })
 // [
@@ -43,6 +47,10 @@ app.register(clientsRoutes)
 app.register(itemsRoutes)
 app.register(treatmentsRoutes)
 app.register(metricsRoutes)
+app.register(productsRoutes)
+app.register(servicesRoutes)
+app.register(suppliesRoutes)
+app.register(categoriesRoutes)
 
 app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {

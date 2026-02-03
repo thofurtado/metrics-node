@@ -3,6 +3,8 @@ import { PrismaPaymentEntrysRepository } from '@/repositories/prisma/prisma-paym
 import { PrismaItemsRepository } from '@/repositories/prisma/prisma-items-repository'
 import { PrismaTransactionsRepository } from '@/repositories/prisma/prisma-transactions-repository'
 import { PrismaAccountsRepository } from '@/repositories/prisma/prisma-accounts-repository'
+import { PrismaProductsRepository } from '@/repositories/prisma/prisma-products-repository'
+import { PrismaSuppliesRepository } from '@/repositories/prisma/prisma-supplies-repository'
 import { FinishTreatmentUseCase } from '../finish-treatment'
 
 export function MakeFinishTreatmentUseCase() {
@@ -11,13 +13,17 @@ export function MakeFinishTreatmentUseCase() {
     const itemsRepository = new PrismaItemsRepository()
     const transactionsRepository = new PrismaTransactionsRepository()
     const accountsRepository = new PrismaAccountsRepository()
+    const productsRepository = new PrismaProductsRepository()
+    const suppliesRepository = new PrismaSuppliesRepository()
 
     const finishTreatmentUseCase = new FinishTreatmentUseCase(
         treatmentsRepository,
         paymentEntrysRepository,
         itemsRepository,
         transactionsRepository,
-        accountsRepository
+        accountsRepository,
+        productsRepository,
+        suppliesRepository
     )
     return finishTreatmentUseCase
 }

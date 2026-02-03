@@ -35,7 +35,8 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
         })
     } catch (err) {
         if (err instanceof InsufficientStockError) {
-            return reply.status(400).send({ message: err.message })
+            // User requested 409 for stock errors with explicit message
+            return reply.status(409).send({ message: err.message })
         }
         if (err instanceof Error) {
             return reply.status(409).send({ message: err.message })

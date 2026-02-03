@@ -70,7 +70,11 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
         }
 
         // Condição para status
-        if (status && status !== 'all') {
+        if (status === 'open') {
+            whereConditions.status = { in: ['pending', 'in_progress', 'on_hold', 'follow_up', 'in_workbench'] }
+        } else if (status === 'history') {
+            whereConditions.status = { in: ['resolved', 'canceled'] }
+        } else if (status && status !== 'all') {
             whereConditions.status = { equals: status }
         } else if (!status || status === 'all') {
             whereConditions.OR = [
@@ -154,7 +158,9 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 equipments: true,
                 items: {
                     include: {
-                        items: true
+                        product: true,
+                        service: true,
+                        supply: true
                     }
                 },
                 interactions: true
@@ -173,8 +179,20 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
 
         return {
             ...treatment,
+            items: treatment.items.map(item => {
+                const isItem = !!(item.product || item.supply)
+                const name = item.product?.name || item.service?.name || item.supply?.name || 'Item desconhecido'
+
+                return {
+                    ...item,
+                    items: {
+                        name,
+                        isItem
+                    }
+                }
+            }) as any,
             amount: Number(amount.toFixed(2))
-        }
+        } as any
     }
 
     async update(id: string, data: Prisma.TreatmentUncheckedUpdateInput) {

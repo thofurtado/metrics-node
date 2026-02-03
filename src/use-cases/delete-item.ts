@@ -1,7 +1,8 @@
-import { ItemsRepository } from '@/repositories/items-repository'
-import { StocksRepository } from '@/repositories/stocks-repository'
+import { ProductsRepository } from '@/repositories/products-repository'
+import { ServicesRepository } from '@/repositories/services-repository'
+import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
-import { prisma } from '@/lib/prisma'
+import { ResourceDependencyError } from './errors/resource-dependency-error'
 
 interface DeleteItemUseCaseRequest {
     itemId: string
@@ -9,33 +10,41 @@ interface DeleteItemUseCaseRequest {
 
 export class DeleteItemUseCase {
     constructor(
-        private itemsRepository: ItemsRepository,
-        private stocksRepository: StocksRepository
+        private productsRepository: ProductsRepository,
+        private servicesRepository: ServicesRepository,
+        private suppliesRepository: SuppliesRepository
     ) { }
 
     async execute({ itemId }: DeleteItemUseCaseRequest): Promise<void> {
-        const item = await this.itemsRepository.findById(itemId)
-
-        if (!item) {
-            throw new ResourceNotFoundError()
+        // Try to find and delete as Product
+        const product = await this.productsRepository.findById(itemId)
+        if (product) {
+            await this.productsRepository.delete(itemId)
+            return
         }
 
-        // Manual Cascade within a Transaction to ensure permanence
-        await prisma.$transaction(async (tx) => {
-            // Delete specialized records first
-            if (item.type === 'PRODUCT') {
-                await tx.product.deleteMany({ where: { id: itemId } })
-            } else if (item.type === 'SERVICE') {
-                await tx.service.deleteMany({ where: { id: itemId } })
-            } else if (item.type === 'SUPPLY') {
-                await tx.supply.deleteMany({ where: { id: itemId } })
+        // Try to find and delete as Service
+        const service = await this.servicesRepository.findById(itemId)
+        if (service) {
+            await this.servicesRepository.delete(itemId)
+            return
+        }
+
+        // Try to find and delete as Supply
+        const supply = await this.suppliesRepository.findById(itemId)
+        if (supply) {
+            // Business Rule: Check if Supply is used in any Product Composition
+            const dependentProducts = await this.productsRepository.findManyBySupplyId(itemId)
+            if (dependentProducts.length > 0) {
+                const productNames = dependentProducts.map(p => p.name).join(', ')
+                throw new ResourceDependencyError(`Este insumo não pode ser apagado pois está sendo utilizado nos seguintes produtos: ${productNames}`)
             }
 
-            // Delete the parent Item record via repository to ensure state sync (InMemory)
-            // and participation in the transaction (Prisma)
-            await this.itemsRepository.remove(itemId, tx)
-        })
+            await this.suppliesRepository.delete(itemId)
+            return
+        }
 
-        console.log(`[DeleteItem] Permanent removal successful for ID: ${itemId}`)
+        // If not found in any
+        throw new ResourceNotFoundError()
     }
 }

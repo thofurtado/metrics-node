@@ -3,7 +3,15 @@ import { GetItemsDTO } from './DTO/get-items-dto'
 
 export type ItemWithExtensions = Prisma.ItemGetPayload<{
     include: {
-        product: true
+        product: {
+            include: {
+                compositions: {
+                    include: {
+                        supply: true
+                    }
+                }
+            }
+        }
         service: true
         supply: true
     }
@@ -13,7 +21,7 @@ export interface ItemsRepository {
     create(data: Prisma.ItemCreateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions>
     findByName(name: string, is_active?: boolean): Promise<ItemWithExtensions[] | null>
     findById(id: string): Promise<ItemWithExtensions | null>
-    findMany(is_active?: boolean, type?: ItemType, pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null>
+    findMany(is_active?: boolean, type?: ItemType | ItemType[], pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null>
     update(data: Prisma.ItemUpdateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions>
     remove(id: string, tx?: Prisma.TransactionClient): Promise<void>
     changeStock(id: string, stock: number, operationType: boolean, tx?: Prisma.TransactionClient): Promise<void>

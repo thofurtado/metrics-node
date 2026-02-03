@@ -9,7 +9,15 @@ export class PrismaItemsRepository implements ItemsRepository {
         const item = await client.item.create({
             data,
             include: {
-                product: true,
+                product: {
+                    include: {
+                        compositions: {
+                            include: {
+                                supply: true
+                            }
+                        }
+                    }
+                },
                 service: true,
                 supply: true
             }
@@ -19,7 +27,19 @@ export class PrismaItemsRepository implements ItemsRepository {
 
     async findByName(name: string, is_active?: boolean | undefined): Promise<ItemWithExtensions[] | null> {
         let item
-        const include = { product: true, service: true, supply: true }
+        const include = {
+            product: {
+                include: {
+                    compositions: {
+                        include: {
+                            supply: true
+                        }
+                    }
+                }
+            },
+            service: true,
+            supply: true
+        }
 
         if (is_active) {
             item = await prisma.item.findMany({
@@ -52,7 +72,15 @@ export class PrismaItemsRepository implements ItemsRepository {
                 id
             },
             include: {
-                product: true,
+                product: {
+                    include: {
+                        compositions: {
+                            include: {
+                                supply: true
+                            }
+                        }
+                    }
+                },
                 service: true,
                 supply: true
             }
@@ -60,7 +88,7 @@ export class PrismaItemsRepository implements ItemsRepository {
         return item
     }
 
-    async findMany(is_active?: boolean | undefined, type?: ItemType, pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
+    async findMany(is_active?: boolean | undefined, type?: ItemType | ItemType[], pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
         const page = Math.max(1, pageIndex || 1)
         const limit = perPage || 10
         const skip = (page - 1) * limit
@@ -69,7 +97,11 @@ export class PrismaItemsRepository implements ItemsRepository {
         if (is_active !== undefined) where.active = is_active
 
         if (type) {
-            where.type = type
+            if (Array.isArray(type)) {
+                where.type = { in: type }
+            } else {
+                where.type = type
+            }
         }
 
         if (name) where.name = { contains: name, mode: 'insensitive' }
@@ -106,7 +138,15 @@ export class PrismaItemsRepository implements ItemsRepository {
                     name: 'asc'
                 },
                 include: {
-                    product: true,
+                    product: {
+                        include: {
+                            compositions: {
+                                include: {
+                                    supply: true
+                                }
+                            }
+                        }
+                    },
                     service: true,
                     supply: true
                 }
@@ -134,7 +174,15 @@ export class PrismaItemsRepository implements ItemsRepository {
             },
             data,
             include: {
-                product: true,
+                product: {
+                    include: {
+                        compositions: {
+                            include: {
+                                supply: true
+                            }
+                        }
+                    }
+                },
                 service: true,
                 supply: true
             }
