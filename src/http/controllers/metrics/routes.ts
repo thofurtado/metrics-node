@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 
 
-import { verifyJWT } from '@/http/middlewares/verify-jwt'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { getMonthTreatmentsAmount } from './getMonthTreatmentsAmount'
 import { getMonthIncomeAmount } from './getMonthIncomeAmount'
 import { getMonthExpenseAmount } from './getMonthExpenseAmount'
@@ -14,7 +14,7 @@ import { getBalanceProjection } from './get-balance-projection'
 
 
 export async function metricsRoutes(app: FastifyInstance) {
-    app.addHook('onRequest', verifyJWT)
+    app.addHook('onRequest', verifyJwt)
     app.get('/metrics/month-treatments-amount', getMonthTreatmentsAmount)
     app.get('/metrics/month-income-amount', getMonthIncomeAmount)
     app.get('/metrics/month-expense-amount', getMonthExpenseAmount)

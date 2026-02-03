@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { verifyJWT } from '@/http/middlewares/verify-jwt'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { createSector } from './sector'
 import { getSector } from './getSector'
 import { createAccount } from './account'
@@ -23,7 +23,7 @@ import { adjustAccountBalance } from './adjustAccountBalance'
 import { revertTransactionStatus } from './revertTransactionStatus'
 
 export async function financialRoutes(app: FastifyInstance) {
-    app.addHook('onRequest', verifyJWT)
+    app.addHook('onRequest', verifyJwt)
     app.post('/sector', { onRequest: [verifyUserRole('ADMIN')] }, createSector)
     app.get('/sectors', getSector)
 

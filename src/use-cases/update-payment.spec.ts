@@ -2,6 +2,7 @@ import { InMemoryPaymentsRepository } from '@/repositories/in-memory/in-memory-p
 import { InMemoryAccountsRepository } from '@/repositories/in-memory/in-memory-accounts-repository'
 import { UpdatePaymentUseCase } from './update-payment'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
+import { describe, beforeEach, it, expect } from 'vitest'
 
 let paymentsRepository: InMemoryPaymentsRepository
 let accountsRepository: InMemoryAccountsRepository

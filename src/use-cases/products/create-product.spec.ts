@@ -1,14 +1,17 @@
 import { InMemoryProductsRepository } from '@/repositories/in-memory/in-memory-products-repository'
+import { InMemorySuppliesRepository } from '@/repositories/in-memory/in-memory-supplies-repository'
 import { CreateProductUseCase } from './create-product'
 import { describe, it, expect, beforeEach } from 'vitest'
 
 let productsRepository: InMemoryProductsRepository
+let suppliesRepository: InMemorySuppliesRepository
 let sut: CreateProductUseCase
 
 describe('Create Product Use Case', () => {
     beforeEach(() => {
         productsRepository = new InMemoryProductsRepository()
-        sut = new CreateProductUseCase(productsRepository)
+        suppliesRepository = new InMemorySuppliesRepository()
+        sut = new CreateProductUseCase(productsRepository, suppliesRepository)
     })
 
     it('should be able to create a new product', async () => {

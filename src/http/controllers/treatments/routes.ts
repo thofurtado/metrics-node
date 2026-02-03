@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 
 
-import { verifyJWT } from '@/http/middlewares/verify-jwt'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { createTreatment } from './treatment'
 import { createItemTreatment } from './treatment-item'
 import { getTreatments } from './getTreatments'
@@ -16,7 +16,7 @@ import { finish } from './finish'
 
 
 export async function treatmentsRoutes(app: FastifyInstance) {
-    app.addHook('onRequest', verifyJWT)
+    app.addHook('onRequest', verifyJwt)
 
     app.get('/treatments', getTreatments)
     app.get('/treatment/:id', getTreatment)

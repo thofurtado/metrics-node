@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 
 
-import { verifyJWT } from '@/http/middlewares/verify-jwt'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { createItem } from './item'
 import { createStock } from './stock'
 import { getItems } from './getItems'
@@ -13,7 +13,7 @@ import { getInventorySummary } from './get-inventory-summary'
 
 
 export async function itemsRoutes(app: FastifyInstance) {
-    app.addHook('onRequest', verifyJWT)
+    app.addHook('onRequest', verifyJwt)
 
 
     app.post('/item', createItem)

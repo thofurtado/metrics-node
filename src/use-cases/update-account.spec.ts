@@ -1,6 +1,7 @@
 import { InMemoryAccountsRepository } from '@/repositories/in-memory/in-memory-accounts-repository'
 import { UpdateAccountUseCase } from './update-account'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
+import { describe, beforeEach, it, expect } from 'vitest'
 
 let accountsRepository: InMemoryAccountsRepository
 let sut: UpdateAccountUseCase

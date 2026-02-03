@@ -3,6 +3,9 @@ import { ItemsRepository, ItemWithExtensions } from '../items-repository'
 import { GetItemsDTO } from '../DTO/get-items-dto'
 import { randomUUID } from 'node:crypto'
 
+// Fallback for testing environments where ItemType might be undefined
+const RuntimeItemType = ItemType || { PRODUCT: 'PRODUCT', SERVICE: 'SERVICE', SUPPLY: 'SUPPLY' }
+
 export class InMemoryItemsRepository implements ItemsRepository {
 
     public items: ItemWithExtensions[] = []
@@ -51,7 +54,7 @@ export class InMemoryItemsRepository implements ItemsRepository {
 
     async create(data: Prisma.ItemCreateInput): Promise<ItemWithExtensions> {
         const id = randomUUID()
-        const type = data.type || ItemType.PRODUCT
+        const type = data.type || RuntimeItemType.PRODUCT
 
         let product = null
         let service = null
