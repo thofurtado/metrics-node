@@ -19,14 +19,30 @@ export class DeleteItemUseCase {
         // Try to find and delete as Product
         const product = await this.productsRepository.findById(itemId)
         if (product) {
-            await this.productsRepository.delete(itemId)
+            try {
+                await this.productsRepository.delete(itemId)
+            } catch (err) {
+                if (err instanceof ResourceDependencyError) {
+                    await this.productsRepository.save({ ...product, active: false })
+                } else {
+                    throw err
+                }
+            }
             return
         }
 
         // Try to find and delete as Service
         const service = await this.servicesRepository.findById(itemId)
         if (service) {
-            await this.servicesRepository.delete(itemId)
+            try {
+                await this.servicesRepository.delete(itemId)
+            } catch (err) {
+                if (err instanceof ResourceDependencyError) {
+                    await this.servicesRepository.save({ ...service, active: false })
+                } else {
+                    throw err
+                }
+            }
             return
         }
 
@@ -37,10 +53,25 @@ export class DeleteItemUseCase {
             const dependentProducts = await this.productsRepository.findManyBySupplyId(itemId)
             if (dependentProducts.length > 0) {
                 const productNames = dependentProducts.map(p => p.name).join(', ')
-                throw new ResourceDependencyError(`Este insumo não pode ser apagado pois está sendo utilizado nos seguintes produtos: ${productNames}`)
+                // For supplies used in composition, we MUST enforce soft delete or block?
+                // The verification blocks it. 
+                // "Recomendamos inativá-lo" implies we should probably soft delete automatically? 
+                // User said: "Se o item não tiver nenhum vínculo... delete real... se falhar (vínculo), faz o soft delete"
+                // The explicit check here prevents DELETE even if no database constraint fails (logical constraint).
+                // I will change this to Soft Delete as well.
+                await this.suppliesRepository.save({ ...supply, active: false })
+                return
             }
 
-            await this.suppliesRepository.delete(itemId)
+            try {
+                await this.suppliesRepository.delete(itemId)
+            } catch (err) {
+                if (err instanceof ResourceDependencyError) {
+                    await this.suppliesRepository.save({ ...supply, active: false })
+                } else {
+                    throw err
+                }
+            }
             return
         }
 

@@ -332,6 +332,7 @@ model Account {
   transactions        Transaction[]
   transferTransaction TransferTransaction[]
 
+
   @@map("accounts")
 }
 
@@ -350,8 +351,30 @@ model Transaction {
   sectors             Sector?               @relation(fields: [sector_id], references: [id])
   TransferTransaction TransferTransaction[]
   InstallmentPayment  InstallmentPayment[]
+  parent_transaction_id String?
+  parentTransaction     Transaction?  @relation("TransactionHistory", fields: [parent_transaction_id], references: [id])
+  childTransactions     Transaction[] @relation("TransactionHistory")
+
+  supplier_id String?
+  supplier    Supplier? @relation(fields: [supplier_id], references: [id])
+  
+  transaction_group_id String?
+  transactionGroup     TransactionGroup? @relation(fields: [transaction_group_id], references: [id])
 
   @@map("transactions")
+}
+
+model TransactionGroup {
+  id               String   @id @default(uuid())
+  totalAmount      Float
+  installmentsCount Int
+  description      String?
+  frequency        String?
+  created_at       DateTime @default(now())
+  
+  transactions     Transaction[]
+
+  @@map("transaction_groups")
 }
 
 model TransferTransaction {
@@ -377,4 +400,18 @@ model Sector {
   transactions Transaction[]
 
   @@map("sectors")
+}
+
+model Supplier {
+  id         String   @id @default(uuid())
+  name       String
+  document   String?  // CNPJ/CPF
+  email      String?
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  transactions Transaction[]
+
+  @@map("suppliers")
 }

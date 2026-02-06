@@ -158,7 +158,15 @@ export class PrismaTreatmentsRepository implements TreatmentsRepository {
                 equipments: true,
                 items: {
                     include: {
-                        product: true,
+                        product: {
+                            include: {
+                                compositions: {
+                                    include: {
+                                        supply: true
+                                    }
+                                }
+                            }
+                        },
                         service: true,
                         supply: true
                     }

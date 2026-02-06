@@ -1,0 +1,13 @@
+
+model TransactionGroup {
+  id               String   @id @default(uuid())
+  totalAmount      Float
+  installmentsCount Int
+  description      String?
+  frequency        String?  // Weekly, Monthly, etc.
+  created_at       DateTime @default(now())
+  
+  transactions     Transaction[]
+
+  @@map("transaction_groups")
+}

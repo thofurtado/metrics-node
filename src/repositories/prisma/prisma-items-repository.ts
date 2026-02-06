@@ -67,25 +67,48 @@ export class PrismaItemsRepository implements ItemsRepository {
     }
 
     async findById(id: string): Promise<ItemWithExtensions | null> {
-        const item = await prisma.item.findFirst({
-            where: {
-                id
-            },
+        // Fix: Manual search across tables since 'Item' model behaves as a view/union or is missing
+        const product = await prisma.product.findUnique({
+            where: { id },
             include: {
-                product: {
-                    include: {
-                        compositions: {
-                            include: {
-                                supply: true
-                            }
-                        }
-                    }
-                },
-                service: true,
-                supply: true
+                compositions: {
+                    include: { supply: true }
+                }
             }
         })
-        return item
+        if (product) {
+            return {
+                ...product,
+                type: 'PRODUCT',
+                product: product,
+                service: null,
+                supply: null
+            } as any
+        }
+
+        const service = await prisma.service.findUnique({ where: { id } })
+        if (service) {
+            return {
+                ...service,
+                type: 'SERVICE',
+                product: null,
+                service: service,
+                supply: null
+            } as any
+        }
+
+        const supply = await prisma.supply.findUnique({ where: { id } })
+        if (supply) {
+            return {
+                ...supply,
+                type: 'SUPPLY',
+                product: null,
+                service: null,
+                supply: supply
+            } as any
+        }
+
+        return null
     }
 
     async findMany(is_active?: boolean | undefined, type?: ItemType | ItemType[], pageIndex?: number, perPage?: number, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {

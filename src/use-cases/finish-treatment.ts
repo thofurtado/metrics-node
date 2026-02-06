@@ -63,17 +63,41 @@ export class FinishTreatmentUseCase {
 
                     if (tItem.product_id) {
                         // It is a Product
-                        await this.productsRepository.decreaseStock(tItem.product_id, tItem.quantity, tx)
+                        // @ts-ignore
+                        const product = tItem.product
 
-                        await tx.stock.create({
-                            data: {
-                                product_id: tItem.product_id,
-                                quantity: tItem.quantity,
-                                operation: 'OUT',
-                                description: 'VENDA',
-                                created_at: new Date()
+                        if (product && product.is_composite && product.compositions && product.compositions.length > 0) {
+                            // Composable Product: Decrease stock from ingredients (Supplies)
+                            for (const comp of product.compositions) {
+                                const quantityToDecrease = comp.quantity * tItem.quantity
+
+                                await this.suppliesRepository.decreaseStock(comp.supply_id, quantityToDecrease, tx)
+
+                                await tx.stock.create({
+                                    data: {
+                                        supply_id: comp.supply_id,
+                                        quantity: quantityToDecrease,
+                                        operation: 'OUT',
+                                        description: 'VENDA',
+                                        created_at: new Date()
+                                    }
+                                })
                             }
-                        })
+
+                        } else {
+                            // Standard Product: Decrease stock from the product itself
+                            await this.productsRepository.decreaseStock(tItem.product_id, tItem.quantity, tx)
+
+                            await tx.stock.create({
+                                data: {
+                                    product_id: tItem.product_id,
+                                    quantity: tItem.quantity,
+                                    operation: 'OUT',
+                                    description: 'VENDA',
+                                    created_at: new Date()
+                                }
+                            })
+                        }
 
                     } else if (tItem.supply_id) {
                         // It is a Supply

@@ -468,6 +468,15 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             throw new ResourceNotFoundError()
         }
 
+        // Check for traceability (Fragmentation)
+        const childCount = await prisma.transaction.count({
+            where: { parent_transaction_id: id }
+        })
+
+        if (existingTransaction.parent_transaction_id || childCount > 0) {
+            console.warn("Atenção: Estornando parte de uma transação fragmentada. Verificar saldo original.")
+        }
+
         // Se já estiver Pendente, não faz nada
         if (!existingTransaction.confirmed) {
             return

@@ -16,6 +16,12 @@ interface UpdateItemUseCaseRequest {
     unit?: string | null
     display_id?: number | null
     ncm?: string | null
+    stock?: number | null
+    is_composite?: boolean
+    compositions?: {
+        supply_id: string
+        quantity: number
+    }[]
 }
 
 interface UpdateItemUseCaseResponse {
@@ -35,7 +41,7 @@ export class UpdateItemUseCase {
         const type = existentItem.type
 
         const payload: any = {
-            id: data.id, // Mandatory for the repository.update method to find the record
+            id: data.id,
             name: data.name,
             description: data.description,
             category: data.category,
@@ -43,14 +49,40 @@ export class UpdateItemUseCase {
         }
 
         if (type === ItemType.PRODUCT) {
-            payload.product = {
-                update: {
-                    price: data.price,
-                    min_stock: data.min_stock,
-                    barcode: data.barcode,
-                    ncm: (data as any).ncm, // Ensure NCM update
-                    display_id: data.display_id
+            const productUpdate: any = {
+                price: data.price,
+                min_stock: data.min_stock,
+                stock: data.stock, // Added stock
+                barcode: data.barcode,
+                ncm: data.ncm,
+                display_id: data.display_id,
+                cost: data.cost,
+            }
+
+            // Logic for Composable Transition
+            if (data.is_composite === false) {
+                // Turning OFF composition -> Clear relations
+                productUpdate.is_composite = false
+                productUpdate.compositions = {
+                    deleteMany: {}
                 }
+            } else if (data.is_composite === true || (data.is_composite === undefined && (existentItem as any).product?.is_composite)) {
+                // Turning ON or Updating composition
+                if (data.is_composite === true) productUpdate.is_composite = true
+
+                if (data.compositions) {
+                    productUpdate.compositions = {
+                        deleteMany: {},
+                        create: data.compositions.map(comp => ({
+                            supply_id: comp.supply_id,
+                            quantity: comp.quantity
+                        }))
+                    }
+                }
+            }
+
+            payload.product = {
+                update: productUpdate
             }
         } else if (type === ItemType.SERVICE) {
             payload.service = {
@@ -64,7 +96,11 @@ export class UpdateItemUseCase {
             payload.supply = {
                 update: {
                     cost: data.cost,
-                    unit: data.unit
+                    unit: data.unit,
+                    // Supply may also have stock update?
+                    // Currently stock for supply goes via changeStock or here?
+                    // Let's add it if provided
+                    stock: data.stock
                 }
             }
         }

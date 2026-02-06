@@ -32,7 +32,9 @@ export async function getMany(request: FastifyRequest, reply: FastifyReply) {
                 stock: product.stock,
                 min_stock: product.min_stock,
                 barcode: product.barcode,
-                ncm: product.ncm
+                ncm: product.ncm,
+                is_composite: product.is_composite,
+                compositions: product.compositions
             }
         })),
         meta: {

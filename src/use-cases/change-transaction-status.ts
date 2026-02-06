@@ -102,7 +102,8 @@ export class ChangeTransactionUseCase {
         }
 
         // 5. Lógica de Pagamento Parcial
-        const remainingAmount = originalTransaction.amount - amountPaid;
+        // Fix: Correção de ponto flutuante (ex: 100.00 - 33.33 = 66.67)
+        const remainingAmount = Number((originalTransaction.amount - amountPaid).toFixed(2));
 
         // Se houver saldo restante, cria uma nova transação
         if (remainingAmount > 0) {
@@ -124,6 +125,7 @@ export class ChangeTransactionUseCase {
                 confirmed: false,
                 date: newDueDate,
                 description: newDescription, // <-- DESCRIÇÃO NUMERADA
+                parent_transaction_id: originalTransaction.id, // Vínculo de Rastreabilidade
             };
 
             // Cria a nova transação para o remanescente

@@ -21,23 +21,33 @@ export class TransferTransactionUseCase {
     async execute({
         destination_account_id, transaction_id
     }: TransferTransactionUseCaseRequest): Promise<TransferTransactionUseCaseResponse> {
-        let account
-        if (destination_account_id) {
-            account = await this.accountsRepository.findById(destination_account_id)
-            if (!account)
-                throw new ResourceNotFoundError()
-        }
-        let transaction
-        if (transaction_id) {
-            transaction = await this.transactionsRepository.findById(transaction_id)
-            if (!transaction)
-                throw new ResourceNotFoundError()
+
+        const destinationAccount = await this.accountsRepository.findById(destination_account_id)
+        if (!destinationAccount) {
+            throw new ResourceNotFoundError()
         }
 
-        const transferTransactions = await this.transferTransactionssRepository.create({
-            transaction_id,
-            destination_account_id
+        const originTransaction = await this.transactionsRepository.findById(transaction_id)
+        if (!originTransaction) {
+            throw new ResourceNotFoundError()
+        }
+
+        if (originTransaction.account_id === destination_account_id) {
+            throw new Error('Cannot transfer to the same account.')
+        }
+
+        const originAccount = await this.accountsRepository.findById(originTransaction.account_id)
+        if (!originAccount) {
+            throw new ResourceNotFoundError()
+        }
+
+        const transferTransactions = await this.transferTransactionssRepository.executeTransfer({
+            originTransactionId: transaction_id,
+            destinationAccountId: destination_account_id,
+            amount: originTransaction.amount,
+            originAccountName: originAccount.name
         })
+
         return {
             transferTransactions
         }

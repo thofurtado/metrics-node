@@ -5,7 +5,7 @@ import { FinancialSummaryData } from '../DTO/get-financial-dashboard-dto'
 import { ChangeTransactionStatusParams } from '../DTO/change-transaction-status-params-dto'
 
 export class InMemoryTransactionsRepository implements TransactionsRepository {
-    public items: Transaction[] = []
+    public items: (Transaction & { [key: string]: any })[] = []
 
     async getFinancialSummary(): Promise<FinancialSummaryData> {
         const currentDate = new Date()
@@ -132,23 +132,13 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         }
     }
 
-    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{
-        id: string;
-        operation: string;
-        date: Date;
-        amount: number;
-        account_id: string;
-        sector_id: string | null;
-        description: string | null;
-        confirmed: boolean
-    }> {
+    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<Transaction> {
         const index = this.items.findIndex(item => item.id === data.id)
         if (index === -1) {
             throw new Error('Transaction not found')
         }
 
-        // CORREÇÃO: Extrair apenas os valores primitivos, ignorando operações do Prisma
-        const updateData: Partial<Transaction> = {
+        const updateData: any = {
             operation: typeof data.operation === 'string' ? data.operation : this.items[index].operation,
             amount: typeof data.amount === 'number' ? data.amount : this.items[index].amount,
             account_id: typeof data.account_id === 'string' ? data.account_id : this.items[index].account_id,
@@ -160,33 +150,25 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
                 ? (typeof data.description === 'string' ? data.description : null)
                 : this.items[index].description,
             confirmed: typeof data.confirmed === 'boolean' ? data.confirmed : this.items[index].confirmed,
+            supplier_id: (data as any).supplier_id !== undefined ? ((data as any).supplier_id as string | null) : this.items[index].supplier_id,
+            parent_transaction_id: (data as any).parent_transaction_id !== undefined ? ((data as any).parent_transaction_id as string | null) : this.items[index].parent_transaction_id
         }
 
-        // CORREÇÃO: Garantir que o ID seja uma string
         const transactionId = typeof data.id === 'string' ? data.id : this.items[index].id
 
-        const updatedTransaction: Transaction = {
+        const updatedTransaction: any = {
             ...this.items[index],
             ...updateData,
-            id: transactionId // Garantir que o ID seja string
+            id: transactionId
         }
 
         this.items[index] = updatedTransaction
 
-        return {
-            id: updatedTransaction.id,
-            operation: updatedTransaction.operation,
-            date: updatedTransaction.date,
-            amount: updatedTransaction.amount,
-            account_id: updatedTransaction.account_id,
-            sector_id: updatedTransaction.sector_id,
-            description: updatedTransaction.description,
-            confirmed: updatedTransaction.confirmed
-        }
+        return updatedTransaction
     }
 
     async create(data: Prisma.TransactionUncheckedCreateInput) {
-        const transaction = {
+        const transaction: any = {
             id: data.id ? data.id as string : randomUUID(),
             operation: data.operation as string,
             amount: data.amount as number,
@@ -195,6 +177,9 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             sector_id: data.sector_id as string || null,
             description: data.description as string || null,
             confirmed: data.confirmed as boolean || false,
+            created_at: new Date(),
+            supplier_id: (data as any).supplier_id as string || null,
+            parent_transaction_id: (data as any).parent_transaction_id as string || null
         }
         this.items.push(transaction)
         return transaction
@@ -207,6 +192,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
     // Implementação dos outros métodos necessários para a interface
     async getBalance(): Promise<number> {
+
         const confirmedTransactions = this.items.filter(t => t.confirmed)
         return confirmedTransactions.reduce((sum, transaction) => {
             return transaction.operation === 'income'
@@ -308,6 +294,13 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
             this.items[transactionIndex].amount = data.amount
             this.items[transactionIndex].date = data.date
+        }
+    }
+
+    async revertTransactionStatus(id: string): Promise<void> {
+        const transactionIndex = this.items.findIndex(item => item.id === id)
+        if (transactionIndex !== -1) {
+            this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
         }
     }
 }

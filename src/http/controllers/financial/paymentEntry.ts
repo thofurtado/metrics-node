@@ -15,6 +15,8 @@ export async function createPaymentEntry(request: FastifyRequest, reply: Fastify
         occurrences: z.number()
     })
 
+    console.log('Recebendo pagamentos (Controller Payload):', request.body)
+
     const { treatment_id, payment_id, amount, occurrences } = registerBodySchema.parse(request.body)
     let paymentEntry
     try {
@@ -29,8 +31,8 @@ export async function createPaymentEntry(request: FastifyRequest, reply: Fastify
         })
     } catch (err) {
 
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err

@@ -35,109 +35,96 @@ export class TreatmentItemUseCase {
     }: TreatmentItemUseCaseRequest): Promise<TreatmentItemUseCaseResponse> {
         console.log(`[TreatmentItemUseCase] Executing for Treatment: ${treatment_id}, Item: ${item_id}, Qty: ${quantity}`)
 
-        let item
-        if (item_id) {
-            item = await this.itemsRepository.findById(item_id)
-            if (!item)
-                throw new ResourceNotFoundError()
-        }
-        let treatment
-        if (treatment_id) {
-            treatment = await this.treatmentsRepository.findById(treatment_id)
-            if (!treatment)
-                throw new ResourceNotFoundError()
-
-            // 1. Validation of Treatment Status (Block only resolved/canceled)
-            const status = treatment.status?.toLowerCase() || 'pending'
-            const blockedStatuses = ['resolved', 'canceled']
-
-            console.log(`[TreatmentItemUseCase] Status Check: ${status}`)
-
-            if (blockedStatuses.includes(status)) {
-                console.error(`[TreatmentItemUseCase] Blocked: Treatment ${treatment_id} is ${status}`)
-                throw new Error(`Não é possível adicionar itens a um atendimento com status: ${treatment.status}`)
+        try {
+            let item
+            if (item_id) {
+                item = await this.itemsRepository.findById(item_id)
+                if (!item)
+                    throw new ResourceNotFoundError()
             }
-        }
-        // Stock ID logic removed if unused or kept minimally. Keeping logic flow.
+            let treatment
+            if (treatment_id) {
+                treatment = await this.treatmentsRepository.findById(treatment_id)
+                if (!treatment)
+                    throw new ResourceNotFoundError()
 
-        if (quantity <= 0 || salesValue < 0)
-            throw new OnlyNaturalNumbersError()
-        // --- STOCK VALIDATION LOGIC ("Regra de Ouro") ---
+                // 1. Validation of Treatment Status (Block only resolved/canceled)
+                const status = treatment.status?.toLowerCase() || 'pending'
+                const blockedStatuses = ['resolved', 'canceled']
 
-        // Step 1: Identify Type
-        // We trust the relations loaded by the repository (product, service, supply)
+                console.log(`[TreatmentItemUseCase] Status Check: ${status}`)
 
-        // Step 2: Service
-        const isService = item?.type === 'SERVICE' || !!item?.service
+                if (blockedStatuses.includes(status)) {
+                    console.error(`[TreatmentItemUseCase] Blocked: Treatment ${treatment_id} is ${status}`)
+                    throw new Error(`Não é possível adicionar itens a um atendimento com status: ${treatment.status}`)
+                }
+            }
+            // Stock ID logic removed if unused or kept minimally. Keeping logic flow.
 
-        if (isService) {
-            // LOGIC: Services are infinite. Skip validation.
-        }
+            if (quantity <= 0 || salesValue < 0)
+                throw new OnlyNaturalNumbersError()
 
-        // Step 3 & 4: Products (Composite vs Simple)
-        else if (item?.product) {
-            const product = item.product
+            // --- STOCK VALIDATION LOGIC ("Regra de Ouro": Venda Prioritária) ---
+            // A venda NÃO é bloqueada por estoque insuficiente. Apenas loga aviso.
 
-            if (product.is_composite) {
-                // Step 3: Composite Product
-                // DO NOT check the main product stock. Check ingredients.
-                const compositions = product.compositions || []
+            // Step 1: Identify Type
+            const isService = item?.type === 'SERVICE' || !!item?.service
 
-                for (const comp of compositions) {
-                    // Relation definition: Composition has `supply`
-                    const ingredient = comp.supply
-                    if (!ingredient) continue // Should not happen if DB is consistent
+            if (isService) {
+                // LOGIC: Services are infinite. Skip validation.
+            }
+            else if (item?.product) {
+                const product = item.product
 
-                    const quantityNeededPerUnit = comp.quantity
-                    const totalRequired = quantityNeededPerUnit * quantity
-                    const availableStock = ingredient.stock || 0
+                if (product.is_composite) {
+                    // Step 3: Composite Product
+                    const compositions = product.compositions || []
 
-                    if (availableStock < totalRequired) {
-                        const missing = totalRequired - availableStock
-                        throw new InsufficientStockError(
-                            `Estoque insuficiente do insumo: ${ingredient.name}. Necessário: ${totalRequired.toFixed(2)}, Disponível: ${availableStock.toFixed(2)}`
-                        )
+                    for (const comp of compositions) {
+                        const ingredient = comp.supply
+                        if (!ingredient) continue
+
+                        const quantityNeededPerUnit = comp.quantity
+                        const totalRequired = quantityNeededPerUnit * quantity
+                        const availableStock = ingredient.stock || 0
+
+                        if (availableStock < totalRequired) {
+                            console.warn(`[WARN] Estoque negativo gerado para Insumo Composto: ${ingredient.name}. Necessário: ${totalRequired}, Disponível: ${availableStock}`)
+                            // NÃO LANÇA ERRO
+                        }
+                    }
+                } else {
+                    // Step 4: Simple Product
+                    const productStock = Number(product.stock || 0)
+                    const requestedQuantity = Number(quantity)
+
+                    if (productStock < requestedQuantity) {
+                        console.warn(`[WARN] Estoque negativo gerado para Produto Simples: ${item.name}. Estoque Banco: ${productStock}, Solicitado: ${requestedQuantity}`)
+                        // NÃO LANÇA ERRO
                     }
                 }
-            } else {
-                // Step 4: Simple Product
-                // Check the product's own stock
-                const productStock = Number(product.stock || 0)
-                const requestedQuantity = Number(quantity)
+            }
+            else if (item?.supply) {
+                // Extra: Supplies (sold directly)
+                const supplyStock = Number(item.supply.stock || 0)
+                const req = Number(quantity)
 
-                console.log(`[DEBUG ESTOQUE] Produto: ${item.name} | Estoque Banco: ${productStock} (Type: ${typeof productStock}) | Solicitado: ${requestedQuantity} (Type: ${typeof requestedQuantity})`)
-
-                if (productStock < requestedQuantity) {
-                    console.error(`[TreatmentItemUseCase] Stock Blocked: Product ${item.name}, Stock: ${productStock}, Req: ${requestedQuantity}`)
-                    throw new InsufficientStockError(
-                        `Estoque insuficiente. Produto: ${item.name}. Disponível: ${productStock}, Solicitado: ${requestedQuantity}`
-                    )
+                if (supplyStock < req) {
+                    console.warn(`[WARN] Estoque negativo gerado para Insumo Direto: ${item.name}. Disponível: ${supplyStock}, Solicitado: ${req}`)
+                    // NÃO LANÇA ERRO
                 }
             }
-        }
 
-        // Extra: Supplies (sold directly)
-        else if (item?.supply) {
-            const supplyStock = Number(item.supply.stock || 0)
-            const req = Number(quantity)
+            let product_id: string | undefined = undefined
+            let service_id: string | undefined = undefined
+            let supply_id: string | undefined = undefined
 
-            if (supplyStock < req) {
-                throw new InsufficientStockError(
-                    `Estoque insuficiente. Insumo: ${item.name}. Disponível: ${supplyStock}, Solicitado: ${req}`
-                )
-            }
-        }
+            if (item?.type === 'PRODUCT' || item?.product) product_id = item_id
+            else if (item?.type === 'SERVICE') service_id = item_id
+            else if (item?.type === 'SUPPLY' || item?.supply) supply_id = item_id
 
-        let product_id: string | undefined = undefined
-        let service_id: string | undefined = undefined
-        let supply_id: string | undefined = undefined
+            // --- UPSERT LOGIC (The Fix for 409) ---
 
-        if (item?.type === 'PRODUCT' || item?.product) product_id = item_id
-        else if (item?.type === 'SERVICE') service_id = item_id
-        else if (item?.type === 'SUPPLY' || item?.supply) supply_id = item_id
-
-        // --- UPSERT LOGIC (The Fix for 409) ---
-        try {
             // Check if item already exists in this treatment
             const existingItem = await this.treatmentItemsRepository.findByTreatmentAndItemId(
                 treatment_id,
@@ -177,12 +164,14 @@ export class TreatmentItemUseCase {
                 treatmentItem: treatmentItemResult
             }
 
-        } catch (error) {
-            console.error('[TreatmentItemUseCase] DB Error:', error)
-            if (error instanceof Error) throw new Error(`Erro ao salvar item: ${error.message}`)
-            throw error
+        } catch (err) {
+            console.error('========================================');
+            console.error('[FATAL ERROR] Erro capturado no UseCase:');
+            console.error('Tipo do Erro:', (err as any).constructor.name);
+            console.error('Mensagem:', (err as any).message);
+            // console.error('Stack:', (err as any).stack); // Opcional, pode poluir muito
+            console.error('========================================');
+            throw err;
         }
-
-
     }
 }

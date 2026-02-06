@@ -21,6 +21,9 @@ import { updatePayment } from './updatePayment'
 import { deletePayment } from './deletePayment'
 import { adjustAccountBalance } from './adjustAccountBalance'
 import { revertTransactionStatus } from './revertTransactionStatus'
+import { createRecurring } from './create-recurring'
+import { terminateTransactionGroup } from './terminate-transaction-group'
+import { getTransactionGroup } from './get-transaction-group'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -37,6 +40,9 @@ export async function financialRoutes(app: FastifyInstance) {
     app.get('/transactions', getTransactions)
     app.delete('/transaction/:id', deleteTransaction)
     app.get('/transfer-transactions', getTransferTransaction)
+
+    app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
+    app.get('/transaction-groups/:groupId', getTransactionGroup)
 
     app.post('/payment', createPayment)
     app.post('/payment-entry', createPaymentEntry)

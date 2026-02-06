@@ -16,11 +16,33 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         sector_id: z.string().nullish(),
         description: z.string().nullish(),
         confirmed: z.boolean().nullish(),
-        destination_account_id: z.string().nullish()
+        destination_account_id: z.string().nullish(),
+        supplier_id: z.string().nullish(),
+        installments_count: z.number().nullish(),
+        interval_frequency: z.enum(['WEEKLY', 'MONTHLY', 'YEARLY']).nullish(),
+        custom_installments: z.array(z.object({
+            date: z.coerce.date(),
+            amount: z.number()
+        })).nullish()
     })
-    console.log(request.body)
-    const { operation, amount, account_id, date, sector_id, description, confirmed, destination_account_id } = registerBodySchema.parse(request.body)
-    console.log('aqui')
+
+    // console.log('Payload Recebido:', JSON.stringify(request.body, null, 2))
+
+    const {
+        operation,
+        amount,
+        account_id,
+        date,
+        sector_id,
+        description,
+        confirmed,
+        destination_account_id,
+        supplier_id,
+        installments_count,
+        interval_frequency,
+        custom_installments
+    } = registerBodySchema.parse(request.body)
+
     let transaction
     try {
 
@@ -34,12 +56,17 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             date: date || null,
             sector_id: sector_id || null,
             description: description || null,
-            destination_account_id: destination_account_id || null
+            destination_account_id: destination_account_id || null,
+            supplier_id: supplier_id || null,
+            installments_count: installments_count || undefined,
+            interval_frequency: interval_frequency || undefined,
+            custom_installments: custom_installments || undefined
         })
     } catch (err) {
 
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof Error) {
+            console.error(err)
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err
