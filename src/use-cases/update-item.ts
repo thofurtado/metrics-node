@@ -1,5 +1,4 @@
 import { ItemsRepository } from '@/repositories/items-repository'
-import { Item, ItemType } from '@prisma/client'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
 
 interface UpdateItemUseCaseRequest {
@@ -25,7 +24,7 @@ interface UpdateItemUseCaseRequest {
 }
 
 interface UpdateItemUseCaseResponse {
-    item: Item
+    item: any
 }
 
 export class UpdateItemUseCase {
@@ -48,7 +47,7 @@ export class UpdateItemUseCase {
             active: data.active,
         }
 
-        if (type === ItemType.PRODUCT) {
+        if (type === 'PRODUCT') {
             const productUpdate: any = {
                 price: data.price,
                 min_stock: data.min_stock,
@@ -84,7 +83,7 @@ export class UpdateItemUseCase {
             payload.product = {
                 update: productUpdate
             }
-        } else if (type === ItemType.SERVICE) {
+        } else if (type === 'SERVICE') {
             payload.service = {
                 update: {
                     price: data.price,
@@ -92,7 +91,7 @@ export class UpdateItemUseCase {
                     display_id: data.display_id
                 }
             }
-        } else if (type === ItemType.SUPPLY) {
+        } else if (type === 'SUPPLY') {
             payload.supply = {
                 update: {
                     cost: data.cost,

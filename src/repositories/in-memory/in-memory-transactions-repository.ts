@@ -303,4 +303,13 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
         }
     }
+
+    async markAsPaidMany(ids: string[]): Promise<void> {
+        ids.forEach(id => {
+            const index = this.items.findIndex(item => item.id === id)
+            if (index !== -1 && !this.items[index].confirmed) {
+                this.items[index].confirmed = true
+            }
+        })
+    }
 }

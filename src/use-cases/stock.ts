@@ -1,5 +1,5 @@
 import { StocksRepository } from '@/repositories/stocks-repository'
-import { Stock, ItemType } from '@prisma/client'
+import { Stock } from '@prisma/client'
 import { OnlyNaturalNumbersError } from './errors/only-natural-numbers-error'
 import { ItemsRepository } from '@/repositories/items-repository'
 import { ResourceNotFoundError } from './errors/resource-not-found-error'
@@ -32,7 +32,7 @@ export class StockUseCase {
         if (!findedItem)
             throw new ResourceNotFoundError()
 
-        if (findedItem.type === ItemType.SERVICE) {
+        if (findedItem.type === 'SERVICE') {
             throw new Error('Serviços não possuem controle de estoque.')
         }
 
@@ -49,13 +49,20 @@ export class StockUseCase {
         }
 
         return await prisma.$transaction(async (tx) => {
-            const stock = await this.stocksRepository.create({
-                item_id,
+            const stockData: any = {
                 quantity,
                 operation: operation as any,
                 description: description as any,
                 created_at
-            }, tx)
+            }
+
+            if (findedItem.type === 'PRODUCT') {
+                stockData.product_id = item_id
+            } else if (findedItem.type === 'SUPPLY') {
+                stockData.supply_id = item_id
+            }
+
+            const stock = await this.stocksRepository.create(stockData, tx)
 
             await this.itemsRepository.changeStock(findedItem.id, quantity, operation === 'IN' ? true : false, tx)
 

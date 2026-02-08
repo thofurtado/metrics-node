@@ -14,6 +14,7 @@ import { changeTransactionStatus } from './changeTransactionPayment'
 import { deleteTransaction } from './deleteTransaction'
 import { getPayments } from './getPayments'
 import { getFinancialSummary } from './get-financial-summary'
+import { bulkPayTransactions } from './bulk-pay-transactions'
 
 import { updateAccount } from './updateAccount'
 import { deleteAccount } from './deleteAccount'
@@ -47,6 +48,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.post('/payment', createPayment)
     app.post('/payment-entry', createPaymentEntry)
     app.patch('/switch-transaction/:id', changeTransactionStatus)
+    app.patch('/transactions/bulk-pay', bulkPayTransactions)
     app.patch('/revert-transaction/:id', revertTransactionStatus)
     app.get('/payments', getPayments)
     app.put('/payment/:id', updatePayment)

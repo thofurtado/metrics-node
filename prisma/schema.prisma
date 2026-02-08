@@ -249,6 +249,7 @@ model Stock {
   quantity    Float
   operation   StockOperation
   description StockReason?
+  unit_cost   Float?
   created_at  DateTime       @default(now())
 
   product Product? @relation(fields: [product_id], references: [id])

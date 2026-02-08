@@ -1,9 +1,10 @@
+
 import { MakeRegisterStockMovementUseCase } from '@/use-cases/factories/make-register-stock-movement-use-case'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 
 
-export async function createStock(request: FastifyRequest, reply: FastifyReply) {
+export async function registerStockMovement(request: FastifyRequest, reply: FastifyReply) {
 
     const registerBodySchema = z.object({
         item_id: z.string(),
@@ -11,9 +12,10 @@ export async function createStock(request: FastifyRequest, reply: FastifyReply) 
         operation: z.enum(['IN', 'OUT']),
         description: z.string().nullish(),
         created_at: z.coerce.date().nullish(),
+        unit_cost: z.coerce.number().optional()
     })
 
-    const { item_id, quantity, operation, description, created_at } = registerBodySchema.parse(request.body)
+    const { item_id, quantity, operation, description, created_at, unit_cost } = registerBodySchema.parse(request.body)
 
     try {
 
@@ -24,7 +26,8 @@ export async function createStock(request: FastifyRequest, reply: FastifyReply) 
             description: description ? description : undefined,
             quantity,
             operation,
-            created_at: created_at ? created_at : undefined
+            created_at: created_at ? created_at : undefined,
+            unit_cost
         })
 
         return reply.status(200).send({

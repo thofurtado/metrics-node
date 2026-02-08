@@ -523,17 +523,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         }
     }
 
-    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<{
-        id: string;
-        operation: string;
-        date: Date;
-        amount: number;
-        account_id: string;
-        sector_id: string | null;
-        description: string | null;
-        confirmed: boolean;
-        created_at: Date;
-    }> {
+    async update(data: Prisma.TransactionUncheckedUpdateInput): Promise<Transaction> {
         // Verifica se o ID foi fornecido
         if (!data.id) {
             throw new Error('Transaction ID is required for update');
@@ -565,19 +555,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             data: updateData
         });
 
-        return {
-            id: updatedTransaction.id,
-            operation: updatedTransaction.operation,
-            date: updatedTransaction.date,
-            amount: updatedTransaction.amount,
-            account_id: updatedTransaction.account_id,
-            sector_id: updatedTransaction.sector_id,
-            description: updatedTransaction.description,
-            confirmed: updatedTransaction.confirmed,
-            created_at: updatedTransaction.created_at
-        };
+        return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string): Promise<GetTransactionsDTO | null> {
 
         if (!pageIndex)
             pageIndex = 1
@@ -648,6 +628,11 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     accounts: {
                         id: { equals: account }
                     }
+                },
+                {
+                    supplier_id: supplier_id ? {
+                        equals: supplier_id
+                    } : undefined
                 },
                 {
                     description: {
@@ -741,4 +726,56 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         return transaction
     }
 
+    async markAsPaidMany(ids: string[]): Promise<void> {
+        // 1. Busca transações que serão atualizadas para calcular o impacto no saldo
+        const transactionsToUpdate = await prisma.transaction.findMany({
+            where: {
+                id: { in: ids },
+                confirmed: false // Apenas as que ainda não estão pagas
+            }
+        })
+
+        if (transactionsToUpdate.length === 0) {
+            return
+        }
+
+        // 2. Executa atualização em transação para garantir atomicidade
+        await prisma.$transaction(async (tx) => {
+            // a) Atualiza status de todas
+            await tx.transaction.updateMany({
+                where: {
+                    id: { in: ids }
+                },
+                data: {
+                    confirmed: true,
+                    // Opcional: Atualizar a data para hoje? 
+                    // Se não atualizar, assume que foi pago na data original prevista.
+                    // O requisito pede apenas "atualizar o status... para PAID".
+                    // Manteremos a data original para evitar efeitos colaterais indesejados.
+                }
+            })
+
+            // b) Atualiza saldo das contas
+            for (const transaction of transactionsToUpdate) {
+                let balanceChange = 0
+
+                if (transaction.operation === 'income') {
+                    balanceChange = transaction.amount
+                } else if (transaction.operation === 'expense') {
+                    balanceChange = -transaction.amount
+                }
+
+                if (balanceChange !== 0) {
+                    await tx.account.update({
+                        where: { id: transaction.account_id },
+                        data: {
+                            balance: {
+                                increment: balanceChange
+                            }
+                        }
+                    })
+                }
+            }
+        })
+    }
 }

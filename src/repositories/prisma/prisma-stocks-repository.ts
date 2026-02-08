@@ -4,13 +4,12 @@ import { StocksRepository } from '../stocks-repository'
 
 export class PrismaStocksRepository implements StocksRepository {
     async getItemHistory(item_id: string, start_date?: Date | undefined, end_date?: Date | undefined): Promise<Stock[] | null> {
-        // const stocks = await prisma.stock.findMany({
-        //     where: {
-        //         item_id
-        //     }
-        // })
-        // return stocks
-        const where: any = { item_id }
+        const where: any = {
+            OR: [
+                { product_id: item_id },
+                { supply_id: item_id }
+            ]
+        }
 
         // Se start_date for definido, adicione filtro de data maior ou igual
         if (start_date) {
@@ -24,19 +23,35 @@ export class PrismaStocksRepository implements StocksRepository {
 
         const stocks = await prisma.stock.findMany({
             where,
+            orderBy: {
+                created_at: 'desc'
+            }
         })
 
         return stocks
     }
     async getItemBalance(item_id: string): Promise<number> {
+        const whereInput = {
+            OR: [
+                { product_id: item_id },
+                { supply_id: item_id }
+            ],
+            operation: StockOperation.IN
+        }
+
+        const whereOutput = {
+            OR: [
+                { product_id: item_id },
+                { supply_id: item_id }
+            ],
+            operation: StockOperation.OUT
+        }
+
         const inputStocks = await prisma.stock.aggregate({
             _sum: {
                 quantity: true, // Select the quantity field for summation
             },
-            where: {
-                item_id: item_id,
-                operation: StockOperation.IN,
-            },
+            where: whereInput
         })
 
 
@@ -44,10 +59,7 @@ export class PrismaStocksRepository implements StocksRepository {
             _sum: {
                 quantity: true, // Select the quantity field for summation
             },
-            where: {
-                item_id: item_id,
-                operation: StockOperation.OUT,
-            },
+            where: whereOutput
         })
         const result = Number(inputStocks._sum.quantity) - Number(outputStocks._sum.quantity)
         return result

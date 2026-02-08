@@ -12,6 +12,8 @@ import { getInventorySummary } from './get-inventory-summary'
 
 
 
+import { registerStockMovement } from './register-stock-movement'
+
 export async function itemsRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
 
@@ -20,6 +22,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     app.patch('/item/:id', updateItem)
     app.delete('/item/:id', deleteItem)
     app.post('/stock', createStock)
+    app.post('/stock/movement', registerStockMovement)
     app.get('/items', getItems)
     app.get('/item-stocks/:id', getItemHistory)
     app.get('/inventory-summary', getInventorySummary) // Kept existing route
