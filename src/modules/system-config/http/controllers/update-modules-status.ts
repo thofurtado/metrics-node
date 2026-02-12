@@ -1,0 +1,51 @@
+
+import { FastifyReply, FastifyRequest } from 'fastify'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+
+export async function updateModulesStatus(request: FastifyRequest, reply: FastifyReply) {
+    const updateBodySchema = z.object({
+        merchandise: z.boolean(),
+        financial: z.boolean(),
+        treatments: z.boolean(),
+    })
+
+    const { merchandise, financial, treatments } = updateBodySchema.parse(request.body)
+
+    // Regra de Negócio: Removida a trava de dependência forte.
+    // Atendimentos agora pode ficar ativo mesmo sem Mercadorias/Financeiro.
+    const finalTreatments = treatments
+
+
+    // Tenta buscar a assinatura existente para pegar o ID
+    const existingConfig = await prisma.systemConfig.findFirst()
+
+    let config
+
+    if (existingConfig) {
+        config = await prisma.systemConfig.update({
+            where: {
+                id: existingConfig.id,
+            },
+            data: {
+                merchandise_module: merchandise,
+                financial_module: financial,
+                treatments_module: finalTreatments,
+            },
+        })
+    } else {
+        config = await prisma.systemConfig.create({
+            data: {
+                merchandise_module: merchandise,
+                financial_module: financial,
+                treatments_module: finalTreatments,
+            },
+        })
+    }
+
+    return reply.send({
+        merchandise: config.merchandise_module,
+        financial: config.financial_module,
+        treatments: config.treatments_module,
+    })
+}

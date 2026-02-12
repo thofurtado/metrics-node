@@ -1,20 +1,21 @@
 import fastify from 'fastify'
-import { usersRoutes } from './http/controllers/users/routes'
+import { usersRoutes } from '@/modules/users/http/controllers/routes'
 import { ZodError } from 'zod'
-import { env } from './env'
+import { env } from '@/env/index'
 import fastifyJwt from '@fastify/jwt'
-import { financialRoutes } from './http/controllers/financial/routes'
-import { clientsRoutes } from './http/controllers/clients/routes'
-import { itemsRoutes } from './http/controllers/items/routes'
-import { treatmentsRoutes } from './http/controllers/treatments/routes'
+import { financialRoutes } from '@/modules/financial/http/controllers/routes'
+import { clientsRoutes } from '@/modules/clients/http/controllers/routes'
+import { itemsRoutes } from '@/modules/items/http/controllers/routes'
+import { treatmentsRoutes } from '@/modules/treatments/http/controllers/routes'
 import fastifyCookie from '@fastify/cookie'
 import cors from '@fastify/cors'
-import { metricsRoutes } from './http/controllers/metrics/routes'
-import { productsRoutes } from './http/controllers/products/routes'
-import { servicesRoutes } from './http/controllers/services/routes'
-import { suppliesRoutes } from './http/controllers/supplies/routes'
-import { categoriesRoutes } from './http/controllers/categories/routes'
-import { suppliersRoutes } from './http/controllers/suppliers/routes'
+import { metricsRoutes } from '@/modules/metrics/http/controllers/routes'
+import { productsRoutes } from '@/modules/products/http/controllers/routes'
+import { servicesRoutes } from '@/modules/services/http/controllers/routes'
+import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
+import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
+import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
+import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 
 export const app = fastify({ logger: true })
 // [
@@ -53,6 +54,7 @@ app.register(servicesRoutes)
 app.register(suppliesRoutes)
 app.register(categoriesRoutes)
 app.register(suppliersRoutes)
+app.register(systemConfigRoutes)
 
 app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {

@@ -1,5 +1,5 @@
 import { PrismaSuppliesRepository } from '@/repositories/prisma/prisma-supplies-repository'
-import { GetSuppliesUseCase } from '../supplies/get-supplies'
+import { GetSuppliesUseCase } from '@/modules/supplies/use-cases/get-supplies'
 
 export function makeGetSuppliesUseCase() {
     const suppliesRepository = new PrismaSuppliesRepository()

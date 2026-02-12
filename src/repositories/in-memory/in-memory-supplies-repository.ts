@@ -1,5 +1,5 @@
 import { Supply, Prisma } from '@prisma/client'
-import { SuppliesRepository } from '../supplies-repository'
+import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { randomUUID } from 'node:crypto'
 
 export class InMemorySuppliesRepository implements SuppliesRepository {

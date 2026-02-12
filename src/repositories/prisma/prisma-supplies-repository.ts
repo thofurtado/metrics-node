@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { Prisma, Supply } from '@prisma/client'
-import { SuppliesRepository } from '../supplies-repository'
-import { ResourceDependencyError } from '@/use-cases/errors/resource-dependency-error'
+import { SuppliesRepository } from '@/repositories/supplies-repository'
+import { ResourceDependencyError } from '@/errors/resource-dependency-error'
 
 export class PrismaSuppliesRepository implements SuppliesRepository {
     async create(data: Prisma.SupplyCreateInput): Promise<Supply> {

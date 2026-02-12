@@ -10,6 +10,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -415,4 +416,15 @@ model Supplier {
   transactions Transaction[]
 
   @@map("suppliers")
+}
+
+model SystemConfig {
+  id                 String   @id @default(uuid())
+  merchandise_module Boolean  @default(true)
+  financial_module   Boolean  @default(true)
+  treatments_module  Boolean  @default(true)
+  
+  updated_at         DateTime @default(now()) @updatedAt
+  
+  @@map("system_configs")
 }

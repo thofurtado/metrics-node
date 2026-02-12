@@ -1,0 +1,48 @@
+import { InteractionsRepository } from '@/modules/clients/repositories/interactions-repository'
+import { TreatmentsRepository } from '@/modules/treatments/repositories/treatments-repository'
+import { UsersRepository } from '@/modules/users/repositories/users-repository'
+import { Interaction } from '@prisma/client'
+import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
+
+interface InteractionUseCaseRequest {
+    user_id: string,
+    treatment_id: string,
+    date: Date,
+    description: string
+}
+interface InteractionUseCaseResponse {
+    interaction: Interaction
+}
+export class InteractionUseCase {
+
+    constructor(
+        private interactionsRepository: InteractionsRepository,
+        private usersRepository: UsersRepository,
+        private treatmentsRepository: TreatmentsRepository
+    ) { }
+    async execute({
+        user_id, treatment_id, date, description
+    }: InteractionUseCaseRequest): Promise<InteractionUseCaseResponse> {
+
+        const user = await this.usersRepository.findById(user_id)
+        if(!user) {
+            console.log('usuario não encontrado')
+            throw new ResourceNotFoundError()
+        }
+        const treatment = await this.treatmentsRepository.findById(treatment_id)
+        if(!treatment) {
+            console.log('atendimento não encontrado')
+            throw new ResourceNotFoundError()
+        }
+        const interaction = await this.interactionsRepository.create({
+            user_id,
+            treatment_id,
+            date,
+            description
+        })
+        return {
+            interaction
+        }
+    }
+}
+
