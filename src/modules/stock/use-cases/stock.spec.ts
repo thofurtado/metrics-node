@@ -117,7 +117,7 @@ describe('Stock Use Case', () => {
         })).rejects.toBeInstanceOf(InvalidOptionError)
     })
 
-    it('should not be able to create an output stock greater then the item stock', async () => {
+    it('should be able to create an output stock greater then the item stock (negative stock)', async () => {
         const item = await itemsRepository.create({
             name: 'produto',
             type: ItemType.PRODUCT,
@@ -137,11 +137,13 @@ describe('Stock Use Case', () => {
             operation: 'IN'
         } as any)
 
-        await expect(stockUseCase.execute({
+        const { stock } = await stockUseCase.execute({
             item_id: item.id,
             quantity: 6,
             operation: 'OUT'
-        })).rejects.toBeInstanceOf(StockCannotBeNegativaError)
+        })
+
+        expect(stock.id).toEqual(expect.any(String))
     })
 
     it('should not be able to create stock for a Service', async () => {

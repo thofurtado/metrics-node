@@ -16,6 +16,7 @@ import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
 import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
+import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 
 export const app = fastify({ logger: true })
 // [
@@ -63,6 +64,10 @@ app.setErrorHandler((error, _, reply) => {
             .send({ message: 'Erro de validação', issues: error.format() })
     }
 
+    if (error instanceof ResourceNotFoundError) {
+        return reply.status(404).send({ message: 'Recurso não encontrado' })
+    }
+
     if (env.NODE_ENV !== 'production') {
         console.error(error)
     } else {
@@ -70,4 +75,3 @@ app.setErrorHandler((error, _, reply) => {
     }
     return reply.status(500).send({ messagem: 'Erro interno do servidor' })
 })
-

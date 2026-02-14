@@ -110,7 +110,18 @@ export class InMemoryItemsRepository implements ItemsRepository {
 
     async findById(id: string): Promise<ItemWithExtensions | null> {
         const item = this.items.find((item) => item.id === id)
-        return item || null
+        if (!item) return null
+
+        // Return a structured clone or deep copy to mimic DB behavior (disconnected snapshot)
+        // Shallow copy might be enough for simple properties, but nested objects (product, service) need copy too.
+        // For this test case, checking product.stock, so we need to copy product at least.
+
+        return {
+            ...item,
+            product: item.product ? { ...item.product } : null,
+            service: item.service ? { ...item.service } : null,
+            supply: item.supply ? { ...item.supply } : null,
+        } as any
     }
 
     async findMany(is_active?: boolean, type?: ItemType, pageIndex = 1, perPage = 20, name?: string, display_id?: number, below_min_stock?: boolean): Promise<GetItemsDTO | null> {
@@ -130,19 +141,20 @@ export class InMemoryItemsRepository implements ItemsRepository {
 
         if (display_id) {
             filteredItems = filteredItems.filter((item) => {
-                if (item.type === ItemType.PRODUCT) return item.product?.display_id === display_id
-                if (item.type === ItemType.SERVICE) return item.service?.display_id === display_id
+                if (item.type === 'PRODUCT') return item.product?.display_id === display_id
+                if (item.type === 'SERVICE') return item.service?.display_id === display_id
                 return false
             })
         }
 
         if (below_min_stock) {
             filteredItems = filteredItems.filter((item) => {
-                if (item.type === ItemType.PRODUCT && item.product) {
+                if (item.type === 'PRODUCT' && item.product) {
                     return (item.product.stock ?? 0) <= (item.product.min_stock ?? 0)
                 }
                 return false
             })
+
         }
 
         const totalCount = filteredItems.length
@@ -171,21 +183,31 @@ export class InMemoryItemsRepository implements ItemsRepository {
         }
     }
 
-    async changeStock(id: string, stock: number, operationType: boolean, tx?: any): Promise<void> {
+    async changeStock(id: string, stock: number, operationType: boolean, tx?: any, cost?: number): Promise<void> {
         const index = this.items.findIndex((item) => item.id === id)
         if (index !== -1) {
             const item = this.items[index]
-            if (item.type === ItemType.PRODUCT && item.product) {
+            if (item.type === 'PRODUCT' && item.product) {
                 const current = item.product.stock ?? 0
+                // @ts-ignore
                 item.product.stock = operationType ? current + stock : current - stock
-            } else if (item.type === ItemType.SUPPLY && item.supply) {
+                if (cost !== undefined) {
+                    item.product.cost = cost
+                }
+            } else if (item.type === 'SUPPLY' && item.supply) {
                 const current = item.supply.stock ?? 0
+                // @ts-ignore
                 item.supply.stock = operationType ? current + stock : current - stock
+                if (cost !== undefined) {
+                    item.supply.cost = cost
+                }
             }
+
         } else {
             throw new Error(`Item with ID ${id} not found`)
         }
     }
+
 
     async setActive(id: string, commutator: boolean): Promise<void> {
         const index = this.items.findIndex((item) => item.id === id)
@@ -203,10 +225,11 @@ export class InMemoryItemsRepository implements ItemsRepository {
         let max = 0
         filtered.forEach(i => {
             let id = 0
-            if (type === ItemType.PRODUCT) id = i.product?.display_id ?? 0
-            if (type === ItemType.SERVICE) id = i.service?.display_id ?? 0
+            if (type === 'PRODUCT') id = i.product?.display_id ?? 0
+            if (type === 'SERVICE') id = i.service?.display_id ?? 0
             if (id > max) max = id
         })
+
         return max
     }
 

@@ -18,23 +18,31 @@ export class GetItemsUseCase {
     ) { }
     async execute({ page, limit, is_active, type, name, display_id, below_min_stock }: GetItemsUseCaseRequest): Promise<GetItemsDTO | null> {
 
-        // @ts-ignore
-        const result = await this.itemsRepository.findMany(is_active, type, page, limit, name, display_id, below_min_stock)
+        // Cast type to match repository signature safe
+        const result = await this.itemsRepository.findMany(is_active, type as any, page, limit, name, display_id, below_min_stock)
 
         if (result) {
             result.items = result.items.map((item: any) => {
-                // Calculate cost for Composite Products
-                if (item.type === 'PRODUCT' && item.product?.is_composite) {
-                    const compositions = item.product.compositions || []
-                    const calculatedCost = compositions.reduce((acc: number, comp: any) => {
-                        const supplyCost = comp.supply?.cost || 0
-                        return acc + (supplyCost * comp.quantity)
-                    }, 0)
+                // Ensure product structure exists
+                if (item.type === 'PRODUCT' && item.product) {
 
-                    // Override the cost with the calculated sum of ingredients
-                    // Only if we actually have compositions, otherwise functionality might stay 0 or keep original cost?
-                    // User says: "O custo deve ser a SOMA". If no compositions conform, cost is 0.
-                    item.product.cost = calculatedCost
+                    // Calculate cost for Composite Products
+                    if (item.product.is_composite) {
+                        const compositions = item.product.compositions || []
+                        const calculatedCost = compositions.reduce((acc: number, comp: any) => {
+                            const supplyCost = comp.supply?.cost || 0
+                            return acc + (supplyCost * comp.quantity)
+                        }, 0)
+
+                        item.product.cost = calculatedCost
+                    } else {
+                        // For non-composite, ensure cost is defined (default to 0 if null)
+                        if (item.product.cost === null || item.product.cost === undefined) {
+                            item.product.cost = 0
+                        }
+                    }
+                    // DEBUG LOG
+                    console.log(`[USECASE] Processed Item ${item.id} (${item.name}): Composite=${item.product.is_composite}, Cost=${item.product.cost}`)
                 }
                 return item
             })

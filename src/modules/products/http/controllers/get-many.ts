@@ -34,7 +34,8 @@ export async function getMany(request: FastifyRequest, reply: FastifyReply) {
                 barcode: product.barcode,
                 ncm: product.ncm,
                 is_composite: product.is_composite,
-                compositions: product.compositions
+                compositions: (product as any).compositions, // Cast to fix lint if type missing
+                cost: (product as any).cost // Include cost (calculated or from db)
             }
         })),
         meta: {

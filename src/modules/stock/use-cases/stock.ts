@@ -1,11 +1,13 @@
 import { StocksRepository } from '@/modules/stock/repositories/stocks-repository'
-import { Stock } from '@prisma/client'
+import { Stock, Product, Supply } from '@prisma/client'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
-import { ItemsRepository } from '@/modules/items/repositories/items-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { InvalidOptionError } from '@/errors/invalid-option-error'
-import { StockCannotBeNegativaError } from '@/modules/stock/use-cases/stock-cannot-be-negative-error'
 import { prisma } from '@/lib/prisma'
+
+import { ProductsRepository } from '@/modules/items/repositories/products-repository'
+import { SuppliesRepository } from '@/modules/items/repositories/supplies-repository'
+import { ServicesRepository } from '@/modules/items/repositories/services-repository' // To check if it is a service
 
 interface StockUseCaseRequest {
     item_id: string,
@@ -21,18 +23,40 @@ export class StockUseCase {
 
     constructor(
         private stocksRepository: StocksRepository,
-        private itemsRepository: ItemsRepository
+        private productsRepository: ProductsRepository,
+        private suppliesRepository: SuppliesRepository,
+        private servicesRepository: ServicesRepository
     ) { }
     async execute({
         item_id, quantity, operation, description, created_at
     }: StockUseCaseRequest): Promise<StockUseCaseResponse> {
 
-        const findedItem = await this.itemsRepository.findById(item_id)
+        let product: Product | any | null = null
+        let supply: Supply | null = null
+        let itemType: 'PRODUCT' | 'SERVICE' | 'SUPPLY' | null = null
 
-        if (!findedItem)
+        // Try Product
+        product = await this.productsRepository.findById(item_id)
+        if (product) {
+            itemType = 'PRODUCT'
+        } else {
+            // Try Supply
+            supply = await this.suppliesRepository.findById(item_id)
+            if (supply) {
+                itemType = 'SUPPLY'
+            } else {
+                // Try Service (to give correct error message)
+                const service = await this.servicesRepository.findById(item_id)
+                if (service) {
+                    itemType = 'SERVICE'
+                }
+            }
+        }
+
+        if (!itemType)
             throw new ResourceNotFoundError()
 
-        if (findedItem.type === 'SERVICE') {
+        if (itemType === 'SERVICE') {
             throw new Error('Serviços não possuem controle de estoque.')
         }
 
@@ -42,12 +66,6 @@ export class StockUseCase {
         if (operation !== 'IN' && operation !== 'OUT')
             throw new InvalidOptionError()
 
-        if (operation === 'OUT') {
-            const itemBalance = await this.stocksRepository.getItemBalance(item_id)
-            if (itemBalance < quantity)
-                throw new StockCannotBeNegativaError()
-        }
-
         return await prisma.$transaction(async (tx) => {
             const stockData: any = {
                 quantity,
@@ -56,15 +74,15 @@ export class StockUseCase {
                 created_at
             }
 
-            if (findedItem.type === 'PRODUCT') {
+            if (itemType === 'PRODUCT') {
                 stockData.product_id = item_id
-            } else if (findedItem.type === 'SUPPLY') {
+                await this.productsRepository.changeStock(item_id, quantity, operation === 'IN', tx)
+            } else if (itemType === 'SUPPLY') {
                 stockData.supply_id = item_id
+                await this.suppliesRepository.changeStock(item_id, quantity, operation === 'IN', tx)
             }
 
             const stock = await this.stocksRepository.create(stockData, tx)
-
-            await this.itemsRepository.changeStock(findedItem.id, quantity, operation === 'IN' ? true : false, tx)
 
             return {
                 stock

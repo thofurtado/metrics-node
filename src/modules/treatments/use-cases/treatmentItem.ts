@@ -2,10 +2,13 @@ import { TreatmentItemsRepository } from '@/modules/treatments/repositories/trea
 import { TreatmentItem, Product, Service, Supply } from '@prisma/client'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { StocksRepository } from '@/modules/stock/repositories/stocks-repository'
-import { ItemsRepository } from '@/modules/items/repositories/items-repository'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
 import { TreatmentsRepository } from '@/modules/treatments/repositories/treatments-repository'
-import { InsufficientStockError } from '@/modules/stock/use-cases/insufficient-stock-error'
+
+// New Repositories
+import { ProductsRepository } from '@/modules/items/repositories/products-repository'
+import { ServicesRepository } from '@/modules/items/repositories/services-repository'
+import { SuppliesRepository } from '@/modules/items/repositories/supplies-repository'
 
 interface TreatmentItemUseCaseRequest {
     item_id: string
@@ -27,7 +30,9 @@ export class TreatmentItemUseCase {
     constructor(
         private treatmentItemsRepository: TreatmentItemsRepository,
         private treatmentsRepository: TreatmentsRepository,
-        private itemsRepository: ItemsRepository,
+        private productsRepository: ProductsRepository,
+        private servicesRepository: ServicesRepository,
+        private suppliesRepository: SuppliesRepository,
         private stocksRepository: StocksRepository
     ) { }
     async execute({
@@ -36,19 +41,45 @@ export class TreatmentItemUseCase {
         console.log(`[TreatmentItemUseCase] Executing for Treatment: ${treatment_id}, Item: ${item_id}, Qty: ${quantity}`)
 
         try {
-            let item
-            if (item_id) {
-                item = await this.itemsRepository.findById(item_id)
-                if (!item)
-                    throw new ResourceNotFoundError()
+            // --- 1. FIND ITEM & DETERMINE TYPE ---
+            let product: Product | any | null = null
+            let service: Service | null = null
+            let supply: Supply | null = null
+            let itemType: 'PRODUCT' | 'SERVICE' | 'SUPPLY' | null = null
+            let itemName = 'Unknown'
+
+            // Try Product first
+            product = await this.productsRepository.findById(item_id)
+            if (product) {
+                itemType = 'PRODUCT'
+                itemName = product.name
+            } else {
+                // Try Service
+                service = await this.servicesRepository.findById(item_id)
+                if (service) {
+                    itemType = 'SERVICE'
+                    itemName = service.name
+                } else {
+                    // Try Supply
+                    supply = await this.suppliesRepository.findById(item_id)
+                    if (supply) {
+                        itemType = 'SUPPLY'
+                        itemName = supply.name
+                    }
+                }
             }
+
+            if (!itemType) {
+                throw new ResourceNotFoundError()
+            }
+
+            // --- 2. VALIDATE TREATMENT STATUS ---
             let treatment
             if (treatment_id) {
                 treatment = await this.treatmentsRepository.findById(treatment_id)
                 if (!treatment)
                     throw new ResourceNotFoundError()
 
-                // 1. Validation of Treatment Status (Block only resolved/canceled)
                 const status = treatment.status?.toLowerCase() || 'pending'
                 const blockedStatuses = ['resolved', 'canceled']
 
@@ -59,25 +90,20 @@ export class TreatmentItemUseCase {
                     throw new Error(`Não é possível adicionar itens a um atendimento com status: ${treatment.status}`)
                 }
             }
-            // Stock ID logic removed if unused or kept minimally. Keeping logic flow.
 
             if (quantity <= 0 || salesValue < 0)
                 throw new OnlyNaturalNumbersError()
 
-            // --- STOCK VALIDATION LOGIC ("Regra de Ouro": Venda Prioritária) ---
+
+            // --- 3. STOCK VALIDATION LOGIC ---
             // A venda NÃO é bloqueada por estoque insuficiente. Apenas loga aviso.
 
-            // Step 1: Identify Type
-            const isService = item?.type === 'SERVICE' || !!item?.service
-
-            if (isService) {
-                // LOGIC: Services are infinite. Skip validation.
+            if (itemType === 'SERVICE') {
+                // Services are infinite. Skip validation.
             }
-            else if (item?.product) {
-                const product = item.product
-
+            else if (itemType === 'PRODUCT' && product) {
                 if (product.is_composite) {
-                    // Step 3: Composite Product
+                    // Composite Product
                     const compositions = product.compositions || []
 
                     for (const comp of compositions) {
@@ -90,47 +116,42 @@ export class TreatmentItemUseCase {
 
                         if (availableStock < totalRequired) {
                             console.warn(`[WARN] Estoque negativo gerado para Insumo Composto: ${ingredient.name}. Necessário: ${totalRequired}, Disponível: ${availableStock}`)
-                            // NÃO LANÇA ERRO
                         }
                     }
                 } else {
-                    // Step 4: Simple Product
+                    // Simple Product
                     const productStock = Number(product.stock || 0)
                     const requestedQuantity = Number(quantity)
 
                     if (productStock < requestedQuantity) {
-                        console.warn(`[WARN] Estoque negativo gerado para Produto Simples: ${item.name}. Estoque Banco: ${productStock}, Solicitado: ${requestedQuantity}`)
-                        // NÃO LANÇA ERRO
+                        console.warn(`[WARN] Estoque negativo gerado para Produto Simples: ${itemName}. Estoque Banco: ${productStock}, Solicitado: ${requestedQuantity}`)
                     }
                 }
             }
-            else if (item?.supply) {
-                // Extra: Supplies (sold directly)
-                const supplyStock = Number(item.supply.stock || 0)
+            else if (itemType === 'SUPPLY' && supply) {
+                // Supplies (sold directly)
+                const supplyStock = Number(supply.stock || 0)
                 const req = Number(quantity)
 
                 if (supplyStock < req) {
-                    console.warn(`[WARN] Estoque negativo gerado para Insumo Direto: ${item.name}. Disponível: ${supplyStock}, Solicitado: ${req}`)
-                    // NÃO LANÇA ERRO
+                    console.warn(`[WARN] Estoque negativo gerado para Insumo Direto: ${itemName}. Disponível: ${supplyStock}, Solicitado: ${req}`)
                 }
             }
 
-            let product_id: string | undefined = undefined
-            let service_id: string | undefined = undefined
-            let supply_id: string | undefined = undefined
 
-            if (item?.type === 'PRODUCT' || item?.product) product_id = item_id
-            else if (item?.type === 'SERVICE') service_id = item_id
-            else if (item?.type === 'SUPPLY' || item?.supply) supply_id = item_id
+            // --- 4. UPSERT LOGIC ---
+            // Prepare IDs based on type
+            const finalProductId = itemType === 'PRODUCT' ? item_id : undefined
+            const finalServiceId = itemType === 'SERVICE' ? item_id : undefined
+            const finalSupplyId = itemType === 'SUPPLY' ? item_id : undefined
 
-            // --- UPSERT LOGIC (The Fix for 409) ---
 
             // Check if item already exists in this treatment
             const existingItem = await this.treatmentItemsRepository.findByTreatmentAndItemId(
                 treatment_id,
-                product_id,
-                service_id,
-                supply_id
+                finalProductId,
+                finalServiceId,
+                finalSupplyId
             )
 
             let treatmentItemResult
@@ -150,9 +171,9 @@ export class TreatmentItemUseCase {
                 // Scenario B: Create new
                 treatmentItemResult = await this.treatmentItemsRepository.create({
                     treatment_id,
-                    product_id: product_id || null,
-                    service_id: service_id || null,
-                    supply_id: supply_id || null,
+                    product_id: finalProductId || null,
+                    service_id: finalServiceId || null,
+                    supply_id: finalSupplyId || null,
                     stock_id: stock_id || null,
                     quantity,
                     salesValue,
@@ -169,7 +190,7 @@ export class TreatmentItemUseCase {
             console.error('[FATAL ERROR] Erro capturado no UseCase:');
             console.error('Tipo do Erro:', (err as any).constructor.name);
             console.error('Mensagem:', (err as any).message);
-            // console.error('Stack:', (err as any).stack); // Opcional, pode poluir muito
+            // console.error('Stack:', (err as any).stack); 
             console.error('========================================');
             throw err;
         }

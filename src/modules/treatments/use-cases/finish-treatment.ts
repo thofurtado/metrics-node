@@ -1,13 +1,14 @@
 import { TreatmentsRepository } from '@/modules/treatments/repositories/treatments-repository'
 import { PaymentEntrysRepository } from '@/modules/financial/repositories/paymentEntrys-repository'
-import { ItemsRepository } from '@/modules/items/repositories/items-repository'
 import { TransactionsRepository } from '@/modules/financial/repositories/transactions-repository'
 import { AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
-import { ProductsRepository } from '@/modules/products/repositories/products-repository'
-import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { prisma } from '@/lib/prisma'
 import { Treatment } from '@prisma/client'
+
+// Correct Imports
+import { ProductsRepository } from '@/modules/items/repositories/products-repository'
+import { SuppliesRepository } from '@/modules/items/repositories/supplies-repository'
 
 interface FinishTreatmentUseCaseRequest {
     treatment_id: string
@@ -21,7 +22,6 @@ export class FinishTreatmentUseCase {
     constructor(
         private treatmentsRepository: TreatmentsRepository,
         private paymentEntrysRepository: PaymentEntrysRepository,
-        private itemsRepository: ItemsRepository,
         private transactionsRepository: TransactionsRepository,
         private accountsRepository: AccountsRepository,
         private productsRepository: ProductsRepository,
@@ -55,23 +55,23 @@ export class FinishTreatmentUseCase {
         return await prisma.$transaction(async (tx) => {
 
             // A. Stock Update (Decrement)
-            // Checks explicit types using relations product_id and supply_id
-            // @ts-ignore
-            if (treatment.items && treatment.items.length > 0) {
-                // @ts-ignore
-                for (const tItem of treatment.items) {
+            if ((treatment as any).items && (treatment as any).items.length > 0) {
+                for (const tItem of (treatment as any).items) {
 
                     if (tItem.product_id) {
                         // It is a Product
-                        // @ts-ignore
-                        const product = tItem.product
+                        // Cast safe here because Prisma Includes should have populated it if repo is correct
+                        // However, Repository typings doesn't guarantee 'product' populated in 'TreatmentItem' type unless explicitly typed.
+                        // Assuming findById populates: treatment.items[].product
+                        const product = (tItem as any).product
 
                         if (product && product.is_composite && product.compositions && product.compositions.length > 0) {
                             // Composable Product: Decrease stock from ingredients (Supplies)
                             for (const comp of product.compositions) {
                                 const quantityToDecrease = comp.quantity * tItem.quantity
 
-                                await this.suppliesRepository.decreaseStock(comp.supply_id, quantityToDecrease, tx)
+                                // Decrease Stock (False = Out)
+                                await this.suppliesRepository.changeStock(comp.supply_id, quantityToDecrease, false, tx)
 
                                 await tx.stock.create({
                                     data: {
@@ -86,7 +86,7 @@ export class FinishTreatmentUseCase {
 
                         } else {
                             // Standard Product: Decrease stock from the product itself
-                            await this.productsRepository.decreaseStock(tItem.product_id, tItem.quantity, tx)
+                            await this.productsRepository.changeStock(tItem.product_id, tItem.quantity, false, tx)
 
                             await tx.stock.create({
                                 data: {
@@ -101,7 +101,7 @@ export class FinishTreatmentUseCase {
 
                     } else if (tItem.supply_id) {
                         // It is a Supply
-                        await this.suppliesRepository.decreaseStock(tItem.supply_id, tItem.quantity, tx)
+                        await this.suppliesRepository.changeStock(tItem.supply_id, tItem.quantity, false, tx)
 
                         await tx.stock.create({
                             data: {
@@ -120,8 +120,7 @@ export class FinishTreatmentUseCase {
             // B. Financial Transactions
             if (paymentEntries) {
                 for (const entry of paymentEntries) {
-                    // @ts-ignore
-                    const paymentMethod = entry.payments
+                    const paymentMethod = (entry as any).payments
 
                     if (!paymentMethod) continue;
 

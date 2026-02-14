@@ -1,9 +1,12 @@
-import { PrismaItemsRepository } from '@/modules/items/repositories/prisma/prisma-items-repository'
-import { UpdateItemUseCase } from '@/modules/items/use-cases/update-item'
-import { PrismaStocksRepository } from '@/modules/stock/repositories/prisma/prisma-stocks-repository'
+import { PrismaProductsRepository } from '@/modules/items/repositories/prisma/prisma-products-repository'
+import { PrismaServicesRepository } from '@/modules/items/repositories/prisma/prisma-services-repository'
+import { PrismaSuppliesRepository } from '@/modules/items/repositories/prisma/prisma-supplies-repository'
+import { UpdateItemUseCase } from '../update-item'
 
 export function makeUpdateItemUseCase() {
-    const itemsRepository = new PrismaItemsRepository()
-    const useCase = new UpdateItemUseCase(itemsRepository)
-    return useCase
+    const productsRepository = new PrismaProductsRepository()
+    const servicesRepository = new PrismaServicesRepository()
+    const suppliesRepository = new PrismaSuppliesRepository()
+
+    return new UpdateItemUseCase(productsRepository, servicesRepository, suppliesRepository)
 }

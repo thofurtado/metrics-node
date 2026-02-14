@@ -1,10 +1,10 @@
 import { StocksRepository } from '@/modules/stock/repositories/stocks-repository'
-import { ItemsRepository } from '@/modules/items/repositories/items-repository'
+import { ProductsRepository } from '@/modules/items/repositories/products-repository'
+import { SuppliesRepository } from '@/modules/items/repositories/supplies-repository'
 import { Stock, StockOperation, StockReason } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { InvalidOptionError } from '@/errors/invalid-option-error'
-import { StockCannotBeNegativaError } from '@/modules/stock/use-cases/stock-cannot-be-negative-error'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
 
 interface RegisterStockMovementUseCaseRequest {
@@ -24,7 +24,8 @@ interface RegisterStockMovementUseCaseResponse {
 export class RegisterStockMovementUseCase {
     constructor(
         private stocksRepository: StocksRepository,
-        private itemsRepository: ItemsRepository
+        private productsRepository: ProductsRepository,
+        private suppliesRepository: SuppliesRepository
     ) { }
 
     async execute({
@@ -36,104 +37,96 @@ export class RegisterStockMovementUseCase {
         unit_cost
     }: RegisterStockMovementUseCaseRequest): Promise<RegisterStockMovementUseCaseResponse> {
 
-        // 1. Find Item
-        const item = await this.itemsRepository.findById(item_id)
+        // Validate Inputs
+        if (quantity <= 0) throw new OnlyNaturalNumbersError()
+        if (operation !== 'IN' && operation !== 'OUT') throw new InvalidOptionError()
 
-        if (!item) {
-            throw new ResourceNotFoundError()
-        }
-
-        // 2. Validate Item Type and Composite Constraints
-        if (item.type === 'SERVICE') {
-            throw new Error("Serviços não possuem controle de estoque.")
-        }
-
-        if (item.type === 'PRODUCT' && item.product?.is_composite) {
-            throw new Error("Não é possível ajustar manualmente o estoque de produtos compostos.")
-        }
-
-        // 3. Validate Quantity
-        if (quantity <= 0) {
-            throw new OnlyNaturalNumbersError()
-        }
-
-        if (operation !== 'IN' && operation !== 'OUT') {
-            throw new InvalidOptionError()
-        }
-
-        // 4. Validate Stock Availability for OUT operations
-        if (operation === 'OUT') {
-            const currentStock = item.type === 'PRODUCT' ? (item.product?.stock ?? 0) : (item.supply?.stock ?? 0)
-
-            // Ensure we don't go negative if that's a requirement (seems implied by StockCannotBeNegativaError)
-            if (currentStock < quantity) {
-                throw new StockCannotBeNegativaError()
-            }
-        }
-
-        // 5. Execute Transaction (Create History + Update Balance + Update Cost)
         return await prisma.$transaction(async (tx) => {
-            // Determine current cost if not provided
-            const currentCost = item.type === 'PRODUCT' ? (item.product?.cost ?? 0) : (item.supply?.cost ?? 0)
-            const costToRegister = unit_cost ?? currentCost
+            // 1. Try Product
+            const product = await this.productsRepository.findById(item_id)
 
-            // A. Create Stock Movement (History)
-            const stockData: any = {
-                quantity,
-                operation: operation as StockOperation,
-                description: description as StockReason, // Assuming frontend sends valid enum string or valid description
-                created_at: created_at ?? new Date(),
-                unit_cost: costToRegister
+            if (product) {
+                if (product.is_composite) {
+                    throw new Error("Não é possível ajustar manualmente o estoque de produtos compostos.")
+                }
+
+                const currentCost = product.cost ?? 0
+                const costToRegister = unit_cost ?? currentCost
+
+                // A. Create Stock Movement
+                const stockData: any = {
+                    quantity,
+                    operation: operation as StockOperation,
+                    description: description as StockReason,
+                    created_at: created_at ?? new Date(),
+                    unit_cost: costToRegister,
+                    product_id: item_id
+                }
+
+                const stock_movement = await this.stocksRepository.create(stockData, tx)
+
+                // B. Update Product Balance & Cost
+                const isEntry = operation === 'IN'
+                const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
+
+                const newStock = isEntry
+                    ? (product.stock ?? 0) + quantity
+                    : (product.stock ?? 0) - quantity
+
+                await this.productsRepository.update(item_id, {
+                    stock: newStock,
+                    ...(costUpdate !== undefined && { cost: costUpdate })
+                }, tx)
+
+                return {
+                    new_balance: newStock,
+                    stock_movement
+                }
             }
 
-            // Map item_id to correct foreign key
-            if (item.type === 'PRODUCT') {
-                stockData.product_id = item_id
-            } else if (item.type === 'SUPPLY') {
-                stockData.supply_id = item_id
+            // 2. Try Supply
+            const supply = await this.suppliesRepository.findById(item_id)
+
+            if (supply) {
+                const currentCost = supply.cost
+                const costToRegister = unit_cost ?? currentCost
+
+                // A. Create Stock Movement
+                const stockData: any = {
+                    quantity,
+                    operation: operation as StockOperation,
+                    description: description as StockReason,
+                    created_at: created_at ?? new Date(),
+                    unit_cost: costToRegister,
+                    supply_id: item_id
+                }
+
+                const stock_movement = await this.stocksRepository.create(stockData, tx)
+
+                // B. Update Supply Balance & Cost
+                const isEntry = operation === 'IN'
+                const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
+
+                const newStock = isEntry
+                    ? (supply.stock ?? 0) + quantity
+                    : (supply.stock ?? 0) - quantity
+
+                await this.suppliesRepository.update(item_id, {
+                    stock: newStock,
+                    ...(costUpdate !== undefined && { cost: costUpdate })
+                }, tx)
+
+                return {
+                    new_balance: newStock,
+                    stock_movement
+                }
             }
 
-            const stock_movement = await this.stocksRepository.create(stockData, tx)
-
-            // B. Update Item Balance & Cost (Ledger Logic)
-            const isEntry = operation === 'IN'
-            const stockUpdate = isEntry ? { increment: quantity } : { decrement: quantity }
-
-            // Only update cost if it's an ENTRY and a new cost is provided
-            const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
-
-            if (item.type === 'PRODUCT') {
-                await tx.product.update({
-                    where: { id: item_id },
-                    data: {
-                        stock: stockUpdate,
-                        ...(costUpdate !== undefined && { cost: costUpdate })
-                    }
-                })
-            } else if (item.type === 'SUPPLY') {
-                await tx.supply.update({
-                    where: { id: item_id },
-                    data: {
-                        stock: stockUpdate,
-                        ...(costUpdate !== undefined && { cost: costUpdate })
-                    }
-                })
-            }
-
-            // C. Calculate New Balance for response
-            // Fetch updated item to be sure, or calculate optimistically. 
-            // Optimistic calculation is faster and safe within transaction logic if no other parallel tx updates it.
-            // However, itemsRepository.findById doesn't support tx yet.
-            // We'll calculate based on initial read + delta.
-            const initialStock = item.type === 'PRODUCT' ? (item.product?.stock ?? 0) : (item.supply?.stock ?? 0)
-            const new_balance = isEntry
-                ? initialStock + quantity
-                : initialStock - quantity
-
-            return {
-                new_balance,
-                stock_movement
-            }
+            // If checking services specifically desired to throw explicit error:
+            // Just throw Not Found implies it's not a stockable item.
+            throw new ResourceNotFoundError()
         })
     }
 }
+
+

@@ -1,13 +1,15 @@
-import { ItemsRepository } from '@/modules/items/repositories/items-repository'
-import { Item, ItemType } from '@prisma/client'
-import { ThisNameAlreadyExistsError } from '@/errors/this-name-already-exists-error'
+import { ProductsRepository } from '../repositories/products-repository'
+import { ServicesRepository } from '../repositories/services-repository'
+import { SuppliesRepository } from '../repositories/supplies-repository'
 import { StocksRepository } from '@/modules/stock/repositories/stocks-repository'
-import { PriceCannotBeLowerThanCost } from '@/errors/price-cannot-be-lower-than-cost-error'
+import { ThisNameAlreadyExistsError } from '@/errors/this-name-already-exists-error'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
-import { DisplayIdAlreadyExistsError } from '@/errors/display-id-already-exists-error'
 import { prisma } from '@/lib/prisma'
 
-interface ItemUseCaseRequest {
+// Define locally if not in Prisma
+export type ItemType = 'PRODUCT' | 'SERVICE' | 'SUPPLY'
+
+interface CreateItemUseCaseRequest {
     name: string,
     description?: string,
     cost?: number,
@@ -23,104 +25,100 @@ interface ItemUseCaseRequest {
     estimated_time?: string,
     unit?: string
 }
-interface ItemUseCaseResponse {
-    item: Item
-}
-export class ItemUseCase {
 
+export class CreateItemUseCase {
     constructor(
-        private itemsRepository: ItemsRepository,
+        private productsRepository: ProductsRepository,
+        private servicesRepository: ServicesRepository,
+        private suppliesRepository: SuppliesRepository,
         private stockRepository: StocksRepository
     ) { }
+
     async execute({
         name, description, cost, price, stock, min_stock, barcode, category, active, type, display_id, ncm, estimated_time, unit
-    }: ItemUseCaseRequest): Promise<ItemUseCaseResponse> {
+    }: CreateItemUseCaseRequest) {
 
-        const existentName = await this.itemsRepository.findByName(name)
+        // 1. Check Name Uniqueness
+        let exists = false
+        if (type === 'PRODUCT') exists = !!(await this.productsRepository.findByName(name))
+        if (type === 'SERVICE') exists = !!(await this.servicesRepository.findByName(name))
+        if (type === 'SUPPLY') exists = !!(await this.suppliesRepository.findByName(name))
 
-        if (existentName && existentName.length > 0) {
+        if (exists) {
             throw new ThisNameAlreadyExistsError()
         }
 
-        // Display ID Validation (Product/Service only)
-        if (display_id && (type === ItemType.PRODUCT || type === ItemType.SERVICE)) {
-            const conflicts = await this.itemsRepository.findMany(undefined, type, 1, 1, undefined, display_id)
-            if (conflicts && conflicts.items && conflicts.items.length > 0) {
-                throw new DisplayIdAlreadyExistsError()
-            }
-        }
-
-        // Financial Validation
+        // 2. Validations
         if (price !== undefined && price < 0) throw new OnlyNaturalNumbersError()
         if (cost !== undefined && cost < 0) throw new OnlyNaturalNumbersError()
-
-        // Stock Validation
         if (stock !== undefined && stock < 0) throw new OnlyNaturalNumbersError()
 
         return await prisma.$transaction(async (tx) => {
-            let finalDisplayId: number | undefined = undefined
+            let item: any
 
-            if (type === ItemType.PRODUCT || type === ItemType.SERVICE) {
-                finalDisplayId = display_id
-                if (!finalDisplayId || isNaN(finalDisplayId)) {
-                    finalDisplayId = await this.itemsRepository.findNextAvailableDisplayId(type, tx)
+            if (type === 'PRODUCT') {
+                // Display ID
+                let finalDisplayId = display_id
+                if (!finalDisplayId) {
+                    finalDisplayId = await this.productsRepository.findNextAvailableDisplayId(tx)
                 }
+
+                item = await this.productsRepository.create({
+                    name,
+                    description,
+                    category: category ? { connectOrCreate: { where: { name: category }, create: { name: category } } } : undefined,
+                    price: price ?? 0,
+                    stock: stock || 0,
+                    min_stock: min_stock || 0,
+                    barcode,
+                    ncm,
+                    display_id: finalDisplayId!,
+                    active: active ?? true
+                }, tx)
+
+            } else if (type === 'SERVICE') {
+                let finalDisplayId = display_id
+                if (!finalDisplayId) {
+                    finalDisplayId = await this.servicesRepository.findNextAvailableDisplayId(tx)
+                }
+
+                item = await this.servicesRepository.create({
+                    name,
+                    description,
+                    category: category,
+                    price: price ?? 0,
+                    estimated_time,
+                    active: active ?? true,
+                    display_id: finalDisplayId!
+                }, tx)
+
+            } else if (type === 'SUPPLY') {
+                item = await this.suppliesRepository.create({
+                    name,
+                    description,
+                    category: category,
+                    cost: cost ?? 0,
+                    stock: stock || 0,
+                    unit: unit || 'UN',
+                    active: active ?? true
+                }, tx)
             }
-
-            const payload: any = {
-                name,
-                description,
-                category,
-                active,
-                type
-            }
-
-            if (type === ItemType.PRODUCT) {
-                payload.product = {
-                    create: {
-                        display_id: finalDisplayId,
-                        price: price ?? 0,
-                        stock: stock || 0,
-                        min_stock: min_stock || 0,
-                        barcode,
-                        ncm
-                    }
-                }
-            } else if (type === ItemType.SERVICE) {
-                payload.service = {
-                    create: {
-                        display_id: finalDisplayId,
-                        price: price ?? 0,
-                        estimated_time
-                    }
-                }
-            } else if (type === ItemType.SUPPLY) {
-                payload.supply = {
-                    create: {
-                        cost: cost ?? 0,
-                        stock: stock || 0,
-                        unit: unit || 'UN'
-                    }
-                }
-            }
-
-            const item = await this.itemsRepository.create(payload, tx)
 
             // Stock Log
-            if (stock && stock !== 0 && (type === ItemType.PRODUCT || type === ItemType.SUPPLY)) {
-
-                await this.stockRepository.create({
-                    item_id: item.id,
+            if (stock && stock !== 0 && (type === 'PRODUCT' || type === 'SUPPLY')) {
+                const stockData: any = {
                     quantity: stock,
                     operation: 'IN',
                     description: 'AJUSTE_POSITIVO',
                     created_at: new Date()
-                }, tx)
+                }
+                if (type === 'PRODUCT') stockData.product_id = item.id
+                if (type === 'SUPPLY') stockData.supply_id = item.id
+
+                await this.stockRepository.create(stockData, tx)
             }
 
-            return {
-                item
-            }
+            return { item }
         })
     }
 }

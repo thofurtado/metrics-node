@@ -1,7 +1,7 @@
-import { Item } from '@prisma/client'
+import { ItemWithExtensions } from '@/modules/items/repositories/items-repository'
 
 export interface GetItemsDTO {
-    items: Item[],
+    items: ItemWithExtensions[],
     meta: {
         totalCount: number,
         perPage: number,
