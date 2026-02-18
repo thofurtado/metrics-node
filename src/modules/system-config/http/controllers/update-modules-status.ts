@@ -8,9 +8,10 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         merchandise: z.boolean(),
         financial: z.boolean(),
         treatments: z.boolean(),
+        cestaBasicaValue: z.number().nullable().optional(),
     })
 
-    const { merchandise, financial, treatments } = updateBodySchema.parse(request.body)
+    const { merchandise, financial, treatments, cestaBasicaValue } = updateBodySchema.parse(request.body)
 
     // Regra de Negócio: Removida a trava de dependência forte.
     // Atendimentos agora pode ficar ativo mesmo sem Mercadorias/Financeiro.
@@ -31,6 +32,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 merchandise_module: merchandise,
                 financial_module: financial,
                 treatments_module: finalTreatments,
+                cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
             },
         })
     } else {
@@ -39,6 +41,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 merchandise_module: merchandise,
                 financial_module: financial,
                 treatments_module: finalTreatments,
+                cestaBasicaValue: cestaBasicaValue ?? 0,
             },
         })
     }
@@ -47,5 +50,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         merchandise: config.merchandise_module,
         financial: config.financial_module,
         treatments: config.treatments_module,
+        hr_module: config.hr_module,
+        cestaBasicaValue: Number(config.cestaBasicaValue || 0)
     })
 }

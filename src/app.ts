@@ -15,8 +15,10 @@ import { servicesRoutes } from '@/modules/services/http/controllers/routes'
 import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
 import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
+import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export const app = fastify({ logger: true })
 // [
@@ -56,6 +58,25 @@ app.register(suppliesRoutes)
 app.register(categoriesRoutes)
 app.register(suppliersRoutes)
 app.register(systemConfigRoutes)
+
+// Quiosque (Electron / metrics-ponto) - autenticado via x-api-key
+app.register(async (instance) => {
+    instance.addHook('preHandler', async (request, reply) => {
+        const apiKey = request.headers['x-api-key']
+        const validKey = process.env.API_KEY_PONTO || 'marujo_secret_key_2026'
+        if (apiKey !== validKey) {
+            return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API inválida' })
+        }
+    })
+    instance.register(kioskRoutes)
+})
+
+
+// Admin HR (Painel Metrics) - autenticado via JWT
+app.register(async (instance) => {
+    instance.addHook('onRequest', verifyJwt)
+    instance.register(hrAdminRoutes)
+})
 
 app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {

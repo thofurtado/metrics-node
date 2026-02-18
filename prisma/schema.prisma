@@ -9,7 +9,7 @@
 // npm i @prisma/client 
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "binary"
 }
 
@@ -37,18 +37,20 @@ model User {
   interactions Interaction[]
   Treatment    Treatment[]
 
+  employee Employee?
+
   @@map("users")
 }
 
 model Client {
-  id             String  @id @default(uuid())
+  id             String   @id @default(uuid())
   name           String
-  identification String? @unique
+  identification String?  @unique
   phone          String?
   email          String?
-  contract       Boolean @default(false)
+  contract       Boolean  @default(false)
   contact        String?
-  isEnterprise   Boolean @default(false)
+  isEnterprise   Boolean  @default(false)
   created_at     DateTime @default(now())
   updated_at     DateTime @default(now()) @updatedAt
 
@@ -103,21 +105,21 @@ model Treatment {
 }
 
 model TreatmentItem {
-  id           String  @id @default(uuid())
+  id           String @id @default(uuid())
   treatment_id String
-  
-  product_id   String?
-  service_id   String?
-  supply_id    String?
 
-  quantity     Float
-  salesValue   Float?
-  discount     Float?
-  stock_id     String?
+  product_id String?
+  service_id String?
+  supply_id  String?
 
-  product    Product? @relation(fields: [product_id], references: [id])
-  service    Service? @relation(fields: [service_id], references: [id])
-  supply     Supply?  @relation(fields: [supply_id], references: [id])
+  quantity   Float
+  salesValue Float?
+  discount   Float?
+  stock_id   String?
+
+  product    Product?  @relation(fields: [product_id], references: [id])
+  service    Service?  @relation(fields: [service_id], references: [id])
+  supply     Supply?   @relation(fields: [supply_id], references: [id])
   treatments Treatment @relation(fields: [treatment_id], references: [id])
   stocks     Stock?    @relation(fields: [stock_id], references: [id])
 
@@ -130,7 +132,7 @@ model Interaction {
   treatment_id String
   date         DateTime @default(now())
   description  String
-  
+
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
@@ -141,14 +143,14 @@ model Interaction {
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   category    Category? @relation(fields: [category_id], references: [id])
   category_id String?
-  active      Boolean? @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @default(now()) @updatedAt
+  active      Boolean?  @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
 
   display_id   Int     @unique
   cost         Float?  @default(0)
@@ -215,11 +217,11 @@ model Supply {
 }
 
 model Composition {
-  id          String @id @default(uuid())
-  product_id  String?
-  service_id  String?
-  supply_id   String
-  quantity    Float
+  id         String  @id @default(uuid())
+  product_id String?
+  service_id String?
+  supply_id  String
+  quantity   Float
 
   product Product? @relation(fields: [product_id], references: [id])
   service Service? @relation(fields: [service_id], references: [id])
@@ -246,10 +248,10 @@ enum StockOperation {
 }
 
 model Stock {
-  id          String         @id @default(uuid())
-  product_id  String?
-  supply_id   String?
-  
+  id         String  @id @default(uuid())
+  product_id String?
+  supply_id  String?
+
   quantity    Float
   operation   StockOperation
   description StockReason?
@@ -258,7 +260,7 @@ model Stock {
 
   product Product? @relation(fields: [product_id], references: [id])
   supply  Supply?  @relation(fields: [supply_id], references: [id])
-  
+
   TreatmentItem TreatmentItem[]
 
   @@map("stocks")
@@ -337,7 +339,6 @@ model Account {
   transactions        Transaction[]
   transferTransaction TransferTransaction[]
 
-
   @@map("accounts")
 }
 
@@ -352,32 +353,34 @@ model Transaction {
   confirmed   Boolean  @default(false)
   created_at  DateTime @default(now())
 
-  accounts            Account               @relation(fields: [account_id], references: [id])
-  sectors             Sector?               @relation(fields: [sector_id], references: [id])
-  TransferTransaction TransferTransaction[]
-  InstallmentPayment  InstallmentPayment[]
+  accounts              Account               @relation(fields: [account_id], references: [id])
+  sectors               Sector?               @relation(fields: [sector_id], references: [id])
+  TransferTransaction   TransferTransaction[]
+  InstallmentPayment    InstallmentPayment[]
   parent_transaction_id String?
-  parentTransaction     Transaction?  @relation("TransactionHistory", fields: [parent_transaction_id], references: [id])
-  childTransactions     Transaction[] @relation("TransactionHistory")
+  parentTransaction     Transaction?          @relation("TransactionHistory", fields: [parent_transaction_id], references: [id])
+  childTransactions     Transaction[]         @relation("TransactionHistory")
 
   supplier_id String?
   supplier    Supplier? @relation(fields: [supplier_id], references: [id])
-  
+
   transaction_group_id String?
   transactionGroup     TransactionGroup? @relation(fields: [transaction_group_id], references: [id])
+
+  payrollEntries PayrollEntry[]
 
   @@map("transactions")
 }
 
 model TransactionGroup {
-  id               String   @id @default(uuid())
-  totalAmount      Float
+  id                String   @id @default(uuid())
+  totalAmount       Float
   installmentsCount Int
-  description      String?
-  frequency        String?
-  created_at       DateTime @default(now())
-  
-  transactions     Transaction[]
+  description       String?
+  frequency         String?
+  created_at        DateTime @default(now())
+
+  transactions Transaction[]
 
   @@map("transaction_groups")
 }
@@ -394,11 +397,11 @@ model TransferTransaction {
 }
 
 model Sector {
-  id           String        @id @default(uuid())
-  name         String
-  budget       Float?
-  type         String        @default("in")
-  
+  id     String @id @default(uuid())
+  name   String
+  budget Float?
+  type   String @default("in")
+
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
@@ -410,7 +413,7 @@ model Sector {
 model Supplier {
   id         String   @id @default(uuid())
   name       String
-  document   String?  // CNPJ/CPF
+  document   String? // CNPJ/CPF
   email      String?
   phone      String?
   created_at DateTime @default(now())
@@ -422,12 +425,119 @@ model Supplier {
 }
 
 model SystemConfig {
-  id                 String   @id @default(uuid())
-  merchandise_module Boolean  @default(true)
-  financial_module   Boolean  @default(true)
-  treatments_module  Boolean  @default(true)
-  
-  updated_at         DateTime @default(now()) @updatedAt
-  
+  id                 String  @id @default(uuid())
+  merchandise_module Boolean @default(true)
+  financial_module   Boolean @default(true)
+  treatments_module  Boolean @default(true)
+  hr_module          Boolean @default(true)
+  cestaBasicaValue   Decimal @default(0)
+
+  updated_at DateTime @default(now()) @updatedAt
+
   @@map("system_configs")
+}
+
+model Employee {
+  id            String   @id @default(uuid())
+  name          String
+  role          String // Cargo
+  registrationType String @default("REGISTERED") // REGISTERED, UNREGISTERED, DAILY
+  isRegistered  Boolean  @default(true)
+  admissionDate DateTime
+  pin           String // Senha para o ponto
+
+  salary             Decimal?
+  dailyRate          Decimal?
+  points             Int     @default(0)
+  transportAllowance Decimal @default(0)
+  overtimeValue      Decimal @default(0)
+  hasCestaBasica     Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  user_id String? @unique
+  user    User?   @relation(fields: [user_id], references: [id])
+
+  timeClocks TimeClock[]
+  payrollEntries PayrollEntry[]
+  pointSnapshots EmployeePointSnapshot[]
+
+  @@map("employees")
+}
+
+model TimeClock {
+  id          String   @id @default(uuid())
+  employee_id String
+  date        DateTime @db.Date
+
+  clockIn    DateTime?
+  breakStart DateTime?
+  breakEnd   DateTime?
+  clockOut   DateTime?
+
+  isExtraDay      Boolean  @default(false)
+  negotiatedValue Decimal?
+
+  isVerified Boolean @default(false)
+  notes      String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [id])
+
+  @@unique([employee_id, date])
+  @@map("time_clocks")
+}
+
+model EmployeePointSnapshot {
+  id           String   @id @default(uuid())
+  employee_id  String
+  snapshotDate DateTime
+  
+  points       Int
+  pointValue   Decimal
+  totalAmount  Decimal // points * pointValue
+  
+  created_at DateTime @default(now())
+
+  employee   Employee @relation(fields: [employee_id], references: [id])
+
+  @@map("employee_point_snapshots")
+}
+
+enum PayrollType {
+  SALARIO_60
+  SALARIO_40
+  PONTUACAO_10
+  DIA_EXTRA
+  BENEFICIO
+  OTHER
+  VALE
+  ERRO
+  CONSUMACAO
+  CESTA_BASICA
+  VALE_TRANSPORTE
+}
+
+model PayrollEntry {
+  id           String      @id @default(uuid())
+  employee_id  String
+  description  String
+  amount       Decimal
+  type         PayrollType
+  referenceDate DateTime   @db.Date // Mês de referência (ex: 01/01/2024 para Janeiro)
+  
+  status       String      @default("PENDING") // PENDING, PAID, CANCELED
+  
+  transaction_id String?
+  transaction    Transaction? @relation(fields: [transaction_id], references: [id])
+  
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @default(now()) @updatedAt
+
+  employee     Employee    @relation(fields: [employee_id], references: [id])
+
+  @@map("payroll_entries")
 }
