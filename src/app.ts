@@ -30,8 +30,9 @@ export const app = fastify({ logger: true })
 
 app.register(cors, {
     origin: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // ← ADD ESTA LINHA
-    credentials: true // ← importante para cookies/tokens
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'], // ← Permitir cabeçalho da API Key
+    credentials: true
 })
 app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
