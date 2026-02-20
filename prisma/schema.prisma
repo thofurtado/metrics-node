@@ -347,6 +347,9 @@ model Transaction {
   operation   String
   date        DateTime @default(now())
   amount      Float
+  interest    Float?   @default(0)
+  discount    Float?   @default(0)
+  totalValue  Float?
   account_id  String
   sector_id   String?
   description String?

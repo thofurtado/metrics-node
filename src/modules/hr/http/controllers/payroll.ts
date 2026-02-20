@@ -70,9 +70,15 @@ export async function getPayrollPreview(request: FastifyRequest, reply: FastifyR
             employee: {
                 select: {
                     name: true,
-                    role: true
+                    role: true,
+                    salary: true,
+                    dailyRate: true,
+                    transportAllowance: true
                 }
             }
+        },
+        orderBy: {
+            employee: { name: 'asc' }
         }
     })
 
@@ -90,6 +96,54 @@ export async function getPayrollPreview(request: FastifyRequest, reply: FastifyR
         summary: {
             totalAmount,
             byType
+        }
+    })
+}
+
+export async function getPayrollHistory(request: FastifyRequest, reply: FastifyReply) {
+    const querySchema = z.object({
+        month: z.coerce.number().optional(),
+        year: z.coerce.number().optional(),
+        type: z.string().optional()
+    })
+
+    const { month, year, type } = querySchema.parse(request.query)
+
+    let where: any = {
+        status: { in: ["PAID", "PENDING"] }
+    }
+
+    if (month && year) {
+        const start = new Date(year, month - 1, 1)
+        const end = new Date(year, month, 0)
+        where.referenceDate = { gte: start, lte: end }
+    }
+
+    if (type) {
+        where.type = type
+    }
+
+    const entries = await prisma.payrollEntry.findMany({
+        where,
+        include: {
+            employee: {
+                select: {
+                    name: true,
+                    role: true
+                }
+            }
+        },
+        orderBy: {
+            referenceDate: 'desc'
+        }
+    })
+
+    const totalAmount = entries.reduce((acc: number, curr: any) => acc + Number(curr.amount), 0)
+
+    return reply.status(200).send({
+        entries,
+        summary: {
+            totalAmount
         }
     })
 }

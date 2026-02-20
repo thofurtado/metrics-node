@@ -18,6 +18,9 @@ interface TransactionUseCaseRequest {
     installments_count?: number;
     interval_frequency?: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     custom_installments?: { date: Date, amount: number }[];
+    interest?: number | null;
+    discount?: number | null;
+    totalValue?: number | null;
 }
 
 interface TransactionUseCaseResponse {
@@ -31,7 +34,7 @@ export class TransactionUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        operation, amount, account_id, date, sector_id, description, confirmed, destination_account_id, supplier_id, installments_count, interval_frequency, custom_installments
+        operation, amount, account_id, date, sector_id, description, confirmed, destination_account_id, supplier_id, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
         // Test for the right operation
@@ -101,6 +104,9 @@ export class TransactionUseCase {
                                     description: currentDescription,
                                     confirmed: isConfirmed,
                                     supplier_id: supplier_id,
+                                    interest: isFirst ? interest : 0,
+                                    discount: isFirst ? discount : 0,
+                                    totalValue: isFirst ? totalValue : item.amount,
                                     // parent_transaction_id: we rely on transaction_group_id relation
                                 }
                             })
@@ -133,6 +139,9 @@ export class TransactionUseCase {
                         description: baseDescription,
                         confirmed: isConfirmed,
                         supplier_id: supplier_id,
+                        interest,
+                        discount,
+                        totalValue,
                     }
                 })
             }

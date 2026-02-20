@@ -50,6 +50,15 @@ const employeeBodySchema = z.object({
 export async function createEmployee(request: FastifyRequest, reply: FastifyReply) {
     const data = employeeBodySchema.parse(request.body)
 
+    // Check PIN uniqueness
+    const pinExists = await prisma.employee.findFirst({
+        where: { pin: data.pin }
+    })
+
+    if (pinExists) {
+        return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
+    }
+
     const employee = await prisma.employee.create({
         data: {
             name: data.name,
@@ -76,7 +85,18 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
 
     const { id } = updateEmployeeParamsSchema.parse(request.params)
     const data = employeeBodySchema.parse(request.body)
-    console.log('Dados recebidos para atualização:', data)
+
+    // Check PIN uniqueness (excluding current employee)
+    const pinExists = await prisma.employee.findFirst({
+        where: {
+            pin: data.pin,
+            id: { not: id }
+        }
+    })
+
+    if (pinExists) {
+        return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
+    }
 
     const employee = await prisma.employee.update({
         where: { id },
@@ -99,11 +119,67 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
 }
 
 export async function listEmployees(request: FastifyRequest, reply: FastifyReply) {
-    const employees = await prisma.employee.findMany({
-        orderBy: {
-            name: "asc",
-        },
+    const querySchema = z.object({
+        page: z.coerce.number().min(1).default(1),
+        limit: z.coerce.number().min(1).default(1000),
+        name: z.string().optional(),
+        isRegistered: z.preprocess((val) => {
+            if (val === 'true') return true
+            if (val === 'false') return false
+            return undefined
+        }, z.boolean().optional())
     })
 
-    return reply.status(200).send(employees)
+    const { page, limit, name, isRegistered } = querySchema.parse(request.query)
+    const skip = (page - 1) * limit
+
+    const where: any = {}
+    if (name) {
+        where.name = { contains: name, mode: 'insensitive' }
+    }
+
+    // Filter by Active/Inactive status if provided
+    if (isRegistered !== undefined) {
+        where.isRegistered = isRegistered
+    }
+
+    // Run parallel queries
+    const [count, employees] = await Promise.all([
+        prisma.employee.count({ where }),
+        prisma.employee.findMany({
+            where,
+            take: limit,
+            skip,
+            orderBy: {
+                name: "asc",
+            },
+        })
+    ])
+
+    // IMPORTANT: Returning object with data to match pagination standard
+    return reply.status(200).send({
+        data: employees,
+        meta: {
+            page,
+            limit,
+            total: count,
+            totalPages: Math.ceil(count / limit)
+        }
+    })
+}
+
+export async function getEmployeeSummary(request: FastifyRequest, reply: FastifyReply) {
+    const [total, registered, unregistered, daily] = await Promise.all([
+        prisma.employee.count(),
+        prisma.employee.count({ where: { registrationType: 'REGISTERED' } }),
+        prisma.employee.count({ where: { registrationType: 'UNREGISTERED' } }),
+        prisma.employee.count({ where: { registrationType: 'DAILY' } })
+    ])
+
+    return reply.status(200).send({
+        total,
+        registered,
+        unregistered,
+        daily
+    })
 }

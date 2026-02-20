@@ -44,6 +44,10 @@ export class GeneratePayrollBatchUseCase {
 
             // --- LOGIC SELECTION ---
 
+            // ... (inside loop)
+
+            // --- LOGIC SELECTION ---
+
             if (type.toUpperCase() === "CESTA_BASICA" || type.toUpperCase() === "BENEFICIO") {
                 if (!emp.hasCestaBasica) {
                     console.log(`[GenerateBatch] SKIP ${emp.name}: No hasCestaBasica entitlement`)
@@ -55,27 +59,68 @@ export class GeneratePayrollBatchUseCase {
                     throw new Error("Valor da Cesta Básica não configurado ou zerado nas Configurações do Sistema.")
                 }
 
-                // 100% for Registered, 50% for Unregistered
+                // Check existing entries for this month
+                const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
+                const endOfMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0)
+
+                const existingCestas = await prisma.payrollEntry.findMany({
+                    where: {
+                        employee_id: emp.id,
+                        type: { in: ["CESTA_BASICA", "BENEFICIO"] },
+                        referenceDate: { gte: startOfMonth, lte: endOfMonth }
+                    }
+                })
+
                 if (emp.isRegistered) {
+                    // Registered: 100% in one go. If any exists, skip.
+                    if (existingCestas.length > 0) {
+                        console.log(`[GenerateBatch] SKIP ${emp.name}: Registered already received Cesta.`)
+                        continue
+                    }
                     amount = cestaValue
                     console.log(`[GenerateBatch] ${emp.name}: Registered -> 100% (${amount})`)
                 } else {
+                    // Unregistered: 2 installments of 50%
+                    if (existingCestas.length >= 2) {
+                        console.log(`[GenerateBatch] SKIP ${emp.name}: Unregistered already received 2 Installments.`)
+                        continue
+                    }
+
                     amount = cestaValue / 2
-                    console.log(`[GenerateBatch] ${emp.name}: Unregistered -> 50% (${amount})`)
+
+                    if (existingCestas.length === 0) {
+                        console.log(`[GenerateBatch] ${emp.name}: Unregistered -> 1st Installment 50% (${amount})`)
+                    } else {
+                        console.log(`[GenerateBatch] ${emp.name}: Unregistered -> 2nd Installment 50% (${amount})`)
+                    }
                 }
                 description = `Cesta Básica - Ref: ${monthName}`
 
+
             } else if (type === "VALE_TRANSPORTE") {
-                if (transport <= 0) continue
+                // EXCLUSIVE LOGIC: Only filter by transport value for this specific type
+                if (transport <= 0) {
+                    console.log(`[GenerateBatch] SKIP ${emp.name}: Transport value is 0`)
+                    continue
+                }
                 amount = transport
                 description = `Vale Transporte - Ref: ${monthName}`
 
             } else if (type === "SALARIO_60") {
                 // Pagamento Dia 05 (Saldo de Salário)
                 let earnings = 0
+                let advanceDeduction = 0
+
+                const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
+                const endOfMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0)
 
                 if (regType === "DAILY") {
                     // Diaristas: 16th to End of PREVIOUS month
+                    // Logic: Diaristas are paid purely on production.
+                    // The "Vale" (Day 20) covers 1-15.
+                    // This "Salary" (Day 5) covers 16-End.
+                    // They are independent. We do NOT deduct the Vale here.
+
                     const prevMonthDate = new Date(refDate)
                     prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
 
@@ -90,34 +135,65 @@ export class GeneratePayrollBatchUseCase {
                     })
                     const totalDiarias = timeClocks.reduce((acc, tc) => acc + (Number(tc.negotiatedValue) || 0), 0)
                     earnings = totalDiarias
+
+                    // Diarista Debts: Only ERRO and CONSUMACAO. 
+                    // Explicitly exclude VALE because their Vale is a separate 1st-15th payment, not an advance on the 16th-End payment.
+
+                    const debts = await prisma.payrollEntry.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            type: { in: ["ERRO", "CONSUMACAO"] }, // Removed VALE
+                            status: "PENDING"
+                        }
+                    })
+
+                    const debtsSum = debts.reduce((acc, d) => acc + Number(d.amount), 0)
+                    amount = earnings - debtsSum
+                    debtsToUpdate = debts.map(d => d.id)
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName}`
+
                 } else {
-                    // Fixed Employees: 60% of Salary
-                    earnings = salary * 0.60
-                }
+                    // Fixed Employees: Base is 100% Salary.
+                    // We must deduct the Advance (40%) paid on Day 20.
+                    // We must find the Advance for *this reference month*, regardless if it is PAID or PENDING.
 
-                // Subtrair débitos: VALE + ERRO + CONSUMACAO
-                const debts = await prisma.payrollEntry.findMany({
-                    where: {
-                        employee_id: emp.id,
-                        type: { in: ["VALE", "ERRO", "CONSUMACAO"] },
-                        status: "PENDING"
+                    earnings = salary
+
+                    // 1. Find the Advance (Vale) for this month
+                    const advanceEntry = await prisma.payrollEntry.findFirst({
+                        where: {
+                            employee_id: emp.id,
+                            type: "VALE",
+                            description: { contains: "Adiantamento" },
+                            referenceDate: { gte: startOfMonth, lte: endOfMonth }
+                        }
+                    })
+
+                    if (advanceEntry) {
+                        advanceDeduction = Number(advanceEntry.amount)
                     }
-                })
 
-                const debtsSum = debts.reduce((acc, d) => {
-                    const val = Number(d.amount)
-                    // VALE is usually positive in DB, so we subtract it from earnings.
-                    // ERRO/CONSUMACAO are usually negative (debts), so we add them (reducing total).
-                    if (val > 0 && d.type === "VALE") return acc - val
-                    return acc + val
-                }, 0)
+                    // 2. Find other Debts (Pending Erros/Consumacao)
+                    // Note: If there was a Vale appearing as "Pending", the query above caught it as deduction.
+                    // We should only look for ERRO/CONSUMACAO here to avoid double counting if we looked for VALE again.
+                    const debts = await prisma.payrollEntry.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            type: { in: ["ERRO", "CONSUMACAO"] },
+                            status: "PENDING"
+                        }
+                    })
 
-                amount = earnings + debtsSum
-                debtsToUpdate = debts.map(d => d.id)
-                description = `Salário (Saldo) - Ref: ${monthName}`
+                    const debtsSum = debts.reduce((acc, d) => acc + Number(d.amount), 0)
+
+                    amount = earnings - advanceDeduction - debtsSum
+                    debtsToUpdate = debts.map(d => d.id)
+                    description = `Salário (Saldo) - Ref: ${monthName}`
+                }
 
             } else if (type === "VALE") {
                 // Adiantamento Dia 20 (40%)
+                // Fixed: Logic for all active employees regardless of transport allowance.
                 if (regType === "DAILY") {
                     // Diaristas: 1st to 15th of CURRENT month
                     const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
@@ -130,8 +206,9 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
                     const totalDiarias = timeClocks.reduce((acc, tc) => acc + (Number(tc.negotiatedValue) || 0), 0)
-                    amount = totalDiarias
+                    // For Day 20, we consider this the "earnings" for the period.
 
+                    // Subtract debts? Usually yes.
                     const debts = await prisma.payrollEntry.findMany({
                         where: {
                             employee_id: emp.id,
@@ -141,18 +218,26 @@ export class GeneratePayrollBatchUseCase {
                     })
                     const debtsSum = debts.reduce((acc, d) => {
                         const val = Number(d.amount)
-                        if (val > 0 && d.type === "VALE") return acc - val
                         return acc + val
                     }, 0)
-                    amount += debtsSum
+
+                    amount = totalDiarias - debtsSum
+                    // For Diaristas, if we subtract debts here, we should mark them as PAID so they aren't subtracted again on Day 5?
+                    // But usually Diaristas get paid twice a month independently.
+                    // So yes, mark debts as PAID using debtsToUpdate.
+                    debtsToUpdate = debts.map(d => d.id)
 
                 } else {
                     // Fixed: 40% of Salary
                     amount = salary * 0.40
+                    if (amount === 0) {
+                        console.log(`[GenerateBatch] Warning: ${emp.name} has 0 amounts (Salary: ${salary})`)
+                    }
+                    // We do NOT subtract debts for Fixed employees on the Advance (Day 20).
+                    // Debts are subtracted on Day 5 Balancing.
                 }
                 description = `Vale (Adiantamento) - Ref: ${monthName}`
             } else {
-                // Other types not supported for batch generation yet
                 continue
             }
 
@@ -161,24 +246,35 @@ export class GeneratePayrollBatchUseCase {
                 continue
             }
 
-            // Check Duplicate (Same Type, Same Month)
-            const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
-            const endOfMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0)
+            // Custom Duplicate Check handled inside specific blocks for Cesta.
+            // For others, run the standard check.
 
-            // Normalize type for duplicate check and creation
             const normalizedType = (type === "BENEFICIO") ? "CESTA_BASICA" : type
 
-            const exists = await prisma.payrollEntry.findFirst({
-                where: {
+            if (type !== 'CESTA_BASICA' && type !== 'BENEFICIO') {
+                const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
+                const endOfMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0)
+
+                // Construct filters for duplicate check
+                let duplicateWhere: any = {
                     employee_id: emp.id,
                     type: normalizedType,
                     referenceDate: { gte: startOfMonth, lte: endOfMonth }
                 }
-            })
 
-            if (exists) {
-                console.log(`[GenerateBatch] SKIP ${emp.name}: Duplicate entry found for this month (${normalizedType}).`)
-                continue
+                // If Type is VALE, be specific to avoid collision with manual vales
+                if (normalizedType === 'VALE') {
+                    duplicateWhere.description = { startsWith: `Vale (Adiantamento)` }
+                }
+
+                const exists = await prisma.payrollEntry.findFirst({
+                    where: duplicateWhere
+                })
+
+                if (exists) {
+                    console.log(`[GenerateBatch] SKIP ${emp.name}: Duplicate entry found for this month (${normalizedType}).`)
+                    continue
+                }
             }
 
             await prisma.payrollEntry.create({
@@ -202,10 +298,12 @@ export class GeneratePayrollBatchUseCase {
         }
 
         if (count === 0) {
+            // ... existing warning logic
             console.warn("[GenerateBatch] Batch finished with 0 entries created.")
             if (type === "CESTA_BASICA" || type === "BENEFICIO") {
                 return { count: 0, message: "Nenhum registro gerado. Verifique se o valor da cesta está configurado e se os funcionários possuem o benefício ativo no cadastro." }
             }
+            return { count: 0, message: "Nenhum registro gerado." }
         }
 
         return { count, message: "Batch processed successfully" }

@@ -23,7 +23,10 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         custom_installments: z.array(z.object({
             date: z.coerce.date(),
             amount: z.number()
-        })).nullish()
+        })).nullish(),
+        interest: z.number().nullish(),
+        discount: z.number().nullish(),
+        totalValue: z.number().nullish()
     })
 
     // console.log('Payload Recebido:', JSON.stringify(request.body, null, 2))
@@ -40,7 +43,10 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         supplier_id,
         installments_count,
         interval_frequency,
-        custom_installments
+        custom_installments,
+        interest,
+        discount,
+        totalValue
     } = registerBodySchema.parse(request.body)
 
     let transaction
@@ -60,7 +66,10 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             supplier_id: supplier_id || null,
             installments_count: installments_count || undefined,
             interval_frequency: interval_frequency || undefined,
-            custom_installments: custom_installments || undefined
+            custom_installments: custom_installments || undefined,
+            interest: interest || null,
+            discount: discount || null,
+            totalValue: totalValue || null
         })
     } catch (err) {
 
