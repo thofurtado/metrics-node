@@ -17,6 +17,7 @@ import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
+import { publicRoutes } from '@/modules/public/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
@@ -59,6 +60,7 @@ app.register(suppliesRoutes)
 app.register(categoriesRoutes)
 app.register(suppliersRoutes)
 app.register(systemConfigRoutes)
+app.register(publicRoutes)
 
 // Quiosque (Electron / metrics-ponto) - autenticado via x-api-key
 app.register(async (instance) => {
