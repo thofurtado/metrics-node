@@ -15,6 +15,7 @@ export async function create(request: FastifyRequest, reply: FastifyReply) {
         ncm: z.string().nullable().optional(),
         display_id: z.number().nullable().optional(),
         is_composite: z.boolean().default(false),
+        measureUnit: z.enum(['UNITARY', 'FRACTIONAL']).optional(),
         cost: z.number().nullable().optional(),
         compositions: z.array(z.object({
             supply_id: z.string().uuid(),

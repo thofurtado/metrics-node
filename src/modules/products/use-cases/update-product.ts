@@ -17,6 +17,7 @@ interface UpdateProductUseCaseRequest {
     category?: string | null
     active?: boolean | null
     cost?: number | null
+    measureUnit?: 'UNITARY' | 'FRACTIONAL'
     compositions?: {
         supply_id: string
         quantity: number

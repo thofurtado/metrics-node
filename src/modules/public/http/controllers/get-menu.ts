@@ -11,6 +11,8 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                 id: true,
                 name: true,
                 price: true,
+                description: true,
+                measureUnit: true,
                 category: {
                     select: {
                         name: true,
@@ -27,6 +29,8 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                 id: product.id,
                 name: product.name,
                 price: product.price,
+                description: product.description,
+                measureUnit: product.measureUnit,
                 category: product.category?.name || 'Geral'
             }))
         })

@@ -142,6 +142,11 @@ model Interaction {
   @@map("interactions")
 }
 
+enum MeasureUnit {
+  UNITARY
+  FRACTIONAL
+}
+
 model Product {
   id          String    @id @default(uuid())
   name        String
@@ -160,6 +165,7 @@ model Product {
   barcode      String?
   ncm          String?
   is_composite Boolean @default(false)
+  measureUnit  MeasureUnit @default(UNITARY)
 
   stocks         Stock[]
   treatmentItems TreatmentItem[]

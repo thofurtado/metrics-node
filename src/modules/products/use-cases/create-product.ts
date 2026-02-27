@@ -17,6 +17,7 @@ interface CreateProductUseCaseRequest {
     category?: string | null
     active?: boolean | null
     cost?: number | null
+    measureUnit?: 'UNITARY' | 'FRACTIONAL'
     compositions?: {
         supply_id: string
         quantity: number
@@ -46,7 +47,8 @@ export class CreateProductUseCase {
         category,
         active,
         compositions,
-        cost
+        cost,
+        measureUnit
     }: CreateProductUseCaseRequest): Promise<CreateProductUseCaseResponse> {
         const productWithSameName = await this.productsRepository.findByName(name)
         if (productWithSameName) {
@@ -96,6 +98,7 @@ export class CreateProductUseCase {
             display_id: finalDisplayId,
             category: category ? { connect: { id: category } } : undefined,
             active: active ?? true,
+            measureUnit: measureUnit,
             compositions: compositions && compositions.length > 0 ? {
                 create: compositions.map(comp => ({
                     quantity: comp.quantity,
