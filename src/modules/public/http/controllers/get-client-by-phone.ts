@@ -18,8 +18,7 @@ export async function getClientByPhone(request: FastifyRequest, reply: FastifyRe
                 orderBy: [
                     { is_main: 'desc' },
                     { created_at: 'desc' }
-                ],
-                take: 1
+                ]
             }
         }
     })
