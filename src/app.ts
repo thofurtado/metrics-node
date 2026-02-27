@@ -22,15 +22,14 @@ import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export const app = fastify({ logger: true })
-// [
-//         'http://localhost:5173',
-//         'http://192.168.1.2:5173',
-//         'https://www.eurecatech.com.br',
-//         'https://metrics-sigma.vercel.app',
-//     ],
 
 app.register(cors, {
-    origin: true,
+    origin: [
+        'http://localhost:5173',
+        'http://192.168.1.2:5173',
+        'https://www.eurecatech.com.br',
+        'https://marujogastrobar.vercel.app',
+    ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'], // ← Permitir cabeçalho da API Key
     credentials: true
@@ -66,7 +65,7 @@ app.register(publicRoutes)
 app.register(async (instance) => {
     instance.addHook('preHandler', async (request, reply) => {
         const apiKey = request.headers['x-api-key']
-        const validKey = process.env.API_KEY_PONTO || 'marujo_secret_key_2026'
+        const validKey = process.env.API_KEY_PONTO || 'metrics_secret_key_2026'
         if (apiKey !== validKey) {
             return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API inválida' })
         }
