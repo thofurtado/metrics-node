@@ -54,7 +54,7 @@ model Client {
   created_at     DateTime @default(now())
   updated_at     DateTime @default(now()) @updatedAt
 
-  addresses  Address?
+  addresses  Address[]
   treatments Treatment[]
   equipments Equipment[] //camel case
 
@@ -63,13 +63,14 @@ model Client {
 
 model Address {
   id           String @id @default(uuid())
-  client_id    String @unique
+  client_id    String
   street       String
   number       Int
   neighborhood String
   city         String
   state        String
   zipcode      Int?
+  is_main      Boolean @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
