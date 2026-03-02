@@ -105,9 +105,9 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
     const { employee_id, date, ...data } = bodySchema.parse(request.body)
 
     // Normalize date to start of day for search
-    const searchDate = new Date(date)
-    const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0))
-    const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999))
+    const [yyyy, mm, dd] = date.substring(0, 10).split('-').map(Number);
+    const startOfDay = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
+    const endOfDay = new Date(yyyy, mm - 1, dd, 23, 59, 59, 999);
 
     const existing = await prisma.timeClock.findFirst({
         where: {
@@ -178,15 +178,10 @@ export async function bulkUpsertTimeClocks(request: FastifyRequest, reply: Fasti
             const { employee_id, date, ...data } = entry
 
             // Normalize date
-            const searchDate = new Date(date)
             // Fix: ensure correct date parsing if simple YYYY-MM-DD string is passed without timezone
-            // Using full ISO string recommended from frontend
-
-            const startOfDay = new Date(searchDate)
-            startOfDay.setHours(0, 0, 0, 0)
-
-            const endOfDay = new Date(searchDate)
-            endOfDay.setHours(23, 59, 59, 999)
+            const [yyyy, mm, dd] = date.substring(0, 10).split('-').map(Number);
+            const startOfDay = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
+            const endOfDay = new Date(yyyy, mm - 1, dd, 23, 59, 59, 999);
 
             const existing = await tx.timeClock.findFirst({
                 where: {
