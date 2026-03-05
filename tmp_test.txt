@@ -1,0 +1,4 @@
+﻿{"level":30,"time":1772712378398,"pid":21684,"hostname":"DESKTOP-PMMJ9J1","reqId":"req-1","req":{"method":"GET","url":"/hr/time-clocks","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+401
+{"message":"Desautorizado"}
+{"level":30,"time":1772712378403,"pid":21684,"hostname":"DESKTOP-PMMJ9J1","reqId":"req-1","res":{"statusCode":401},"responseTime":4.130600000033155,"msg":"request completed"}
