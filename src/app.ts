@@ -90,7 +90,9 @@ app.setErrorHandler((error, _, reply) => {
     if (env.NODE_ENV !== 'production') {
         console.error(error)
     } else {
+        // Logging habilitado temporariamente para debugar o erro 500 em produção (Coolify)
+        console.error('ERRO INTERNO (PROD):', error)
         //TODO: deveriamos fazer o logo para uma ferramenta externa como datadog/ new relic/sentry
     }
-    return reply.status(500).send({ messagem: 'Erro interno do servidor' })
+    return reply.status(500).send({ messagem: 'Erro interno do servidor', details: error.message })
 })

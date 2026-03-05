@@ -11,7 +11,17 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         per_page: z.string().optional().default("20").transform(Number),
     })
 
-    const { employee_id, startDate, endDate, page, per_page } = listQuerySchema.parse(request.query)
+    const parsed = listQuerySchema.safeParse(request.query)
+
+    if (!parsed.success) {
+        return reply.status(400).send({ message: "Parâmetros de busca inválidos.", issues: parsed.error.format() })
+    }
+
+    const { employee_id, startDate, endDate, page, per_page } = parsed.data
+
+    // Proteção contra skip negativo (e.g., se vier um page 0 ou vazio que vira NaN/0)
+    const validPage = Math.max(1, isNaN(page) ? 1 : page)
+    const validPerPage = Math.max(1, isNaN(per_page) ? 20 : per_page)
 
     const whereClause: any = {}
 
@@ -20,13 +30,20 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
     }
 
     if (startDate && endDate) {
-        whereClause.date = {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            whereClause.date = {
+                gte: start,
+                lte: end,
+            }
         }
     } else if (startDate) {
-        whereClause.date = {
-            gte: new Date(startDate)
+        const start = new Date(startDate)
+        if (!isNaN(start.getTime())) {
+            whereClause.date = {
+                gte: start
+            }
         }
     }
 
@@ -44,8 +61,8 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
             orderBy: {
                 date: 'desc'
             },
-            skip: (page - 1) * per_page,
-            take: per_page
+            skip: (validPage - 1) * validPerPage,
+            take: validPerPage
         }),
         prisma.timeClock.count({ where: whereClause })
     ])
@@ -53,10 +70,10 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
     return reply.status(200).send({
         timeClocks,
         meta: {
-            page,
-            per_page,
+            page: validPage,
+            per_page: validPerPage,
             total: count,
-            last_page: Math.ceil(count / per_page)
+            last_page: Math.ceil(count / validPerPage)
         }
     })
 }
@@ -96,7 +113,7 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
         breakStart: z.string().nullable().optional(),
         breakEnd: z.string().nullable().optional(),
         clockOut: z.string().nullable().optional(),
-        isExtraDay: z.boolean().doc("Check for Extra Day").optional(),
+        isExtraDay: z.boolean().describe("Check for Extra Day").optional(),
         negotiatedValue: z.number().nullable().optional(),
         isVerified: z.boolean().optional(),
         notes: z.string().nullable().optional(),

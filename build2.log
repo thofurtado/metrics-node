@@ -1,0 +1,849 @@
+[34mCLI[39m Building entry: src/app.js, src/app.ts, src/server.js, src/server.ts, src/temp-query.js, src/temp-query.ts, src/temp-query2.js, src/temp-query2.ts, src/@types/fastify-jwt.d.ts, src/env/index.js, src/env/index.ts, src/lib/prisma.js, src/lib/prisma.ts, src/http/categories-routes.js, src/http/categories-routes.ts, src/repositories/categories-repository.js, src/repositories/categories-repository.ts, src/repositories/supplies-repository.js, src/repositories/supplies-repository.ts, src/errors/display-id-already-exists-error.js, src/errors/display-id-already-exists-error.ts, src/errors/invalid-credentials-error.js, src/errors/invalid-credentials-error.ts, src/errors/invalid-option-error.js, src/errors/invalid-option-error.ts, src/errors/only-natural-numbers-error.js, src/errors/only-natural-numbers-error.ts, src/errors/price-cannot-be-lower-than-cost-error.js, src/errors/price-cannot-be-lower-than-cost-error.ts, src/errors/resource-dependency-error.js, src/errors/resource-dependency-error.ts, src/errors/resource-not-found-error.js, src/errors/resource-not-found-error.ts, src/errors/this-name-already-exists-error.js, src/errors/this-name-already-exists-error.ts, src/modules/system-config/system-logic.spec.js, src/modules/system-config/system-logic.spec.ts, src/http/middlewares/verify-jwt.js, src/http/middlewares/verify-jwt.ts, src/http/middlewares/verify-user-role.js, src/http/middlewares/verify-user-role.ts, src/repositories/in-memory/in-memory-supplies-repository.js, src/repositories/in-memory/in-memory-supplies-repository.ts, src/use-cases/factories/make-get-supplies-use-case.js, src/use-cases/factories/make-get-supplies-use-case.ts, src/repositories/prisma/prisma-categories-repository.js, src/repositories/prisma/prisma-categories-repository.ts, src/repositories/prisma/prisma-supplies-repository.js, src/repositories/prisma/prisma-supplies-repository.ts, src/modules/categories/use-cases/create-category.js, src/modules/categories/use-cases/create-category.ts, src/modules/categories/use-cases/fetch-categories.js, src/modules/categories/use-cases/fetch-categories.ts, src/modules/equipments/use-cases/equipment.js, src/modules/equipments/use-cases/equipment.spec.js, src/modules/equipments/use-cases/equipment.spec.ts, src/modules/equipments/use-cases/equipment.ts, src/modules/hr/repositories/time-clocks-repository.js, src/modules/hr/repositories/time-clocks-repository.ts, src/modules/equipments/repositories/equipments-repository.js, src/modules/equipments/repositories/equipments-repository.ts, src/modules/hr/use-cases/get-time-clock-status.js, src/modules/hr/use-cases/get-time-clock-status.ts, src/modules/hr/use-cases/register-time-clock.js, src/modules/hr/use-cases/register-time-clock.ts, src/modules/items/use-cases/delete-item-integration.spec.js, src/modules/items/use-cases/delete-item-integration.spec.ts, src/modules/items/use-cases/delete-item.js, src/modules/items/use-cases/delete-item.spec.js, src/modules/items/use-cases/delete-item.spec.ts, src/modules/items/use-cases/delete-item.ts, src/modules/items/use-cases/get-items.js, src/modules/items/use-cases/get-items.spec.js, src/modules/items/use-cases/get-items.spec.ts, src/modules/items/use-cases/get-items.ts, src/modules/items/use-cases/get-products.js, src/modules/items/use-cases/get-products.ts, src/modules/items/use-cases/get-services.js, src/modules/items/use-cases/get-services.ts, src/modules/items/use-cases/get-supplies.js, src/modules/items/use-cases/get-supplies.ts, src/modules/items/use-cases/item.js, src/modules/items/use-cases/item.spec.js, src/modules/items/use-cases/item.spec.ts, src/modules/items/use-cases/item.ts, src/modules/items/use-cases/items-lifecycle.spec.js, src/modules/items/use-cases/items-lifecycle.spec.ts, src/modules/items/use-cases/update-item.js, src/modules/items/use-cases/update-item.ts, src/modules/items/repositories/items-repository.js, src/modules/items/repositories/items-repository.ts, src/modules/items/repositories/products-repository.js, src/modules/items/repositories/products-repository.ts, src/modules/items/repositories/services-repository.js, src/modules/items/repositories/services-repository.ts, src/modules/items/repositories/supplies-repository.js, src/modules/items/repositories/supplies-repository.ts, src/modules/products/repositories/products-repository.js, src/modules/products/repositories/products-repository.ts, src/modules/clients/repositories/clients-repository.js, src/modules/clients/repositories/clients-repository.ts, src/modules/clients/repositories/interactions-repository.js, src/modules/clients/repositories/interactions-repository.ts, src/modules/products/use-cases/check-product-code-availability.js, src/modules/products/use-cases/check-product-code-availability.ts, src/modules/products/use-cases/create-product.js, src/modules/products/use-cases/create-product.spec.js, src/modules/products/use-cases/create-product.spec.ts, src/modules/products/use-cases/create-product.ts, src/modules/products/use-cases/delete-product.js, src/modules/products/use-cases/delete-product.ts, src/modules/products/use-cases/get-next-product-id.js, src/modules/products/use-cases/get-next-product-id.ts, src/modules/products/use-cases/get-product-by-id.js, src/modules/products/use-cases/get-product-by-id.ts, src/modules/products/use-cases/get-products.js, src/modules/products/use-cases/get-products.ts, src/modules/products/use-cases/update-product.js, src/modules/products/use-cases/update-product.ts, src/modules/services/use-cases/create-service.js, src/modules/services/use-cases/create-service.spec.js, src/modules/services/use-cases/create-service.spec.ts, src/modules/services/use-cases/create-service.ts, src/modules/services/use-cases/delete-service.js, src/modules/services/use-cases/delete-service.ts, src/modules/services/use-cases/get-service-management-data.js, src/modules/services/use-cases/get-service-management-data.spec.js, src/modules/services/use-cases/get-service-management-data.spec.ts, src/modules/services/use-cases/get-service-management-data.ts, src/modules/services/use-cases/get-services.js, src/modules/services/use-cases/get-services.ts, src/modules/services/use-cases/update-service.js, src/modules/services/use-cases/update-service.ts, src/modules/services/repositories/service-management-repository.ts.js, src/modules/services/repositories/service-management-repository.ts.ts, src/modules/services/repositories/services-repository.js, src/modules/services/repositories/services-repository.ts, src/modules/clients/use-cases/client.js, src/modules/clients/use-cases/client.spec.js, src/modules/clients/use-cases/client.spec.ts, src/modules/clients/use-cases/client.ts, src/modules/clients/use-cases/get-clients.js, src/modules/clients/use-cases/get-clients.spec.js, src/modules/clients/use-cases/get-clients.spec.ts, src/modules/clients/use-cases/get-clients.ts, src/modules/clients/use-cases/interaction.js, src/modules/clients/use-cases/interaction.spec.js, src/modules/clients/use-cases/interaction.spec.ts, src/modules/clients/use-cases/interaction.ts, src/modules/suppliers/repositories/suppliers-repository.js, src/modules/suppliers/repositories/suppliers-repository.ts, src/modules/suppliers/use-cases/create-supplier.js, src/modules/suppliers/use-cases/create-supplier.ts, src/modules/suppliers/use-cases/delete-supplier.js, src/modules/suppliers/use-cases/delete-supplier.ts, src/modules/suppliers/use-cases/get-suppliers.js, src/modules/suppliers/use-cases/get-suppliers.ts, src/modules/suppliers/use-cases/update-supplier.js, src/modules/suppliers/use-cases/update-supplier.ts, src/modules/stock/repositories/inventory-repository.js, src/modules/stock/repositories/inventory-repository.ts, src/modules/stock/repositories/stocks-repository.js, src/modules/stock/repositories/stocks-repository.ts, src/modules/stock/use-cases/decrease-stock.js, src/modules/stock/use-cases/decrease-stock.spec.js, src/modules/stock/use-cases/decrease-stock.spec.ts, src/modules/stock/use-cases/decrease-stock.ts, src/modules/stock/use-cases/get-inventory-summary.js, src/modules/stock/use-cases/get-inventory-summary.spec.js, src/modules/stock/use-cases/get-inventory-summary.spec.ts, src/modules/stock/use-cases/get-inventory-summary.ts, src/modules/stock/use-cases/get-stock-by-item.js, src/modules/stock/use-cases/get-stock-by-item.spec.js, src/modules/stock/use-cases/get-stock-by-item.spec.ts, src/modules/stock/use-cases/get-stock-by-item.ts, src/modules/stock/use-cases/insufficient-stock-error.js, src/modules/stock/use-cases/insufficient-stock-error.ts, src/modules/stock/use-cases/register-movement.js, src/modules/stock/use-cases/register-movement.spec.js, src/modules/stock/use-cases/register-movement.spec.ts, src/modules/stock/use-cases/register-movement.ts, src/modules/stock/use-cases/stock-cannot-be-negative-error.js, src/modules/stock/use-cases/stock-cannot-be-negative-error.ts, src/modules/stock/use-cases/stock.js, src/modules/stock/use-cases/stock.spec.js, src/modules/stock/use-cases/stock.spec.ts, src/modules/stock/use-cases/stock.ts, src/modules/sectors/repositories/sectors-repository.js, src/modules/sectors/repositories/sectors-repository.ts, src/modules/supplies/use-cases/create-supply.js, src/modules/supplies/use-cases/create-supply.spec.js, src/modules/supplies/use-cases/create-supply.spec.ts, src/modules/supplies/use-cases/create-supply.ts, src/modules/supplies/use-cases/delete-supply.js, src/modules/supplies/use-cases/delete-supply.ts, src/modules/supplies/use-cases/get-supplies.js, src/modules/supplies/use-cases/get-supplies.ts, src/modules/supplies/use-cases/update-supply.js, src/modules/supplies/use-cases/update-supply.spec.js, src/modules/supplies/use-cases/update-supply.spec.ts, src/modules/supplies/use-cases/update-supply.ts, src/modules/sectors/use-cases/get-month-expense-by-sector.js, src/modules/sectors/use-cases/get-month-expense-by-sector.ts, src/modules/sectors/use-cases/get-sectors.js, src/modules/sectors/use-cases/get-sectors.spec.js, src/modules/sectors/use-cases/get-sectors.spec.ts, src/modules/sectors/use-cases/get-sectors.ts, src/modules/sectors/use-cases/sector.js, src/modules/sectors/use-cases/sector.spec.js, src/modules/sectors/use-cases/sector.spec.ts, src/modules/sectors/use-cases/sector.ts, src/modules/users/repositories/addresses-repository.js, src/modules/users/repositories/addresses-repository.ts, src/modules/users/repositories/users-repository.js, src/modules/users/repositories/users-repository.ts, src/modules/users/use-cases/address.js, src/modules/users/use-cases/address.spec.js, src/modules/users/use-cases/address.spec.ts, src/modules/users/use-cases/address.ts, src/modules/users/use-cases/authenticate.js, src/modules/users/use-cases/authenticate.spec.js, src/modules/users/use-cases/authenticate.spec.ts, src/modules/users/use-cases/authenticate.ts, src/modules/users/use-cases/get-user-profile.js, src/modules/users/use-cases/get-user-profile.spec.js, src/modules/users/use-cases/get-user-profile.spec.ts, src/modules/users/use-cases/get-user-profile.ts, src/modules/users/use-cases/register.js, src/modules/users/use-cases/register.spec.js, src/modules/users/use-cases/register.spec.ts, src/modules/users/use-cases/register.ts, src/modules/users/use-cases/update-profile.js, src/modules/users/use-cases/update-profile.ts, src/modules/users/use-cases/user-already-exists-error.js, src/modules/users/use-cases/user-already-exists-error.ts, src/modules/treatments/repositories/treatmentItems-repository.js, src/modules/treatments/repositories/treatmentItems-repository.ts, src/modules/treatments/repositories/treatments-repository.js, src/modules/treatments/repositories/treatments-repository.ts, src/modules/treatments/use-cases/finish-treatment.js, src/modules/treatments/use-cases/finish-treatment.spec.js, src/modules/treatments/use-cases/finish-treatment.spec.ts, src/modules/treatments/use-cases/finish-treatment.ts, src/modules/treatments/use-cases/get-month-treatments-amount.js, src/modules/treatments/use-cases/get-month-treatments-amount.ts, src/modules/treatments/use-cases/get-treatment.js, src/modules/treatments/use-cases/get-treatment.ts, src/modules/treatments/use-cases/get-treatments.js, src/modules/treatments/use-cases/get-treatments.spec.js, src/modules/treatments/use-cases/get-treatments.spec.ts, src/modules/treatments/use-cases/get-treatments.ts, src/modules/treatments/use-cases/remove-treatment-item.js, src/modules/treatments/use-cases/remove-treatment-item.spec.js, src/modules/treatments/use-cases/remove-treatment-item.spec.ts, src/modules/treatments/use-cases/remove-treatment-item.ts, src/modules/treatments/use-cases/treatment.js, src/modules/treatments/use-cases/treatment.spec.js, src/modules/treatments/use-cases/treatment.spec.ts, src/modules/treatments/use-cases/treatment.ts, src/modules/treatments/use-cases/treatmentItem.js, src/modules/treatments/use-cases/treatmentItem.spec.js, src/modules/treatments/use-cases/treatmentItem.spec.ts, src/modules/treatments/use-cases/treatmentItem.ts, src/modules/treatments/use-cases/update-treatment.js, src/modules/treatments/use-cases/update-treatment.ts, src/modules/categories/http/controllers/create.js, src/modules/categories/http/controllers/create.ts, src/modules/categories/http/controllers/fetch.js, src/modules/categories/http/controllers/fetch.ts, src/modules/categories/http/controllers/routes.js, src/modules/categories/http/controllers/routes.ts, src/modules/equipments/use-cases/factories/make-equipment-use-case.js, src/modules/equipments/use-cases/factories/make-equipment-use-case.ts, src/modules/equipments/repositories/prisma/prisma-equipments-repository.js, src/modules/equipments/repositories/prisma/prisma-equipments-repository.ts, src/modules/equipments/repositories/in-memory/in-memory-equipments-repository.js, src/modules/equipments/repositories/in-memory/in-memory-equipments-repository.ts, src/modules/hr/http/controllers/employees.js, src/modules/hr/http/controllers/employees.ts, src/modules/hr/http/controllers/payroll.js, src/modules/hr/http/controllers/payroll.ts, src/modules/hr/http/controllers/routes.js, src/modules/hr/http/controllers/routes.ts, src/modules/hr/http/controllers/time-clock.js, src/modules/hr/http/controllers/time-clock.ts, src/modules/hr/http/controllers/time-clocks-admin.js, src/modules/hr/http/controllers/time-clocks-admin.ts, src/modules/hr/repositories/prisma/prisma-employees-repository.js, src/modules/hr/repositories/prisma/prisma-employees-repository.ts, src/modules/hr/repositories/prisma/prisma-time-clocks-repository.js, src/modules/hr/repositories/prisma/prisma-time-clocks-repository.ts, src/modules/hr/use-cases/payroll/calculate-extras.js, src/modules/hr/use-cases/payroll/calculate-extras.ts, src/modules/hr/use-cases/payroll/calculate-rateio.js, src/modules/hr/use-cases/payroll/calculate-rateio.ts, src/modules/hr/use-cases/payroll/generate-batch.js, src/modules/hr/use-cases/payroll/generate-batch.ts, src/modules/items/http/controllers/deleteItem.js, src/modules/items/http/controllers/deleteItem.ts, src/modules/items/http/controllers/get-inventory-summary.js, src/modules/items/http/controllers/get-inventory-summary.ts, src/modules/items/http/controllers/getItemHistory.js, src/modules/items/http/controllers/getItemHistory.ts, src/modules/items/http/controllers/getItems.js, src/modules/items/http/controllers/getItems.ts, src/modules/items/http/controllers/getProducts.js, src/modules/items/http/controllers/getProducts.ts, src/modules/items/http/controllers/getServices.js, src/modules/items/http/controllers/getServices.ts, src/modules/items/http/controllers/getSupplies.js, src/modules/items/http/controllers/getSupplies.ts, src/modules/items/http/controllers/item.js, src/modules/items/http/controllers/item.ts, src/modules/items/http/controllers/register-stock-movement.js, src/modules/items/http/controllers/register-stock-movement.ts, src/modules/items/http/controllers/routes.js, src/modules/items/http/controllers/routes.ts, src/modules/items/http/controllers/stock.js, src/modules/items/http/controllers/stock.ts, src/modules/items/http/controllers/updateItem.js, src/modules/items/http/controllers/updateItem.ts, src/modules/items/repositories/in-memory/in-memory-items-repository.js, src/modules/items/repositories/in-memory/in-memory-items-repository.ts, src/modules/items/repositories/in-memory/in-memory-products-repository.js, src/modules/items/repositories/in-memory/in-memory-products-repository.ts, src/modules/items/repositories/in-memory/in-memory-services-repository.js, src/modules/items/repositories/in-memory/in-memory-services-repository.ts, src/modules/items/repositories/in-memory/in-memory-supplies-repository.js, src/modules/items/repositories/in-memory/in-memory-supplies-repository.ts, src/modules/items/repositories/prisma/prisma-items-repository.js, src/modules/items/repositories/prisma/prisma-items-repository.spec.js, src/modules/items/repositories/prisma/prisma-items-repository.spec.ts, src/modules/items/repositories/prisma/prisma-items-repository.ts, src/modules/items/repositories/prisma/prisma-products-repository.js, src/modules/items/repositories/prisma/prisma-products-repository.ts, src/modules/items/repositories/prisma/prisma-services-repository.js, src/modules/items/repositories/prisma/prisma-services-repository.ts, src/modules/items/repositories/prisma/prisma-supplies-repository.js, src/modules/items/repositories/prisma/prisma-supplies-repository.ts, src/modules/items/repositories/DTO/get-items-dto.js, src/modules/items/repositories/DTO/get-items-dto.ts, src/modules/items/use-cases/factories/make-delete-item-use-case.js, src/modules/items/use-cases/factories/make-delete-item-use-case.ts, src/modules/items/use-cases/factories/make-get-items-use-case.js, src/modules/items/use-cases/factories/make-get-items-use-case.ts, src/modules/items/use-cases/factories/make-get-products-use-case.js, src/modules/items/use-cases/factories/make-get-products-use-case.ts, src/modules/items/use-cases/factories/make-get-services-use-case.js, src/modules/items/use-cases/factories/make-get-services-use-case.ts, src/modules/items/use-cases/factories/make-get-supplies-use-case.js, src/modules/items/use-cases/factories/make-get-supplies-use-case.ts, src/modules/items/use-cases/factories/make-item-use-case.js, src/modules/items/use-cases/factories/make-item-use-case.ts, src/modules/items/use-cases/factories/make-update-item-use-case.js, src/modules/items/use-cases/factories/make-update-item-use-case.ts, src/modules/financial/repositories/accounts-repository.js, src/modules/financial/repositories/accounts-repository.ts, src/modules/financial/repositories/balance-projection-repository.js, src/modules/financial/repositories/balance-projection-repository.ts, src/modules/financial/repositories/paymentEntrys-repository.js, src/modules/financial/repositories/paymentEntrys-repository.ts, src/modules/financial/repositories/payments-repository.js, src/modules/financial/repositories/payments-repository.ts, src/modules/financial/repositories/transactions-repository.js, src/modules/financial/repositories/transactions-repository.ts, src/modules/financial/repositories/transfer-transactions-repository.js, src/modules/financial/repositories/transfer-transactions-repository.ts, src/modules/metrics/http/controllers/get-balance-projection.js, src/modules/metrics/http/controllers/get-balance-projection.ts, src/modules/metrics/http/controllers/get-finance-metrics-controller.js, src/modules/metrics/http/controllers/get-finance-metrics-controller.ts, src/modules/metrics/http/controllers/get-inventory-metrics-controller.js, src/modules/metrics/http/controllers/get-inventory-metrics-controller.ts, src/modules/metrics/http/controllers/get-service-metrics-controller.js, src/modules/metrics/http/controllers/get-service-metrics-controller.ts, src/modules/metrics/http/controllers/getGeneralBalance.js, src/modules/metrics/http/controllers/getGeneralBalance.ts, src/modules/metrics/http/controllers/getMonthExpenseAmount.js, src/modules/metrics/http/controllers/getMonthExpenseAmount.ts, src/modules/metrics/http/controllers/getMonthExpenseBySector.js, src/modules/metrics/http/controllers/getMonthExpenseBySector.ts, src/modules/metrics/http/controllers/getMonthIncomeAmount.js, src/modules/metrics/http/controllers/getMonthIncomeAmount.ts, src/modules/metrics/http/controllers/getMonthIncomeByDay.js, src/modules/metrics/http/controllers/getMonthIncomeByDay.ts, src/modules/metrics/http/controllers/getMonthTreatmentsAmount.js, src/modules/metrics/http/controllers/getMonthTreatmentsAmount.ts, src/modules/metrics/http/controllers/routes.js, src/modules/metrics/http/controllers/routes.ts, src/modules/clients/http/controllers/address.js, src/modules/clients/http/controllers/address.ts, src/modules/clients/http/controllers/client.js, src/modules/clients/http/controllers/client.ts, src/modules/clients/http/controllers/equipment.js, src/modules/clients/http/controllers/equipment.ts, src/modules/clients/http/controllers/getClients.js, src/modules/clients/http/controllers/getClients.ts, src/modules/clients/http/controllers/routes.js, src/modules/clients/http/controllers/routes.ts, src/modules/products/http/controllers/check-code.js, src/modules/products/http/controllers/check-code.ts, src/modules/products/http/controllers/create.js, src/modules/products/http/controllers/create.ts, src/modules/products/http/controllers/get-by-id.js, src/modules/products/http/controllers/get-by-id.ts, src/modules/products/http/controllers/get-many.js, src/modules/products/http/controllers/get-many.ts, src/modules/products/http/controllers/get-next-id.js, src/modules/products/http/controllers/get-next-id.ts, src/modules/products/http/controllers/routes.js, src/modules/products/http/controllers/routes.ts, src/modules/products/http/controllers/update.js, src/modules/products/http/controllers/update.ts, src/modules/financial/use-cases/account.js, src/modules/financial/use-cases/account.spec.js, src/modules/financial/use-cases/account.spec.ts, src/modules/financial/use-cases/account.ts, src/modules/financial/use-cases/adjust-account-balance.js, src/modules/financial/use-cases/adjust-account-balance.ts, src/modules/financial/use-cases/bulk-pay-transactions.js, src/modules/financial/use-cases/bulk-pay-transactions.ts, src/modules/financial/use-cases/change-transaction-status.js, src/modules/financial/use-cases/change-transaction-status.spec.js, src/modules/financial/use-cases/change-transaction-status.spec.ts, src/modules/financial/use-cases/change-transaction-status.ts, src/modules/financial/use-cases/delete-account.js, src/modules/financial/use-cases/delete-account.ts, src/modules/financial/use-cases/delete-payment.js, src/modules/financial/use-cases/delete-payment.ts, src/modules/financial/use-cases/delete-transaction.js, src/modules/financial/use-cases/delete-transaction.spec.js, src/modules/financial/use-cases/delete-transaction.spec.ts, src/modules/financial/use-cases/delete-transaction.ts, src/modules/financial/use-cases/get-accounts.js, src/modules/financial/use-cases/get-accounts.spec.js, src/modules/financial/use-cases/get-accounts.spec.ts, src/modules/financial/use-cases/get-accounts.ts, src/modules/financial/use-cases/get-balance-projection.js, src/modules/financial/use-cases/get-balance-projection.ts, src/modules/financial/use-cases/get-financial-summary.js, src/modules/financial/use-cases/get-financial-summary.ts, src/modules/financial/use-cases/get-general-balance.js, src/modules/financial/use-cases/get-general-balance.ts, src/modules/financial/use-cases/get-month-expense-amount.js, src/modules/financial/use-cases/get-month-expense-amount.ts, src/modules/financial/use-cases/get-month-income-amount.js, src/modules/financial/use-cases/get-month-income-amount.ts, src/modules/financial/use-cases/get-month-income-by-days.js, src/modules/financial/use-cases/get-month-income-by-days.ts, src/modules/financial/use-cases/get-payments.js, src/modules/financial/use-cases/get-payments.spec.js, src/modules/financial/use-cases/get-payments.spec.ts, src/modules/financial/use-cases/get-payments.ts, src/modules/financial/use-cases/get-transaction-group.js, src/modules/financial/use-cases/get-transaction-group.ts, src/modules/financial/use-cases/get-transactions.js, src/modules/financial/use-cases/get-transactions.spec.js, src/modules/financial/use-cases/get-transactions.spec.ts, src/modules/financial/use-cases/get-transactions.ts, src/modules/financial/use-cases/get-transfer-transactions.js, src/modules/financial/use-cases/get-transfer-transactions.spec.js, src/modules/financial/use-cases/get-transfer-transactions.spec.ts, src/modules/financial/use-cases/get-transfer-transactions.ts, src/modules/financial/use-cases/list-payments.js, src/modules/financial/use-cases/list-payments.ts, src/modules/financial/use-cases/payment.js, src/modules/financial/use-cases/payment.spec.js, src/modules/financial/use-cases/payment.spec.ts, src/modules/financial/use-cases/payment.ts, src/modules/financial/use-cases/paymentEntry.js, src/modules/financial/use-cases/paymentEntry.spec.js, src/modules/financial/use-cases/paymentEntry.spec.ts, src/modules/financial/use-cases/paymentEntry.ts, src/modules/financial/use-cases/revert-transaction-status.js, src/modules/financial/use-cases/revert-transaction-status.ts, src/modules/financial/use-cases/terminate-transaction-group.js, src/modules/financial/use-cases/terminate-transaction-group.ts, src/modules/financial/use-cases/tranferTransaction.spec.js, src/modules/financial/use-cases/tranferTransaction.spec.ts, src/modules/financial/use-cases/transaction-already-confirmed-error.js, src/modules/financial/use-cases/transaction-already-confirmed-error.ts, src/modules/financial/use-cases/transaction.js, src/modules/financial/use-cases/transaction.spec.js, src/modules/financial/use-cases/transaction.spec.ts, src/modules/financial/use-cases/transaction.ts, src/modules/financial/use-cases/transferTransaction.js, src/modules/financial/use-cases/transferTransaction.ts, src/modules/financial/use-cases/update-account.js, src/modules/financial/use-cases/update-account.spec.js, src/modules/financial/use-cases/update-account.spec.ts, src/modules/financial/use-cases/update-account.ts, src/modules/financial/use-cases/update-payment.js, src/modules/financial/use-cases/update-payment.spec.js, src/modules/financial/use-cases/update-payment.spec.ts, src/modules/financial/use-cases/update-payment.ts, src/modules/products/repositories/prisma/prisma-products-repository.js, src/modules/products/repositories/prisma/prisma-products-repository.ts, src/modules/products/repositories/in-memory/in-memory-products-repository.js, src/modules/products/repositories/in-memory/in-memory-products-repository.ts, src/modules/products/use-cases/factories/make-check-product-code-availability-use-case.js, src/modules/products/use-cases/factories/make-check-product-code-availability-use-case.ts, src/modules/products/use-cases/factories/make-create-product-use-case.js, src/modules/products/use-cases/factories/make-create-product-use-case.ts, src/modules/products/use-cases/factories/make-delete-product-use-case.js, src/modules/products/use-cases/factories/make-delete-product-use-case.ts, src/modules/products/use-cases/factories/make-get-next-product-id-use-case.js, src/modules/products/use-cases/factories/make-get-next-product-id-use-case.ts, src/modules/products/use-cases/factories/make-get-product-by-id-use-case.js, src/modules/products/use-cases/factories/make-get-product-by-id-use-case.ts, src/modules/products/use-cases/factories/make-get-products-use-case.js, src/modules/products/use-cases/factories/make-get-products-use-case.ts, src/modules/products/use-cases/factories/make-update-product-use-case.js, src/modules/products/use-cases/factories/make-update-product-use-case.ts, src/modules/clients/repositories/in-memory/in-memory-clients-repository.js, src/modules/clients/repositories/in-memory/in-memory-clients-repository.ts, src/modules/clients/repositories/in-memory/in-memory-interactions-repository.js, src/modules/clients/repositories/in-memory/in-memory-interactions-repository.ts, src/modules/clients/repositories/prisma/prisma-clients-repository.js, src/modules/clients/repositories/prisma/prisma-clients-repository.ts, src/modules/clients/repositories/prisma/prisma-interactions-repository.js, src/modules/clients/repositories/prisma/prisma-interactions-repository.ts, src/modules/services/use-cases/factories/make-create-service-use-case.js, src/modules/services/use-cases/factories/make-create-service-use-case.ts, src/modules/services/use-cases/factories/make-delete-service-use-case.js, src/modules/services/use-cases/factories/make-delete-service-use-case.ts, src/modules/services/use-cases/factories/make-get-service-management-data-use-case.js, src/modules/services/use-cases/factories/make-get-service-management-data-use-case.ts, src/modules/services/use-cases/factories/make-get-service-metrics-use-case.js, src/modules/services/use-cases/factories/make-get-service-metrics-use-case.ts, src/modules/services/use-cases/factories/make-get-services-use-case.js, src/modules/services/use-cases/factories/make-get-services-use-case.ts, src/modules/services/use-cases/factories/make-update-service-use-case.js, src/modules/services/use-cases/factories/make-update-service-use-case.ts, src/modules/services/repositories/DTO/get-service-management-data-dto.js, src/modules/services/repositories/DTO/get-service-management-data-dto.ts, src/modules/public/http/controllers/checkout-client.js, src/modules/public/http/controllers/checkout-client.ts, src/modules/public/http/controllers/get-client-by-phone.js, src/modules/public/http/controllers/get-client-by-phone.ts, src/modules/public/http/controllers/get-menu.js, src/modules/public/http/controllers/get-menu.ts, src/modules/public/http/controllers/routes.js, src/modules/public/http/controllers/routes.ts, src/modules/services/repositories/prisma/prisma-service-management-repository.js, src/modules/services/repositories/prisma/prisma-service-management-repository.ts, src/modules/services/repositories/prisma/prisma-services-repository.js, src/modules/services/repositories/prisma/prisma-services-repository.ts, src/modules/services/http/controllers/create.js, src/modules/services/http/controllers/create.ts, src/modules/services/http/controllers/get-many.js, src/modules/services/http/controllers/get-many.ts, src/modules/services/http/controllers/routes.js, src/modules/services/http/controllers/routes.ts, src/modules/services/repositories/in-memory/in-memory-service-management-repository.js, src/modules/services/repositories/in-memory/in-memory-service-management-repository.ts, src/modules/services/repositories/in-memory/in-memory-services-repository.js, src/modules/services/repositories/in-memory/in-memory-services-repository.ts, src/modules/clients/use-cases/factories/make-client-use-case.js, src/modules/clients/use-cases/factories/make-client-use-case.ts, src/modules/clients/use-cases/factories/make-get-clients-use-case.js, src/modules/clients/use-cases/factories/make-get-clients-use-case.ts, src/modules/clients/use-cases/factories/make-interaction-use-case.js, src/modules/clients/use-cases/factories/make-interaction-use-case.ts, src/modules/suppliers/repositories/in-memory/in-memory-suppliers-repository.js, src/modules/suppliers/repositories/in-memory/in-memory-suppliers-repository.ts, src/modules/suppliers/repositories/prisma/prisma-suppliers-repository.js, src/modules/suppliers/repositories/prisma/prisma-suppliers-repository.ts, src/modules/stock/repositories/in-memory/in-memory-inventory-repository.js, src/modules/stock/repositories/in-memory/in-memory-inventory-repository.ts, src/modules/stock/repositories/in-memory/in-memory-stocks-repository.js, src/modules/stock/repositories/in-memory/in-memory-stocks-repository.ts, src/modules/suppliers/http/controllers/create.js, src/modules/suppliers/http/controllers/create.ts, src/modules/suppliers/http/controllers/delete.js, src/modules/suppliers/http/controllers/delete.ts, src/modules/suppliers/http/controllers/fetch.js, src/modules/suppliers/http/controllers/fetch.ts, src/modules/suppliers/http/controllers/routes.js, src/modules/suppliers/http/controllers/routes.ts, src/modules/suppliers/http/controllers/update.js, src/modules/suppliers/http/controllers/update.ts, src/modules/suppliers/use-cases/factories/make-create-supplier-use-case.js, src/modules/suppliers/use-cases/factories/make-create-supplier-use-case.ts, src/modules/suppliers/use-cases/factories/make-delete-supplier-use-case.js, src/modules/suppliers/use-cases/factories/make-delete-supplier-use-case.ts, src/modules/suppliers/use-cases/factories/make-get-suppliers-use-case.js, src/modules/suppliers/use-cases/factories/make-get-suppliers-use-case.ts, src/modules/suppliers/use-cases/factories/make-update-supplier-use-case.js, src/modules/suppliers/use-cases/factories/make-update-supplier-use-case.ts, src/modules/stock/repositories/prisma/prisma-inventory-repository.js, src/modules/stock/repositories/prisma/prisma-inventory-repository.ts, src/modules/stock/repositories/prisma/prisma-stocks-repository.js, src/modules/stock/repositories/prisma/prisma-stocks-repository.ts, src/modules/stock/use-cases/factories/make-get-inventory-metrics-use-case.js, src/modules/stock/use-cases/factories/make-get-inventory-metrics-use-case.ts, src/modules/stock/use-cases/factories/make-get-inventory-summary-use-case.js, src/modules/stock/use-cases/factories/make-get-inventory-summary-use-case.ts, src/modules/stock/use-cases/factories/make-get-item-stocks-use-case.js, src/modules/stock/use-cases/factories/make-get-item-stocks-use-case.ts, src/modules/stock/use-cases/factories/make-register-stock-movement-use-case.js, src/modules/stock/use-cases/factories/make-register-stock-movement-use-case.ts, src/modules/stock/use-cases/factories/make-stock-use-case.js, src/modules/stock/use-cases/factories/make-stock-use-case.ts, src/modules/sectors/repositories/in-memory/in-memory-sectors-repository.js, src/modules/sectors/repositories/in-memory/in-memory-sectors-repository.ts, src/modules/supplies/use-cases/factories/make-create-supply-use-case.js, src/modules/supplies/use-cases/factories/make-create-supply-use-case.ts, src/modules/supplies/use-cases/factories/make-delete-supply-use-case.js, src/modules/supplies/use-cases/factories/make-delete-supply-use-case.ts, src/modules/supplies/use-cases/factories/make-update-supply-use-case.js, src/modules/supplies/use-cases/factories/make-update-supply-use-case.ts, src/modules/sectors/repositories/prisma/prisma-sectors-repository.js, src/modules/sectors/repositories/prisma/prisma-sectors-repository.ts, src/modules/system-config/http/controllers/get-modules-status.js, src/modules/system-config/http/controllers/get-modules-status.ts, src/modules/system-config/http/controllers/routes.js, src/modules/system-config/http/controllers/routes.ts, src/modules/system-config/http/controllers/update-modules-status.js, src/modules/system-config/http/controllers/update-modules-status.ts, src/modules/supplies/http/controllers/create.js, src/modules/supplies/http/controllers/create.ts, src/modules/supplies/http/controllers/get-many.js, src/modules/supplies/http/controllers/get-many.ts, src/modules/supplies/http/controllers/routes.js, src/modules/supplies/http/controllers/routes.ts, src/modules/sectors/use-cases/factories/make-get-month-expense-by-sector.js, src/modules/sectors/use-cases/factories/make-get-month-expense-by-sector.ts, src/modules/sectors/use-cases/factories/make-get-sectors-use-case.js, src/modules/sectors/use-cases/factories/make-get-sectors-use-case.ts, src/modules/sectors/use-cases/factories/make-sector-use-case.js, src/modules/sectors/use-cases/factories/make-sector-use-case.ts, src/modules/users/http/controllers/authenticate.js, src/modules/users/http/controllers/authenticate.ts, src/modules/users/http/controllers/profile.js, src/modules/users/http/controllers/profile.ts, src/modules/users/http/controllers/refresh.js, src/modules/users/http/controllers/refresh.ts, src/modules/users/http/controllers/register.js, src/modules/users/http/controllers/register.ts, src/modules/users/http/controllers/routes.js, src/modules/users/http/controllers/routes.ts, src/modules/users/http/controllers/update-profile.js, src/modules/users/http/controllers/update-profile.ts, src/modules/users/repositories/in-memory/in-memory-addressess-repository.js, src/modules/users/repositories/in-memory/in-memory-addressess-repository.ts, src/modules/users/repositories/in-memory/in-memory-users-repository.js, src/modules/users/repositories/in-memory/in-memory-users-repository.ts, src/modules/users/repositories/prisma/prisma-addresses-repository.js, src/modules/users/repositories/prisma/prisma-addresses-repository.ts, src/modules/users/repositories/prisma/prisma-users-repository.js, src/modules/users/repositories/prisma/prisma-users-repository.ts, src/modules/users/use-cases/factories/make-address-use-case.js, src/modules/users/use-cases/factories/make-address-use-case.ts, src/modules/users/use-cases/factories/make-authenticate-use-case.js, src/modules/users/use-cases/factories/make-authenticate-use-case.ts, src/modules/users/use-cases/factories/make-get-user-profile-use-case.js, src/modules/users/use-cases/factories/make-get-user-profile-use-case.ts, src/modules/users/use-cases/factories/make-register-use-case.js, src/modules/users/use-cases/factories/make-register-use-case.ts, src/modules/users/use-cases/factories/make-update-profile-use-case.js, src/modules/users/use-cases/factories/make-update-profile-use-case.ts, src/modules/treatments/repositories/in-memory/in-memory-treatmentItems-repository.js, src/modules/treatments/repositories/in-memory/in-memory-treatmentItems-repository.ts, src/modules/treatments/repositories/in-memory/in-memory-treatments-repository.js, src/modules/treatments/repositories/in-memory/in-memory-treatments-repository.ts, src/modules/treatments/repositories/prisma/prisma-treatment-items-repository.js, src/modules/treatments/repositories/prisma/prisma-treatment-items-repository.ts, src/modules/treatments/repositories/prisma/prisma-treatments-repository.js, src/modules/treatments/repositories/prisma/prisma-treatments-repository.ts, src/modules/treatments/repositories/DTO/get-treatments-dto.js, src/modules/treatments/repositories/DTO/get-treatments-dto.ts, src/modules/treatments/http/controllers/finish.js, src/modules/treatments/http/controllers/finish.ts, src/modules/treatments/http/controllers/get-service-management-data.js, src/modules/treatments/http/controllers/get-service-management-data.ts, src/modules/treatments/http/controllers/getTreatment.js, src/modules/treatments/http/controllers/getTreatment.ts, src/modules/treatments/http/controllers/getTreatments.js, src/modules/treatments/http/controllers/getTreatments.ts, src/modules/treatments/http/controllers/interaction.js, src/modules/treatments/http/controllers/interaction.ts, src/modules/treatments/http/controllers/remove-treatment-item.js, src/modules/treatments/http/controllers/remove-treatment-item.ts, src/modules/treatments/http/controllers/routes.js, src/modules/treatments/http/controllers/routes.ts, src/modules/treatments/http/controllers/treatment-item.js, src/modules/treatments/http/controllers/treatment-item.ts, src/modules/treatments/http/controllers/treatment.js, src/modules/treatments/http/controllers/treatment.ts, src/modules/treatments/http/controllers/updateTreatment.js, src/modules/treatments/http/controllers/updateTreatment.ts, src/modules/treatments/use-cases/factories/make-finish-treatment-use-case.js, src/modules/treatments/use-cases/factories/make-finish-treatment-use-case.ts, src/modules/treatments/use-cases/factories/make-get-month-treatments-amount.js, src/modules/treatments/use-cases/factories/make-get-month-treatments-amount.ts, src/modules/treatments/use-cases/factories/make-get-treatment-use-case.js, src/modules/treatments/use-cases/factories/make-get-treatment-use-case.ts, src/modules/treatments/use-cases/factories/make-get-treatments-use-case.js, src/modules/treatments/use-cases/factories/make-get-treatments-use-case.ts, src/modules/treatments/use-cases/factories/make-remove-treatment-item-use-case.js, src/modules/treatments/use-cases/factories/make-remove-treatment-item-use-case.ts, src/modules/treatments/use-cases/factories/make-treatment-item-use-case.js, src/modules/treatments/use-cases/factories/make-treatment-item-use-case.ts, src/modules/treatments/use-cases/factories/make-treatment-use-case.js, src/modules/treatments/use-cases/factories/make-treatment-use-case.ts, src/modules/treatments/use-cases/factories/make-update-treatment-use-case.js, src/modules/treatments/use-cases/factories/make-update-treatment-use-case.ts, src/modules/financial/repositories/in-memory/in-memory-accounts-repository.js, src/modules/financial/repositories/in-memory/in-memory-accounts-repository.ts, src/modules/financial/repositories/in-memory/in-memory-balance-projection-repository.js, src/modules/financial/repositories/in-memory/in-memory-balance-projection-repository.ts, src/modules/financial/repositories/in-memory/in-memory-payment-entrys-repository.js, src/modules/financial/repositories/in-memory/in-memory-payment-entrys-repository.ts, src/modules/financial/repositories/in-memory/in-memory-payments-repository.js, src/modules/financial/repositories/in-memory/in-memory-payments-repository.ts, src/modules/financial/repositories/in-memory/in-memory-transactions-repository.js, src/modules/financial/repositories/in-memory/in-memory-transactions-repository.spec.js, src/modules/financial/repositories/in-memory/in-memory-transactions-repository.spec.ts, src/modules/financial/repositories/in-memory/in-memory-transactions-repository.ts, src/modules/financial/repositories/in-memory/in-memory-transfer-transactions-repository.js, src/modules/financial/repositories/in-memory/in-memory-transfer-transactions-repository.ts, src/modules/financial/repositories/DTO/change-transaction-status-params-dto.js, src/modules/financial/repositories/DTO/change-transaction-status-params-dto.ts, src/modules/financial/repositories/DTO/get-financial-dashboard-dto.js, src/modules/financial/repositories/DTO/get-financial-dashboard-dto.ts, src/modules/financial/repositories/DTO/get-transactions-dto.js, src/modules/financial/repositories/DTO/get-transactions-dto.ts, src/modules/financial/repositories/prisma/prisma-accounts-repository.js, src/modules/financial/repositories/prisma/prisma-accounts-repository.ts, src/modules/financial/repositories/prisma/prisma-balance-projection-repository.js, src/modules/financial/repositories/prisma/prisma-balance-projection-repository.ts, src/modules/financial/repositories/prisma/prisma-payment-entrys-repository.js, src/modules/financial/repositories/prisma/prisma-payment-entrys-repository.ts, src/modules/financial/repositories/prisma/prisma-payments-repository.js, src/modules/financial/repositories/prisma/prisma-payments-repository.ts, src/modules/financial/repositories/prisma/prisma-transactions-repository.js, src/modules/financial/repositories/prisma/prisma-transactions-repository.ts, src/modules/financial/repositories/prisma/prisma-transfer-transactions-repository.js, src/modules/financial/repositories/prisma/prisma-transfer-transactions-repository.ts, src/modules/financial/http/controllers/account.js, src/modules/financial/http/controllers/account.ts, src/modules/financial/http/controllers/adjustAccountBalance.js, src/modules/financial/http/controllers/adjustAccountBalance.ts, src/modules/financial/http/controllers/bulk-pay-transactions.js, src/modules/financial/http/controllers/bulk-pay-transactions.ts, src/modules/financial/http/controllers/changeTransactionPayment.js, src/modules/financial/http/controllers/changeTransactionPayment.ts, src/modules/financial/http/controllers/deleteAccount.js, src/modules/financial/http/controllers/deleteAccount.ts, src/modules/financial/http/controllers/deletePayment.js, src/modules/financial/http/controllers/deletePayment.ts, src/modules/financial/http/controllers/deleteTransaction.js, src/modules/financial/http/controllers/deleteTransaction.ts, src/modules/financial/http/controllers/get-financial-summary.js, src/modules/financial/http/controllers/get-financial-summary.ts, src/modules/financial/http/controllers/get-transaction-group.js, src/modules/financial/http/controllers/get-transaction-group.ts, src/modules/financial/http/controllers/getAccount.js, src/modules/financial/http/controllers/getAccount.ts, src/modules/financial/http/controllers/getPayments.js, src/modules/financial/http/controllers/getPayments.ts, src/modules/financial/http/controllers/getSector.js, src/modules/financial/http/controllers/getSector.ts, src/modules/financial/http/controllers/getTransaction.js, src/modules/financial/http/controllers/getTransaction.ts, src/modules/financial/http/controllers/getTransactions.js, src/modules/financial/http/controllers/getTransactions.ts, src/modules/financial/http/controllers/getTransferTransaction.js, src/modules/financial/http/controllers/getTransferTransaction.ts, src/modules/financial/http/controllers/payment.js, src/modules/financial/http/controllers/payment.ts, src/modules/financial/http/controllers/paymentEntry.js, src/modules/financial/http/controllers/paymentEntry.ts, src/modules/financial/http/controllers/revertTransactionStatus.js, src/modules/financial/http/controllers/revertTransactionStatus.ts, src/modules/financial/http/controllers/routes.js, src/modules/financial/http/controllers/routes.ts, src/modules/financial/http/controllers/sector.js, src/modules/financial/http/controllers/sector.ts, src/modules/financial/http/controllers/terminate-transaction-group.js, src/modules/financial/http/controllers/terminate-transaction-group.ts, src/modules/financial/http/controllers/transaction.js, src/modules/financial/http/controllers/transaction.ts, src/modules/financial/http/controllers/updateAccount.js, src/modules/financial/http/controllers/updateAccount.ts, src/modules/financial/http/controllers/updatePayment.js, src/modules/financial/http/controllers/updatePayment.ts, src/modules/financial/use-cases/factories/make-account-use-case.js, src/modules/financial/use-cases/factories/make-account-use-case.ts, src/modules/financial/use-cases/factories/make-adjust-account-balance-use-case.js, src/modules/financial/use-cases/factories/make-adjust-account-balance-use-case.ts, src/modules/financial/use-cases/factories/make-bulk-pay-transactions-use-case.js, src/modules/financial/use-cases/factories/make-bulk-pay-transactions-use-case.ts, src/modules/financial/use-cases/factories/make-change-transaction-status.js, src/modules/financial/use-cases/factories/make-change-transaction-status.ts, src/modules/financial/use-cases/factories/make-delete-account-use-case.js, src/modules/financial/use-cases/factories/make-delete-account-use-case.ts, src/modules/financial/use-cases/factories/make-delete-payment-use-case.js, src/modules/financial/use-cases/factories/make-delete-payment-use-case.ts, src/modules/financial/use-cases/factories/make-delete-transaction.js, src/modules/financial/use-cases/factories/make-delete-transaction.ts, src/modules/financial/use-cases/factories/make-get-accounts-use-case.js, src/modules/financial/use-cases/factories/make-get-accounts-use-case.ts, src/modules/financial/use-cases/factories/make-get-balance-projection-use-case.js, src/modules/financial/use-cases/factories/make-get-balance-projection-use-case.ts, src/modules/financial/use-cases/factories/make-get-finance-metrics-use-case.js, src/modules/financial/use-cases/factories/make-get-finance-metrics-use-case.ts, src/modules/financial/use-cases/factories/make-get-financial-summary.js, src/modules/financial/use-cases/factories/make-get-financial-summary.ts, src/modules/financial/use-cases/factories/make-get-general-balance.js, src/modules/financial/use-cases/factories/make-get-general-balance.ts, src/modules/financial/use-cases/factories/make-get-month-expense-amount-use-case.js, src/modules/financial/use-cases/factories/make-get-month-expense-amount-use-case.ts, src/modules/financial/use-cases/factories/make-get-month-income-amount-use-case.js, src/modules/financial/use-cases/factories/make-get-month-income-amount-use-case.ts, src/modules/financial/use-cases/factories/make-get-month-income-by-days.js, src/modules/financial/use-cases/factories/make-get-month-income-by-days.ts, src/modules/financial/use-cases/factories/make-get-payments-use-case.js, src/modules/financial/use-cases/factories/make-get-payments-use-case.ts, src/modules/financial/use-cases/factories/make-get-transaction-group-use-case.js, src/modules/financial/use-cases/factories/make-get-transaction-group-use-case.ts, src/modules/financial/use-cases/factories/make-get-transactions-use-case.js, src/modules/financial/use-cases/factories/make-get-transactions-use-case.ts, src/modules/financial/use-cases/factories/make-get-transfer-transactions-use-case.js, src/modules/financial/use-cases/factories/make-get-transfer-transactions-use-case.ts, src/modules/financial/use-cases/factories/make-payment-entry-use-case.js, src/modules/financial/use-cases/factories/make-payment-entry-use-case.ts, src/modules/financial/use-cases/factories/make-payment-use-case.js, src/modules/financial/use-cases/factories/make-payment-use-case.ts, src/modules/financial/use-cases/factories/make-revert-transaction-status-use-case.js, src/modules/financial/use-cases/factories/make-revert-transaction-status-use-case.ts, src/modules/financial/use-cases/factories/make-terminate-transaction-group-use-case.js, src/modules/financial/use-cases/factories/make-terminate-transaction-group-use-case.ts, src/modules/financial/use-cases/factories/make-transaction-use-case.js, src/modules/financial/use-cases/factories/make-transaction-use-case.ts, src/modules/financial/use-cases/factories/make-transfer-transaction-use-case.js, src/modules/financial/use-cases/factories/make-transfer-transaction-use-case.ts, src/modules/financial/use-cases/factories/make-update-account-use-case.js, src/modules/financial/use-cases/factories/make-update-account-use-case.ts, src/modules/financial/use-cases/factories/make-update-payment-use-case.js, src/modules/financial/use-cases/factories/make-update-payment-use-case.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.0
+[34mCLI[39m Target: es2020
+[34mCJS[39m Build start
+X [ERROR] Two output files share the same path but have different contents: build\app.js
+
+X [ERROR] Two output files share the same path but have different contents: build\server.js
+
+X [ERROR] Two output files share the same path but have different contents: build\temp-query.js
+
+X [ERROR] Two output files share the same path but have different contents: build\temp-query2.js
+
+X [ERROR] Two output files share the same path but have different contents: build\env\index.js
+
+X [ERROR] Two output files share the same path but have different contents: build\lib\prisma.js
+
+X [ERROR] Two output files share the same path but have different contents: build\http\categories-routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\repositories\categories-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\repositories\supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\display-id-already-exists-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\invalid-credentials-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\invalid-option-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\only-natural-numbers-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\price-cannot-be-lower-than-cost-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\resource-dependency-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\resource-not-found-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\errors\this-name-already-exists-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\system-config\system-logic.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\http\middlewares\verify-jwt.js
+
+X [ERROR] Two output files share the same path but have different contents: build\http\middlewares\verify-user-role.js
+
+X [ERROR] Two output files share the same path but have different contents: build\repositories\in-memory\in-memory-supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\use-cases\factories\make-get-supplies-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\repositories\prisma\prisma-categories-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\repositories\prisma\prisma-supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\categories\use-cases\create-category.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\categories\use-cases\fetch-categories.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\use-cases\equipment.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\use-cases\equipment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\repositories\time-clocks-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\repositories\equipments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\use-cases\get-time-clock-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\use-cases\register-time-clock.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\delete-item-integration.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\delete-item.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\delete-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\get-items.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\get-items.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\get-products.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\get-services.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\get-supplies.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\item.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\items-lifecycle.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\update-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\items-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\repositories\products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\clients-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\interactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\check-product-code-availability.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\create-product.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\create-product.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\delete-product.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\get-next-product-id.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\get-product-by-id.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\get-products.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\update-product.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\create-service.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\create-service.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\delete-service.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\get-service-management-data.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\get-service-management-data.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\get-services.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\update-service.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\service-management-repository.ts.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\client.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\client.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\get-clients.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\get-clients.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\interaction.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\interaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\repositories\suppliers-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\create-supplier.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\delete-supplier.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\get-suppliers.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\update-supplier.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\inventory-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\stocks-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\decrease-stock.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\decrease-stock.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\get-inventory-summary.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\get-inventory-summary.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\get-stock-by-item.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\get-stock-by-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\insufficient-stock-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\register-movement.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\register-movement.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\stock-cannot-be-negative-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\stock.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\stock.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\repositories\sectors-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\create-supply.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\create-supply.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\delete-supply.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\get-supplies.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\update-supply.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\update-supply.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\get-month-expense-by-sector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\get-sectors.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\get-sectors.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\sector.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\sector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\addresses-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\users-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\address.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\address.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\authenticate.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\authenticate.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\get-user-profile.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\get-user-profile.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\register.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\register.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\update-profile.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\user-already-exists-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\treatmentItems-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\treatments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\finish-treatment.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\finish-treatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\get-month-treatments-amount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\get-treatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\get-treatments.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\get-treatments.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\remove-treatment-item.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\remove-treatment-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\treatment.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\treatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\treatmentItem.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\treatmentItem.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\update-treatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\categories\http\controllers\create.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\categories\http\controllers\fetch.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\categories\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\use-cases\factories\make-equipment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\repositories\prisma\prisma-equipments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\equipments\repositories\in-memory\in-memory-equipments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\http\controllers\employees.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\http\controllers\payroll.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\http\controllers\time-clock.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\http\controllers\time-clocks-admin.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\repositories\prisma\prisma-employees-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\repositories\prisma\prisma-time-clocks-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\use-cases\payroll\calculate-extras.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\use-cases\payroll\calculate-rateio.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\hr\use-cases\payroll\generate-batch.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\deleteItem.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\get-inventory-summary.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\getItemHistory.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\getItems.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\getProducts.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\getServices.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\getSupplies.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\register-stock-movement.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\stock.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\http\controllers\updateItem.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\in-memory\in-memory-items-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\in-memory\in-memory-products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\in-memory\in-memory-services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\in-memory\in-memory-supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\prisma\prisma-items-repository.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\prisma\prisma-items-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\prisma\prisma-products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\prisma\prisma-services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\prisma\prisma-supplies-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\repositories\DTO\get-items-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-delete-item-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-get-items-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-get-products-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-get-services-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-get-supplies-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-item-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\items\use-cases\factories\make-update-item-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\accounts-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\balance-projection-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\paymentEntrys-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\payments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\transfer-transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\get-balance-projection.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getGeneralBalance.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getMonthExpenseAmount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getMonthExpenseBySector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getMonthIncomeAmount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getMonthIncomeByDay.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\getMonthTreatmentsAmount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\metrics\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\http\controllers\address.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\http\controllers\client.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\http\controllers\equipment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\http\controllers\getClients.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\check-code.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\create.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\get-by-id.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\get-many.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\get-next-id.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\http\controllers\update.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\account.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\account.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\adjust-account-balance.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\bulk-pay-transactions.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\change-transaction-status.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\change-transaction-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\delete-account.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\delete-payment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\delete-transaction.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\delete-transaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-accounts.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-accounts.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-balance-projection.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-financial-summary.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-general-balance.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-month-expense-amount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-month-income-amount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-month-income-by-days.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-payments.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-payments.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-transaction-group.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-transactions.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-transactions.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-transfer-transactions.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\get-transfer-transactions.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\payment.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\payment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\paymentEntry.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\paymentEntry.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\revert-transaction-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\terminate-transaction-group.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\tranferTransaction.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\transaction-already-confirmed-error.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\transaction.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\transaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\transferTransaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\update-account.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\update-account.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\update-payment.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\update-payment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\repositories\prisma\prisma-products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\repositories\in-memory\in-memory-products-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-check-product-code-availability-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-create-product-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-delete-product-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-get-next-product-id-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-get-product-by-id-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-get-products-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\products\use-cases\factories\make-update-product-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\in-memory\in-memory-clients-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\in-memory\in-memory-interactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\prisma\prisma-clients-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\repositories\prisma\prisma-interactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\factories\make-create-service-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\factories\make-delete-service-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\factories\make-get-service-management-data-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\factories\make-get-services-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\use-cases\factories\make-update-service-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\DTO\get-service-management-data-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\public\http\controllers\checkout-client.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\public\http\controllers\get-client-by-phone.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\public\http\controllers\get-menu.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\public\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\prisma\prisma-service-management-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\prisma\prisma-services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\http\controllers\create.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\http\controllers\get-many.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\in-memory\in-memory-service-management-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\services\repositories\in-memory\in-memory-services-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\factories\make-client-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\factories\make-get-clients-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\clients\use-cases\factories\make-interaction-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\repositories\in-memory\in-memory-suppliers-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\repositories\prisma\prisma-suppliers-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\in-memory\in-memory-inventory-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\in-memory\in-memory-stocks-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\http\controllers\create.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\http\controllers\delete.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\http\controllers\fetch.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\http\controllers\update.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\factories\make-create-supplier-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\factories\make-delete-supplier-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\factories\make-get-suppliers-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\suppliers\use-cases\factories\make-update-supplier-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\prisma\prisma-inventory-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\repositories\prisma\prisma-stocks-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\factories\make-get-inventory-summary-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\factories\make-get-item-stocks-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\factories\make-register-stock-movement-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\stock\use-cases\factories\make-stock-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\repositories\in-memory\in-memory-sectors-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\factories\make-create-supply-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\factories\make-delete-supply-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\use-cases\factories\make-update-supply-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\repositories\prisma\prisma-sectors-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\system-config\http\controllers\get-modules-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\system-config\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\system-config\http\controllers\update-modules-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\http\controllers\create.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\http\controllers\get-many.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\supplies\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\factories\make-get-month-expense-by-sector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\factories\make-get-sectors-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\sectors\use-cases\factories\make-sector-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\authenticate.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\profile.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\refresh.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\register.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\http\controllers\update-profile.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\in-memory\in-memory-addressess-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\in-memory\in-memory-users-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\prisma\prisma-addresses-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\repositories\prisma\prisma-users-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\factories\make-address-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\factories\make-authenticate-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\factories\make-get-user-profile-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\factories\make-register-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\users\use-cases\factories\make-update-profile-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\in-memory\in-memory-treatmentItems-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\in-memory\in-memory-treatments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\prisma\prisma-treatment-items-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\prisma\prisma-treatments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\repositories\DTO\get-treatments-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\finish.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\get-service-management-data.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\getTreatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\getTreatments.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\interaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\remove-treatment-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\treatment-item.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\treatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\http\controllers\updateTreatment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-finish-treatment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-get-month-treatments-amount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-get-treatment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-get-treatments-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-remove-treatment-item-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-treatment-item-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-treatment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\treatments\use-cases\factories\make-update-treatment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-accounts-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-balance-projection-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-payment-entrys-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-payments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-transactions-repository.spec.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\in-memory\in-memory-transfer-transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\DTO\change-transaction-status-params-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\DTO\get-financial-dashboard-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\DTO\get-transactions-dto.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-accounts-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-balance-projection-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-payment-entrys-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-payments-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\repositories\prisma\prisma-transfer-transactions-repository.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\account.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\adjustAccountBalance.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\bulk-pay-transactions.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\changeTransactionPayment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\deleteAccount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\deletePayment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\deleteTransaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\get-financial-summary.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\get-transaction-group.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getAccount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getPayments.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getSector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getTransaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getTransactions.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\getTransferTransaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\payment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\paymentEntry.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\revertTransactionStatus.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\routes.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\sector.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\terminate-transaction-group.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\transaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\updateAccount.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\http\controllers\updatePayment.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-account-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-adjust-account-balance-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-bulk-pay-transactions-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-change-transaction-status.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-delete-account-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-delete-payment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-delete-transaction.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-accounts-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-balance-projection-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-financial-summary.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-general-balance.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-month-expense-amount-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-month-income-amount-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-month-income-by-days.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-payments-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-transaction-group-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-transactions-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-get-transfer-transactions-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-payment-entry-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-payment-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-revert-transaction-status-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-terminate-transaction-group-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-transaction-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-transfer-transaction-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-update-account-use-case.js
+
+X [ERROR] Two output files share the same path but have different contents: build\modules\financial\use-cases\factories\make-update-payment-use-case.js
+
+[31mCJS[39m [31mBuild failed[39m
+[31mError: Build failed with 413 errors:
+error: Two output files share the same path but have different contents: build\app.js
+error: Two output files share the same path but have different contents: build\server.js
+error: Two output files share the same path but have different contents: build\temp-query.js
+error: Two output files share the same path but have different contents: build\temp-query2.js
+error: Two output files share the same path but have different contents: build\env\index.js
+...
+    at failureErrorWithLog (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:926:25
+    at runOnEndCallbacks (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:1307:45)
+    at buildResponseToResult (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:924:7)
+    at C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:951:16
+    at responseCallbacks.<computed> (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\Thomás Furtado\Documents\GitHub\metrics-node\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)[39m
