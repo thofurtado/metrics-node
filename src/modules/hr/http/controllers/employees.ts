@@ -183,3 +183,18 @@ export async function getEmployeeSummary(request: FastifyRequest, reply: Fastify
         daily
     })
 }
+
+export async function syncEmployees(request: FastifyRequest, reply: FastifyReply) {
+    const employees = await prisma.employee.findMany({
+        where: {
+            isRegistered: true
+        },
+        select: {
+            id: true,
+            name: true,
+            pin: true
+        }
+    })
+
+    return reply.status(200).send(employees)
+}
