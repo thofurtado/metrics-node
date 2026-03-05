@@ -27,11 +27,12 @@ app.register(cors, {
     origin: [
         'http://localhost:5173',
         'http://192.168.1.2:5173',
+        'https://marujogastrobar.tech',      // ← Novo domínio oficial do Marujo
+        'https://eurecatech.com.br',        // ← Novo domínio oficial da Eureca
         'https://www.eurecatech.com.br',
-        'https://marujogastrobar.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'], // ← Permitir cabeçalho da API Key
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     credentials: true
 })
 app.register(fastifyJwt, {
