@@ -20,17 +20,12 @@ import { systemConfigRoutes } from '@/modules/system-config/http/controllers/rou
 import { publicRoutes } from '@/modules/public/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
+import { truncate } from 'node:fs'
 
 export const app = fastify({ logger: true })
 
 app.register(cors, {
-    origin: [
-        'http://localhost:5173',
-        'http://192.168.1.2:5173',
-        'https://marujogastrobar.tech',      // ← Novo domínio oficial do Marujo
-        'https://eurecatech.com.br',        // ← Novo domínio oficial da Eureca
-        'https://www.eurecatech.com.br',
-    ],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     credentials: true
