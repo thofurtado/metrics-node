@@ -25,7 +25,11 @@ import { truncate } from 'node:fs'
 export const app = fastify({ logger: true })
 
 app.register(cors, {
-    origin: true,
+    // Allow all origins including 'null' (Electron file:// context sends null origin)
+    origin: (origin, cb) => {
+        // Accept any origin including null (Electron), file://, or any web origin
+        cb(null, true)
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     credentials: true
