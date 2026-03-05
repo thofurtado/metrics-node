@@ -22,15 +22,18 @@ export class GetEmployeeTimeClockStatusUseCase {
             throw new Error("Employee inactive")
         }
 
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+        // BUGFIX: Use UTC-based date construction to avoid server timezone affecting
+        // the date lookup. The @db.Date field stores pure dates in UTC midnight.
+        const now = new Date()
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
         // We need to pass the date as a Date object that matches the @db.Date format in Prisma (which usually ignores time but stores as Date object)
         // However, Prisma client handles JS Date objects correctly for @db.Date.
 
         const timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, today)
 
-        let nextAction = "clockIn"
+        // Determine next action based on sequential clock fields
+        let nextAction: string | null = "clockIn"
 
         if (timeClock) {
             if (!timeClock.clockIn) nextAction = "clockIn"
@@ -39,7 +42,7 @@ export class GetEmployeeTimeClockStatusUseCase {
             else if (!timeClock.clockOut) nextAction = "clockOut"
             else if (!timeClock.extraClockIn) nextAction = "extraClockIn"
             else if (!timeClock.extraClockOut) nextAction = "extraClockOut"
-            else nextAction = "completed"
+            else nextAction = null // null = all 6 slots filled (daily limit reached)
         }
 
         return {

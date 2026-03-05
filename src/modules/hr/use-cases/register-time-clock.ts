@@ -22,8 +22,9 @@ export class RegisterTimeClockUseCase {
 
         const now = timestamp ? new Date(timestamp) : new Date()
 
-        const today = new Date(now)
-        today.setHours(0, 0, 0, 0)
+        // BUGFIX: Use UTC-based date construction to avoid server timezone affecting
+        // the date lookup. The @db.Date field stores pure dates in UTC midnight.
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
 
         let timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, today)
 
