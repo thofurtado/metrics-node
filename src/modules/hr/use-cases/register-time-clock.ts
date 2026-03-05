@@ -3,7 +3,7 @@ import { PrismaTimeClocksRepository } from "../repositories/prisma/prisma-time-c
 
 interface Request {
     pin: string
-    action: "clockIn" | "breakStart" | "breakEnd" | "clockOut"
+    action: "clockIn" | "breakStart" | "breakEnd" | "clockOut" | "extraClockIn" | "extraClockOut"
     timestamp?: string
 }
 
@@ -75,6 +75,8 @@ export class RegisterTimeClockUseCase {
             if (action === "breakStart" && !timeClock.clockIn) throw new Error("Must clock in before break")
             if (action === "breakEnd" && !timeClock.breakStart) throw new Error("Must start break before ending it")
             if (action === "clockOut" && !timeClock.clockIn) throw new Error("Must clock in before clock out")
+            if (action === "extraClockIn" && !timeClock.clockOut) throw new Error("Must do standard clock out before doing an extra shift")
+            if (action === "extraClockOut" && !timeClock.extraClockIn) throw new Error("Must start extra shift before clicking extra shift checkout")
 
             await this.timeClocksRepository.update(timeClock.id, {
                 [action]: now

@@ -481,10 +481,12 @@ model TimeClock {
   employee_id String
   date        DateTime @db.Date
 
-  clockIn    DateTime?
-  breakStart DateTime?
-  breakEnd   DateTime?
-  clockOut   DateTime?
+  clockIn       DateTime?
+  breakStart    DateTime?
+  breakEnd      DateTime?
+  clockOut      DateTime?
+  extraClockIn  DateTime?
+  extraClockOut DateTime?
 
   isExtraDay      Boolean  @default(false)
   negotiatedValue Decimal?

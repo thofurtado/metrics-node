@@ -72,7 +72,7 @@ export async function getStatus(request: FastifyRequest, reply: FastifyReply) {
 export async function register(request: FastifyRequest, reply: FastifyReply) {
     const registerBodySchema = z.object({
         pin: z.string(),
-        action: z.enum(["clockIn", "breakStart", "breakEnd", "clockOut"]),
+        action: z.enum(["clockIn", "breakStart", "breakEnd", "clockOut", "extraClockIn", "extraClockOut"]),
         timestamp: z.string().optional(),
     })
 

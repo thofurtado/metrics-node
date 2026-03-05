@@ -37,6 +37,8 @@ export class GetEmployeeTimeClockStatusUseCase {
             else if (!timeClock.breakStart) nextAction = "breakStart"
             else if (!timeClock.breakEnd) nextAction = "breakEnd"
             else if (!timeClock.clockOut) nextAction = "clockOut"
+            else if (!timeClock.extraClockIn) nextAction = "extraClockIn"
+            else if (!timeClock.extraClockOut) nextAction = "extraClockOut"
             else nextAction = "completed"
         }
 
