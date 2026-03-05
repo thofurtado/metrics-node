@@ -11,8 +11,8 @@ export class GetFinancialSummaryUseCase {
         private transactionsRepository: TransactionsRepository
     ) { }
 
-    async execute(): Promise<GetFinancialSummaryUseCaseResponse> {
-        const summary = await this.transactionsRepository.getFinancialSummary()
+    async execute(date?: Date): Promise<GetFinancialSummaryUseCaseResponse> {
+        const summary = await this.transactionsRepository.getFinancialSummary(date)
 
         return { summary }
     }

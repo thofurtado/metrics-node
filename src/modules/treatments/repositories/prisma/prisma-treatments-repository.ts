@@ -4,8 +4,8 @@ import { TreatmentsRepository } from '@/modules/treatments/repositories/treatmen
 import { GetTreatmentDTO } from '@/modules/treatments/repositories/DTO/get-treatments-dto'
 
 export class PrismaTreatmentsRepository implements TreatmentsRepository {
-    async getMonthTreatmentsAmount(): Promise<{ amount: number; diffFromLastMonth: number }> {
-        const month = new Date()
+    async getMonthTreatmentsAmount(date?: Date): Promise<{ amount: number; diffFromLastMonth: number }> {
+        const month = date || new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
         const thisMonthTreatmentsAmount = await prisma.treatment.count({

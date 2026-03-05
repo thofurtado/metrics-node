@@ -16,8 +16,8 @@ export class GetInventorySummaryUseCase {
         private inventoryRepository: InventoryRepository
     ) { }
 
-    async execute(): Promise<GetInventorySummaryUseCaseResponse> {
-        const inventorySummary = await this.inventoryRepository.getInventorySummary()
+    async execute(date?: Date): Promise<GetInventorySummaryUseCaseResponse> {
+        const inventorySummary = await this.inventoryRepository.getInventorySummary(date)
 
         return { inventorySummary }
     }

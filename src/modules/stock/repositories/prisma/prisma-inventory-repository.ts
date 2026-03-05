@@ -4,8 +4,8 @@ import { InventoryRepository, InventorySummaryData } from '@/modules/stock/repos
 import { prisma } from '@/lib/prisma'
 
 export class PrismaInventoryRepository implements InventoryRepository {
-    async getInventorySummary(): Promise<InventorySummaryData> {
-        const currentDate = new Date()
+    async getInventorySummary(date?: Date): Promise<InventorySummaryData> {
+        const currentDate = date || new Date()
         const currentYear = currentDate.getFullYear()
         const currentMonth = currentDate.getMonth()
         const startOfMonth = new Date(currentYear, currentMonth, 1)

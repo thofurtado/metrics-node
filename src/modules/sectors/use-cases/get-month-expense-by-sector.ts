@@ -11,9 +11,9 @@ export class GetMonthExpenseBySectorUseCase {
     constructor(
         private transactionsRepository: TransactionsRepository
     ) { }
-    async execute(): Promise<GetMonthExpenseBySectorUseCaseResponse[]> {
+    async execute(date?: Date): Promise<GetMonthExpenseBySectorUseCaseResponse[]> {
 
-        const metrics = await this.transactionsRepository.getMonthExpenseBySector()
+        const metrics = await this.transactionsRepository.getMonthExpenseBySector(date)
 
 
         return metrics

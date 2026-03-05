@@ -15,8 +15,8 @@ export class GetServiceManagementDataUseCase {
         private serviceManagementRepository: ServiceManagementRepository
     ) { }
 
-    async execute(): Promise<GetServiceManagementDataUseCaseResponse> {
-        const serviceData = await this.serviceManagementRepository.getServiceManagementData()
+    async execute(date?: Date): Promise<GetServiceManagementDataUseCaseResponse> {
+        const serviceData = await this.serviceManagementRepository.getServiceManagementData(date)
 
         return { serviceData }
     }

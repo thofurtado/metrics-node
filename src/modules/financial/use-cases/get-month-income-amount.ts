@@ -12,9 +12,9 @@ export class GetMonthIncomeAmountUseCase {
     constructor(
         private transactionsRepository: TransactionsRepository
     ) { }
-    async execute(): Promise<GetMonthIncomeAmountUseCaseResponse> {
+    async execute(date?: Date): Promise<GetMonthIncomeAmountUseCaseResponse> {
 
-        const metrics = await this.transactionsRepository.getMonthIncomeAmount()
+        const metrics = await this.transactionsRepository.getMonthIncomeAmount(date)
 
 
         return metrics

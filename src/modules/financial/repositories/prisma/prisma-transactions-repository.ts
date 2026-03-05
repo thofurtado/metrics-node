@@ -12,7 +12,7 @@ import { ChangeTransactionStatusParams } from '@/modules/financial/repositories/
 
 export class PrismaTransactionsRepository implements TransactionsRepository {
     // Versão otimizada com Promise.all (mais rápida)
-    async getFinancialSummary(): Promise<{
+    async getFinancialSummary(date?: Date): Promise<{
         totalBalance: number;
         monthlyIncome: number;
         monthlyExpenses: number;
@@ -21,7 +21,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         overdueIncome: number;    // A receber vencido (todos os meses)
         overdueExpenses: number;  // A pagar vencido (todos os meses)
     }> {
-        const currentDate = new Date();
+        const currentDate = date || new Date();
         const currentYear = currentDate.getFullYear();
         const currentMonth = currentDate.getMonth();
         const startOfMonth = new Date(currentYear, currentMonth, 1);
@@ -116,8 +116,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return Number(balanceResult._sum.balance) || 0
     }
-    async getMonthIncomeByDays(): Promise<{ day: string; revenue: number; }[]> {
-        const month = new Date()
+    async getMonthIncomeByDays(date?: Date): Promise<{ day: string; revenue: number; }[]> {
+        const month = date || new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
 
@@ -149,8 +149,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             revenue: income._sum.amount || 0, // Garante que não seja null
         }))
     }
-    async getMonthExpenseBySector(): Promise<{ sector_name: string; amount: number; }[]> {
-        const month = new Date()
+    async getMonthExpenseBySector(date?: Date): Promise<{ sector_name: string; amount: number; }[]> {
+        const month = date || new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
 
@@ -204,12 +204,12 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             }
         })
     }
-    async getMonthExpenseAmount(): Promise<{
+    async getMonthExpenseAmount(date?: Date): Promise<{
         monthExpenseAmount: number;
         diffFromLastMonth: number;
         alreadyPaid: number
     }> {
-        const month = new Date()
+        const month = date || new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
 
@@ -293,12 +293,12 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             diffFromLastMonth
         }
     }
-    async getMonthIncomeAmount(): Promise<{
+    async getMonthIncomeAmount(date?: Date): Promise<{
         monthIncomeAmount: number;
         diffFromLastMonth: number;
         alreadyPaid: number
     }> {
-        const month = new Date()
+        const month = date || new Date()
         const thisMonthYear = month.getFullYear()
         const thisMonthNumber = month.getMonth() + 1
 

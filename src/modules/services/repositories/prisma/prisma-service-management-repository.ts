@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 
 // repositories/prisma/prisma-service-management-repository.ts
 export class PrismaServiceManagementRepository implements ServiceManagementRepository {
-    async getServiceManagementData(): Promise<ServiceManagementData> {
-        const currentDate = new Date()
+    async getServiceManagementData(date?: Date): Promise<ServiceManagementData> {
+        const currentDate = date || new Date()
         const currentYear = currentDate.getFullYear()
         const currentMonth = currentDate.getMonth()
         const startOfMonth = new Date(currentYear, currentMonth, 1)

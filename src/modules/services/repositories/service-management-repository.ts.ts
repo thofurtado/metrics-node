@@ -11,5 +11,5 @@ export interface ServiceManagementData {
 }
 
 export interface ServiceManagementRepository {
-    getServiceManagementData(): Promise<ServiceManagementData>
+    getServiceManagementData(date?: Date): Promise<ServiceManagementData>
 }

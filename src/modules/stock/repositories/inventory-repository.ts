@@ -7,5 +7,5 @@ export interface InventorySummaryData {
 }
 
 export interface InventoryRepository {
-    getInventorySummary(): Promise<InventorySummaryData>
+    getInventorySummary(date?: Date): Promise<InventorySummaryData>
 }

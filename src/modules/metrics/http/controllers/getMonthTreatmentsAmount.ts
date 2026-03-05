@@ -1,14 +1,23 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
+import { z } from 'zod'
 import { makeGetMonthTreatmentsAmountUseCase } from '@/modules/treatments/use-cases/factories/make-get-month-treatments-amount'
 
 export async function getMonthTreatmentsAmount(request: FastifyRequest, reply: FastifyReply) {
+    const getQuerySchema = z.object({
+        month: z.string().optional().transform(m => m ? Number(m) : undefined),
+        year: z.string().optional().transform(y => y ? Number(y) : undefined),
+    })
+
+    const { month, year } = getQuerySchema.parse(request.query)
+    const date = (month !== undefined && year !== undefined) ? new Date(year, month - 1, 1) : undefined
+
     let monthTreatmentsAmount
     try {
         const getMonthTreatmentsAmountUseCase = makeGetMonthTreatmentsAmountUseCase()
-        monthTreatmentsAmount = await getMonthTreatmentsAmountUseCase.execute()
+        monthTreatmentsAmount = await getMonthTreatmentsAmountUseCase.execute(date)
     } catch (err) {
-        if(err instanceof Error ){
-            return reply.status(409).send({message: err.message})
+        if (err instanceof Error) {
+            return reply.status(409).send({ message: err.message })
         }
 
         throw err

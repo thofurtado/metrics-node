@@ -11,11 +11,11 @@ export interface TransactionsRepository {
     findById(id: string): Promise<Transaction | null>
     delete(id: string): Promise<void>
     getBalance(): Promise<number>
-    getMonthExpenseAmount(): Promise<{ monthExpenseAmount: number, diffFromLastMonth: number, alreadyPaid: number }>
-    getMonthIncomeAmount(): Promise<{ monthIncomeAmount: number, diffFromLastMonth: number, alreadyPaid: number }>
-    getMonthIncomeByDays(): Promise<{ day: string; revenue: number; }[]>
-    getMonthExpenseBySector(): Promise<{ sector_name: string; amount: number; }[]>
-    getFinancialSummary(): Promise<{
+    getMonthExpenseAmount(date?: Date): Promise<{ monthExpenseAmount: number, diffFromLastMonth: number, alreadyPaid: number }>
+    getMonthIncomeAmount(date?: Date): Promise<{ monthIncomeAmount: number, diffFromLastMonth: number, alreadyPaid: number }>
+    getMonthIncomeByDays(date?: Date): Promise<{ day: string; revenue: number; }[]>
+    getMonthExpenseBySector(date?: Date): Promise<{ sector_name: string; amount: number; }[]>
+    getFinancialSummary(date?: Date): Promise<{
         totalBalance: number;
         monthlyIncome: number;
         monthlyExpenses: number;

@@ -11,6 +11,6 @@ export interface TreatmentsRepository {
     findById(id: string): Promise<(Treatment & { amount: number }) | null>
     close(id: string, tx?: Prisma.TransactionClient): Promise<Treatment | null>
 
-    getMonthTreatmentsAmount(): Promise<{ amount: number, diffFromLastMonth: number }>
+    getMonthTreatmentsAmount(date?: Date): Promise<{ amount: number, diffFromLastMonth: number }>
 }
 
