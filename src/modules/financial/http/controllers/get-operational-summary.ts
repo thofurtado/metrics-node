@@ -50,9 +50,10 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         })
         const projecao14Dias = Number(upNextExpensesAggr._sum.amount || 0)
 
-        // 4. Receita Acumulada do Mês Escolhido (Receitas confirmadas dentro do mês)
+        // 4. Receita Acumulada do Mês Escolhido e Ticket Médio (Receitas confirmadas dentro do mês)
         const currentMonthIncomeAggr = await prisma.transaction.aggregate({
             _sum: { amount: true },
+            _count: { id: true },
             where: {
                 operation: 'income',
                 confirmed: true,
@@ -63,6 +64,8 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             },
         })
         const receitaAcumulada = Number(currentMonthIncomeAggr._sum.amount || 0)
+        const numTransactions = currentMonthIncomeAggr._count.id || 0
+        const ticketMedio = numTransactions > 0 ? receitaAcumulada / numTransactions : 0
 
         // 5. Agregações para o Ponto de Equilíbrio do Mês
         // 5.1 Total Despesas do Mês (Pago + A Pagar do Mês)
@@ -97,6 +100,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             totalVencido,
             projecao14Dias,
             receitaAcumulada,
+            ticketMedio,
             totalDespesasMes,
             despesasPagasMes
         })
