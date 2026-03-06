@@ -23,6 +23,7 @@ export async function getModulesStatus(request: FastifyRequest, reply: FastifyRe
         financial: config.financial_module,
         treatments: config.treatments_module,
         hr_module: config.hr_module,
-        cestaBasicaValue: Number(config.cestaBasicaValue || 0)
+        cestaBasicaValue: Number(config.cestaBasicaValue || 0),
+        financial_management_profile: config.financial_management_profile
     })
 }

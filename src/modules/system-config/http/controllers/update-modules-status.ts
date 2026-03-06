@@ -9,9 +9,10 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         financial: z.boolean(),
         treatments: z.boolean(),
         cestaBasicaValue: z.number().nullable().optional(),
+        financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional()
     })
 
-    const { merchandise, financial, treatments, cestaBasicaValue } = updateBodySchema.parse(request.body)
+    const { merchandise, financial, treatments, cestaBasicaValue, financial_management_profile } = updateBodySchema.parse(request.body)
 
     // Regra de Negócio: Removida a trava de dependência forte.
     // Atendimentos agora pode ficar ativo mesmo sem Mercadorias/Financeiro.
@@ -33,6 +34,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial,
                 treatments_module: finalTreatments,
                 cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
+                financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile
             },
         })
     } else {
@@ -42,6 +44,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial,
                 treatments_module: finalTreatments,
                 cestaBasicaValue: cestaBasicaValue ?? 0,
+                financial_management_profile: financial_management_profile ?? 'ANALYTICAL'
             },
         })
     }
@@ -51,6 +54,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         financial: config.financial_module,
         treatments: config.treatments_module,
         hr_module: config.hr_module,
-        cestaBasicaValue: Number(config.cestaBasicaValue || 0)
+        cestaBasicaValue: Number(config.cestaBasicaValue || 0),
+        financial_management_profile: config.financial_management_profile
     })
 }
