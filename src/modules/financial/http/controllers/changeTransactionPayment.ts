@@ -14,7 +14,8 @@ export async function changeTransactionStatus(
     // 2. Schema para validar o Corpo da Requisição (Payload de Atualização)
     const switchTransactionBodySchema = z.object({
         amount: z.number().positive(),
-        date: z.string().or(z.date()).transform((val) => new Date(val)), // Data de liquidação
+        data_vencimento: z.string().or(z.date()).transform((val) => new Date(val)).optional(), // Data de liquidação
+        date: z.string().or(z.date()).transform((val) => new Date(val)).optional(), // backward compat
 
         // NOVO: remainingDate é opcional e deve ser uma data
         remainingDate: z
@@ -32,9 +33,10 @@ export async function changeTransactionStatus(
 
 
     // Valida e extrai os dados do corpo da requisição (Body)
-    const { amount, date, remainingDate, account_id } = switchTransactionBodySchema.parse(
+    const { amount, date: rawDate, data_vencimento: rawDv, remainingDate, account_id } = switchTransactionBodySchema.parse(
         request.body,
     )
+    const date = rawDv || rawDate || new Date()
     console.log({ amount, date, remainingDate, account_id })
     try {
         const changeTransactionStatusUseCase = MakeChangeTransactionStatusUseCase()

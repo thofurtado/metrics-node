@@ -9,7 +9,8 @@ interface TransactionUseCaseRequest {
     operation: string,
     amount: number;
     account_id: string
-    date?: Date | null;
+    data_vencimento?: Date | null;
+    data_emissao?: Date | null;
     sector_id?: string | null;
     description?: string | null;
     confirmed: boolean | null;
@@ -17,7 +18,7 @@ interface TransactionUseCaseRequest {
     supplier_id?: string | null;
     installments_count?: number;
     interval_frequency?: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
-    custom_installments?: { date: Date, amount: number }[];
+    custom_installments?: { data_vencimento: Date, data_emissao?: Date, amount: number }[];
     interest?: number | null;
     discount?: number | null;
     totalValue?: number | null;
@@ -34,7 +35,7 @@ export class TransactionUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        operation, amount, account_id, date, sector_id, description, confirmed, destination_account_id, supplier_id, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
+        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
         // Test for the right operation
@@ -54,10 +55,11 @@ export class TransactionUseCase {
         const isIncome = operation === 'income' ? true : false
 
         // 1. Prepare Installments Plan
-        let installmentsPlan: { date: Date, amount: number, number: number }[] = []
+        let installmentsPlan: { data_vencimento: Date, data_emissao: Date, amount: number, number: number }[] = []
 
         const baseDescription = description || '';
-        const transactionDate = date ? date : new Date();
+        const transactionVencimento = data_vencimento ? data_vencimento : new Date();
+        const transactionEmissao = data_emissao ? data_emissao : new Date();
 
         const totalInstallments = installments_count && installments_count > 1 ? installments_count : 1;
 
@@ -67,13 +69,14 @@ export class TransactionUseCase {
             }
             // Use Custom Plan
             installmentsPlan = custom_installments.map((inst, index) => ({
-                date: new Date(inst.date),
+                data_vencimento: new Date(inst.data_vencimento),
+                data_emissao: inst.data_emissao ? new Date(inst.data_emissao) : transactionEmissao,
                 amount: inst.amount,
                 number: index + 1
             }))
         } else {
             // Single Transaction
-            installmentsPlan.push({ date: transactionDate, amount, number: 1 })
+            installmentsPlan.push({ data_vencimento: transactionVencimento, data_emissao: transactionEmissao, amount, number: 1 })
         }
 
         // EXECUTE ATOMIC TRANSACTION
@@ -99,7 +102,8 @@ export class TransactionUseCase {
                                     operation,
                                     amount: item.amount,
                                     account_id,
-                                    date: item.date,
+                                    data_vencimento: item.data_vencimento,
+                                    data_emissao: item.data_emissao,
                                     sector_id,
                                     description: currentDescription,
                                     confirmed: isConfirmed,
@@ -134,7 +138,8 @@ export class TransactionUseCase {
                         operation,
                         amount: item.amount,
                         account_id,
-                        date: item.date,
+                        data_vencimento: item.data_vencimento,
+                        data_emissao: item.data_emissao,
                         sector_id,
                         description: baseDescription,
                         confirmed: isConfirmed,

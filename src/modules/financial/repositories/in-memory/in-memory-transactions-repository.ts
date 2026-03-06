@@ -20,7 +20,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
         // Filtrar transações do mês atual
         const currentMonthTransactions = this.items.filter(transaction => {
-            const transactionDate = new Date(transaction.date)
+            const transactionDate = new Date(transaction.data_vencimento)
             return transactionDate >= startOfMonth && transactionDate < startOfNextMonth
         })
 
@@ -55,12 +55,12 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
         // 🔥 CORREÇÃO: A receber vencido (todos os meses - não confirmado e data ANTERIOR a startOfToday)
         const overdueIncome = this.items
-            .filter(t => t.operation === 'income' && !t.confirmed && new Date(t.date) < startOfToday)
+            .filter(t => t.operation === 'income' && !t.confirmed && new Date(t.data_vencimento) < startOfToday)
             .reduce((sum, t) => sum + t.amount, 0)
 
         // 🔥 CORREÇÃO: A pagar vencido (todos os meses - não confirmado e data ANTERIOR a startOfToday)
         const overdueExpenses = this.items
-            .filter(t => t.operation === 'expense' && !t.confirmed && new Date(t.date) < startOfToday)
+            .filter(t => t.operation === 'expense' && !t.confirmed && new Date(t.data_vencimento) < startOfToday)
             .reduce((sum, t) => sum + t.amount, 0)
 
         return {
@@ -95,7 +95,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
         // Filtrar transações do mês
         let filteredTransactions = this.items.filter(transaction => {
-            const transactionDate = new Date(transaction.date)
+            const transactionDate = new Date(transaction.data_vencimento)
             return transactionDate >= new Date(year, monthNumber - 1, 1) &&
                 transactionDate < new Date(year, monthNumber, 1)
         })
@@ -142,7 +142,8 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             operation: typeof data.operation === 'string' ? data.operation : this.items[index].operation,
             amount: typeof data.amount === 'number' ? data.amount : this.items[index].amount,
             account_id: typeof data.account_id === 'string' ? data.account_id : this.items[index].account_id,
-            date: data.date ? new Date(data.date as string) : this.items[index].date,
+            data_vencimento: data.data_vencimento ? new Date(data.data_vencimento as string) : this.items[index].data_vencimento,
+            data_emissao: (data as any).data_emissao ? new Date((data as any).data_emissao as string) : this.items[index].data_emissao,
             sector_id: data.sector_id !== undefined
                 ? (typeof data.sector_id === 'string' ? data.sector_id : null)
                 : this.items[index].sector_id,
@@ -173,7 +174,8 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             operation: data.operation as string,
             amount: data.amount as number,
             account_id: data.account_id as string,
-            date: data.date ? new Date(data.date as string) : new Date(),
+            data_vencimento: data.data_vencimento ? new Date(data.data_vencimento as string) : new Date(),
+            data_emissao: (data as any).data_emissao ? new Date((data as any).data_emissao as string) : new Date(),
             sector_id: data.sector_id as string || null,
             description: data.description as string || null,
             confirmed: data.confirmed as boolean || false,
@@ -206,7 +208,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         const dailyIncomes = this.items
             .filter(t => t.operation === 'income')
             .reduce((acc, transaction) => {
-                const day = transaction.date.toISOString().substring(5, 10)
+                const day = transaction.data_vencimento.toISOString().substring(5, 10)
                 acc[day] = (acc[day] || 0) + transaction.amount
                 return acc
             }, {} as Record<string, number>)
@@ -239,7 +241,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         const currentMonth = currentDate.getMonth()
 
         const currentMonthExpenses = this.items.filter(t => {
-            const transactionDate = new Date(t.date)
+            const transactionDate = new Date(t.data_vencimento)
             return transactionDate >= new Date(currentYear, currentMonth, 1) &&
                 transactionDate < new Date(currentYear, currentMonth + 1, 1) &&
                 t.operation === 'expense'
@@ -263,7 +265,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         const currentMonth = currentDate.getMonth()
 
         const currentMonthIncomes = this.items.filter(t => {
-            const transactionDate = new Date(t.date)
+            const transactionDate = new Date(t.data_vencimento)
             return transactionDate >= new Date(currentYear, currentMonth, 1) &&
                 transactionDate < new Date(currentYear, currentMonth + 1, 1) &&
                 t.operation === 'income'
@@ -293,7 +295,7 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         if (transactionIndex !== -1) {
             this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
             this.items[transactionIndex].amount = data.amount
-            this.items[transactionIndex].date = data.date
+            this.items[transactionIndex].data_vencimento = data.date
         }
     }
 

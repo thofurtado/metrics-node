@@ -18,7 +18,7 @@ export class InMemoryBalanceProjectionRepository implements BalanceProjectionRep
         endDate.setDate(endDate.getDate() + days)
 
         const futureTransactions = this.transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.date)
+            const transactionDate = new Date(transaction.data_vencimento)
             return transactionDate >= today && transactionDate <= endDate
         })
 
@@ -49,7 +49,7 @@ export class InMemoryBalanceProjectionRepository implements BalanceProjectionRep
         // SEMPRE incluir hoje (dia 0)
         const todayString = today.toISOString().split('T')[0]
         const todayTransactions = transactions.filter(t =>
-            new Date(t.date).toISOString().split('T')[0] === todayString
+            new Date(t.data_vencimento).toISOString().split('T')[0] === todayString
         )
 
         // Calcular saldo de hoje
@@ -73,7 +73,7 @@ export class InMemoryBalanceProjectionRepository implements BalanceProjectionRep
         const transactionsByDate = new Map<string, Transaction[]>()
 
         transactions.forEach(transaction => {
-            const dateString = new Date(transaction.date).toISOString().split('T')[0]
+            const dateString = new Date(transaction.data_vencimento).toISOString().split('T')[0]
             if (dateString !== todayString) {
                 if (!transactionsByDate.has(dateString)) {
                     transactionsByDate.set(dateString, [])
@@ -134,7 +134,8 @@ export class InMemoryBalanceProjectionRepository implements BalanceProjectionRep
         const newTransaction: Transaction = {
             id: transaction.id || `transaction-${this.transactions.length + 1}`,
             operation: transaction.operation || 'income',
-            date: transaction.date || new Date(),
+            data_vencimento: transaction.data_vencimento || new Date(),
+            data_emissao: transaction.data_emissao || new Date(),
             amount: transaction.amount || 0,
             account_id: transaction.account_id || 'account-1',
             sector_id: transaction.sector_id || null,

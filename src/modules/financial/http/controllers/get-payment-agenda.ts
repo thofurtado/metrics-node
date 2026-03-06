@@ -14,7 +14,7 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
             where: {
                 operation: 'expense',
                 confirmed: false,
-                date: {
+                data_vencimento: {
                     gte: today,
                     lte: tenDaysFromNow,
                 }
@@ -23,7 +23,7 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
                 sectors: true
             },
             orderBy: {
-                date: 'asc'
+                data_vencimento: 'asc'
             }
         })
 
@@ -49,7 +49,7 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
         }
 
         transactions.forEach(tx => {
-            const d = tx.date
+            const d = tx.data_vencimento
             const year = d.getFullYear()
             const month = String(d.getMonth() + 1).padStart(2, '0')
             const day = String(d.getDate()).padStart(2, '0')

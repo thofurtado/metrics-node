@@ -46,7 +46,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             prisma.transaction.aggregate({
                 where: {
                     operation: 'income',
-                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                    data_vencimento: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
@@ -54,7 +54,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             prisma.transaction.aggregate({
                 where: {
                     operation: 'expense',
-                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                    data_vencimento: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
@@ -63,7 +63,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 where: {
                     operation: 'income',
                     confirmed: false,
-                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                    data_vencimento: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
@@ -72,7 +72,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 where: {
                     operation: 'expense',
                     confirmed: false,
-                    date: { gte: startOfMonth, lt: startOfNextMonth }
+                    data_vencimento: { gte: startOfMonth, lt: startOfNextMonth }
                 },
                 _sum: { amount: true }
             }),
@@ -81,7 +81,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 where: {
                     operation: 'income',
                     confirmed: false,
-                    date: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
+                    data_vencimento: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
                 },
                 _sum: { amount: true }
             }),
@@ -90,7 +90,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 where: {
                     operation: 'expense',
                     confirmed: false,
-                    date: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
+                    data_vencimento: { lt: startOfToday } // Data menor que HOJE 00:00 = vencido
                 },
                 _sum: { amount: true }
             })
@@ -122,14 +122,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const thisMonthNumber = month.getMonth() + 1
 
         const dailyIncomes = await prisma.transaction.groupBy({
-            by: ['date'],
+            by: ['data_vencimento'],
             _sum: {
                 amount: true,
             },
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1)
                         },
@@ -140,12 +140,12 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 ],
             },
             orderBy: {
-                date: 'asc'
+                data_vencimento: 'asc'
             }
         })
 
         return dailyIncomes.map((income) => ({
-            day: income.date.toISOString().substring(5, 10),
+            day: income.data_vencimento.toISOString().substring(5, 10),
             revenue: income._sum.amount || 0, // Garante que não seja null
         }))
     }
@@ -162,7 +162,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1)
                         },
@@ -220,7 +220,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
@@ -242,7 +242,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
@@ -261,7 +261,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1),
                             lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1),
                         },
@@ -310,7 +310,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
@@ -332,7 +332,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, thisMonthNumber - 1, 1),
                             lt: new Date(thisMonthYear, thisMonthNumber, 1),
                         },
@@ -351,7 +351,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: {
                 AND: [
                     {
-                        date: {
+                        data_vencimento: {
                             gte: new Date(thisMonthYear, (thisMonthNumber - 1) - 1, 1),
                             lt: new Date(thisMonthYear, (thisMonthNumber - 1), 1),
                         },
@@ -434,7 +434,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     where: { id },
                     data: {
                         amount: newAmount, // Novo valor (pago parcial ou total)
-                        date, // Nova data de liquidação (data de liquidação efetiva)
+                        data_vencimento: date, // Nova data de liquidação (data de liquidação efetiva)
                         confirmed: true, // Hardcoded: a função é para liquidar/confirmar
                         account_id: targetAccountId // Atualiza a conta se mudou
                     },
@@ -532,7 +532,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         // CORREÇÃO: Preparar os dados de atualização sem as relações
         const updateData: Prisma.TransactionUncheckedUpdateInput = {
             operation: data.operation,
-            date: data.date,
+            data_vencimento: data.data_vencimento,
             amount: data.amount,
             description: data.description,
             confirmed: data.confirmed,
@@ -617,7 +617,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const whereConditions: Prisma.TransactionWhereInput = {
             AND: [
                 {
-                    date: dateFilter // Use dynamic date filter
+                    data_vencimento: dateFilter // Use dynamic date filter
                 },
                 {
                     sectors: {
@@ -659,7 +659,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: whereConditions,
             orderBy: [
                 {
-                    date: 'asc'
+                    data_vencimento: 'asc'
                 }
             ],
             include: {
@@ -685,8 +685,11 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
     }
 
     async create(data: Prisma.TransactionUncheckedCreateInput, tx?: Prisma.TransactionClient) {
-        if (!data.date) {
-            data.date = new Date()
+        if (!data.data_vencimento) {
+            data.data_vencimento = new Date()
+        }
+        if (!(data as any).data_emissao) {
+            (data as any).data_emissao = new Date()
         }
         if (!data.confirmed) {
             data.confirmed = false

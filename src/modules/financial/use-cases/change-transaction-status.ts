@@ -108,7 +108,7 @@ export class ChangeTransactionUseCase {
         // Se houver saldo restante, cria uma nova transação
         if (remainingAmount > 0) {
             // Determina a data de vencimento da parcela restante
-            const newDueDate = remainingDate || originalTransaction.date;
+            const newDueDate = remainingDate || originalTransaction.data_vencimento;
 
             // Usa a função de limpeza e numeração para gerar uma descrição concisa
             const newDescription = getCleanRemainingDescription(originalTransaction);
@@ -123,7 +123,8 @@ export class ChangeTransactionUseCase {
 
                 amount: remainingAmount,
                 confirmed: false,
-                date: newDueDate,
+                data_vencimento: newDueDate,
+                data_emissao: originalTransaction.data_emissao,
                 description: newDescription, // <-- DESCRIÇÃO NUMERADA
                 parent_transaction_id: originalTransaction.id, // Vínculo de Rastreabilidade
             };

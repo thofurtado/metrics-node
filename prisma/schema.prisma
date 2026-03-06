@@ -62,7 +62,7 @@ model Client {
 }
 
 model Address {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   client_id    String
   street       String
   number       Int
@@ -158,14 +158,14 @@ model Product {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @default(now()) @updatedAt
 
-  display_id   Int     @unique
-  cost         Float?  @default(0)
+  display_id   Int         @unique
+  cost         Float?      @default(0)
   price        Float
-  stock        Float?  @default(0)
-  min_stock    Float?  @default(0)
+  stock        Float?      @default(0)
+  min_stock    Float?      @default(0)
   barcode      String?
   ncm          String?
-  is_composite Boolean @default(false)
+  is_composite Boolean     @default(false)
   measureUnit  MeasureUnit @default(UNITARY)
 
   stocks         Stock[]
@@ -351,9 +351,10 @@ model Account {
 
 model Transaction {
   id          String   @id @default(uuid())
-  operation   String
-  date        DateTime @default(now())
-  amount      Float
+  operation      String
+  data_vencimento DateTime @default(now())
+  data_emissao    DateTime @default(now())
+  amount         Float
   interest    Float?   @default(0)
   discount    Float?   @default(0)
   totalValue  Float?
@@ -435,13 +436,13 @@ model Supplier {
 }
 
 model SystemConfig {
-  id                 String  @id @default(uuid())
-  merchandise_module Boolean @default(true)
-  financial_module   Boolean @default(true)
-  treatments_module  Boolean @default(true)
-  hr_module          Boolean @default(true)
-  cestaBasicaValue   Decimal @default(0)
-  financial_management_profile String @default("ANALYTICAL") // ANALYTICAL ou OPERATIONAL
+  id                           String  @id @default(uuid())
+  merchandise_module           Boolean @default(true)
+  financial_module             Boolean @default(true)
+  treatments_module            Boolean @default(true)
+  hr_module                    Boolean @default(true)
+  cestaBasicaValue             Decimal @default(0)
+  financial_management_profile String  @default("ANALYTICAL") // ANALYTICAL ou OPERATIONAL
 
   updated_at DateTime @default(now()) @updatedAt
 
@@ -449,20 +450,20 @@ model SystemConfig {
 }
 
 model Employee {
-  id            String   @id @default(uuid())
-  name          String
-  role          String // Cargo
-  registrationType String @default("REGISTERED") // REGISTERED, UNREGISTERED, DAILY
-  isRegistered  Boolean  @default(true)
-  admissionDate DateTime
-  pin           String // Senha para o ponto
+  id               String   @id @default(uuid())
+  name             String
+  role             String // Cargo
+  registrationType String   @default("REGISTERED") // REGISTERED, UNREGISTERED, DAILY
+  isRegistered     Boolean  @default(true)
+  admissionDate    DateTime
+  pin              String // Senha para o ponto
 
   salary             Decimal?
   dailyRate          Decimal?
-  points             Int     @default(0)
-  transportAllowance Decimal @default(0)
-  overtimeValue      Decimal @default(0)
-  hasCestaBasica     Boolean @default(false)
+  points             Int      @default(0)
+  transportAllowance Decimal  @default(0)
+  overtimeValue      Decimal  @default(0)
+  hasCestaBasica     Boolean  @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
@@ -470,7 +471,7 @@ model Employee {
   user_id String? @unique
   user    User?   @relation(fields: [user_id], references: [id])
 
-  timeClocks TimeClock[]
+  timeClocks     TimeClock[]
   payrollEntries PayrollEntry[]
   pointSnapshots EmployeePointSnapshot[]
 
@@ -508,14 +509,14 @@ model EmployeePointSnapshot {
   id           String   @id @default(uuid())
   employee_id  String
   snapshotDate DateTime
-  
-  points       Int
-  pointValue   Decimal
-  totalAmount  Decimal // points * pointValue
-  
+
+  points      Int
+  pointValue  Decimal
+  totalAmount Decimal // points * pointValue
+
   created_at DateTime @default(now())
 
-  employee   Employee @relation(fields: [employee_id], references: [id])
+  employee Employee @relation(fields: [employee_id], references: [id])
 
   @@map("employee_point_snapshots")
 }
@@ -535,22 +536,22 @@ enum PayrollType {
 }
 
 model PayrollEntry {
-  id           String      @id @default(uuid())
-  employee_id  String
-  description  String
-  amount       Decimal
-  type         PayrollType
-  referenceDate DateTime   @db.Date // Mês de referência (ex: 01/01/2024 para Janeiro)
-  
-  status       String      @default("PENDING") // PENDING, PAID, CANCELED
-  
+  id            String      @id @default(uuid())
+  employee_id   String
+  description   String
+  amount        Decimal
+  type          PayrollType
+  referenceDate DateTime    @db.Date // Mês de referência (ex: 01/01/2024 para Janeiro)
+
+  status String @default("PENDING") // PENDING, PAID, CANCELED
+
   transaction_id String?
   transaction    Transaction? @relation(fields: [transaction_id], references: [id])
-  
-  created_at   DateTime    @default(now())
-  updated_at   DateTime    @default(now()) @updatedAt
 
-  employee     Employee    @relation(fields: [employee_id], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [id])
 
   @@map("payroll_entries")
 }

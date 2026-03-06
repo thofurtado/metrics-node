@@ -23,19 +23,19 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
 
         const futureTransactions = await prisma.transaction.findMany({
             where: {
-                date: {
+                data_vencimento: {
                     gte: today, // Apenas a partir de hoje
                     lte: endDate
                 }
             },
             select: {
-                date: true,
+                data_vencimento: true,
                 operation: true,
                 amount: true,
                 confirmed: true
             },
             orderBy: {
-                date: 'asc'
+                data_vencimento: 'asc'
             }
         })
 
@@ -57,7 +57,7 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
         initialBalance: number,
         startDate: Date,
         endDate: Date,
-        transactions: { date: Date; operation: string; amount: number; confirmed: boolean }[]
+        transactions: { data_vencimento: Date; operation: string; amount: number; confirmed: boolean }[]
     ): DailyBalance[] {
         const dailyBalances: DailyBalance[] = []
         let runningBalance = initialBalance
@@ -66,7 +66,7 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
         // SEMPRE incluir hoje (dia 0)
         const todayString = today.toISOString().split('T')[0]
         const todayTransactions = transactions.filter(t =>
-            new Date(t.date).toISOString().split('T')[0] === todayString
+            new Date(t.data_vencimento).toISOString().split('T')[0] === todayString
         )
 
         // Calcular saldo de hoje
@@ -90,7 +90,7 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
         const transactionsByDate = new Map<string, typeof transactions>()
 
         transactions.forEach(transaction => {
-            const dateString = new Date(transaction.date).toISOString().split('T')[0]
+            const dateString = new Date(transaction.data_vencimento).toISOString().split('T')[0]
             if (!transactionsByDate.has(dateString)) {
                 transactionsByDate.set(dateString, [])
             }
