@@ -25,9 +25,11 @@ import { revertTransactionStatus } from '@/modules/financial/http/controllers/re
 import { createRecurring } from './create-recurring'
 import { terminateTransactionGroup } from '@/modules/financial/http/controllers/terminate-transaction-group'
 import { getTransactionGroup } from '@/modules/financial/http/controllers/get-transaction-group'
+import { getPaymentAgenda } from '@/modules/financial/http/controllers/get-payment-agenda'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
+    app.get('/payment-agenda', getPaymentAgenda)
     app.post('/sector', { onRequest: [verifyUserRole('ADMIN')] }, createSector)
     app.get('/sectors', getSector)
 
