@@ -15,6 +15,7 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
         toDate: z.string().optional(),
         per_page: z.coerce.number().optional(),
         supplier_id: z.string().optional(),
+        type: z.string().optional(),
     })
 
     const query = getTransactionsParamsSchema.parse(request.query)
@@ -32,7 +33,8 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
             status: query.status,
             toDate: query.toDate ? new Date(query.toDate) : undefined,
             perPage: query.per_page, // Ensure this is passed
-            supplier_id: query.supplier_id === 'all' ? undefined : query.supplier_id
+            supplier_id: query.supplier_id === 'all' ? undefined : query.supplier_id,
+            type: query.type
         })
     } catch (err) {
         if (err instanceof Error) {

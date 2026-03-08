@@ -13,6 +13,7 @@ interface GetTreatmentsUseCaseRequest {
     month: Date
     toDate?: Date // Added toDate
     supplier_id?: string // Added supplier_id
+    type?: string // Added type
 }
 
 
@@ -21,11 +22,19 @@ export class GetTransactionsUseCase {
     constructor(
         private transactionsRepository: TransactionsRepository
     ) { }
-    async execute({ pageIndex, perPage, description, value, sector_id, account_id, month, status, toDate, supplier_id }: GetTreatmentsUseCaseRequest): Promise<GetTransactionsDTO | null> {
+    async execute({ pageIndex, perPage, description, value, sector_id, account_id, month, status, toDate, supplier_id, type }: GetTreatmentsUseCaseRequest): Promise<GetTransactionsDTO | null> {
         console.log('USE CASE ACCOUNT' + account_id)
         if (!perPage)
             perPage = 6
-        const transactions = await this.transactionsRepository.findMany(month, pageIndex, perPage, description, value, sector_id, account_id, status, toDate, supplier_id)
+
+        let operation
+        if (type === 'in') {
+            operation = 'income'
+        } else if (type === 'out') {
+            operation = 'expense'
+        }
+
+        const transactions = await this.transactionsRepository.findMany(month, pageIndex, perPage, description, value, sector_id, account_id, status, toDate, supplier_id, operation)
         return transactions
 
     }

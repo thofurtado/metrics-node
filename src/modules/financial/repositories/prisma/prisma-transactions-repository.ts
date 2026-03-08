@@ -557,7 +557,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string): Promise<GetTransactionsDTO | null> {
 
         if (!pageIndex)
             pageIndex = 1
@@ -646,7 +646,10 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     }
                 },
                 // Add confirmed filter if status is provided
-                ...(confirmedFilter !== undefined ? [{ confirmed: confirmedFilter }] : [])
+                ...(confirmedFilter !== undefined ? [{ confirmed: confirmedFilter }] : []),
+                {
+                    operation: operation ? { equals: operation } : undefined
+                }
             ]
         }
 
