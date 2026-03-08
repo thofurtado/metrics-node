@@ -31,7 +31,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             where: {
                 operation: 'expense',
                 confirmed: false,
-                date: { lt: startOfToday },
+                data_vencimento: { lt: startOfToday },
             },
         })
         const totalVencido = Number(overdueExpensesAggr._sum.amount || 0)
@@ -42,7 +42,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             where: {
                 operation: 'expense',
                 confirmed: false,
-                date: {
+                data_vencimento: {
                     gte: startOfToday,
                     lte: fourteenDaysFromNow
                 },
@@ -57,7 +57,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             where: {
                 operation: 'income',
                 confirmed: true,
-                date: {
+                data_vencimento: {
                     gte: firstDayOfMonth,
                     lte: lastDayOfMonth
                 },
@@ -73,7 +73,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             _sum: { amount: true },
             where: {
                 operation: 'expense',
-                date: {
+                data_vencimento: {
                     gte: firstDayOfMonth,
                     lte: lastDayOfMonth
                 },
@@ -87,7 +87,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             where: {
                 operation: 'expense',
                 confirmed: true,
-                date: {
+                data_vencimento: {
                     gte: firstDayOfMonth,
                     lte: lastDayOfMonth
                 },

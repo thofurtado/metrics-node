@@ -384,8 +384,36 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         }
     }
     async delete(id: string): Promise<void> {
-        const findedTransaction = await prisma.transaction.findFirst({ where: { id } })
-        if (findedTransaction) {
+        const transaction = await prisma.transaction.findUnique({ where: { id } })
+
+        if (!transaction) {
+            return
+        }
+
+        // Se a transação estiver confirmada, precisamos reverter o valor do saldo da conta
+        if (transaction.confirmed) {
+            let balanceChange = 0
+            if (transaction.operation === 'income') {
+                balanceChange = -transaction.amount
+            } else if (transaction.operation === 'expense') {
+                balanceChange = transaction.amount
+            }
+
+            await prisma.$transaction([
+                prisma.account.update({
+                    where: { id: transaction.account_id },
+                    data: {
+                        balance: {
+                            increment: balanceChange
+                        }
+                    }
+                }),
+                prisma.transaction.delete({
+                    where: { id }
+                })
+            ])
+        } else {
+            // Se não estiver confirmada, apenas deleta
             await prisma.transaction.delete({
                 where: { id }
             })
