@@ -587,14 +587,10 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
     }
     async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string): Promise<GetTransactionsDTO | null> {
 
-        if (!pageIndex)
-            pageIndex = 1
-        let take = 6
-        if (perPage)
-            take = perPage
-        let skip: number = 0
-        if (pageIndex >= 1) {
-            skip = (pageIndex * take) - take
+        let take = perPage ? Number(perPage) : 6
+        let skip = 0
+        if (pageIndex && pageIndex > 1) {
+            skip = (pageIndex - 1) * take
         }
         let sector
         if (sector_id === 'all') {
@@ -689,9 +685,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             skip, take,
             where: whereConditions,
             orderBy: [
-                {
-                    data_vencimento: 'asc'
-                }
+                { data_vencimento: 'asc' },
+                { created_at: 'desc' },
+                { id: 'asc' }
             ],
             include: {
                 accounts: true,

@@ -24,8 +24,8 @@ const employeeBodySchema = z.object({
     transportAllowance: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     hasCestaBasica: z.boolean().default(false),
 }).superRefine((data, ctx) => {
-    // 1. Validation: Salary required if Registered OR (NOT Daily)
-    if (data.isRegistered || data.registrationType !== 'DAILY') {
+    // 1. Validation: Salary required if NOT Daily
+    if (data.registrationType !== 'DAILY') {
         if (data.salary === null || data.salary === undefined || data.salary <= 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -48,7 +48,15 @@ const employeeBodySchema = z.object({
 })
 
 export async function createEmployee(request: FastifyRequest, reply: FastifyReply) {
-    const data = employeeBodySchema.parse(request.body)
+    let data;
+    try {
+        data = employeeBodySchema.parse(request.body)
+    } catch (err: any) {
+        console.log('[BACKEND/createEmployee] Erro de validação (Zod):')
+        console.dir(err, { depth: null })
+        console.log('[BACKEND/createEmployee] Payload que falhou:', request.body)
+        throw err;
+    }
 
     // Check PIN uniqueness
     const pinExists = await prisma.employee.findFirst({
@@ -84,7 +92,15 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
     })
 
     const { id } = updateEmployeeParamsSchema.parse(request.params)
-    const data = employeeBodySchema.parse(request.body)
+    let data;
+    try {
+        data = employeeBodySchema.parse(request.body)
+    } catch (err: any) {
+        console.log('[BACKEND/updateEmployee] Erro de validação (Zod):')
+        console.dir(err, { depth: null })
+        console.log('[BACKEND/updateEmployee] Payload que falhou:', request.body)
+        throw err;
+    }
 
     // Check PIN uniqueness (excluding current employee)
     const pinExists = await prisma.employee.findFirst({
