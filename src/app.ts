@@ -1,6 +1,18 @@
 import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
-import { ZodError } from 'zod'
+import { z, ZodError } from 'zod'
+import i18next from 'i18next'
+import { zodI18nMap } from 'zod-i18n-map'
+import translation from 'zod-i18n-map/locales/pt/zod.json'
+
+i18next.init({
+    lng: "pt",
+    resources: {
+        pt: { zod: translation },
+    },
+});
+z.setErrorMap(zodI18nMap);
+
 import { env } from '@/env/index'
 import fastifyJwt from '@fastify/jwt'
 import { financialRoutes } from '@/modules/financial/http/controllers/routes'
