@@ -10,6 +10,7 @@ interface ChangeTransactionUseCaseRequest {
     date: Date // Data efetiva do pagamento/recebimento
     remainingDate?: Date // Data de vencimento da parcela restante (opcional)
     account_id?: string // Conta selecionada para o pagamento (opcional)
+    payment_method?: string
 }
 
 // Função auxiliar para padronizar e limpar a descrição de parcelas restantes,
@@ -76,6 +77,7 @@ export class ChangeTransactionUseCase {
         date,
         remainingDate,
         account_id, // Recebe a conta
+        payment_method,
 
     }: ChangeTransactionUseCaseRequest): Promise<void> {
 
@@ -139,6 +141,7 @@ export class ChangeTransactionUseCase {
             amount: amountPaid,
             date,
             account_id, // Passa a nova conta para a repository atualizar antes de confirmar
+            payment_method,
         })
     }
 }

@@ -358,13 +358,14 @@ model Transaction {
   interest    Float?   @default(0)
   discount    Float?   @default(0)
   totalValue  Float?
-  account_id  String
+  account_id  String?
   sector_id   String?
   description String?
   confirmed   Boolean  @default(false)
+  payment_method String? @default("BOLETO")
   created_at  DateTime @default(now())
 
-  accounts              Account               @relation(fields: [account_id], references: [id])
+  accounts              Account?              @relation(fields: [account_id], references: [id])
   sectors               Sector?               @relation(fields: [sector_id], references: [id])
   TransferTransaction   TransferTransaction[]
   InstallmentPayment    InstallmentPayment[]

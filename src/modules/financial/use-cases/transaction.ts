@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma'
 interface TransactionUseCaseRequest {
     operation: string,
     amount: number;
-    account_id: string
+    account_id?: string | null;
     data_vencimento?: Date | null;
     data_emissao?: Date | null;
     sector_id?: string | null;
@@ -16,6 +16,7 @@ interface TransactionUseCaseRequest {
     confirmed: boolean | null;
     destination_account_id?: string | null;
     supplier_id?: string | null;
+    payment_method?: string | null;
     installments_count?: number;
     interval_frequency?: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     custom_installments?: { data_vencimento: Date, data_emissao?: Date, amount: number }[];
@@ -35,7 +36,7 @@ export class TransactionUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
+        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
         // Test for the right operation
@@ -44,11 +45,11 @@ export class TransactionUseCase {
         }
 
         // verify if the account exists
-        let account
-        if (account_id)
-            account = await this.accountsRepository.findById(account_id)
-        if (!account)
-            throw new ResourceNotFoundError()
+        if (account_id) {
+            const account = await this.accountsRepository.findById(account_id)
+            if (!account)
+                throw new ResourceNotFoundError()
+        }
 
         //as transações de despesa e transferência são deduzidas do balanço da conta de origem,
         //caso contrário(income) são acrescentadas
@@ -101,18 +102,19 @@ export class TransactionUseCase {
                                 return {
                                     operation,
                                     amount: item.amount,
-                                    account_id,
+                                    account_id: account_id || null,
                                     data_vencimento: item.data_vencimento,
                                     data_emissao: item.data_emissao,
-                                    sector_id,
+                                    sector_id: sector_id || null,
                                     description: currentDescription,
                                     confirmed: isConfirmed,
-                                    supplier_id: supplier_id,
+                                    supplier_id: supplier_id || null,
+                                    payment_method: payment_method || "BOLETO",
                                     interest: isFirst ? interest : 0,
                                     discount: isFirst ? discount : 0,
                                     totalValue: isFirst ? totalValue : item.amount,
                                     // parent_transaction_id: we rely on transaction_group_id relation
-                                }
+                                } as any
                             })
                         }
                     },
@@ -126,7 +128,7 @@ export class TransactionUseCase {
                 // but relying on the array order or finding the one with confirmed=true/earliest date is safer if we didn't store 'number'.
                 // Since we just created them, we can try to find the one matching the first installment plan date/amount/desc.
                 const firstDescription = `${baseDescription} (1/${installmentsPlan.length})`;
-                firstTransaction = group.transactions.find((t: Transaction) => t.description === firstDescription) || group.transactions[0];
+                firstTransaction = (group as any).transactions.find((t: Transaction) => t.description === firstDescription) || (group as any).transactions[0];
 
             } else {
                 // SINGLE TRANSACTION
@@ -137,17 +139,18 @@ export class TransactionUseCase {
                     data: {
                         operation,
                         amount: item.amount,
-                        account_id,
+                        account_id: account_id || null,
                         data_vencimento: item.data_vencimento,
                         data_emissao: item.data_emissao,
-                        sector_id,
+                        sector_id: sector_id || null,
                         description: baseDescription,
                         confirmed: isConfirmed,
-                        supplier_id: supplier_id,
+                        supplier_id: supplier_id || null,
+                        payment_method: payment_method || "BOLETO",
                         interest,
                         discount,
                         totalValue,
-                    }
+                    } as any
                 })
             }
 
@@ -155,8 +158,8 @@ export class TransactionUseCase {
 
             // SIDE EFFECTS (Balance & Transfer) - Applied to the First Transaction
             // If the first transaction is confirmed, update the balance.
-            if (firstTransaction.confirmed) {
-                await this.accountsRepository.changeBalance(account_id, firstTransaction.amount, isIncome, tx)
+            if (firstTransaction.confirmed && firstTransaction.account_id) {
+                await this.accountsRepository.changeBalance(firstTransaction.account_id, firstTransaction.amount, isIncome, tx)
             }
 
             // Handle Transfer (Only single/first support usually, but logic kept generalized)

@@ -26,6 +26,7 @@ export async function changeTransactionStatus(
 
         // NOVO: Permitir trocar a conta na hora do pagamento
         account_id: z.string().uuid().optional(),
+        payment_method: z.string().optional(),
     })
 
     // Valida e extrai o ID dos parâmetros da rota (URL)
@@ -33,11 +34,11 @@ export async function changeTransactionStatus(
 
 
     // Valida e extrai os dados do corpo da requisição (Body)
-    const { amount, date: rawDate, data_vencimento: rawDv, remainingDate, account_id } = switchTransactionBodySchema.parse(
+    const { amount, date: rawDate, data_vencimento: rawDv, remainingDate, account_id, payment_method } = switchTransactionBodySchema.parse(
         request.body,
     )
     const date = rawDv || rawDate || new Date()
-    console.log({ amount, date, remainingDate, account_id })
+    console.log({ amount, date, remainingDate, account_id, payment_method })
     try {
         const changeTransactionStatusUseCase = MakeChangeTransactionStatusUseCase()
 
@@ -49,6 +50,7 @@ export async function changeTransactionStatus(
             date, // Data de confirmação/pagamento
             remainingDate, // Passa a nova data de vencimento da parcela restante (opcional)
             account_id, // Conta selecionada (opcional)
+            payment_method,
         })
 
         // Retorno de Sucesso (200 OK sem conteúdo)

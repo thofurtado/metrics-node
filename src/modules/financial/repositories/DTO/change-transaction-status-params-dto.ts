@@ -3,4 +3,5 @@ export interface ChangeTransactionStatusParams {
     amount: number
     date: Date
     account_id?: string
+    payment_method?: string
 }

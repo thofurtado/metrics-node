@@ -401,7 +401,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
             await prisma.$transaction([
                 prisma.account.update({
-                    where: { id: transaction.account_id },
+                    where: { id: transaction.account_id || "" },
                     data: {
                         balance: {
                             increment: balanceChange
@@ -464,13 +464,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                         amount: newAmount, // Novo valor (pago parcial ou total)
                         data_vencimento: date, // Nova data de liquidação (data de liquidação efetiva)
                         confirmed: true, // Hardcoded: a função é para liquidar/confirmar
-                        account_id: targetAccountId // Atualiza a conta se mudou
+                        account_id: targetAccountId, // Atualiza a conta se mudou
+                        ...(data.payment_method ? { payment_method: data.payment_method } : {})
                     },
                 })
 
                 // b) Atualiza o Saldo da Conta (da conta FINAL, onde o pagamento ocorreu)
                 await tx.account.update({
-                    where: { id: targetAccountId },
+                    where: { id: targetAccountId || "" },
                     data: {
                         balance: {
                             // Adiciona/Remove o valor liquidado do saldo existente
@@ -537,7 +538,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
                 // b) Atualiza o Saldo da Conta
                 await tx.account.update({
-                    where: { id: targetAccountId },
+                    where: { id: targetAccountId || "" },
                     data: {
                         balance: {
                             increment: accountBalanceChange,
@@ -691,7 +692,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             ],
             include: {
                 accounts: true,
-                sectors: true
+                sectors: true,
+                supplier: true
             }
         })
 
@@ -794,10 +796,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 } else if (transaction.operation === 'expense') {
                     balanceChange = -transaction.amount
                 }
-
                 if (balanceChange !== 0) {
                     await tx.account.update({
-                        where: { id: transaction.account_id },
+                        where: { id: transaction.account_id || "" },
                         data: {
                             balance: {
                                 increment: balanceChange
