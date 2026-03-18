@@ -47,8 +47,14 @@ export class PrismaSuppliersRepository implements SuppliersRepository {
     }
 
     async delete(id: string): Promise<void> {
-        await prisma.supplier.delete({
-            where: { id }
-        })
+        await prisma.$transaction([
+            prisma.transaction.updateMany({
+                where: { supplier_id: id },
+                data: { supplier_id: null }
+            }),
+            prisma.supplier.delete({
+                where: { id }
+            })
+        ])
     }
 }

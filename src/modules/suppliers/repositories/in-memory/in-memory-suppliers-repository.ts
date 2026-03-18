@@ -51,4 +51,16 @@ export class InMemorySuppliersRepository implements SuppliersRepository {
             count: this.items.length
         }
     }
+
+    async delete(id: string): Promise<void> {
+        this.items = this.items.filter(item => item.id !== id)
+    }
+
+    async update(id: string, data: Prisma.SupplierUpdateInput): Promise<Supplier> {
+        const itemIndex = this.items.findIndex(item => item.id === id)
+        if (itemIndex >= 0) {
+            this.items[itemIndex] = { ...this.items[itemIndex], ...(data as any) }
+        }
+        return this.items[itemIndex]
+    }
 }
