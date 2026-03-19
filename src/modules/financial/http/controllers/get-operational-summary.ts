@@ -11,13 +11,20 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
     const { month, year } = getSummaryQuerySchema.parse(request.query)
 
     try {
-        const today = new Date()
-        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const fourteenDaysFromNow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 14, 23, 59, 59, 999)
+        // Garante que o UTC-0300 não desloque a data para amanhã, e mantém no início/fim exatos do dia local do Brasil
+        const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+        const localNow = new Date(nowStr);
 
-        // Limites do mês escolhido
-        const firstDayOfMonth = new Date(year, month - 1, 1)
-        const lastDayOfMonth = new Date(year, month, 0, 23, 59, 59, 999)
+        const startOfToday = new Date(localNow);
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const fourteenDaysFromNow = new Date(localNow);
+        fourteenDaysFromNow.setDate(localNow.getDate() + 14);
+        fourteenDaysFromNow.setHours(23, 59, 59, 999);
+
+        // Limites do mês escolhido (base no mês local também)
+        const firstDayOfMonth = new Date(year, month - 1, 1, 0, 0, 0, 0);
+        const lastDayOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
         // 1. Saldo Disponível (Soma total dos saldos atuais nas contas bancárias)
         const accountsAggr = await prisma.account.aggregate({

@@ -586,7 +586,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date): Promise<GetTransactionsDTO | null> {
 
         let take = perPage ? Number(perPage) : 6
         let skip = 0
@@ -623,13 +623,22 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             // Horizon Flow: "Todas as não pagas (independente data) + futuras até toDate"
             // Se confirmado = false, buscamos tudo <= toDate (que inclui passado + futuro próximo)
             // Se toDate não for passado, assumimos um padrão (ex: hoje + 7 dias - handled in Use Case usually, but here as fallback)
-            const targetDate = toDate || new Date(new Date().setDate(new Date().getDate() + 7));
+            const targetDate = toDate ? new Date(toDate) : new Date(new Date().setDate(new Date().getDate() + 7));
 
             // Set end of day for targetDate to be inclusive
             targetDate.setHours(23, 59, 59, 999);
 
-            dateFilter = {
-                lte: targetDate
+            if (fromDate) {
+                const startDate = new Date(fromDate);
+                startDate.setHours(0, 0, 0, 0);
+                dateFilter = {
+                    gte: startDate,
+                    lte: targetDate
+                }
+            } else {
+                dateFilter = {
+                    lte: targetDate
+                }
             }
         } else {
             // Default Month Flow (History)
@@ -698,7 +707,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             transactions,
             totalCount,
             perPage: take,
-            pageIndex
+            pageIndex: pageIndex || 1
         }
     }
     async findById(id: string): Promise<Transaction | null> {
@@ -733,7 +742,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 data: {
                     ...createTransaction,
                     accounts: {
-                        connect: { id: data.account_id }
+                        connect: { id: data.account_id as string }
                     }
                 }
 
@@ -743,10 +752,10 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 data: {
                     ...createTransaction,
                     accounts: {
-                        connect: { id: data.account_id }
+                        connect: { id: data.account_id as string }
                     },
                     sectors: {
-                        connect: { id: data.sector_id }
+                        connect: { id: data.sector_id as string }
                     }
                 }
             })

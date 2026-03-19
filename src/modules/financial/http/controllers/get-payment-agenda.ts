@@ -3,7 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const today = new Date()
+        const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+        const localNow = new Date(nowStr)
+
+        const today = new Date(localNow)
         today.setHours(0, 0, 0, 0)
 
         const tenDaysFromNow = new Date(today)

@@ -13,6 +13,7 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
         month: z.coerce.date().optional(),
         status: z.string().optional(),
         toDate: z.string().optional(),
+        fromDate: z.string().optional(),
         per_page: z.coerce.number().optional(),
         supplier_id: z.string().optional(),
         type: z.string().optional(),
@@ -32,6 +33,7 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
             account_id: query.account_id === 'all' ? undefined : query.account_id,
             status: query.status,
             toDate: query.toDate ? new Date(query.toDate) : undefined,
+            fromDate: query.fromDate ? new Date(query.fromDate) : undefined,
             perPage: query.per_page, // Ensure this is passed
             supplier_id: query.supplier_id === 'all' ? undefined : query.supplier_id,
             type: query.type
