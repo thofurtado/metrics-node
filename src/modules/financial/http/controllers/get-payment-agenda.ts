@@ -61,7 +61,8 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
                 agendaMap[key].detalhes.push({
                     descricao: tx.description || 'Sem descrição',
                     valor: amount,
-                    categoria: tx.sectors?.name || 'Sem categoria'
+                    categoria: tx.sectors?.name || 'Sem categoria',
+                    payment_method: tx.payment_method
                 })
             }
         })

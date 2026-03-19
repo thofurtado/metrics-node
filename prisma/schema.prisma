@@ -362,7 +362,7 @@ model Transaction {
   sector_id   String?
   description String?
   confirmed   Boolean  @default(false)
-  payment_method String? @default("BOLETO")
+  payment_method String @default("boleto")
   created_at  DateTime @default(now())
 
   accounts              Account?              @relation(fields: [account_id], references: [id])
