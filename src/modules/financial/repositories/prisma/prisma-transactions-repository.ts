@@ -644,37 +644,34 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 {
                     data_vencimento: dateFilter // Use dynamic date filter
                 },
-                {
+                ...(sector !== undefined ? [{
                     sectors: {
                         id: { equals: sector }
                     }
-                },
-                {
+                }] : []),
+                ...(account !== undefined ? [{
                     accounts: {
                         id: { equals: account }
                     }
-                },
-                {
-                    supplier_id: supplier_id ? {
-                        equals: supplier_id
-                    } : undefined
-                },
-                {
+                }] : []),
+                ...(supplier_id ? [{
+                    supplier_id: { equals: supplier_id }
+                }] : []),
+                ...(description ? [{
                     description: {
                         contains: description,
-                        mode: 'insensitive'
+                        mode: Prisma.QueryMode.insensitive
                     }
-                },
-                {
-                    amount: {
-                        equals: value
-                    }
-                },
-                // Add confirmed filter if status is provided
-                ...(confirmedFilter !== undefined ? [{ confirmed: confirmedFilter }] : []),
-                {
-                    operation: operation ? { equals: operation } : undefined
-                }
+                }] : []),
+                ...(value !== undefined && value !== null ? [{
+                    amount: { equals: value }
+                }] : []),
+                ...(confirmedFilter !== undefined ? [{
+                    confirmed: confirmedFilter
+                }] : []),
+                ...(operation ? [{
+                    operation: { equals: operation }
+                }] : [])
             ]
         }
 
