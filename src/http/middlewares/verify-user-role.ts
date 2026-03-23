@@ -7,11 +7,11 @@ export function verifyUserRole(roleToVerify: 'ADMIN' | 'MEMBER') {
         if (apiKey === validKey) return
 
         if (!request.user) {
-            return reply.status(401).send({ message: 'Usuário esta desautorizado para esta função' })
+            return reply.status(401).send({ message: 'Não autenticado' })
         }
         const { role } = request.user
         if (role !== roleToVerify) {
-            return reply.status(401).send({ message: 'Usuário esta desautorizado para esta função' })
+            return reply.status(403).send({ message: 'Acesso negado: permissão insuficiente' })
         }
     }
 }

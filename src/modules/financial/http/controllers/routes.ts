@@ -25,6 +25,7 @@ import { revertTransactionStatus } from '@/modules/financial/http/controllers/re
 import { createRecurring } from './create-recurring'
 import { terminateTransactionGroup } from '@/modules/financial/http/controllers/terminate-transaction-group'
 import { getTransactionGroup } from '@/modules/financial/http/controllers/get-transaction-group'
+import { deleteTransactionGroup } from '@/modules/financial/http/controllers/delete-transaction-group'
 import { getPaymentAgenda } from '@/modules/financial/http/controllers/get-payment-agenda'
 import { getOperationalSummary } from '@/modules/financial/http/controllers/get-operational-summary'
 
@@ -48,6 +49,7 @@ export async function financialRoutes(app: FastifyInstance) {
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
     app.get('/transaction-groups/:groupId', getTransactionGroup)
+    app.delete('/transaction-groups/:groupId', deleteTransactionGroup)
 
     app.post('/payment', createPayment)
     app.post('/payment-entry', createPaymentEntry)

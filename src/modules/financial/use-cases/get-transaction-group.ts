@@ -12,7 +12,7 @@ export class GetTransactionGroupUseCase {
             where: { id: groupId },
             include: {
                 transactions: {
-                    orderBy: { date: 'asc' }
+                    orderBy: { data_vencimento: 'asc' }
                 }
             }
         })
