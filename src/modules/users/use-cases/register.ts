@@ -1,18 +1,13 @@
 import { UsersRepository } from '@/modules/users/repositories/users-repository'
 import { hash } from 'bcryptjs'
 import { UserAlreadyExistsError } from '@/modules/users/use-cases/user-already-exists-error'
-import { User } from '@prisma/client'
+import { User, Role } from '@prisma/client'
 
 
-enum Role {
-    ADMIN,
-    TECHNICIAN
-}
 interface RegistryUseCaseRequest {
     name: string
     email: string
     password: string
-    role?: Role | undefined,
     introduction?: string | null
 }
 
@@ -25,7 +20,7 @@ export class RegisterUseCase {
         private usersRepository: UsersRepository
     ) { }
     async execute({
-        name, email, password, role, introduction
+        name, email, password, introduction
     }: RegistryUseCaseRequest): Promise<RegisterUseCaseResponse> {
 
         const userWithSameEmail = await this.usersRepository.findByEmail(email)
@@ -39,7 +34,6 @@ export class RegisterUseCase {
             name,
             email,
             password_hash,
-            role,
             introduction
         })
         return {
