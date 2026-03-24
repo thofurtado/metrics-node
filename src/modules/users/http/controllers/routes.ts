@@ -6,6 +6,7 @@ import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { refresh } from '@/modules/users/http/controllers/refresh'
 import { updateProfile } from '@/modules/users/http/controllers/update-profile'
 import { getPublicUsers } from '@/modules/users/http/controllers/get-public-users'
+import { fetchAllModules, fetchUsersWithModules, updateUserModules } from '@/modules/users/http/controllers/mbac'
 
 
 export async function usersRoutes(app: FastifyInstance) {
@@ -22,6 +23,11 @@ export async function usersRoutes(app: FastifyInstance) {
     app.get('/me', { onRequest: [verifyJwt] }, profile)
 
     app.put('/profile', { onRequest: [verifyJwt] }, updateProfile)
+
+    // Rotas protegidas (geralmente sob verifyJwt ou verifyModuleAccess)
+    app.get('/modules', { onRequest: [verifyJwt] }, fetchAllModules)
+    app.get('/users-with-modules', { onRequest: [verifyJwt] }, fetchUsersWithModules)
+    app.put('/users/:id/modules', { onRequest: [verifyJwt] }, updateUserModules)
 
     // ✅ Solução Fastify
     app.get('/health', async (request, reply) => {
