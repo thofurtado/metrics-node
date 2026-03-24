@@ -36,6 +36,7 @@ model User {
 
   interactions Interaction[]
   Treatment    Treatment[]
+  userModules  UserModule[]
 
   employee Employee?
 
@@ -555,4 +556,26 @@ model PayrollEntry {
   employee Employee @relation(fields: [employee_id], references: [id])
 
   @@map("payroll_entries")
+}
+
+model Module {
+  id          String       @id @default(uuid())
+  name        String       @unique // ex: "FINANCE", "SALES", "SETTINGS"
+  description String?
+  
+  users       UserModule[]
+
+  @@map("modules")
+}
+
+model UserModule {
+  id        String   @id @default(uuid())
+  user_id   String
+  module_id String
+
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  module    Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, module_id])
+  @@map("user_modules")
 }

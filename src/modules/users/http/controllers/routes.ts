@@ -5,9 +5,13 @@ import { profile } from '@/modules/users/http/controllers/profile'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { refresh } from '@/modules/users/http/controllers/refresh'
 import { updateProfile } from '@/modules/users/http/controllers/update-profile'
+import { getPublicUsers } from '@/modules/users/http/controllers/get-public-users'
 
 
 export async function usersRoutes(app: FastifyInstance) {
+    // Rota pública para listar usuários no select de login
+    app.get('/users/public', getPublicUsers)
+
     //criando usuário
     app.post('/users', register)
     //criando sessão
