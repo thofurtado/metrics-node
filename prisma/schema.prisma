@@ -560,7 +560,8 @@ model PayrollEntry {
 
 model Module {
   id          String       @id @default(uuid())
-  name        String       @unique // ex: "FINANCE", "SALES", "SETTINGS"
+  name        String // e.g., "Financeiro"
+  slug        String       @unique // e.g., "finance"
   description String?
   
   users       UserModule[]
