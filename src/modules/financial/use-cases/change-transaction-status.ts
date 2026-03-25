@@ -7,6 +7,8 @@ import { Prisma, Transaction } from '@prisma/client'
 interface ChangeTransactionUseCaseRequest {
     id: string
     amount: number // Valor que está sendo pago/recebido (liquidação)
+    interest?: number
+    discount?: number
     date: Date // Data efetiva do pagamento/recebimento
     remainingDate?: Date // Data de vencimento da parcela restante (opcional)
     account_id?: string // Conta selecionada para o pagamento (opcional)
@@ -74,6 +76,8 @@ export class ChangeTransactionUseCase {
     async execute({
         id,
         amount: amountPaid,
+        interest = 0,
+        discount = 0,
         date,
         remainingDate,
         account_id, // Recebe a conta
@@ -98,17 +102,21 @@ export class ChangeTransactionUseCase {
             throw new Error('O valor de liquidação (amount) deve ser positivo.')
         }
 
-        // 4. Validação: Impedir Pagamento Excedente
-        if (amountPaid > originalTransaction.amount) {
-            throw new Error(`O valor pago (${amountPaid}) não pode ser maior que o valor da transação original (${originalTransaction.amount}).`)
+        // 4. Validação: Impedir Pagamento Excedente (considerando juros/desconto)
+        const totalCalculated = Number((originalTransaction.amount + interest - discount).toFixed(2))
+        if (amountPaid > totalCalculated + 0.01) {
+            throw new Error(`O valor pago (${amountPaid}) não pode ser maior que o valor total calculado (${totalCalculated}).`)
         }
 
         // 5. Lógica de Pagamento Parcial
-        // Fix: Correção de ponto flutuante (ex: 100.00 - 33.33 = 66.67)
-        const remainingAmount = Number((originalTransaction.amount - amountPaid).toFixed(2));
+        // O valor remanescente é o que faltava do original menos o que foi amortizado do principal.
+        // Se eu tinha 100, paguei 110 (sendo 10 juros), amortizei 100. Resta 0.
+        // Se eu tinha 100, paguei 60 (sendo 10 juros), amortizei 50. Resta 50.
+        const amortizedAmount = amountPaid - interest + discount
+        const remainingAmount = Number((originalTransaction.amount - amortizedAmount).toFixed(2));
 
         // Se houver saldo restante, cria uma nova transação
-        if (remainingAmount > 0) {
+        if (remainingAmount > 0.01) {
             // Determina a data de vencimento da parcela restante
             const newDueDate = remainingDate || originalTransaction.data_vencimento;
 
@@ -116,8 +124,6 @@ export class ChangeTransactionUseCase {
             const newDescription = getCleanRemainingDescription(originalTransaction);
 
             // Prepara os dados da transação remanescente
-            // OBS: O remanescente continua na conta original (pois é uma dívida pendente), 
-            // a menos que queiramos migrar tudo. Mas o account_id passado é para o PAGAMENTO.
             const remainingTransactionData: Prisma.TransactionUncheckedCreateInput = {
                 operation: originalTransaction.operation,
                 account_id: originalTransaction.account_id, // Mantém na conta original
@@ -139,6 +145,8 @@ export class ChangeTransactionUseCase {
         await this.transactionsRepository.changeTransactionStatus({
             id,
             amount: amountPaid,
+            interest,
+            discount,
             date,
             account_id, // Passa a nova conta para a repository atualizar antes de confirmar
             payment_method,

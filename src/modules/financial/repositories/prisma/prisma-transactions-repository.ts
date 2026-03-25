@@ -421,8 +421,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
     }
 
     async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {
-        // Agora só desestrutura id, amount e date
-        const { id, amount: newAmount, date, account_id } = data
+        const { id, amount: newAmount, interest, discount, date, account_id } = data
 
         // 1. Busca a transação original para verificar a existência e o status
         const existingTransaction = await prisma.transaction.findUnique({
@@ -462,6 +461,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     where: { id },
                     data: {
                         amount: newAmount, // Novo valor (pago parcial ou total)
+                        interest: interest || 0,
+                        discount: discount || 0,
                         data_vencimento: date, // Nova data de liquidação (data de liquidação efetiva)
                         confirmed: true, // Hardcoded: a função é para liquidar/confirmar
                         account_id: targetAccountId, // Atualiza a conta se mudou
