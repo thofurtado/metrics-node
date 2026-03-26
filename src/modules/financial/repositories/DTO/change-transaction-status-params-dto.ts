@@ -1,6 +1,7 @@
 export interface ChangeTransactionStatusParams {
     id: string
     amount: number
+    totalValue: number
     interest?: number
     discount?: number
     date: Date

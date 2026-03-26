@@ -144,7 +144,8 @@ export class ChangeTransactionUseCase {
         // 6. Liquidar a transação original
         await this.transactionsRepository.changeTransactionStatus({
             id,
-            amount: amountPaid,
+            amount: amortizedAmount, // the principal paid
+            totalValue: amountPaid, // the exact cash flow
             interest,
             discount,
             date,
