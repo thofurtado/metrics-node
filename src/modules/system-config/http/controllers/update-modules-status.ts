@@ -5,27 +5,24 @@ import { z } from 'zod'
 
 export async function updateModulesStatus(request: FastifyRequest, reply: FastifyReply) {
     const updateBodySchema = z.object({
-        merchandise: z.boolean(),
-        financial: z.boolean(),
-        treatments: z.boolean(),
-        cestaBasicaValue: z.number().nullable().optional(),
+        merchandise: z.boolean().optional(),
+        financial: z.boolean().optional(),
+        treatments: z.boolean().optional(),
+        hr_module: z.boolean().optional(),
+        cestaBasicaValue: z.coerce.number().nullable().optional(),
         financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional(),
-        dashboard_cards: z.record(z.record(z.boolean())).optional()
+        dashboard_cards: z.any().optional()
     })
 
     const { 
         merchandise, 
         financial, 
         treatments, 
+        hr_module,
         cestaBasicaValue, 
         financial_management_profile,
         dashboard_cards 
     } = updateBodySchema.parse(request.body)
-
-    // Regra de Negócio: Removida a trava de dependência forte.
-    // Atendimentos agora pode ficar ativo mesmo sem Mercadorias/Financeiro.
-    const finalTreatments = treatments
-
 
     // Tenta buscar a assinatura existente para pegar o ID
     const existingConfig = await prisma.systemConfig.findFirst()
@@ -38,9 +35,10 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 id: existingConfig.id,
             },
             data: {
-                merchandise_module: merchandise,
-                financial_module: financial,
-                treatments_module: finalTreatments,
+                merchandise_module: merchandise ?? existingConfig.merchandise_module,
+                financial_module: financial ?? existingConfig.financial_module,
+                treatments_module: treatments ?? existingConfig.treatments_module,
+                hr_module: hr_module ?? existingConfig.hr_module,
                 cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
                 financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile,
                 // @ts-ignore
@@ -50,9 +48,10 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
     } else {
         config = await prisma.systemConfig.create({
             data: {
-                merchandise_module: merchandise,
-                financial_module: financial,
-                treatments_module: finalTreatments,
+                merchandise_module: merchandise ?? true,
+                financial_module: financial ?? true,
+                treatments_module: treatments ?? true,
+                hr_module: hr_module ?? true,
                 cestaBasicaValue: cestaBasicaValue ?? 0,
                 financial_management_profile: financial_management_profile ?? 'ANALYTICAL',
                 // @ts-ignore
