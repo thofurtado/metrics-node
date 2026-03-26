@@ -6,7 +6,7 @@ import { makeAuthenticateUseCase } from '@/modules/users/use-cases/factories/mak
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
     const authenticateBodySchema = z.object({
         userId: z.string().uuid(),
-        password: z.string().min(6),
+        password: z.string().min(1),
     })
 
     const { userId, password } = authenticateBodySchema.parse(request.body)
