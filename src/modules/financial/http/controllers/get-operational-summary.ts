@@ -59,7 +59,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
 
         // 4. Receita Acumulada do Mês Escolhido e Ticket Médio (Receitas confirmadas dentro do mês)
         const currentMonthIncomeAggr = await prisma.transaction.aggregate({
-            _sum: { amount: true },
+            _sum: { totalValue: true },
             _count: { id: true },
             where: {
                 operation: 'income',
@@ -70,37 +70,36 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
                 },
             },
         })
-        const receitaAcumulada = Number(currentMonthIncomeAggr._sum.amount || 0)
-        const numTransactions = currentMonthIncomeAggr._count.id || 0
-        const ticketMedio = numTransactions > 0 ? receitaAcumulada / numTransactions : 0
+        const receitaAcumulada = Number(currentMonthIncomeAggr._sum.totalValue || 0)
+        const numEntradas = currentMonthIncomeAggr._count.id || 0
+        const ticketMedio = numEntradas > 0 ? receitaAcumulada / numEntradas : 0
 
         // 5. Agregações para o Ponto de Equilíbrio do Mês
-        // 5.1 Total Despesas do Mês (Pago + A Pagar do Mês)
-        const currentMonthTotalExpensesAggr = await prisma.transaction.aggregate({
+        // 5.1 Despesas A Pagar do Mês
+        const currentMonthPendingExpensesAggr = await prisma.transaction.aggregate({
             _sum: { amount: true },
             where: {
                 operation: 'expense',
-                data_vencimento: {
-                    gte: firstDayOfMonth,
-                    lte: lastDayOfMonth
-                },
+                confirmed: false,
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const totalDespesasMes = Number(currentMonthTotalExpensesAggr._sum.amount || 0)
+        const pendingExpensesMes = Number(currentMonthPendingExpensesAggr._sum.amount || 0)
 
         // 5.2 Despesas Já Pagas do Mês
         const currentMonthPaidExpensesAggr = await prisma.transaction.aggregate({
-            _sum: { amount: true },
+            _sum: { totalValue: true, interest: true },
             where: {
                 operation: 'expense',
                 confirmed: true,
-                data_vencimento: {
-                    gte: firstDayOfMonth,
-                    lte: lastDayOfMonth
-                },
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const despesasPagasMes = Number(currentMonthPaidExpensesAggr._sum.amount || 0)
+        const despesasPagasMes = Number(currentMonthPaidExpensesAggr._sum.totalValue || 0)
+        const totalJurosPagos = Number(currentMonthPaidExpensesAggr._sum.interest || 0)
+
+        // 5.3 Total Despesas do Mês (Pago + A Pagar)
+        const totalDespesasMes = despesasPagasMes + pendingExpensesMes
 
         return reply.status(200).send({
             saldoDisponivel,
@@ -108,8 +107,10 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             projecao14Dias,
             receitaAcumulada,
             ticketMedio,
+            numEntradas,
             totalDespesasMes,
-            despesasPagasMes
+            despesasPagasMes,
+            totalJurosPagos
         })
     } catch (err) {
         console.error('[getOperationalSummary] Error:', err)
