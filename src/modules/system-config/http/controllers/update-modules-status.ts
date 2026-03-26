@@ -9,10 +9,18 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         financial: z.boolean(),
         treatments: z.boolean(),
         cestaBasicaValue: z.number().nullable().optional(),
-        financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional()
+        financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional(),
+        dashboard_cards: z.record(z.record(z.boolean())).optional()
     })
 
-    const { merchandise, financial, treatments, cestaBasicaValue, financial_management_profile } = updateBodySchema.parse(request.body)
+    const { 
+        merchandise, 
+        financial, 
+        treatments, 
+        cestaBasicaValue, 
+        financial_management_profile,
+        dashboard_cards 
+    } = updateBodySchema.parse(request.body)
 
     // Regra de Negócio: Removida a trava de dependência forte.
     // Atendimentos agora pode ficar ativo mesmo sem Mercadorias/Financeiro.
@@ -34,7 +42,9 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial,
                 treatments_module: finalTreatments,
                 cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
-                financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile
+                financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile,
+                // @ts-ignore
+                dashboard_cards: dashboard_cards ?? (existingConfig as any).dashboard_cards
             },
         })
     } else {
@@ -44,7 +54,9 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial,
                 treatments_module: finalTreatments,
                 cestaBasicaValue: cestaBasicaValue ?? 0,
-                financial_management_profile: financial_management_profile ?? 'ANALYTICAL'
+                financial_management_profile: financial_management_profile ?? 'ANALYTICAL',
+                // @ts-ignore
+                dashboard_cards: dashboard_cards ?? {}
             },
         })
     }

@@ -445,6 +445,7 @@ model SystemConfig {
   hr_module                    Boolean @default(true)
   cestaBasicaValue             Decimal @default(0)
   financial_management_profile String  @default("ANALYTICAL") // ANALYTICAL ou OPERATIONAL
+  dashboard_cards              Json?   @default("{}")
 
   updated_at DateTime @default(now()) @updatedAt
 
