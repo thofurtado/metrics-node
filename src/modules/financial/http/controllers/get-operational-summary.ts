@@ -57,21 +57,34 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         })
         const projecao14Dias = Number(upNextExpensesAggr._sum.amount || 0)
 
-        // 4. Receita Acumulada do Mês Escolhido e Ticket Médio (Receitas confirmadas dentro do mês)
-        const currentMonthIncomeAggr = await prisma.transaction.aggregate({
+        // 4. Receita Acumulada do Mês Escolhido e Ticket Médio (Todas as receitas, pagas ou não)
+        const currentMonthPendingIncomeAggr = await prisma.transaction.aggregate({
+            _sum: { amount: true },
+            _count: { id: true },
+            where: {
+                operation: 'income',
+                confirmed: false,
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+            },
+        })
+        const currentMonthPaidIncomeAggr = await prisma.transaction.aggregate({
             _sum: { totalValue: true },
             _count: { id: true },
             where: {
                 operation: 'income',
                 confirmed: true,
-                data_vencimento: {
-                    gte: firstDayOfMonth,
-                    lte: lastDayOfMonth
-                },
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const receitaAcumulada = Number(currentMonthIncomeAggr._sum.totalValue || 0)
-        const numEntradas = currentMonthIncomeAggr._count.id || 0
+
+        const pendingIncome = Number(currentMonthPendingIncomeAggr._sum.amount || 0)
+        const paidIncome = Number(currentMonthPaidIncomeAggr._sum.totalValue || 0)
+        const receitaAcumulada = pendingIncome + paidIncome
+
+        const numEntradasPending = currentMonthPendingIncomeAggr._count.id || 0
+        const numEntradasPaid = currentMonthPaidIncomeAggr._count.id || 0
+        const numEntradas = numEntradasPending + numEntradasPaid
+
         const ticketMedio = numEntradas > 0 ? receitaAcumulada / numEntradas : 0
 
         // 5. Agregações para o Ponto de Equilíbrio do Mês
