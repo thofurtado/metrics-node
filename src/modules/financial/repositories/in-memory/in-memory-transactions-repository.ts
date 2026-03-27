@@ -82,7 +82,12 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         description?: string,
         value?: number,
         sector_id?: string,
-        account_id?: string
+        account_id?: string,
+        status?: string,
+        toDate?: Date,
+        supplier_id?: string,
+        operation?: string,
+        fromDate?: Date
     ): Promise<{
         transactions: Transaction[];
         totalCount: number;
@@ -90,23 +95,60 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         pageIndex: number
     } | null> {
 
-        const year = month.getFullYear()
-        const monthNumber = month.getMonth() + 1
+        // Filtragem básica por data e operação
+        let filteredTransactions = this.items;
 
-        // Filtrar transações do mês
-        let filteredTransactions = this.items.filter(transaction => {
-            const transactionDate = new Date(transaction.data_vencimento)
-            return transactionDate >= new Date(year, monthNumber - 1, 1) &&
-                transactionDate < new Date(year, monthNumber, 1)
-        })
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        if (status === 'overdue') {
+            filteredTransactions = filteredTransactions.filter(t => 
+                !t.confirmed && new Date(t.data_vencimento) < startOfToday
+            );
+        } else if (status === 'pending') {
+            filteredTransactions = filteredTransactions.filter(t => !t.confirmed);
+            
+            if (toDate) {
+                const limitDate = new Date(toDate);
+                limitDate.setHours(23, 59, 59, 999);
+                filteredTransactions = filteredTransactions.filter(t => new Date(t.data_vencimento) <= limitDate);
+            }
+            
+            if (fromDate) {
+                const startDate = new Date(fromDate);
+                startDate.setHours(0, 0, 0, 0);
+                filteredTransactions = filteredTransactions.filter(t => new Date(t.data_vencimento) >= startDate);
+            }
+        } else if (status === 'completed') {
+            filteredTransactions = filteredTransactions.filter(t => t.confirmed);
+            // Default history: current month
+            filteredTransactions = filteredTransactions.filter(t => {
+                const d = new Date(t.data_vencimento);
+                return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
+            });
+        } else {
+            // Default behaviour (History Flow)
+            filteredTransactions = filteredTransactions.filter(t => {
+                const d = new Date(t.data_vencimento);
+                return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
+            });
+        }
 
         // Aplicar filtros adicionais
+        if (operation) {
+            filteredTransactions = filteredTransactions.filter(t => t.operation === operation);
+        }
+
         if (sector_id && sector_id !== 'all') {
             filteredTransactions = filteredTransactions.filter(t => t.sector_id === sector_id)
         }
 
         if (account_id && account_id !== 'all') {
             filteredTransactions = filteredTransactions.filter(t => t.account_id === account_id)
+        }
+
+        if (supplier_id && supplier_id !== 'all') {
+            filteredTransactions = filteredTransactions.filter(t => t.supplier_id === supplier_id)
         }
 
         if (description) {

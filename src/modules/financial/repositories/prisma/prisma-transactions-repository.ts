@@ -703,6 +703,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             confirmedFilter = false;
         } else if (status === 'completed') {
             confirmedFilter = true;
+        } else if (status === 'overdue') {
+            confirmedFilter = false;
         }
 
         const year = month.getFullYear()
@@ -711,10 +713,18 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         // Define date filter logic
         let dateFilter: Prisma.DateTimeFilter<"Transaction"> | undefined;
 
-        if (status === 'pending') {
+        if (status === 'overdue') {
+            // Regra estrita de vencimento: Tudo o que estiver pendente e com vencimento < HOJE 00:00:00
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            dateFilter = {
+                lt: startOfToday
+            }
+        } else if (status === 'pending') {
             // Horizon Flow: "Todas as não pagas (independente data) + futuras até toDate"
             // Se confirmado = false, buscamos tudo <= toDate (que inclui passado + futuro próximo)
-            // Se toDate não for passado, assumimos um padrão (ex: hoje + 7 dias - handled in Use Case usually, but here as fallback)
+            // Se toDate não for passado, assumimos um padrão (ex: hoje + 7 dias)
             const targetDate = toDate ? new Date(toDate) : new Date(new Date().setDate(new Date().getDate() + 7));
 
             // Set end of day for targetDate to be inclusive
