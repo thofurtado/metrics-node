@@ -17,6 +17,7 @@ import { getFinancialSummary } from '@/modules/financial/http/controllers/get-fi
 import { bulkPayTransactions } from '@/modules/financial/http/controllers/bulk-pay-transactions'
 
 import { updateAccount } from '@/modules/financial/http/controllers/updateAccount'
+import { updateTransaction } from '@/modules/financial/http/controllers/updateTransaction'
 import { deleteAccount } from '@/modules/financial/http/controllers/deleteAccount'
 import { updatePayment } from '@/modules/financial/http/controllers/updatePayment'
 import { deletePayment } from '@/modules/financial/http/controllers/deletePayment'
@@ -44,6 +45,7 @@ export async function financialRoutes(app: FastifyInstance) {
 
     app.post('/transaction', createTransaction)
     app.get('/transactions', getTransactions)
+    app.put('/transaction/:id', updateTransaction)
     app.delete('/transaction/:id', deleteTransaction)
     app.get('/transfer-transactions', getTransferTransaction)
 
