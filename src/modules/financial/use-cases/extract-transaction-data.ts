@@ -46,8 +46,8 @@ export class ExtractTransactionDataUseCase {
 
     let i = 0;
     while (i < code.length) {
-      const tag = code.substring(i, i + 2);
       if (i + 4 > code.length) break;
+      const tag = code.substring(i, i + 2);
       const length = parseInt(code.substring(i + 2, i + 4));
       const value = code.substring(i + 4, i + 4 + length);
 
@@ -55,6 +55,12 @@ export class ExtractTransactionDataUseCase {
         payload.amount = parseFloat(value) || 0;
       } else if (tag === '59') {
         payload.description = value;
+      } else if (tag === '62') {
+        // Tenta pegar o campo 05 (Reference Label) se a descrição 59 estiver vazia
+        if (!payload.description && value.includes('05')) {
+           const subLength = parseInt(value.substring(2, 4));
+           payload.description = value.substring(4, 4 + subLength);
+        }
       }
 
       i += 4 + length;
@@ -70,7 +76,35 @@ export class ExtractTransactionDataUseCase {
   }
 
   private handleBoleto(digits: string): ExtractTransactionDataResponse {
+    let amount = 0;
     let bankCode = '';
+    let dueDateISO: string | undefined;
+
+    // 1. Arrecadação / Concessionárias (Inicia com 8)
+    if (digits.startsWith('8') && (digits.length === 48 || digits.length === 44)) {
+      bankCode = 'CONV';
+      // No padrão de arrecadação, o valor está entre as posições 5 e 15 (raw)
+      // Ajuste básico para o formato digitável de 48 posições
+      if (digits.length === 48) {
+        const valStr = digits.substring(4, 11) + digits.substring(12, 16);
+        amount = parseInt(valStr) / 100;
+      } else {
+        const valStr = digits.substring(4, 15);
+        amount = parseInt(valStr) / 100;
+      }
+      
+      return {
+        success: true,
+        payload: {
+          amount,
+          description: 'Pagamento de Concessionária',
+          type: 'BOLETO' as const,
+          rawCode: digits,
+        },
+      };
+    }
+
+    // 2. Boletos Bancários Tradicionais
     let factor = 0;
     let amountStr = '';
     
@@ -84,12 +118,10 @@ export class ExtractTransactionDataUseCase {
       amountStr = digits.substring(9, 19);
     }
 
-    const amount = parseInt(amountStr) / 100;
+    amount = parseInt(amountStr) / 100;
     
-    let dueDateISO: string | undefined;
     if (factor > 0) {
-      // Base date: 1997-10-07
-      const baseDate = new Date(1997, 9, 7, 12, 0, 0); // 12:00 to avoid timezone issues
+      const baseDate = new Date(1997, 9, 7, 12, 0, 0); 
       const date = new Date(baseDate);
       date.setDate(baseDate.getDate() + factor);
       dueDateISO = date.toISOString();
