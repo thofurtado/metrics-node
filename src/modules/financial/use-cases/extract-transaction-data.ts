@@ -219,16 +219,24 @@ export class ExtractTransactionDataUseCase {
     
     let amount = 0;
     let dueDateISO: string | undefined;
+    let description = '';
     
     try {
       const urlObj = new URL(url);
       const params = urlObj.searchParams;
       
-      const vTotal = params.get('vTotal') || params.get('vTot') || params.get('valorTotal') || params.get('vNF');
-      if (vTotal) {
-        amount = parseFloat(vTotal.replace(',', '.'));
+      // 1. Extração e Normalização de Valor
+      const rawAmount = params.get('vTotal') || params.get('vTot') || params.get('valorTotal') || params.get('vNF');
+      if (rawAmount) {
+        if (!rawAmount.includes('.') && !rawAmount.includes(',') && rawAmount.length > 2) {
+          // Caso como 33184 -> 331.84
+          amount = parseInt(rawAmount) / 100;
+        } else {
+          amount = parseFloat(rawAmount.replace(',', '.'));
+        }
       }
       
+      // 2. Extração de Data
       const dhEmi = params.get('dhEmi') || params.get('dhE');
       if (dhEmi) {
         const match = dhEmi.match(/^(\d{4})(\d{2})(\d{2})/);
@@ -238,7 +246,22 @@ export class ExtractTransactionDataUseCase {
           dueDateISO = new Date(dhEmi).toISOString();
         }
       }
+
+      // 3. Identificação do Emissor (Estabelecimento)
+      const merchantName = params.get('nm') || params.get('fant') || params.get('emi') || params.get('xNome');
+      if (merchantName) {
+        description = merchantName;
+      } else if (accessKey.length === 44) {
+        // Extrai CNPJ da Chave de Acesso (posições 6 a 19)
+        const cnpj = accessKey.substring(6, 20);
+        description = `NF-e CNPJ: ${cnpj.substring(0, 2)}.${cnpj.substring(2, 5)}.${cnpj.substring(5, 8)}/${cnpj.substring(8, 12)}-${cnpj.substring(12, 14)}`;
+      } else {
+        // Fallback para o domínio
+        description = `NF-e: ${urlObj.hostname.replace('www.', '')}`;
+      }
+
     } catch (e) {
+      description = `NFC-e: ${accessKey ? accessKey.slice(-8) : 'Scanner'}`;
     }
     
     return {
@@ -246,7 +269,7 @@ export class ExtractTransactionDataUseCase {
       payload: {
         amount,
         dueDate: dueDateISO,
-        description: `NFC-e: ${accessKey.slice(-8)}`,
+        description: description.toUpperCase(),
         type: 'NFCE' as const,
         rawCode: url,
       },
