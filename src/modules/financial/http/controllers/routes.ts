@@ -29,6 +29,7 @@ import { getTransactionGroup } from '@/modules/financial/http/controllers/get-tr
 import { deleteTransactionGroup } from '@/modules/financial/http/controllers/delete-transaction-group'
 import { getPaymentAgenda } from '@/modules/financial/http/controllers/get-payment-agenda'
 import { getOperationalSummary } from '@/modules/financial/http/controllers/get-operational-summary'
+import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -62,4 +63,5 @@ export async function financialRoutes(app: FastifyInstance) {
     app.put('/payment/:id', updatePayment)
     app.delete('/payment/:id', deletePayment)
     app.get('/summary', getFinancialSummary)
+    app.post('/extract', extractTransactionData)
 }
