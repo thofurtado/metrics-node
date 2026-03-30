@@ -111,13 +111,30 @@ export class ExtractTransactionDataUseCase {
     const accessKeyMatch = url.match(/\d{44}/);
     const accessKey = accessKeyMatch ? accessKeyMatch[0] : '';
     
-    // Tenta extrair o valor total da URL (muitos estados incluem vTotal ou valorTotal)
     let amount = 0;
+    let dueDateISO: string | undefined;
+    
     try {
       const urlObj = new URL(url);
-      const vTotal = urlObj.searchParams.get('vTotal') || urlObj.searchParams.get('valorTotal');
+      const params = urlObj.searchParams;
+      
+      // 1. Extração de Valor (suporta vários aliases comuns da SEFAZ)
+      const vTotal = params.get('vTotal') || params.get('vTot') || params.get('valorTotal') || params.get('vNF');
       if (vTotal) {
+        // Trata vírgula como ponto antes de converter
         amount = parseFloat(vTotal.replace(',', '.'));
+      }
+      
+      // 2. Extração de Data de Emissão (dhEmi ou similar)
+      const dhEmi = params.get('dhEmi') || params.get('dhE');
+      if (dhEmi) {
+        // dhEmi costuma vir em formato AAAAMMDDHHMMSS ou ISO
+        const match = dhEmi.match(/^(\d{4})(\d{2})(\d{2})/);
+        if (match) {
+          dueDateISO = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toISOString();
+        } else if (!isNaN(Date.parse(dhEmi))) {
+          dueDateISO = new Date(dhEmi).toISOString();
+        }
       }
     } catch (e) {
       // Ignora erro de parsing de URL
@@ -127,7 +144,8 @@ export class ExtractTransactionDataUseCase {
       success: true,
       payload: {
         amount,
-        description: `NFC-e: ${accessKey.substring(accessKey.length - 8)}`,
+        dueDate: dueDateISO,
+        description: `NFC-e: ${accessKey.slice(-8)}`,
         type: 'NFCE' as const,
         rawCode: url,
       },
