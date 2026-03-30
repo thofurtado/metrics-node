@@ -154,36 +154,38 @@ export class ExtractTransactionDataUseCase {
     // 1. Arrecadação / Concessionárias (Inicia com 8)
     if (digits.startsWith('8')) {
       bankCode = 'CONV';
-      // Extração rigorosa do valor para 48 dígitos
+      
+      // Reconstituição do código de 44 posições (removendo os 4 CDs da linha digitável)
+      let raw44 = digits;
       if (digits.length === 48) {
-        // Valor está no primeiro e segundo bloco (posições 4-11 e 12-15 do raw)
-        // No 48 dígitos (com CDs): 4...11 e 12...15?? 
-        // Na verdade é: 8261 (4) 0000000 (7) [CD] 8232 (4) ...
-        // O valor nominal (11 dígitos) são as posições 4-11 do bloco 1 e 0-3 do bloco 2
-        const valStr = digits.substring(4, 11) + digits.substring(12, 16);
-        amount = parseInt(valStr) / 100;
-      } else {
-        const valStr = digits.substring(4, 15);
-        amount = parseInt(valStr) / 100;
+        raw44 = digits.substring(0, 11) + 
+                digits.substring(12, 23) + 
+                digits.substring(24, 35) + 
+                digits.substring(36, 47);
       }
+
+      // No padrão de arrecadação de 44 posições, o valor nominal está entre 4 e 15 (11 dígitos)
+      const valStr = raw44.substring(4, 15);
+      amount = parseInt(valStr) / 100;
       
       return {
         success: true,
         payload: {
           amount,
-          description: 'Pagamento de Concessionária',
+          description: 'PAGAMENTO CONCESSIONÁRIA',
           type: 'BOLETO' as const,
           rawCode: digits,
         },
       };
     }
 
-    // 2. Boletos Bancários Tradicionais
+    // 2. Boletos Bancários Tradicionais (47 ou 44 dígitos)
     let factor = 0;
     let amountStr = '';
     
     if (digits.length === 47) {
       bankCode = digits.substring(0, 3);
+      // No 47 dígitos, o fator é pos 33-37 e valor 37-47
       factor = parseInt(digits.substring(33, 37));
       amountStr = digits.substring(37);
     } else if (digits.length === 44) {
@@ -194,6 +196,7 @@ export class ExtractTransactionDataUseCase {
 
     amount = parseInt(amountStr) / 100;
     
+    // Fator de vencimento (Base 07/10/1997)
     if (factor > 0 && factor < 9999) {
       const baseDate = new Date(1997, 9, 7, 12, 0, 0); 
       const date = new Date(baseDate);
@@ -206,7 +209,7 @@ export class ExtractTransactionDataUseCase {
       payload: {
         amount,
         dueDate: dueDateISO,
-        description: `Boleto Banco ${bankCode}`,
+        description: `BLOTO BANCO ${bankCode}`,
         type: 'BOLETO' as const,
         rawCode: digits,
       },
