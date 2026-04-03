@@ -152,6 +152,37 @@ export class GeneratePayrollBatchUseCase {
                     debtsToUpdate = debts.map(d => d.id)
                     description = `Salário (Saldo 16-End) - Ref: ${monthName} | Diárias: R$${earnings.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
 
+                } else if (regType === "HOURLY") {
+                    // Hourly Workers: 16th to End of PREVIOUS month (Normal Hours only)
+                    const prevMonthDate = new Date(refDate)
+                    prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
+                    const startOfPeriod = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth(), 16)
+                    const endOfPeriod = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0)
+
+                    const timeClocks = await prisma.timeClock.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            date: { gte: startOfPeriod, lte: endOfPeriod },
+                            isExtraDay: false
+                        }
+                    })
+
+                    const totalHours = this.calculateWorkedHours(timeClocks)
+                    earnings = totalHours * salary
+
+                    const debts = await prisma.payrollEntry.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            type: { in: ["ERRO", "CONSUMACAO"] },
+                            status: "PENDING"
+                        }
+                    })
+
+                    const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
+                    amount = earnings - debtsSum
+                    debtsToUpdate = debts.map(d => d.id)
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Horas: ${totalHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+
                 } else {
                     // Fixed Employees: Base is 100% Salary.
                     // We must deduct the Advance (40%) paid on Day 20.
@@ -194,19 +225,21 @@ export class GeneratePayrollBatchUseCase {
             } else if (type === "VALE") {
                 // Adiantamento Dia 20 (40%)
                 // Fixed: Logic for all active employees regardless of transport allowance.
+                let earnings = 0
+
                 if (regType === "DAILY") {
                     // Diaristas: 1st to 15th of CURRENT month
                     const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
-                    const endOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 15)
+                    const endOfPeriod = new Date(refDate.getFullYear(), refDate.getMonth(), 15)
 
                     const timeClocks = await prisma.timeClock.findMany({
                         where: {
                             employee_id: emp.id,
-                            date: { gte: startOfMonth, lte: endOfMonth },
+                            date: { gte: startOfMonth, lte: endOfPeriod },
                         }
                     })
                     const totalDiarias = timeClocks.reduce((acc, tc) => acc + (Number(tc.negotiatedValue) || 0), 0)
-                    // For Day 20, we consider this the "earnings" for the period.
+                    earnings = totalDiarias
 
                     // Subtract debts? Usually yes.
                     const debts = await prisma.payrollEntry.findMany({
@@ -226,6 +259,35 @@ export class GeneratePayrollBatchUseCase {
                     // But usually Diaristas get paid twice a month independently.
                     // So yes, mark debts as PAID using debtsToUpdate.
                     debtsToUpdate = debts.map(d => d.id)
+
+                } else if (regType === "HOURLY") {
+                    // Hourly Workers: 1st to 15th of CURRENT month (Normal Hours only)
+                    const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
+                    const endOfPeriod = new Date(refDate.getFullYear(), refDate.getMonth(), 15)
+
+                    const timeClocks = await prisma.timeClock.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            date: { gte: startOfMonth, lte: endOfPeriod },
+                            isExtraDay: false
+                        }
+                    })
+
+                    const totalHours = this.calculateWorkedHours(timeClocks)
+                    earnings = totalHours * salary
+
+                    const debts = await prisma.payrollEntry.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            type: { in: ["ERRO", "CONSUMACAO", "VALE"] }, // Here we subtract "Vale" too if any is pending
+                            status: "PENDING"
+                        }
+                    })
+
+                    const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
+                    amount = earnings - debtsSum
+                    debtsToUpdate = debts.map(d => d.id)
+                    description = `Vale (Ref. 01-15) - Ref: ${monthName} | Horas: ${totalHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
 
                 } else {
                     // Fixed: 40% of Salary
@@ -307,5 +369,27 @@ export class GeneratePayrollBatchUseCase {
         }
 
         return { count, message: "Batch processed successfully" }
+    }
+
+    private calculateWorkedHours(timeClocks: any[]): number {
+        let totalHours = 0
+
+        for (const clock of timeClocks) {
+            if (clock.clockIn && clock.clockOut) {
+                const start = new Date(clock.clockIn).getTime()
+                const end = new Date(clock.clockOut).getTime()
+                let durationMs = end - start
+
+                if (clock.breakStart && clock.breakEnd) {
+                    durationMs -= (new Date(clock.breakEnd).getTime() - new Date(clock.breakStart).getTime())
+                }
+
+                // Convert to hours
+                const hours = durationMs / (1000 * 60 * 60)
+                if (hours > 0) totalHours += hours
+            }
+        }
+
+        return totalHours
     }
 }

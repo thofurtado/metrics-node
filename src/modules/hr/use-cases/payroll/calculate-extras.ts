@@ -47,59 +47,58 @@ export class CalculateRateioExtrasUseCase {
 
         // 1. Process Employees Logic
         for (const emp of employees) {
-            const empClocks = timeClocks.filter(tc => tc.employee_id === emp.id)
+            const empClocks = timeClocks.filter(tc => tc.employee_id === emp.id && tc.isExtraDay)
+            if (empClocks.length === 0) continue
+
             const regType = (emp as any).registrationType
+            const hourlyRate = (emp as any).overtimeValue ? Number((emp as any).overtimeValue) : 0
+            const dailyRate = Number(emp.dailyRate) || 0
 
-            // Diaristas OR Unregistered (treated as Daily)
-            if (regType === "DAILY" || regType === "UNREGISTERED") {
-                const daysWorked = empClocks.length
-                const dailyValue = Number(emp.dailyRate) || 0
+            let totalForEmployee = 0
+            let extraHoursCount = 0
+            let negotiatedDaysCount = 0
 
-                if (daysWorked > 0 && dailyValue > 0) {
-                    const value = daysWorked * dailyValue
-                    totalExtras += value
-                    breakdown.push({
-                        employeeId: emp.id,
-                        employeeName: emp.name,
-                        type: "DIARISTA",
-                        description: `${daysWorked} dias trabalhado(s) x R$ ${dailyValue.toFixed(2)}`,
-                        value
-                    })
-                }
-            }
-            // Registered - Extra Hours
-            else {
-                const overtimeRate = Number((emp as any).overtimeValue) || 0
+            for (const clock of empClocks) {
+                // Priority 1: Negotiated fixed value for the specific day
+                if (clock.negotiatedValue && Number(clock.negotiatedValue) > 0) {
+                    totalForEmployee += Number(clock.negotiatedValue)
+                    negotiatedDaysCount++
+                } 
+                // Priority 2: Hours-based calculation
+                else if (clock.clockIn && clock.clockOut) {
+                    const start = new Date(clock.clockIn).getTime()
+                    const end = new Date(clock.clockOut).getTime()
+                    let durationMs = end - start
 
-                let totalHours = 0
+                    if (clock.breakStart && clock.breakEnd) {
+                        durationMs -= (new Date(clock.breakEnd).getTime() - new Date(clock.breakStart).getTime())
+                    }
 
-                for (const clock of empClocks) {
-                    if (clock.isExtraDay && clock.clockIn && clock.clockOut) {
-                        const start = clock.clockIn.getTime()
-                        const end = clock.clockOut.getTime()
-                        let durationMs = end - start
-
-                        if (clock.breakStart && clock.breakEnd) {
-                            durationMs -= (clock.breakEnd.getTime() - clock.breakStart.getTime())
-                        }
-
-                        // Convert to hours
-                        const hours = durationMs / (1000 * 60 * 60)
-                        if (hours > 0) totalHours += hours
+                    const hours = durationMs / (1000 * 60 * 60)
+                    if (hours > 0) {
+                        const rate = (regType === "DAILY" || regType === "UNREGISTERED") ? dailyRate / 8 : hourlyRate
+                        totalForEmployee += hours * rate
+                        extraHoursCount += hours
                     }
                 }
-
-                if (totalHours > 0 && overtimeRate > 0) {
-                    const value = totalHours * overtimeRate
-                    totalExtras += value
-                    breakdown.push({
-                        employeeId: emp.id,
-                        employeeName: emp.name,
-                        type: "HORA_EXTRA",
-                        description: `${totalHours.toFixed(1)} horas extras x R$ ${overtimeRate.toFixed(2)}`,
-                        value
-                    })
+                // Priority 3: Fallback to daily rate for Daily workers
+                else if (regType === "DAILY" || regType === "UNREGISTERED") {
+                    totalForEmployee += dailyRate
+                    negotiatedDaysCount++
                 }
+            }
+
+            if (totalForEmployee > 0) {
+                totalExtras += totalForEmployee
+                breakdown.push({
+                    employeeId: emp.id,
+                    employeeName: emp.name,
+                    type: (regType === "DAILY" || regType === "UNREGISTERED") ? "DIARISTA" : "HORA_EXTRA",
+                    description: extraHoursCount > 0 
+                        ? `${extraHoursCount.toFixed(1)}h extras + ${negotiatedDaysCount} dias negociados`
+                        : `${negotiatedDaysCount} dia(s) extra(s) / negociado(s)`,
+                    value: totalForEmployee
+                })
             }
         }
 

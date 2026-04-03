@@ -6,7 +6,7 @@ import { prisma } from "../../../../lib/prisma"
 const employeeBodySchema = z.object({
     name: z.string(),
     role: z.string(),
-    registrationType: z.enum(["REGISTERED", "UNREGISTERED", "DAILY"]).default("REGISTERED"),
+    registrationType: z.enum(["REGISTERED", "UNREGISTERED", "DAILY", "HOURLY"]).default("REGISTERED"),
     isRegistered: z.boolean().default(true),
     admissionDate: z.string().transform((str) => new Date(str)),
     pin: z.string().length(4),
@@ -24,12 +24,13 @@ const employeeBodySchema = z.object({
     transportAllowance: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     hasCestaBasica: z.boolean().default(false),
 }).superRefine((data, ctx) => {
-    // 1. Validation: Salary required if NOT Daily
+    // 1. Validation: Salary/Hourly Rate required if NOT Daily
     if (data.registrationType !== 'DAILY') {
+        const isHourly = data.registrationType === 'HOURLY'
         if (data.salary === null || data.salary === undefined || data.salary <= 0) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Salário Base é obrigatório para funcionários registrados ou mensalistas.",
+                message: isHourly ? "Valor da Hora é obrigatório para horistas." : "Salário Base é obrigatório para funcionários registrados ou mensalistas.",
                 path: ["salary"]
             })
         }
