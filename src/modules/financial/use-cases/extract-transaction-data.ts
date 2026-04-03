@@ -150,10 +150,12 @@ export class ExtractTransactionDataUseCase {
     let amount = 0;
     let bankCode = '';
     let dueDateISO: string | undefined;
+    let issuerName = '';
 
     // 1. Arrecadação / Concessionárias (Inicia com 8)
     if (digits.startsWith('8')) {
       bankCode = 'CONV';
+      issuerName = this.getConcessionariaName(digits);
       
       // Reconstituição do código de 44 posições (removendo os 4 CDs da linha digitável)
       let raw44 = digits;
@@ -172,7 +174,8 @@ export class ExtractTransactionDataUseCase {
         success: true,
         payload: {
           amount,
-          description: 'PAGAMENTO CONCESSIONÁRIA',
+          dueDate: dueDateISO,
+          description: issuerName || 'PAGAMENTO CONCESSIONÁRIA',
           type: 'BOLETO' as const,
           rawCode: digits,
         },
@@ -204,12 +207,14 @@ export class ExtractTransactionDataUseCase {
       dueDateISO = date.toISOString();
     }
 
+    issuerName = this.getBankName(bankCode);
+
     return {
       success: true,
       payload: {
         amount,
         dueDate: dueDateISO,
-        description: `BLOTO BANCO ${bankCode}`,
+        description: issuerName,
         type: 'BOLETO' as const,
         rawCode: digits,
       },
@@ -277,5 +282,64 @@ export class ExtractTransactionDataUseCase {
         rawCode: url,
       },
     };
+  }
+
+  private getBankName(code: string): string {
+    const bankMap: Record<string, string> = {
+      '001': 'Banco do Brasil',
+      '033': 'Santander',
+      '041': 'Banrisul',
+      '104': 'Caixa Econômica Federal',
+      '237': 'Bradesco',
+      '341': 'Itaú',
+      '356': 'Banco Real',
+      '389': 'Banco Mercantil do Brasil',
+      '399': 'HSBC',
+      '422': 'Safra',
+      '453': 'Banco Rural',
+      '633': 'Rendimento',
+      '652': 'Itaú Unibanco',
+      '745': 'Citibank',
+      'CONV': 'Concessionária/Arrecadação'
+    };
+    return bankMap[code] || `Banco ${code}`;
+  }
+
+  private getConcessionariaName(digits: string): string {
+    // Segmento (posição 3-4 do código de barras)
+    if (digits.length >= 4) {
+      const segment = digits.substring(2, 4);
+      const segmentMap: Record<string, string> = {
+        '01': 'Prefeituras',
+        '02': 'Saneamento',
+        '03': 'Energia Elétrica e Gás',
+        '04': 'Telecomunicações',
+        '05': 'Órgãos Governamentais',
+        '06': 'Carnes e Assemelhados',
+        '07': 'Multas de trânsito',
+        '08': 'Uso exclusivo do banco',
+        '09': 'Uso exclusivo do banco',
+        '10': 'Uso exclusivo do banco',
+        '11': 'Uso exclusivo do banco',
+        '12': 'Carteiras de investimento',
+        '13': 'Outros',
+        '98': 'Uso exclusivo do banco'
+      };
+      
+      const segmentName = segmentMap[segment];
+      if (segmentName) {
+        return segmentName;
+      }
+    }
+    
+    // Identificação do valor (posição 4-5)
+    if (digits.length >= 5) {
+      const idValor = digits.substring(3, 5);
+      if (idValor === '17') {
+        return 'Arrecadação Pré‑Paga';
+      }
+    }
+    
+    return 'Concessionária de Serviços';
   }
 }
