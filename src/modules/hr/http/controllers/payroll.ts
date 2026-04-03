@@ -344,3 +344,30 @@ export async function calculateRateioExtras(request: FastifyRequest, reply: Fast
         return reply.status(500).send({ message: "Unknown error" })
     }
 }
+
+export async function cancelPayrollEntry(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+        id: z.string().uuid()
+    })
+
+    const { id } = paramsSchema.parse(request.params)
+
+    const entry = await prisma.payrollEntry.findUnique({
+        where: { id }
+    })
+
+    if (!entry) {
+        return reply.status(404).send({ message: "Lançamento não encontrado." })
+    }
+
+    if (entry.status !== "PENDING") {
+        return reply.status(400).send({ message: "Apenas lançamentos pendentes podem ser cancelados." })
+    }
+
+    await prisma.payrollEntry.update({
+        where: { id },
+        data: { status: "CANCELED" }
+    })
+
+    return reply.status(200).send({ message: "Lançamento cancelado com sucesso." })
+}

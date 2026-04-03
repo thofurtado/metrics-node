@@ -147,10 +147,10 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
 
-                    const debtsSum = debts.reduce((acc, d) => acc + Number(d.amount), 0)
+                    const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo 16-End) - Ref: ${monthName}`
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Diárias: R$${earnings.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
 
                 } else {
                     // Fixed Employees: Base is 100% Salary.
@@ -184,11 +184,11 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
 
-                    const debtsSum = debts.reduce((acc, d) => acc + Number(d.amount), 0)
+                    const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
 
                     amount = earnings - advanceDeduction - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo) - Ref: ${monthName}`
+                    description = `Salário (Saldo) - Ref: ${monthName} | Bruto: R$${earnings.toFixed(2)} | Adiantamento: -R$${advanceDeduction.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
                 }
 
             } else if (type === "VALE") {
@@ -217,7 +217,7 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
                     const debtsSum = debts.reduce((acc, d) => {
-                        const val = Number(d.amount)
+                        const val = Math.abs(Number(d.amount))
                         return acc + val
                     }, 0)
 

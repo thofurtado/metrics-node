@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify"
 import { getStatus, register } from "./time-clock"
 import { listTimeClocks, updateTimeClock, upsertTimeClock, bulkUpsertTimeClocks } from "./time-clocks-admin"
 import { createEmployee, listEmployees, updateEmployee, getEmployeeSummary, syncEmployees } from "./employees"
-import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBatch, deletePayrollBatch, getPayrollPreview, getEmployeePayrollEntries, listPendingDebts, updatePayrollEntry, calculateRateioExtras, getPayrollHistory } from "./payroll"
+import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBatch, deletePayrollBatch, getPayrollPreview, getEmployeePayrollEntries, listPendingDebts, updatePayrollEntry, calculateRateioExtras, getPayrollHistory, cancelPayrollEntry } from "./payroll"
 
 // Rotas do Quiosque (Electron) - autenticadas via x-api-key
 export async function kioskRoutes(app: FastifyInstance) {
@@ -34,4 +34,5 @@ export async function hrAdminRoutes(app: FastifyInstance) {
     app.put("/hr/payroll/entries/:id", updatePayrollEntry)
     app.get("/hr/employees/:id/payroll", getEmployeePayrollEntries)
     app.get("/hr/employees/:id/pending-debts", listPendingDebts)
+    app.delete("/hr/payroll/entries/:id", cancelPayrollEntry)
 }
