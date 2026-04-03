@@ -40,6 +40,7 @@ export class GeneratePayrollBatchUseCase {
 
             const regType = emp.registrationType
             const salary = Number(emp.salary) || 0
+            const dailyRate = Number(emp.dailyRate) || 0
             const transport = Number(emp.transportAllowance) || 0
 
             // --- LOGIC SELECTION ---
@@ -133,7 +134,10 @@ export class GeneratePayrollBatchUseCase {
                             date: { gte: startOfPeriod, lte: endOfPeriod },
                         }
                     })
-                    const totalDiarias = timeClocks.reduce((acc, tc) => acc + (Number(tc.negotiatedValue) || 0), 0)
+                    const totalDiarias = timeClocks.reduce((acc, tc) => {
+                        const val = Number(tc.negotiatedValue) || dailyRate || 0
+                        return acc + val
+                    }, 0)
                     earnings = totalDiarias
 
                     // Diarista Debts: Only ERRO and CONSUMACAO. 
@@ -238,7 +242,10 @@ export class GeneratePayrollBatchUseCase {
                             date: { gte: startOfMonth, lte: endOfPeriod },
                         }
                     })
-                    const totalDiarias = timeClocks.reduce((acc, tc) => acc + (Number(tc.negotiatedValue) || 0), 0)
+                    const totalDiarias = timeClocks.reduce((acc, tc) => {
+                        const val = Number(tc.negotiatedValue) || dailyRate || 0
+                        return acc + val
+                    }, 0)
                     earnings = totalDiarias
 
                     // Subtract debts? Usually yes.

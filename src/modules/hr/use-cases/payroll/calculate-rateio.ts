@@ -13,7 +13,7 @@ export class CalculatePointRateioUseCase {
     async execute({ month, year, paymentDate, totalRevenue, lostPercentage }: Request) {
         // 1. Get Extras
         const extrasUseCase = new CalculateRateioExtrasUseCase()
-        const { totalExtras } = await extrasUseCase.execute({ month, year })
+        const { totalExtras, breakdown } = await extrasUseCase.execute({ month, year })
 
         // 2. Calculate Net Revenue (Revenue - Loss)
         // Loss is percentage of TOTAL Revenue
@@ -22,6 +22,31 @@ export class CalculatePointRateioUseCase {
 
         // 3. Subtract Extras
         const baseForRateio = netRevenue - totalExtras
+
+        // 4. Persist Extras as Payroll Entries
+        const payDate = new Date(paymentDate)
+
+        // Clear existing extras for this exact date to allow recalculation
+        await prisma.payrollEntry.deleteMany({
+            where: {
+                type: { in: ["DIA_EXTRA", "OTHER"] },
+                referenceDate: payDate,
+                status: "PENDING"
+            }
+        })
+
+        for (const item of breakdown) {
+            await prisma.payrollEntry.create({
+                data: {
+                    employee_id: item.employeeId,
+                    type: "DIA_EXTRA",
+                    amount: item.value,
+                    description: `Extra Rateio: ${item.description} (Ref: ${month}/${year})`,
+                    referenceDate: payDate,
+                    status: "PENDING"
+                }
+            })
+        }
 
         if (baseForRateio <= 0) {
             throw new Error(`Base para rateio é zero ou negativa (${baseForRateio.toFixed(2)}). Verifique faturamento ou extras.`)
@@ -45,7 +70,6 @@ export class CalculatePointRateioUseCase {
         const pointValue = finalRateioPool / totalPoints
 
         const snapshotDate = new Date() // Creation date
-        const payDate = new Date(paymentDate)
 
         // Used for description range
         const startDate = new Date(year, month - 1, 1)
