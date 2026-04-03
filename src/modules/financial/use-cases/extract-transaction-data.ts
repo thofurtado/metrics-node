@@ -170,6 +170,10 @@ export class ExtractTransactionDataUseCase {
       const valStr = raw44.substring(4, 15);
       amount = parseInt(valStr) / 100;
       
+      // Extrair data de vencimento de concessionárias (posições 20-27 no formato AAAAMMDD ou DDMMYYYY)
+      const dateStr = raw44.substring(19, 27); // Posições 20-27 (0-indexed 19-26)
+      dueDateISO = this.extractConcessionariaDueDate(dateStr);
+      
       return {
         success: true,
         payload: {
@@ -234,7 +238,7 @@ export class ExtractTransactionDataUseCase {
       const params = urlObj.searchParams;
       
       // 1. Extração e Normalização de Valor
-      const rawAmount = params.get('vTotal') || params.get('vTot') || params.get('valorTotal') || params.get('vNF');
+      const rawAmount = params.get('vTotal') || params.get('vTot') || params.get('valorTotal') || params.get('vNF') || params.get('vlr');
       if (rawAmount) {
         if (!rawAmount.includes('.') && !rawAmount.includes(',') && rawAmount.length > 2) {
           // Caso como 33184 -> 331.84
@@ -245,7 +249,7 @@ export class ExtractTransactionDataUseCase {
       }
       
       // 2. Extração de Data
-      const dhEmi = params.get('dhEmi') || params.get('dhE');
+      const dhEmi = params.get('dhEmi') || params.get('dhE') || params.get('dt') || params.get('data');
       if (dhEmi) {
         const match = dhEmi.match(/^(\d{4})(\d{2})(\d{2})/);
         if (match) {
@@ -256,20 +260,81 @@ export class ExtractTransactionDataUseCase {
       }
 
       // 3. Identificação do Emissor (Estabelecimento)
-      const merchantName = params.get('nm') || params.get('fant') || params.get('emi') || params.get('xNome');
+      const merchantName = params.get('nm') || params.get('fant') || params.get('emi') || params.get('xNome') || params.get('nome');
       if (merchantName) {
         description = merchantName;
       } else if (accessKey.length === 44) {
         // Extrai CNPJ da Chave de Acesso (posições 6 a 19)
         const cnpj = accessKey.substring(6, 20);
         description = `NF-e CNPJ: ${cnpj.substring(0, 2)}.${cnpj.substring(2, 5)}.${cnpj.substring(5, 8)}/${cnpj.substring(8, 12)}-${cnpj.substring(12, 14)}`;
+        
+        // Tentar extrair data da chave de acesso (posições 2-5: ano/mês)
+        const year = parseInt(accessKey.substring(2, 4));
+        const month = parseInt(accessKey.substring(4, 6));
+        const fullYear = year < 50 ? 2000 + year : 1900 + year;
+        
+        // Se não temos data ainda, usar data da emissão da chave (primeiro dia do mês)
+        if (!dueDateISO && month >= 1 && month <= 12) {
+          dueDateISO = new Date(fullYear, month - 1, 1).toISOString();
+        }
       } else {
         // Fallback para o domínio
         description = `NF-e: ${urlObj.hostname.replace('www.', '')}`;
       }
 
+      // 4. Tentar extrair do parâmetro 'p' comum em URLs de NFC-e
+      const pParam = params.get('p');
+      if (pParam && !amount) {
+        // Formato comum: chave|versao|tipo|digito
+        const parts = pParam.split('|');
+        if (parts.length >= 4) {
+          // O valor geralmente está na parte 2 ou 3 (dependendo do formato)
+          // Formatos comuns:
+          // - chave|versao|tipo|digito
+          // - chave|versao|tipo|digito|valor|...
+          
+          // Tentar partes específicas onde o valor geralmente está
+          const possibleValueParts = [2, 3, 4, 5];
+          for (const partIndex of possibleValueParts) {
+            if (parts.length > partIndex) {
+              const part = parts[partIndex];
+              // Verificar se parece um valor monetário (não muito grande, pode ter vírgula/ponto)
+              if (part && part.length > 0 && part.length < 10) {
+                const cleanPart = part.replace(',', '.');
+                const numValue = parseFloat(cleanPart);
+                // Valores monetários razoáveis para NFC-e (0.01 a 99999.99)
+                if (!isNaN(numValue) && numValue > 0.01 && numValue < 100000) {
+                  amount = numValue;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Se não encontrou nas posições esperadas, tentar qualquer parte
+          if (!amount) {
+            for (let i = 0; i < parts.length; i++) {
+              const part = parts[i];
+              if (part && part.length > 0 && part.length < 10) {
+                const cleanPart = part.replace(',', '.');
+                const numValue = parseFloat(cleanPart);
+                if (!isNaN(numValue) && numValue > 0.01 && numValue < 100000) {
+                  amount = numValue;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
     } catch (e) {
       description = `NFC-e: ${accessKey ? accessKey.slice(-8) : 'Scanner'}`;
+    }
+    
+    // Se ainda não temos descrição, usar fallback genérico
+    if (!description && accessKey) {
+      description = `NFC-e ${accessKey.substring(0, 8)}...`;
     }
     
     return {
@@ -303,6 +368,139 @@ export class ExtractTransactionDataUseCase {
       'CONV': 'Concessionária/Arrecadação'
     };
     return bankMap[code] || `Banco ${code}`;
+  }
+
+  private extractConcessionariaDueDate(dateStr: string): string | undefined {
+    if (!dateStr || dateStr === '00000000' || dateStr === '99999999' || dateStr === '0000000') {
+      return undefined;
+    }
+
+    // Tentar diferentes formatos de data comuns em boletos de concessionárias
+    
+    // Formato 1: AAAAMMDD (8 dígitos)
+    if (dateStr.length === 8) {
+      const year = parseInt(dateStr.substring(0, 4));
+      const month = parseInt(dateStr.substring(4, 6));
+      const day = parseInt(dateStr.substring(6, 8));
+      
+      if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+    }
+    
+    // Formato 2: DDMMYYYY (8 dígitos) - comum em alguns boletos
+    if (dateStr.length === 8) {
+      const day = parseInt(dateStr.substring(0, 2));
+      const month = parseInt(dateStr.substring(2, 4));
+      const year = parseInt(dateStr.substring(4, 8));
+      
+      if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+    }
+    
+    // Formato 3: YYMMDD (6 dígitos) com século 20 ou 21
+    if (dateStr.length === 6) {
+      const yearShort = parseInt(dateStr.substring(0, 2));
+      const month = parseInt(dateStr.substring(2, 4));
+      const day = parseInt(dateStr.substring(4, 6));
+      
+      // Determinar século: se ano < 50, assume 2000+, senão 1900+
+      const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
+      
+      if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+    }
+    
+    // Formato 4: DDMMYY (6 dígitos)
+    if (dateStr.length === 6) {
+      const day = parseInt(dateStr.substring(0, 2));
+      const month = parseInt(dateStr.substring(2, 4));
+      const yearShort = parseInt(dateStr.substring(4, 6));
+      
+      const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
+      
+      if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+    }
+    
+    // Caso especial: 7 dígitos (como no exemplo da SABESP: "09111099")
+    // Pode ser "DDMMYYX" onde X é dígito verificador ou "0DDMMYY"
+    if (dateStr.length === 7) {
+      // Tentativa 1: "0DDMMYY" (zero no início)
+      if (dateStr.startsWith('0')) {
+        const day = parseInt(dateStr.substring(1, 3));
+        const month = parseInt(dateStr.substring(3, 5));
+        const yearShort = parseInt(dateStr.substring(5, 7));
+        
+        const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
+        
+        if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString();
+          }
+        }
+      }
+      
+      // Tentativa 2: "DDMMYYX" (dígito extra no final)
+      const day = parseInt(dateStr.substring(0, 2));
+      const month = parseInt(dateStr.substring(2, 4));
+      const yearShort = parseInt(dateStr.substring(4, 6));
+      
+      const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
+      
+      if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+    }
+    
+    // Caso especial para SABESP: "09111099" pode ser "10/11/1999" 
+    // Interpretação: "09 11 10 99" onde:
+    // - "09" = dia 9 (ou 09 com zero à esquerda)
+    // - "11" = mês 11
+    // - "10" = ano 2010? ou 1910?
+    // - "99" = dígito extra ou parte do ano
+    
+    // Tentar como "DDMMYYXX" onde XX são dígitos extras
+    if (dateStr.length === 8) {
+      // Remover possíveis zeros no início
+      const cleanStr = dateStr.replace(/^0+/, '');
+      if (cleanStr.length === 7) {
+        // Agora "9111099" - tentar como DDMMYYX
+        const day = parseInt(cleanStr.substring(0, 2));
+        const month = parseInt(cleanStr.substring(2, 4));
+        const yearShort = parseInt(cleanStr.substring(4, 6));
+        const year = yearShort < 50 ? 2000 + yearShort : 1900 + yearShort;
+        
+        if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            return date.toISOString();
+          }
+        }
+      }
+    }
+    
+    // Última tentativa: se nada funcionou, retornar undefined
+    return undefined;
   }
 
   private getConcessionariaName(digits: string): string {
