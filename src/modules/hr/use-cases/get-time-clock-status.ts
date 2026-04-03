@@ -1,5 +1,6 @@
 import { PrismaEmployeesRepository } from "../repositories/prisma/prisma-employees-repository"
 import { PrismaTimeClocksRepository } from "../repositories/prisma/prisma-time-clocks-repository"
+import { getCompetenceDate } from "../../../utils/get-competence-date"
 
 interface Request {
     pin: string
@@ -22,15 +23,10 @@ export class GetEmployeeTimeClockStatusUseCase {
             throw new Error("Employee inactive")
         }
 
-        // BUGFIX: Use UTC-based date construction to avoid server timezone affecting
-        // the date lookup. The @db.Date field stores pure dates in UTC midnight.
         const now = new Date()
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const competenceDate = getCompetenceDate(now)
 
-        // We need to pass the date as a Date object that matches the @db.Date format in Prisma (which usually ignores time but stores as Date object)
-        // However, Prisma client handles JS Date objects correctly for @db.Date.
-
-        const timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, today)
+        const timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, competenceDate)
 
         // Determine next action based on sequential clock fields
         let nextAction: string | null = "clockIn"

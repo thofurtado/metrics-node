@@ -1,10 +1,12 @@
 import { PrismaEmployeesRepository } from "../repositories/prisma/prisma-employees-repository"
 import { PrismaTimeClocksRepository } from "../repositories/prisma/prisma-time-clocks-repository"
+import { getCompetenceDate } from "../../../utils/get-competence-date"
 
 interface Request {
     pin: string
     action: "clockIn" | "breakStart" | "breakEnd" | "clockOut" | "extraClockIn" | "extraClockOut"
     timestamp?: string
+    isAdmin?: boolean // Zero Trust: Flag to allow manual timestamp override from HR panel
 }
 
 export class RegisterTimeClockUseCase {
@@ -13,20 +15,21 @@ export class RegisterTimeClockUseCase {
         private timeClocksRepository: PrismaTimeClocksRepository
     ) { }
 
-    async execute({ pin, action, timestamp }: Request) {
+    async execute({ pin, action, timestamp, isAdmin = false }: Request) {
         const employee = await this.employeesRepository.findByPin(pin)
 
         if (!employee) {
             throw new Error("Employee not found")
         }
 
-        const now = timestamp ? new Date(timestamp) : new Date()
+        // ZERO TRUST LOGIC:
+        // By default, we ignore the client-sent timestamp to prevent fraud or clock drift issues.
+        // We only trust the client timestamp if the request is explicitly marked as an admin override.
+        const now = (isAdmin && timestamp) ? new Date(timestamp) : new Date()
 
-        // BUGFIX: Use UTC-based date construction to avoid server timezone affecting
-        // the date lookup. The @db.Date field stores pure dates in UTC midnight.
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const competenceDate = getCompetenceDate(now)
 
-        let timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, today)
+        let timeClock = await this.timeClocksRepository.findByEmployeeAndDate(employee.id, competenceDate)
 
         // TODO: Validate if action is allowed (e.g. can't breakStart if not clockIn)
         // For now, we trust the UI or just update whatever field is requested if it's empty?
@@ -41,7 +44,7 @@ export class RegisterTimeClockUseCase {
 
             timeClock = await this.timeClocksRepository.create({
                 employee_id: employee.id,
-                date: today,
+                date: competenceDate,
                 clockIn: now,
             })
         } else {
