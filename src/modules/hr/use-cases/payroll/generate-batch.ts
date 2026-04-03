@@ -350,12 +350,13 @@ export class GeneratePayrollBatchUseCase {
                 }
             })
 
-            if (debtsToUpdate.length > 0) {
-                await prisma.payrollEntry.updateMany({
-                    where: { id: { in: debtsToUpdate } },
-                    data: { status: "PAID" }
-                })
-            }
+            // Note: Debts stay as PENDING until consolidation (as requested)
+            // if (debtsToUpdate.length > 0) {
+            //     await prisma.payrollEntry.updateMany({
+            //         where: { id: { in: debtsToUpdate } },
+            //         data: { status: "PAID" }
+            //     })
+            // }
             count++
         }
 
