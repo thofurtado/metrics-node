@@ -499,6 +499,9 @@ model TimeClock {
   isVerified Boolean @default(false)
   notes      String?
 
+  absenceReason      String?
+  isJustifiedAbsence Boolean @default(false)
+
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 

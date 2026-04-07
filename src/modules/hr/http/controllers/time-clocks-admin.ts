@@ -94,6 +94,8 @@ export async function updateTimeClock(request: FastifyRequest, reply: FastifyRep
         negotiatedValue: z.number().optional(),
         isVerified: z.boolean().optional(),
         notes: z.string().optional(),
+        absenceReason: z.string().nullable().optional(),
+        isJustifiedAbsence: z.boolean().optional(),
     })
 
     const { id } = paramsSchema.parse(request.params)
@@ -121,6 +123,8 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
         negotiatedValue: z.number().nullable().optional(),
         isVerified: z.boolean().optional(),
         notes: z.string().nullable().optional(),
+        absenceReason: z.string().nullable().optional(),
+        isJustifiedAbsence: z.boolean().optional(),
     })
 
     const { employee_id, date, ...data } = bodySchema.parse(request.body)
@@ -152,7 +156,9 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
         isExtraDay: data.isExtraDay,
         negotiatedValue: data.negotiatedValue,
         isVerified: data.isVerified,
-        notes: data.notes
+        notes: data.notes,
+        absenceReason: data.absenceReason,
+        isJustifiedAbsence: data.isJustifiedAbsence
     }
 
     let result
@@ -188,6 +194,8 @@ export async function bulkUpsertTimeClocks(request: FastifyRequest, reply: Fasti
         negotiatedValue: z.number().nullable().optional(),
         isVerified: z.boolean().optional(),
         notes: z.string().nullable().optional(),
+        absenceReason: z.string().nullable().optional(),
+        isJustifiedAbsence: z.boolean().optional(),
     })
 
     const bodySchema = z.object({
@@ -228,7 +236,9 @@ export async function bulkUpsertTimeClocks(request: FastifyRequest, reply: Fasti
                 isExtraDay: data.isExtraDay,
                 negotiatedValue: data.negotiatedValue,
                 isVerified: true,
-                notes: data.notes || "Edição em lote"
+                notes: data.notes || "Edição em lote",
+                absenceReason: data.absenceReason,
+                isJustifiedAbsence: data.isJustifiedAbsence
             }
 
             if (existing) {

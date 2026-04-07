@@ -135,6 +135,7 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
                     const totalDiarias = timeClocks.reduce((acc, tc) => {
+                        if (!tc.clockIn && !tc.isJustifiedAbsence) return acc;
                         const val = Number(tc.negotiatedValue) || dailyRate || 0
                         return acc + val
                     }, 0)
@@ -166,12 +167,13 @@ export class GeneratePayrollBatchUseCase {
                     const timeClocks = await prisma.timeClock.findMany({
                         where: {
                             employee_id: emp.id,
-                            date: { gte: startOfPeriod, lte: endOfPeriod },
-                            isExtraDay: false
+                            date: { gte: startOfPeriod, lte: endOfPeriod }
                         }
                     })
 
-                    const totalHours = this.calculateWorkedHours(timeClocks)
+                    const baseHours = this.calculateWorkedHours(timeClocks)
+                    const dsrHours = baseHours / 6 // Descanso Semanal Remunerado
+                    const totalHours = baseHours + dsrHours
                     earnings = totalHours * salary
 
                     const debts = await prisma.payrollEntry.findMany({
@@ -185,14 +187,26 @@ export class GeneratePayrollBatchUseCase {
                     const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Horas: ${totalHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
 
                 } else {
                     // Fixed Employees: Base is 100% Salary.
                     // We must deduct the Advance (40%) paid on Day 20.
                     // We must find the Advance for *this reference month*, regardless if it is PAID or PENDING.
 
-                    earnings = salary
+                    const unjustAbsencesCount = await prisma.timeClock.count({
+                        where: {
+                            employee_id: emp.id,
+                            date: { gte: startOfMonth, lte: endOfMonth },
+                            clockIn: null,
+                            isJustifiedAbsence: false
+                        }
+                    })
+
+                    const dailySal = salary / 30;
+                    const unjustDeduction = unjustAbsencesCount * dailySal;
+
+                    earnings = salary - unjustDeduction
 
                     // 1. Find the Advance (Vale) for this month
                     const advanceEntry = await prisma.payrollEntry.findFirst({
@@ -223,7 +237,7 @@ export class GeneratePayrollBatchUseCase {
 
                     amount = earnings - advanceDeduction - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo) - Ref: ${monthName} | Bruto: R$${earnings.toFixed(2)} | Adiantamento: -R$${advanceDeduction.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Salário (Saldo) - Ref: ${monthName} | Bruto: R$${salary.toFixed(2)}${unjustAbsencesCount > 0 ? ` | Faltas: -R$${unjustDeduction.toFixed(2)}` : ''} | Adiantamento: -R$${advanceDeduction.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
                 }
 
             } else if (type === "VALE") {
@@ -243,6 +257,7 @@ export class GeneratePayrollBatchUseCase {
                         }
                     })
                     const totalDiarias = timeClocks.reduce((acc, tc) => {
+                        if (!tc.clockIn && !tc.isJustifiedAbsence) return acc;
                         const val = Number(tc.negotiatedValue) || dailyRate || 0
                         return acc + val
                     }, 0)
@@ -275,12 +290,13 @@ export class GeneratePayrollBatchUseCase {
                     const timeClocks = await prisma.timeClock.findMany({
                         where: {
                             employee_id: emp.id,
-                            date: { gte: startOfMonth, lte: endOfPeriod },
-                            isExtraDay: false
+                            date: { gte: startOfMonth, lte: endOfPeriod }
                         }
                     })
 
-                    const totalHours = this.calculateWorkedHours(timeClocks)
+                    const baseHours = this.calculateWorkedHours(timeClocks)
+                    const dsrHours = baseHours / 6
+                    const totalHours = baseHours + dsrHours
                     earnings = totalHours * salary
 
                     const debts = await prisma.payrollEntry.findMany({
@@ -294,7 +310,7 @@ export class GeneratePayrollBatchUseCase {
                     const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Vale (Ref. 01-15) - Ref: ${monthName} | Horas: ${totalHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Vale (Ref. 01-15) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
 
                 } else {
                     // Fixed: 40% of Salary
@@ -383,6 +399,11 @@ export class GeneratePayrollBatchUseCase {
         let totalHours = 0
 
         for (const clock of timeClocks) {
+            if (clock.isJustifiedAbsence && !clock.clockIn) {
+                totalHours += 8; // Injetar horas contratuais virtuais
+                continue;
+            }
+
             if (clock.clockIn && clock.clockOut) {
                 const start = new Date(clock.clockIn).getTime()
                 const end = new Date(clock.clockOut).getTime()
