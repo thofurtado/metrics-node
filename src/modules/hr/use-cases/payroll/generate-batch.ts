@@ -1,6 +1,14 @@
 import { prisma } from "../../../../lib/prisma"
 import { PayrollType } from "@prisma/client"
 
+function getISOWeek(d: Date) {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
 interface Request {
     type: PayrollType
     referenceDate: string // YYYY-MM-DD
@@ -199,12 +207,33 @@ export class GeneratePayrollBatchUseCase {
                             employee_id: emp.id,
                             date: { gte: startOfMonth, lte: endOfMonth },
                             clockIn: null,
-                            isJustifiedAbsence: false
+                            absenceReason: "FALTA_INJUSTIFICADA"
                         }
                     })
 
+                    // Buscar as datas das faltas para agrupar por semana
+                    const unjustAbsencesDates = await prisma.timeClock.findMany({
+                        where: {
+                            employee_id: emp.id,
+                            date: { gte: startOfMonth, lte: endOfMonth },
+                            clockIn: null,
+                            absenceReason: "FALTA_INJUSTIFICADA"
+                        },
+                        select: { date: true }
+                    })
+
+                    // Agrupar por semana ISO para contar o DSR perdido
+                    const weeksAffected = new Set<string>()
+                    unjustAbsencesDates.forEach(tc => {
+                        const d = new Date(tc.date)
+                        const year = d.getFullYear()
+                        const week = getISOWeek(d)
+                        weeksAffected.add(`${year}-W${week}`)
+                    })
+                    const dsrLostCount = weeksAffected.size
+
                     const dailySal = salary / 30;
-                    const unjustDeduction = unjustAbsencesCount * dailySal;
+                    const unjustDeduction = (unjustAbsencesCount + dsrLostCount) * dailySal;
 
                     earnings = salary - unjustDeduction
 
@@ -400,7 +429,7 @@ export class GeneratePayrollBatchUseCase {
 
         for (const clock of timeClocks) {
             if (clock.isJustifiedAbsence && !clock.clockIn) {
-                totalHours += 8; // Injetar horas contratuais virtuais
+                totalHours += 440 / 60; // 7.333 horas = 7 horas e 20 minutos contratuais virtuais
                 continue;
             }
 
