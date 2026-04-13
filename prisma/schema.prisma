@@ -168,6 +168,7 @@ model Product {
   ncm          String?
   is_composite Boolean     @default(false)
   measureUnit  MeasureUnit @default(UNITARY)
+  image_url    String?
 
   stocks         Stock[]
   treatmentItems TreatmentItem[]
@@ -381,6 +382,8 @@ model Transaction {
   transactionGroup     TransactionGroup? @relation(fields: [transaction_group_id], references: [id])
 
   payrollEntries PayrollEntry[]
+  
+  attachment_url String?
 
   @@map("transactions")
 }
@@ -477,6 +480,8 @@ model Employee {
   timeClocks     TimeClock[]
   payrollEntries PayrollEntry[]
   pointSnapshots EmployeePointSnapshot[]
+  
+  photo_url      String?
 
   @@map("employees")
 }

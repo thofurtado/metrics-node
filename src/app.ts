@@ -30,11 +30,27 @@ import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 import { publicRoutes } from '@/modules/public/http/controllers/routes'
+import { uploadsRoutes } from '@/modules/uploads/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { truncate } from 'node:fs'
+import fastifyMultipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
+import path from 'path'
 
 export const app = fastify({ logger: true })
+
+app.register(fastifyMultipart, {
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
+})
+
+app.register(fastifyStatic, {
+    root: process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
+})
+
 
 app.register(cors, {
     // Allow all origins including 'null' (Electron file:// context sends null origin)
@@ -91,6 +107,8 @@ app.register(async (instance) => {
     instance.addHook('onRequest', verifyJwt)
     instance.register(hrAdminRoutes)
 })
+
+app.register(uploadsRoutes)
 
 app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {
