@@ -129,3 +129,28 @@ export async function uploadEmployeePhoto(request: FastifyRequest, reply: Fastif
     });
 }
   
+export async function deleteTransactionReceipt(request: FastifyRequest, reply: FastifyReply) {
+  const uploadParamsSchema = z.object({
+    id: z.string().uuid(),
+  });
+
+  const { id } = uploadParamsSchema.parse(request.params);
+
+  const transaction = await prisma.transaction.findUnique({
+    where: { id }
+  });
+
+  if (!transaction) {
+    return reply.status(404).send({ message: 'Transação não encontrada' });
+  }
+
+  if (transaction.attachment_url) {
+    await storage.delete(transaction.attachment_url).catch(console.error);
+    await prisma.transaction.update({
+      where: { id },
+      data: { attachment_url: null }
+    });
+  }
+
+  return reply.status(200).send({ message: 'Comprovante removido com sucesso' });
+}
