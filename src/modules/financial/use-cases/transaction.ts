@@ -112,7 +112,7 @@ export class TransactionUseCase {
                                     payment_method: payment_method || "BOLETO",
                                     interest: isFirst ? interest : 0,
                                     discount: isFirst ? discount : 0,
-                                    totalValue: isFirst ? totalValue : item.amount,
+                                    totalValue: isFirst && totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
                                     // parent_transaction_id: we rely on transaction_group_id relation
                                 } as any
                             })
@@ -149,7 +149,7 @@ export class TransactionUseCase {
                         payment_method: payment_method || "BOLETO",
                         interest,
                         discount,
-                        totalValue,
+                        totalValue: totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
                     } as any
                 })
             }
