@@ -678,7 +678,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string): Promise<GetTransactionsDTO | null> {
 
         let take = perPage ? Number(perPage) : 6
         let skip = 0
@@ -790,14 +790,27 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             where: whereConditions
         })
 
+        const dtVencimentoOrder = sortBy === 'data_vencimento' ? sortDirection || 'asc' : undefined;
+        let finalOrderBy: Prisma.TransactionOrderByWithRelationInput[] = [];
+
+        // If a valid sort field is provided, it takes precedence
+        if (sortBy === 'created_at') {
+            finalOrderBy.push({ created_at: sortDirection as any || 'desc' });
+        } else if (sortBy === 'data_vencimento') {
+            finalOrderBy.push({ data_vencimento: sortDirection as any || 'asc' });
+        } else if (sortBy === 'data_emissao') {
+            finalOrderBy.push({ data_emissao: sortDirection as any || 'asc' });
+        }
+
+        // Add defaults at the end so it's a stable sort
+        if (sortBy !== 'data_vencimento') finalOrderBy.push({ data_vencimento: 'asc' });
+        if (sortBy !== 'created_at') finalOrderBy.push({ created_at: 'desc' });
+        finalOrderBy.push({ id: 'asc' });
+
         const transactions = await prisma.transaction.findMany({
             skip, take,
             where: whereConditions,
-            orderBy: [
-                { data_vencimento: 'asc' },
-                { created_at: 'desc' },
-                { id: 'asc' }
-            ],
+            orderBy: finalOrderBy,
             include: {
                 accounts: true,
                 sectors: true,

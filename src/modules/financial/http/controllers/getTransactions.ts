@@ -17,6 +17,8 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
         per_page: z.coerce.number().optional(),
         supplier_id: z.string().optional(),
         type: z.string().optional(),
+        sortBy: z.string().optional(),
+        sortDirection: z.enum(['asc', 'desc']).optional()
     })
 
     const query = getTransactionsParamsSchema.parse(request.query)
@@ -36,7 +38,9 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
             fromDate: query.fromDate ? new Date(query.fromDate) : undefined,
             perPage: query.per_page, // Ensure this is passed
             supplier_id: query.supplier_id === 'all' ? undefined : query.supplier_id,
-            type: query.type
+            type: query.type,
+            sortBy: query.sortBy,
+            sortDirection: query.sortDirection
         })
     } catch (err) {
         if (err instanceof Error) {

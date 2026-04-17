@@ -67,8 +67,8 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         const projecao14Dias = Number(projecaoAggr._sum.amount || 0)
 
         // ─────────────────────────────────────────────────────────────────
-        // 4. RECEITA ACUMULADA — recebimentos CONFIRMADOS do dia 1 até HOJE
-        //    numEntradas  = quantidade de recebimentos confirmados até hoje
+        // 4. RECEITA ACUMULADA — recebimentos CONFIRMADOS do mês
+        //    numEntradas  = quantidade de recebimentos confirmados do mês
         //    ticketMedio  = receitaAcumulada / numEntradas
         // ─────────────────────────────────────────────────────────────────
         const paidIncomeAggr = await prisma.transaction.aggregate({
@@ -77,7 +77,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
             where: {
                 operation: 'income',
                 confirmed: true,
-                data_vencimento: { gte: firstDayOfMonth, lte: endOfToday },
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
         const receitaAcumulada = Number(paidIncomeAggr._sum.totalValue || 0)
