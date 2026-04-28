@@ -119,24 +119,26 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
     })
 
     let summary = {
-        totalOvertimeMinutes60: 0,
-        totalOvertimeValue60: 0,
-        totalOvertimeMinutes100: 0,
-        totalOvertimeValue100: 0,
+        totalOvertimeMinutes60: hrRule ? 0 : undefined,
+        totalOvertimeValue60: hrRule ? 0 : undefined,
+        totalOvertimeMinutes100: hrRule ? 0 : undefined,
+        totalOvertimeValue100: hrRule ? 0 : undefined,
     }
 
-    processedTimeClocks.forEach(tc => {
-        if (tc.calculation_memory && tc.overtimeMinutes > 0) {
-            const mem = tc.calculation_memory as any;
-            if (mem.multiplier === 2) {
-                summary.totalOvertimeMinutes100 += tc.overtimeMinutes;
-                summary.totalOvertimeValue100 += tc.overtimeValue;
-            } else {
-                summary.totalOvertimeMinutes60 += tc.overtimeMinutes;
-                summary.totalOvertimeValue60 += tc.overtimeValue;
+    if (hrRule) {
+        processedTimeClocks.forEach(tc => {
+            if (tc.calculation_memory && tc.overtimeMinutes > 0) {
+                const mem = tc.calculation_memory as any;
+                if (mem.multiplier === 2) {
+                    summary.totalOvertimeMinutes100! += tc.overtimeMinutes;
+                    summary.totalOvertimeValue100! += tc.overtimeValue;
+                } else {
+                    summary.totalOvertimeMinutes60! += tc.overtimeMinutes;
+                    summary.totalOvertimeValue60! += tc.overtimeValue;
+                }
             }
-        }
-    })
+        })
+    }
 
     return reply.status(200).send({
         timeClocks: processedTimeClocks,
