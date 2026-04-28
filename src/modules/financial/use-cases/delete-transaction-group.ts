@@ -18,7 +18,7 @@ export class DeleteTransactionGroupUseCase {
         if (!group) throw new ResourceNotFoundError()
 
         for (const tx of group.transactions) {
-            await this.transactionsRepository.delete(tx.id)
+            await this.transactionsRepository.delete(tx.id, true)
         }
 
         await (prisma as any).transactionGroup.delete({

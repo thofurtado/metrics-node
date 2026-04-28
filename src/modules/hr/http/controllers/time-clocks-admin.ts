@@ -3,6 +3,7 @@ import { z } from "zod"
 import { prisma } from "../../../../lib/prisma"
 import { calculateOvertime } from "../../services/overtime-calculator"
 import { calculateWorkedMinutes } from "../../services/time-calculator-utils"
+import { holidayService } from "../../services/holiday-service"
 export async function listTimeClocks(request: FastifyRequest, reply: FastifyReply) {
     const listQuerySchema = z.object({
         employee_id: z.string().optional(),
@@ -73,6 +74,14 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         orderBy: { valid_from: 'desc' }
     })
 
+    // Sincroniza feriados se necessário (baseado no ano da primeira data ou ano atual)
+    const yearToSync = timeClocks.length > 0 ? timeClocks[0].date.getFullYear() : new Date().getFullYear();
+    await holidayService.syncHolidays(yearToSync);
+
+    const holidays = await prisma.holiday.findMany({
+        where: whereClause.date ? { date: whereClause.date } : undefined
+    });
+
     const processedTimeClocks = timeClocks.map(tc => {
         let overtimeData = {
             overtimeMinutes: 0,
@@ -85,9 +94,12 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
             const calc = calculateOvertime({
                 baseSalary: Number(tc.employee.salary),
                 workedMinutes,
+                date: tc.date,
+                holidays,
                 hrRule: {
                     he_divisor: hrRule.he_divisor,
                     he_multiplier_standard: hrRule.he_multiplier_standard,
+                    he_multiplier_special: hrRule.he_multiplier_special,
                     daily_workload_minutes: hrRule.daily_workload_minutes,
                     tolerance_minutes: hrRule.tolerance_minutes
                 }
@@ -106,8 +118,29 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         }
     })
 
+    let summary = {
+        totalOvertimeMinutes60: 0,
+        totalOvertimeValue60: 0,
+        totalOvertimeMinutes100: 0,
+        totalOvertimeValue100: 0,
+    }
+
+    processedTimeClocks.forEach(tc => {
+        if (tc.calculation_memory && tc.overtimeMinutes > 0) {
+            const mem = tc.calculation_memory as any;
+            if (mem.multiplier === 2) {
+                summary.totalOvertimeMinutes100 += tc.overtimeMinutes;
+                summary.totalOvertimeValue100 += tc.overtimeValue;
+            } else {
+                summary.totalOvertimeMinutes60 += tc.overtimeMinutes;
+                summary.totalOvertimeValue60 += tc.overtimeValue;
+            }
+        }
+    })
+
     return reply.status(200).send({
         timeClocks: processedTimeClocks,
+        summary,
         meta: {
             page: validPage,
             per_page: validPerPage,

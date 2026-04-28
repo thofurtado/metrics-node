@@ -465,14 +465,15 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             diffFromLastMonth
         }
     }
-    async delete(id: string): Promise<void> {
+    async delete(id: string, skipGroupUpdate?: boolean): Promise<void> {
         const transaction = await prisma.transaction.findUnique({ where: { id } })
 
         if (!transaction) {
             return
         }
 
-        // Se a transação estiver confirmada, precisamos reverter o valor do saldo da conta
+        const txOps: any[] = []
+
         if (transaction.confirmed) {
             let balanceChange = 0
             const targetAmount = transaction.totalValue ?? transaction.amount;
@@ -483,7 +484,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 balanceChange = targetAmount
             }
 
-            await prisma.$transaction([
+            txOps.push(
                 prisma.account.update({
                     where: { id: transaction.account_id || "" },
                     data: {
@@ -491,17 +492,44 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                             increment: balanceChange
                         }
                     }
-                }),
-                prisma.transaction.delete({
-                    where: { id }
                 })
-            ])
-        } else {
-            // Se não estiver confirmada, apenas deleta
-            await prisma.transaction.delete({
+            )
+        }
+        
+        txOps.push(
+            prisma.transaction.delete({
                 where: { id }
             })
+        )
+
+        // Handle TransactionGroup updates if it belongs to one
+        if (transaction.transaction_group_id && !skipGroupUpdate) {
+            const group = await prisma.transactionGroup.findUnique({
+                where: { id: transaction.transaction_group_id }
+            });
+
+            if (group) {
+                if (group.installmentsCount > 1) {
+                    txOps.push(
+                        prisma.transactionGroup.update({
+                            where: { id: group.id },
+                            data: {
+                                installmentsCount: { decrement: 1 },
+                                totalAmount: { decrement: transaction.amount }
+                            }
+                        })
+                    );
+                } else {
+                    txOps.push(
+                        prisma.transactionGroup.delete({
+                            where: { id: group.id }
+                        })
+                    );
+                }
+            }
         }
+
+        await prisma.$transaction(txOps)
     }
 
     async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {

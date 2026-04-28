@@ -12,6 +12,8 @@ import { createPaymentEntry } from '@/modules/financial/http/controllers/payment
 import { verifyUserRole } from '@/http/middlewares/verify-user-role'
 import { changeTransactionStatus } from '@/modules/financial/http/controllers/changeTransactionPayment'
 import { deleteTransaction } from '@/modules/financial/http/controllers/deleteTransaction'
+import { deleteFutureTransactions } from '@/modules/financial/http/controllers/delete-future-transactions'
+import { readjustTransactionGroup } from '@/modules/financial/http/controllers/readjust-transaction-group'
 import { getPayments } from '@/modules/financial/http/controllers/getPayments'
 import { getFinancialSummary } from '@/modules/financial/http/controllers/get-financial-summary'
 import { bulkPayTransactions } from '@/modules/financial/http/controllers/bulk-pay-transactions'
@@ -48,9 +50,11 @@ export async function financialRoutes(app: FastifyInstance) {
     app.get('/transactions', getTransactions)
     app.put('/transaction/:id', updateTransaction)
     app.delete('/transaction/:id', deleteTransaction)
+    app.delete('/transaction/:id/forward', deleteFutureTransactions)
     app.get('/transfer-transactions', getTransferTransaction)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
+    app.put('/transaction-groups/:groupId/readjust', readjustTransactionGroup)
     app.get('/transaction-groups/:groupId', getTransactionGroup)
     app.delete('/transaction-groups/:groupId', deleteTransactionGroup)
 

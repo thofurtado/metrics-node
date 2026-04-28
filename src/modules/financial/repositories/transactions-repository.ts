@@ -9,7 +9,7 @@ export interface TransactionsRepository {
     revertTransactionStatus(id: string): Promise<void>
     findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string): Promise<GetTransactionsDTO | null>
     findById(id: string): Promise<Transaction | null>
-    delete(id: string): Promise<void>
+    delete(id: string, skipGroupUpdate?: boolean): Promise<void>
     getBalance(): Promise<number>
     getMonthExpenseAmount(date?: Date): Promise<{ monthExpenseAmount: number, diffFromLastMonth: number, alreadyPaid: number }>
     getMonthIncomeAmount(date?: Date): Promise<{ monthIncomeAmount: number, diffFromLastMonth: number, alreadyPaid: number }>

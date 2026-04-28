@@ -606,3 +606,15 @@ model HrRuleHistory {
   @@map("hr_rule_histories")
 }
 
+model Holiday {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  name        String
+  type        String   @default("NATIONAL") // NATIONAL, STATE, MUNICIPAL, CUSTOM
+  
+  created_at  DateTime @default(now())
+
+  @@unique([date])
+  @@map("holidays")
+}
+
