@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { prisma } from "../../../../lib/prisma"
-
+import { calculateOvertime } from "../../services/overtime-calculator"
+import { calculateWorkedMinutes } from "../../services/time-calculator-utils"
 export async function listTimeClocks(request: FastifyRequest, reply: FastifyReply) {
     const listQuerySchema = z.object({
         employee_id: z.string().optional(),
@@ -54,7 +55,8 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
                 employee: {
                     select: {
                         name: true,
-                        role: true
+                        role: true,
+                        salary: true
                     }
                 }
             },
@@ -67,8 +69,45 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         prisma.timeClock.count({ where: whereClause })
     ])
 
+    const hrRule = await prisma.hrRuleHistory.findFirst({
+        orderBy: { valid_from: 'desc' }
+    })
+
+    const processedTimeClocks = timeClocks.map(tc => {
+        let overtimeData = {
+            overtimeMinutes: 0,
+            overtimeValue: 0,
+            calculation_memory: null
+        }
+
+        if (hrRule && tc.employee.salary) {
+            const workedMinutes = calculateWorkedMinutes(tc)
+            const calc = calculateOvertime({
+                baseSalary: Number(tc.employee.salary),
+                workedMinutes,
+                hrRule: {
+                    he_divisor: hrRule.he_divisor,
+                    he_multiplier_standard: hrRule.he_multiplier_standard,
+                    daily_workload_minutes: hrRule.daily_workload_minutes,
+                    tolerance_minutes: hrRule.tolerance_minutes
+                }
+            })
+
+            overtimeData = {
+                overtimeMinutes: calc.total_minutes,
+                overtimeValue: calc.calculated_value,
+                calculation_memory: calc.calculation_memory as any
+            }
+        }
+
+        return {
+            ...tc,
+            ...overtimeData
+        }
+    })
+
     return reply.status(200).send({
-        timeClocks,
+        timeClocks: processedTimeClocks,
         meta: {
             page: validPage,
             per_page: validPerPage,

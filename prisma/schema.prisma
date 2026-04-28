@@ -589,3 +589,20 @@ model UserModule {
   @@unique([user_id, module_id])
   @@map("user_modules")
 }
+
+model HrRuleHistory {
+  id                      String   @id @default(uuid())
+  valid_from              DateTime @default(now())
+  
+  he_divisor              Int      @default(220)
+  he_multiplier_standard  Decimal  @default(1.6) // 60%
+  he_multiplier_special   Decimal  @default(2.0) // 100%
+  daily_workload_minutes  Int      @default(500) // 08:20 em minutos
+  tolerance_minutes       Int      @default(10)  // Limite da CLT
+  
+  created_at              DateTime @default(now())
+  updated_at              DateTime @default(now()) @updatedAt
+
+  @@map("hr_rule_histories")
+}
+
