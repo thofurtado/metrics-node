@@ -14,8 +14,8 @@ export class HolidayService {
         where: {
           type: 'NATIONAL',
           date: {
-            gte: new Date(`${year}-01-01`),
-            lte: new Date(`${year}-12-31`),
+            gte: new Date(`${year}-01-01T00:00:00Z`),
+            lte: new Date(`${year}-12-31T23:59:59Z`),
           },
         },
       });
@@ -30,7 +30,7 @@ export class HolidayService {
 
       // Prepara os dados para o Prisma
       const holidaysToInsert = holidaysData.map((h: any) => ({
-        date: new Date(h.date),
+        date: new Date(`${h.date}T12:00:00Z`),
         name: h.name,
         type: 'NATIONAL',
       }));
@@ -55,8 +55,8 @@ export class HolidayService {
     return await prisma.holiday.findMany({
       where: {
         date: {
-          gte: new Date(`${year}-01-01`),
-          lte: new Date(`${year}-12-31`),
+          gte: new Date(`${year}-01-01T00:00:00Z`),
+          lte: new Date(`${year}-12-31T23:59:59Z`),
         },
       },
       orderBy: {

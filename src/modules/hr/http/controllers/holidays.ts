@@ -26,7 +26,7 @@ export async function createCustomHoliday(request: FastifyRequest, reply: Fastif
   const { date, name, type } = schema.parse(request.body);
 
   const holiday = await holidayService.addCustomHoliday({
-    date: new Date(date),
+    date: new Date(date.includes('T') ? date : `${date}T12:00:00Z`),
     name,
     type,
   });
