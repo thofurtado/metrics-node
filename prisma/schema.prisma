@@ -351,6 +351,25 @@ model Account {
   @@map("accounts")
 }
 
+model CreditCard {
+  id               String  @id @default(uuid())
+  name             String
+  bank             String
+  credit_limit     Float
+  closing_day      Int     // Dia de fechamento da fatura (1-31)
+  due_day          Int     // Dia de vencimento da fatura (1-31)
+  last_four_digits String?
+  color            String? // Hex, para UI
+  active           Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  transactions Transaction[]
+
+  @@map("credit_cards")
+}
+
 model Transaction {
   id          String   @id @default(uuid())
   operation      String
@@ -384,6 +403,9 @@ model Transaction {
   payrollEntries PayrollEntry[]
   
   attachment_url String?
+
+  credit_card_id  String?
+  creditCard      CreditCard? @relation(fields: [credit_card_id], references: [id])
 
   @@map("transactions")
 }

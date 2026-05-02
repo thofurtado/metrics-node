@@ -23,6 +23,7 @@ interface TransactionUseCaseRequest {
     interest?: number | null;
     discount?: number | null;
     totalValue?: number | null;
+    credit_card_id?: string | null;
 }
 
 interface TransactionUseCaseResponse {
@@ -36,7 +37,7 @@ export class TransactionUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, discount, totalValue
+        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, discount, totalValue, credit_card_id
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
         // Test for the right operation
@@ -113,6 +114,7 @@ export class TransactionUseCase {
                                     interest: isFirst ? interest : 0,
                                     discount: isFirst ? discount : 0,
                                     totalValue: isFirst && totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
+                                    credit_card_id: credit_card_id || null,
                                     // parent_transaction_id: we rely on transaction_group_id relation
                                 } as any
                             })
@@ -150,6 +152,7 @@ export class TransactionUseCase {
                         interest,
                         discount,
                         totalValue: totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
+                        credit_card_id: credit_card_id || null,
                     } as any
                 })
             }

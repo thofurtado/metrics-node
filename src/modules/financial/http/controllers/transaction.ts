@@ -29,7 +29,8 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         })).nullish(),
         interest: z.number().nullish(),
         discount: z.number().nullish(),
-        totalValue: z.number().nullish()
+        totalValue: z.number().nullish(),
+        credit_card_id: z.string().uuid().nullish(),
     })
 
     // console.log('Payload Recebido:', JSON.stringify(request.body, null, 2))
@@ -51,7 +52,8 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         custom_installments,
         interest,
         discount,
-        totalValue
+        totalValue,
+        credit_card_id,
     } = registerBodySchema.parse(request.body)
 
     let transaction
@@ -76,7 +78,8 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             custom_installments: custom_installments || undefined,
             interest: interest || null,
             discount: discount || null,
-            totalValue: totalValue || null
+            totalValue: totalValue || null,
+            credit_card_id: credit_card_id || null,
         })
     } catch (err) {
 
