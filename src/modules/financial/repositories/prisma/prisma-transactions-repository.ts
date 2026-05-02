@@ -783,6 +783,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 {
                     data_vencimento: dateFilter // Use dynamic date filter
                 },
+                {
+                    credit_card_id: null
+                },
                 ...(sector !== undefined ? [{
                     sectors: {
                         id: { equals: sector }
@@ -846,9 +849,70 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             }
         })
 
+        // 🔥 Calculate and inject virtual invoices for any credit card purchases in this period
+        const creditCardSwipes = await prisma.transaction.findMany({
+            where: {
+                credit_card_id: { not: null },
+                data_vencimento: dateFilter
+            },
+            include: {
+                creditCard: {
+                    include: { account: true }
+                }
+            }
+        })
+
+        const aggregatedByCard = new Map<string, any>()
+        for (const swipe of creditCardSwipes) {
+            if (!swipe.credit_card_id || !swipe.creditCard) continue
+            
+            if (!aggregatedByCard.has(swipe.credit_card_id)) {
+                aggregatedByCard.set(swipe.credit_card_id, {
+                    id: `virtual-card-${swipe.credit_card_id}`,
+                    operation: 'expense',
+                    data_vencimento: swipe.data_vencimento,
+                    data_emissao: swipe.data_emissao,
+                    amount: 0,
+                    interest: 0,
+                    discount: 0,
+                    totalValue: 0,
+                    confirmed: true,
+                    description: `Fatura Cartão: ${swipe.creditCard.name}`,
+                    payment_method: 'CREDIT_CARD',
+                    created_at: swipe.created_at,
+                    accounts: swipe.creditCard.account,
+                    account_id: swipe.creditCard.account_id,
+                    credit_card_id: swipe.credit_card_id,
+                    isVirtual: true,
+                    swipes: []
+                })
+            }
+            
+            const grouped = aggregatedByCard.get(swipe.credit_card_id)
+            grouped.amount += swipe.amount
+            if (swipe.totalValue) {
+                grouped.totalValue += swipe.totalValue
+            } else {
+                grouped.totalValue += swipe.amount
+            }
+            if (!swipe.confirmed) {
+                grouped.confirmed = false
+            }
+            grouped.swipes.push(swipe)
+        }
+
+        const virtualRows = Array.from(aggregatedByCard.values())
+        const combinedTransactions = [...transactions, ...virtualRows]
+
+        combinedTransactions.sort((a, b) => {
+            const dateA = new Date(a.data_vencimento).getTime()
+            const dateB = new Date(b.data_vencimento).getTime()
+            return dateA - dateB
+        })
+
         return {
-            transactions,
-            totalCount,
+            transactions: combinedTransactions,
+            totalCount: totalCount + virtualRows.length,
             perPage: take,
             pageIndex: pageIndex || 1
         }

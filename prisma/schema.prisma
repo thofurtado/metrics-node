@@ -347,6 +347,7 @@ model Account {
   payments            Payment[]
   transactions        Transaction[]
   transferTransaction TransferTransaction[]
+  creditCards         CreditCard[]
 
   @@map("accounts")
 }
@@ -361,6 +362,9 @@ model CreditCard {
   last_four_digits String?
   color            String? // Hex, para UI
   active           Boolean @default(true)
+
+  account_id       String?
+  account          Account? @relation(fields: [account_id], references: [id])
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt

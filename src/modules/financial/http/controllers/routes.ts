@@ -32,7 +32,7 @@ import { deleteTransactionGroup } from '@/modules/financial/http/controllers/del
 import { getPaymentAgenda } from '@/modules/financial/http/controllers/get-payment-agenda'
 import { getOperationalSummary } from '@/modules/financial/http/controllers/get-operational-summary'
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
-import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard } from '@/modules/financial/http/controllers/credit-cards'
+import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -75,4 +75,5 @@ export async function financialRoutes(app: FastifyInstance) {
     app.post('/credit-cards', createCreditCard)
     app.put('/credit-cards/:id', updateCreditCard)
     app.delete('/credit-cards/:id', deleteCreditCard)
+    app.patch('/credit-cards/:id/pay-invoice', payCreditCardInvoice)
 }
