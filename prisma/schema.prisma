@@ -1,13 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-// npm i prisma -D
-// npx prisma generate
-// npm i @prisma/client 
-
 generator client {
   provider   = "prisma-client-js"
   engineType = "binary"
@@ -18,52 +8,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  TECHNICIAN
-}
-
 model User {
-  id            String  @id @default(uuid())
+  id            String        @id @default(uuid())
   name          String
-  role          Role    @default(TECHNICIAN)
-  email         String  @unique
+  role          Role          @default(TECHNICIAN)
+  email         String        @unique
   password_hash String
   introduction  String?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  interactions Interaction[]
-  Treatment    Treatment[]
-  userModules  UserModule[]
-
-  employee Employee?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now()) @updatedAt
+  employee      Employee?
+  interactions  Interaction[]
+  Treatment     Treatment[]
+  userModules   UserModule[]
 
   @@map("users")
 }
 
 model Client {
-  id             String   @id @default(uuid())
+  id             String      @id @default(uuid())
   name           String
-  identification String?  @unique
+  identification String?     @unique
   phone          String?
   email          String?
-  contract       Boolean  @default(false)
+  contract       Boolean     @default(false)
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @default(now()) @updatedAt
   contact        String?
-  isEnterprise   Boolean  @default(false)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @default(now()) @updatedAt
-
-  addresses  Address[]
-  treatments Treatment[]
-  equipments Equipment[] //camel case
+  isEnterprise   Boolean     @default(false)
+  addresses      Address[]
+  equipments     Equipment[]
+  treatments     Treatment[]
 
   @@map("clients")
 }
 
 model Address {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   client_id    String
   street       String
   number       Int
@@ -71,172 +52,485 @@ model Address {
   city         String
   state        String
   zipcode      Int?
-  is_main      Boolean @default(false)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  clients Client @relation(fields: [client_id], references: [id])
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+  is_main      Boolean  @default(false)
+  clients      Client   @relation(fields: [client_id], references: [id])
 
   @@map("addresses")
 }
 
 model Treatment {
-  id           String    @id @default(uuid())
-  opening_date DateTime  @default(now())
-  ending_date  DateTime?
-  contact      String?
-  user_id      String?
-  client_id    String?
-  equipment_id String?
-  request      String
-  status       String    @default("pending")
-  observations String?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  users         User?           @relation(fields: [user_id], references: [id])
-  clients       Client?         @relation(fields: [client_id], references: [id])
-  equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
-  items         TreatmentItem[]
+  id            String          @id @default(uuid())
+  opening_date  DateTime        @default(now())
+  ending_date   DateTime?
+  contact       String?
+  user_id       String?
+  client_id     String?
+  equipment_id  String?
+  request       String
+  status        String          @default("pending")
+  observations  String?
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @default(now()) @updatedAt
   interactions  Interaction[]
   paymentEntrys PaymentEntry[]
+  items         TreatmentItem[]
+  clients       Client?         @relation(fields: [client_id], references: [id])
+  equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
+  users         User?           @relation(fields: [user_id], references: [id])
 
   @@map("treatments")
 }
 
 model TreatmentItem {
-  id           String @id @default(uuid())
+  id           String    @id @default(uuid())
   treatment_id String
-
-  product_id String?
-  service_id String?
-  supply_id  String?
-
-  quantity   Float
-  salesValue Float?
-  discount   Float?
-  stock_id   String?
-
-  product    Product?  @relation(fields: [product_id], references: [id])
-  service    Service?  @relation(fields: [service_id], references: [id])
-  supply     Supply?   @relation(fields: [supply_id], references: [id])
-  treatments Treatment @relation(fields: [treatment_id], references: [id])
-  stocks     Stock?    @relation(fields: [stock_id], references: [id])
+  stock_id     String?
+  quantity     Float
+  salesValue   Float?
+  discount     Float?
+  product_id   String?
+  service_id   String?
+  supply_id    String?
+  product      Product?  @relation(fields: [product_id], references: [id])
+  service      Service?  @relation(fields: [service_id], references: [id])
+  stocks       Stock?    @relation(fields: [stock_id], references: [id])
+  supply       Supply?   @relation(fields: [supply_id], references: [id])
+  treatments   Treatment @relation(fields: [treatment_id], references: [id])
 
   @@map("treatment_items")
 }
 
 model Interaction {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   user_id      String
   treatment_id String
-  date         DateTime @default(now())
+  date         DateTime  @default(now())
   description  String
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  treatments Treatment @relation(fields: [treatment_id], references: [id])
-  users      User      @relation(fields: [user_id], references: [id])
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @default(now()) @updatedAt
+  treatments   Treatment @relation(fields: [treatment_id], references: [id])
+  users        User      @relation(fields: [user_id], references: [id])
 
   @@map("interactions")
 }
 
-enum MeasureUnit {
-  UNITARY
-  FRACTIONAL
-}
-
 model Product {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  category    Category? @relation(fields: [category_id], references: [id])
-  category_id String?
-  active      Boolean?  @default(true)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @default(now()) @updatedAt
-
-  display_id   Int         @unique
-  cost         Float?      @default(0)
-  price        Float
-  stock        Float?      @default(0)
-  min_stock    Float?      @default(0)
-  barcode      String?
-  ncm          String?
-  is_composite Boolean     @default(false)
-  measureUnit  MeasureUnit @default(UNITARY)
-  image_url    String?
-
+  id             String          @id @default(uuid())
+  display_id     Int             @unique
+  price          Float
+  stock          Float?          @default(0)
+  min_stock      Float?          @default(0)
+  barcode        String?
+  ncm            String?
+  active         Boolean?        @default(true)
+  created_at     DateTime        @default(now())
+  description    String?
+  is_composite   Boolean         @default(false)
+  name           String
+  updated_at     DateTime        @default(now()) @updatedAt
+  cost           Float?          @default(0)
+  category_id    String?
+  measureUnit    MeasureUnit     @default(UNITARY)
+  image_url      String?
+  compositions   Composition[]
+  category       Category?       @relation(fields: [category_id], references: [id])
   stocks         Stock[]
   treatmentItems TreatmentItem[]
-  compositions   Composition[]
 
   @@map("products")
 }
 
 model Category {
-  id   String @id @default(uuid())
-  name String @unique
-
+  id       String    @id @default(uuid())
+  name     String    @unique
   products Product[]
 
   @@map("categories")
 }
 
 model Service {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  category    String?
-  active      Boolean? @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @default(now()) @updatedAt
-
-  display_id     Int     @unique
+  id             String          @id @default(uuid())
+  display_id     Int             @unique
   price          Float
   estimated_time String?
-
-  treatmentItems TreatmentItem[]
+  active         Boolean?        @default(true)
+  category       String?
+  created_at     DateTime        @default(now())
+  description    String?
+  name           String
+  updated_at     DateTime        @default(now()) @updatedAt
   compositions   Composition[]
+  treatmentItems TreatmentItem[]
 
   @@map("services")
 }
 
 model Supply {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  category    String?
-  active      Boolean? @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @default(now()) @updatedAt
-
-  cost  Float
-  stock Float?  @default(0)
-  unit  String?
-
+  id             String          @id @default(uuid())
+  cost           Float
+  stock          Float?          @default(0)
+  unit           String?
+  active         Boolean?        @default(true)
+  category       String?
+  created_at     DateTime        @default(now())
+  description    String?
+  name           String
+  updated_at     DateTime        @default(now()) @updatedAt
+  compositions   Composition[]
   stocks         Stock[]
   treatmentItems TreatmentItem[]
-  compositions   Composition[]
 
   @@map("supplies")
 }
 
 model Composition {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   product_id String?
-  service_id String?
   supply_id  String
   quantity   Float
-
-  product Product? @relation(fields: [product_id], references: [id])
-  service Service? @relation(fields: [service_id], references: [id])
-  supply  Supply   @relation(fields: [supply_id], references: [id])
+  service_id String?
+  product    Product? @relation(fields: [product_id], references: [id])
+  service    Service? @relation(fields: [service_id], references: [id])
+  supply     Supply   @relation(fields: [supply_id], references: [id])
 
   @@map("compositions")
+}
+
+model Stock {
+  id            String          @id @default(uuid())
+  quantity      Float
+  operation     StockOperation
+  description   StockReason?
+  created_at    DateTime        @default(now())
+  product_id    String?
+  supply_id     String?
+  unit_cost     Float?
+  product       Product?        @relation(fields: [product_id], references: [id])
+  supply        Supply?         @relation(fields: [supply_id], references: [id])
+  TreatmentItem TreatmentItem[]
+
+  @@map("stocks")
+}
+
+model Equipment {
+  id             String      @id @default(uuid())
+  client_id      String
+  type           String
+  brand          String?
+  identification String?
+  details        String?
+  entry          DateTime    @default(now())
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @default(now()) @updatedAt
+  client         Client      @relation(fields: [client_id], references: [id])
+  treatments     Treatment[]
+
+  @@map("equipments")
+}
+
+model Payment {
+  id                 String               @id @default(uuid())
+  name               String
+  installment_limit  Int
+  in_sight           Boolean
+  account_id         String?
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @default(now()) @updatedAt
+  InstallmentPayment InstallmentPayment[]
+  paymentEntrys      PaymentEntry[]
+  accounts           Account?             @relation(fields: [account_id], references: [id])
+
+  @@map("payments")
+}
+
+model PaymentEntry {
+  id           String    @id @default(uuid())
+  payment_id   String
+  treatment_id String
+  occurrences  Int
+  amount       Float
+  payments     Payment   @relation(fields: [payment_id], references: [id])
+  treatments   Treatment @relation(fields: [treatment_id], references: [id])
+
+  @@map("payment_entries")
+}
+
+model InstallmentPayment {
+  id                 String      @id @default(uuid())
+  payment_id         String
+  transaction_id     String
+  installment_number Int
+  payments           Payment     @relation(fields: [payment_id], references: [id])
+  transactions       Transaction @relation(fields: [transaction_id], references: [id])
+
+  @@map("installment_payments")
+}
+
+model Account {
+  id                  String                @id @default(uuid())
+  name                String
+  description         String?
+  balance             Float
+  goal                Float?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @default(now()) @updatedAt
+  creditCards         CreditCard[]
+  payments            Payment[]
+  transactions        Transaction[]
+  transferTransaction TransferTransaction[]
+
+  @@map("accounts")
+}
+
+model CreditCard {
+  id               String        @id @default(uuid())
+  name             String
+  bank             String
+  credit_limit     Float
+  closing_day      Int
+  due_day          Int
+  last_four_digits String?
+  color            String?
+  active           Boolean       @default(true)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @default(now()) @updatedAt
+  account_id       String?
+  account          Account?      @relation(fields: [account_id], references: [id])
+  transactions     Transaction[]
+
+  @@map("credit_cards")
+}
+
+model Transaction {
+  id                    String                @id @default(uuid())
+  operation             String
+  data_vencimento       DateTime              @default(now())
+  amount                Float
+  account_id            String?
+  sector_id             String?
+  description           String?
+  confirmed             Boolean               @default(false)
+  created_at            DateTime              @default(now())
+  parent_transaction_id String?
+  supplier_id           String?
+  transaction_group_id  String?
+  discount              Float?                @default(0)
+  interest              Float?                @default(0)
+  totalValue            Float?
+  data_emissao          DateTime              @default(now())
+  payment_method        String                @default("boleto")
+  attachment_url        String?
+  credit_card_id        String?
+  InstallmentPayment    InstallmentPayment[]
+  payrollEntries        PayrollEntry[]
+  accounts              Account?              @relation(fields: [account_id], references: [id])
+  creditCard            CreditCard?           @relation(fields: [credit_card_id], references: [id])
+  parentTransaction     Transaction?          @relation("TransactionHistory", fields: [parent_transaction_id], references: [id])
+  childTransactions     Transaction[]         @relation("TransactionHistory")
+  sectors               Sector?               @relation(fields: [sector_id], references: [id])
+  supplier              Supplier?             @relation(fields: [supplier_id], references: [id])
+  transactionGroup      TransactionGroup?     @relation(fields: [transaction_group_id], references: [id])
+  TransferTransaction   TransferTransaction[]
+
+  @@map("transactions")
+}
+
+model TransactionGroup {
+  id                String        @id @default(uuid())
+  totalAmount       Float
+  installmentsCount Int
+  description       String?
+  frequency         String?
+  created_at        DateTime      @default(now())
+  transactions      Transaction[]
+
+  @@map("transaction_groups")
+}
+
+model TransferTransaction {
+  id                     String      @id @default(uuid())
+  destination_account_id String
+  transaction_id         String
+  accounts               Account     @relation(fields: [destination_account_id], references: [id])
+  transaction            Transaction @relation(fields: [transaction_id], references: [id])
+
+  @@map("transfer_transactions")
+}
+
+model Sector {
+  id           String        @id @default(uuid())
+  name         String
+  budget       Float?
+  type         String        @default("in")
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @default(now()) @updatedAt
+  transactions Transaction[]
+
+  @@map("sectors")
+}
+
+model Supplier {
+  id           String        @id @default(uuid())
+  name         String
+  document     String?
+  email        String?
+  phone        String?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @default(now()) @updatedAt
+  transactions Transaction[]
+
+  @@map("suppliers")
+}
+
+model SystemConfig {
+  id                           String   @id @default(uuid())
+  merchandise_module           Boolean  @default(true)
+  financial_module             Boolean  @default(true)
+  treatments_module            Boolean  @default(true)
+  updated_at                   DateTime @default(now()) @updatedAt
+  hr_module                    Boolean  @default(true)
+  cestaBasicaValue             Decimal  @default(0)
+  financial_management_profile String   @default("ANALYTICAL")
+  dashboard_cards              Json?    @default("{}")
+
+  @@map("system_configs")
+}
+
+model Employee {
+  id                 String                  @id @default(uuid())
+  name               String
+  role               String
+  admissionDate      DateTime
+  pin                String
+  salary             Decimal?
+  points             Int                     @default(0)
+  created_at         DateTime                @default(now())
+  updated_at         DateTime                @default(now()) @updatedAt
+  user_id            String?                 @unique
+  registrationType   String                  @default("REGISTERED")
+  dailyRate          Decimal?
+  hasCestaBasica     Boolean                 @default(false)
+  isRegistered       Boolean                 @default(true)
+  overtimeValue      Decimal                 @default(0)
+  transportAllowance Decimal                 @default(0)
+  photo_url          String?
+  pointSnapshots     EmployeePointSnapshot[]
+  user               User?                   @relation(fields: [user_id], references: [id])
+  payrollEntries     PayrollEntry[]
+  timeClocks         TimeClock[]
+
+  @@map("employees")
+}
+
+model TimeClock {
+  id                 String    @id @default(uuid())
+  employee_id        String
+  date               DateTime  @db.Date
+  clockIn            DateTime?
+  breakStart         DateTime?
+  breakEnd           DateTime?
+  clockOut           DateTime?
+  isExtraDay         Boolean   @default(false)
+  negotiatedValue    Decimal?
+  isVerified         Boolean   @default(false)
+  notes              String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @default(now()) @updatedAt
+  extraClockIn       DateTime?
+  extraClockOut      DateTime?
+  absenceReason      String?
+  isJustifiedAbsence Boolean   @default(false)
+  employee           Employee  @relation(fields: [employee_id], references: [id])
+
+  @@unique([employee_id, date])
+  @@map("time_clocks")
+}
+
+model EmployeePointSnapshot {
+  id           String   @id @default(uuid())
+  employee_id  String
+  snapshotDate DateTime
+  points       Int
+  pointValue   Decimal
+  totalAmount  Decimal
+  created_at   DateTime @default(now())
+  employee     Employee @relation(fields: [employee_id], references: [id])
+
+  @@map("employee_point_snapshots")
+}
+
+model PayrollEntry {
+  id             String       @id @default(uuid())
+  employee_id    String
+  description    String
+  amount         Decimal
+  type           PayrollType
+  referenceDate  DateTime     @db.Date
+  status         String       @default("PENDING")
+  transaction_id String?
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
+  employee       Employee     @relation(fields: [employee_id], references: [id])
+  transaction    Transaction? @relation(fields: [transaction_id], references: [id])
+
+  @@map("payroll_entries")
+}
+
+model Module {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  description String?
+  users       UserModule[]
+
+  @@map("modules")
+}
+
+model UserModule {
+  id        String @id @default(uuid())
+  user_id   String
+  module_id String
+  module    Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, module_id])
+  @@map("user_modules")
+}
+
+model HrRuleHistory {
+  id                     String   @id @default(uuid())
+  valid_from             DateTime @default(now())
+  he_divisor             Int      @default(220)
+  he_multiplier_standard Decimal  @default(1.6)
+  he_multiplier_special  Decimal  @default(2.0)
+  daily_workload_minutes Int      @default(500)
+  tolerance_minutes      Int      @default(10)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @default(now()) @updatedAt
+
+  @@map("hr_rule_histories")
+}
+
+model Holiday {
+  id         String   @id @default(uuid())
+  date       DateTime @unique @db.Date
+  name       String
+  type       String   @default("NATIONAL")
+  created_at DateTime @default(now())
+
+  @@map("holidays")
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+}
+
+enum MeasureUnit {
+  UNITARY
+  FRACTIONAL
 }
 
 enum StockReason {
@@ -256,308 +550,6 @@ enum StockOperation {
   OUT
 }
 
-model Stock {
-  id         String  @id @default(uuid())
-  product_id String?
-  supply_id  String?
-
-  quantity    Float
-  operation   StockOperation
-  description StockReason?
-  unit_cost   Float?
-  created_at  DateTime       @default(now())
-
-  product Product? @relation(fields: [product_id], references: [id])
-  supply  Supply?  @relation(fields: [supply_id], references: [id])
-
-  TreatmentItem TreatmentItem[]
-
-  @@map("stocks")
-}
-
-model Equipment {
-  id             String   @id @default(uuid())
-  client_id      String
-  type           String
-  brand          String?
-  identification String?
-  details        String?
-  entry          DateTime @default(now())
-  created_at     DateTime @default(now())
-  updated_at     DateTime @default(now()) @updatedAt
-
-  client     Client      @relation(fields: [client_id], references: [id])
-  treatments Treatment[]
-
-  @@map("equipments")
-}
-
-model Payment {
-  id                String  @id @default(uuid())
-  name              String
-  installment_limit Int
-  in_sight          Boolean
-  account_id        String?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  accounts           Account?             @relation(fields: [account_id], references: [id])
-  paymentEntrys      PaymentEntry[]
-  InstallmentPayment InstallmentPayment[]
-
-  @@map("payments")
-}
-
-model PaymentEntry {
-  id           String @id @default(uuid())
-  payment_id   String
-  treatment_id String
-  occurrences  Int
-  amount       Float
-
-  payments   Payment   @relation(fields: [payment_id], references: [id])
-  treatments Treatment @relation(fields: [treatment_id], references: [id])
-
-  @@map("payment_entries")
-}
-
-model InstallmentPayment {
-  id                 String @id @default(uuid())
-  payment_id         String
-  transaction_id     String
-  installment_number Int
-
-  payments     Payment     @relation(fields: [payment_id], references: [id])
-  transactions Transaction @relation(fields: [transaction_id], references: [id])
-
-  @@map("installment_payments")
-}
-
-model Account {
-  id          String  @id @default(uuid())
-  name        String
-  description String?
-  balance     Float
-  goal        Float?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  payments            Payment[]
-  transactions        Transaction[]
-  transferTransaction TransferTransaction[]
-  creditCards         CreditCard[]
-
-  @@map("accounts")
-}
-
-model CreditCard {
-  id               String  @id @default(uuid())
-  name             String
-  bank             String
-  credit_limit     Float
-  closing_day      Int     // Dia de fechamento da fatura (1-31)
-  due_day          Int     // Dia de vencimento da fatura (1-31)
-  last_four_digits String?
-  color            String? // Hex, para UI
-  active           Boolean @default(true)
-
-  account_id       String?
-  account          Account? @relation(fields: [account_id], references: [id])
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  transactions Transaction[]
-
-  @@map("credit_cards")
-}
-
-model Transaction {
-  id          String   @id @default(uuid())
-  operation      String
-  data_vencimento DateTime @default(now())
-  data_emissao    DateTime @default(now())
-  amount         Float
-  interest    Float?   @default(0)
-  discount    Float?   @default(0)
-  totalValue  Float?
-  account_id  String?
-  sector_id   String?
-  description String?
-  confirmed   Boolean  @default(false)
-  payment_method String @default("boleto")
-  created_at  DateTime @default(now())
-
-  accounts              Account?              @relation(fields: [account_id], references: [id])
-  sectors               Sector?               @relation(fields: [sector_id], references: [id])
-  TransferTransaction   TransferTransaction[]
-  InstallmentPayment    InstallmentPayment[]
-  parent_transaction_id String?
-  parentTransaction     Transaction?          @relation("TransactionHistory", fields: [parent_transaction_id], references: [id])
-  childTransactions     Transaction[]         @relation("TransactionHistory")
-
-  supplier_id String?
-  supplier    Supplier? @relation(fields: [supplier_id], references: [id])
-
-  transaction_group_id String?
-  transactionGroup     TransactionGroup? @relation(fields: [transaction_group_id], references: [id])
-
-  payrollEntries PayrollEntry[]
-  
-  attachment_url String?
-
-  credit_card_id  String?
-  creditCard      CreditCard? @relation(fields: [credit_card_id], references: [id])
-
-  @@map("transactions")
-}
-
-model TransactionGroup {
-  id                String   @id @default(uuid())
-  totalAmount       Float
-  installmentsCount Int
-  description       String?
-  frequency         String?
-  created_at        DateTime @default(now())
-
-  transactions Transaction[]
-
-  @@map("transaction_groups")
-}
-
-model TransferTransaction {
-  id                     String @id @default(uuid())
-  destination_account_id String
-  transaction_id         String
-
-  accounts    Account     @relation(fields: [destination_account_id], references: [id])
-  transaction Transaction @relation(fields: [transaction_id], references: [id])
-
-  @@map("transfer_transactions")
-}
-
-model Sector {
-  id     String @id @default(uuid())
-  name   String
-  budget Float?
-  type   String @default("in")
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  transactions Transaction[]
-
-  @@map("sectors")
-}
-
-model Supplier {
-  id         String   @id @default(uuid())
-  name       String
-  document   String? // CNPJ/CPF
-  email      String?
-  phone      String?
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  transactions Transaction[]
-
-  @@map("suppliers")
-}
-
-model SystemConfig {
-  id                           String  @id @default(uuid())
-  merchandise_module           Boolean @default(true)
-  financial_module             Boolean @default(true)
-  treatments_module            Boolean @default(true)
-  hr_module                    Boolean @default(true)
-  cestaBasicaValue             Decimal @default(0)
-  financial_management_profile String  @default("ANALYTICAL") // ANALYTICAL ou OPERATIONAL
-  dashboard_cards              Json?   @default("{}")
-
-  updated_at DateTime @default(now()) @updatedAt
-
-  @@map("system_configs")
-}
-
-model Employee {
-  id               String   @id @default(uuid())
-  name             String
-  role             String // Cargo
-  registrationType String   @default("REGISTERED") // REGISTERED, UNREGISTERED, DAILY
-  isRegistered     Boolean  @default(true)
-  admissionDate    DateTime
-  pin              String // Senha para o ponto
-
-  salary             Decimal?
-  dailyRate          Decimal?
-  points             Int      @default(0)
-  transportAllowance Decimal  @default(0)
-  overtimeValue      Decimal  @default(0)
-  hasCestaBasica     Boolean  @default(false)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  user_id String? @unique
-  user    User?   @relation(fields: [user_id], references: [id])
-
-  timeClocks     TimeClock[]
-  payrollEntries PayrollEntry[]
-  pointSnapshots EmployeePointSnapshot[]
-  
-  photo_url      String?
-
-  @@map("employees")
-}
-
-model TimeClock {
-  id          String   @id @default(uuid())
-  employee_id String
-  date        DateTime @db.Date
-
-  clockIn       DateTime?
-  breakStart    DateTime?
-  breakEnd      DateTime?
-  clockOut      DateTime?
-  extraClockIn  DateTime?
-  extraClockOut DateTime?
-
-  isExtraDay      Boolean  @default(false)
-  negotiatedValue Decimal?
-
-  isVerified Boolean @default(false)
-  notes      String?
-
-  absenceReason      String?
-  isJustifiedAbsence Boolean @default(false)
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  employee Employee @relation(fields: [employee_id], references: [id])
-
-  @@unique([employee_id, date])
-  @@map("time_clocks")
-}
-
-model EmployeePointSnapshot {
-  id           String   @id @default(uuid())
-  employee_id  String
-  snapshotDate DateTime
-
-  points      Int
-  pointValue  Decimal
-  totalAmount Decimal // points * pointValue
-
-  created_at DateTime @default(now())
-
-  employee Employee @relation(fields: [employee_id], references: [id])
-
-  @@map("employee_point_snapshots")
-}
-
 enum PayrollType {
   SALARIO_60
   SALARIO_40
@@ -571,76 +563,3 @@ enum PayrollType {
   CESTA_BASICA
   VALE_TRANSPORTE
 }
-
-model PayrollEntry {
-  id            String      @id @default(uuid())
-  employee_id   String
-  description   String
-  amount        Decimal
-  type          PayrollType
-  referenceDate DateTime    @db.Date // Mês de referência (ex: 01/01/2024 para Janeiro)
-
-  status String @default("PENDING") // PENDING, PAID, CANCELED
-
-  transaction_id String?
-  transaction    Transaction? @relation(fields: [transaction_id], references: [id])
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-
-  employee Employee @relation(fields: [employee_id], references: [id])
-
-  @@map("payroll_entries")
-}
-
-model Module {
-  id          String       @id @default(uuid())
-  name        String // e.g., "Financeiro"
-  slug        String       @unique // e.g., "finance"
-  description String?
-  
-  users       UserModule[]
-
-  @@map("modules")
-}
-
-model UserModule {
-  id        String   @id @default(uuid())
-  user_id   String
-  module_id String
-
-  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  module    Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, module_id])
-  @@map("user_modules")
-}
-
-model HrRuleHistory {
-  id                      String   @id @default(uuid())
-  valid_from              DateTime @default(now())
-  
-  he_divisor              Int      @default(220)
-  he_multiplier_standard  Decimal  @default(1.6) // 60%
-  he_multiplier_special   Decimal  @default(2.0) // 100%
-  daily_workload_minutes  Int      @default(500) // 08:20 em minutos
-  tolerance_minutes       Int      @default(10)  // Limite da CLT
-  
-  created_at              DateTime @default(now())
-  updated_at              DateTime @default(now()) @updatedAt
-
-  @@map("hr_rule_histories")
-}
-
-model Holiday {
-  id          String   @id @default(uuid())
-  date        DateTime @db.Date
-  name        String
-  type        String   @default("NATIONAL") // NATIONAL, STATE, MUNICIPAL, CUSTOM
-  
-  created_at  DateTime @default(now())
-
-  @@unique([date])
-  @@map("holidays")
-}
-
