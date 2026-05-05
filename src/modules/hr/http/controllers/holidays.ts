@@ -25,8 +25,13 @@ export async function createCustomHoliday(request: FastifyRequest, reply: Fastif
 
   const { date, name, type } = schema.parse(request.body);
 
+  // Para garantir que a data não sofra deslocamento de fuso (ex: 2024-11-15 -> 2024-11-14T21:00Z no Brasil), 
+  // nós apenas extraímos o ano, mês e dia da string e criamos em UTC sem horários, ou utilizamos o T12:00:00Z sempre na string exata.
+  const dateStr = date.split('T')[0]; // Pega YYYY-MM-DD
+  const [yyyy, mm, dd] = dateStr.split('-').map(Number);
+  
   const holiday = await holidayService.addCustomHoliday({
-    date: new Date(date.includes('T') ? date : `${date}T12:00:00Z`),
+    date: new Date(Date.UTC(yyyy, mm - 1, dd, 12, 0, 0)),
     name,
     type,
   });

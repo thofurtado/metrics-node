@@ -12,6 +12,7 @@ interface CalculateOvertimeParams {
     daily_workload_minutes: number;
     tolerance_minutes: number;
   };
+  forceFullOvertime?: boolean;
 }
 
 export function calculateOvertime({
@@ -19,7 +20,8 @@ export function calculateOvertime({
   workedMinutes,
   date,
   holidays,
-  hrRule
+  hrRule,
+  forceFullOvertime = false
 }: CalculateOvertimeParams) {
   const excessMinutes = workedMinutes - hrRule.daily_workload_minutes;
   let overtimeMinutes = 0;
@@ -49,13 +51,20 @@ export function calculateOvertime({
 
   if (isSunday && holiday) {
     activeMultiplier = hrRule.he_multiplier_special;
-    multiplierReason = `Adicional 100% (Domingo e Feriado: ${holiday.name})`;
-  } else if (isSunday) {
-    activeMultiplier = hrRule.he_multiplier_special;
-    multiplierReason = "Adicional 100% (Domingo)";
+    multiplierReason = `Adicional 100% Integral (Domingo e Feriado: ${holiday.name})`;
+    overtimeMinutes = workedMinutes; // Feriado paga 100% o dia todo
   } else if (holiday) {
     activeMultiplier = hrRule.he_multiplier_special;
-    multiplierReason = `Adicional 100% (Feriado: ${holiday.name})`;
+    multiplierReason = `Adicional 100% Integral (Feriado: ${holiday.name})`;
+    overtimeMinutes = workedMinutes; // Feriado paga 100% o dia todo
+  } else if (isSunday) {
+    activeMultiplier = hrRule.he_multiplier_special;
+    if (forceFullOvertime) {
+        multiplierReason = "Adicional 100% Integral (Regra do Último Domingo)";
+        overtimeMinutes = workedMinutes;
+    } else {
+        multiplierReason = "Adicional 100% (Domingo)";
+    }
   }
 
   const multiplier = new Decimal(activeMultiplier);

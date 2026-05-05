@@ -82,6 +82,35 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         where: whereClause.date ? { date: whereClause.date } : undefined
     });
 
+    // Pré-processamento: Regra do Último Domingo
+    // Se o funcionário trabalhou TODOS os domingos no intervalo buscado (mínimo 4), o último domingo vira 100% integral.
+    const employeeSundaysMap = new Map<string, { date: Date, workedMinutes: number }[]>();
+    
+    timeClocks.forEach(tc => {
+        const isSunday = tc.date.getUTCDay() === 0 || tc.date.getDay() === 0;
+        if (isSunday) {
+            const workedMinutes = calculateWorkedMinutes(tc);
+            if (!employeeSundaysMap.has(tc.employee_id)) {
+                employeeSundaysMap.set(tc.employee_id, []);
+            }
+            employeeSundaysMap.get(tc.employee_id)!.push({ date: tc.date, workedMinutes });
+        }
+    });
+
+    const employeesWithFullSundays = new Set<string>();
+    const lastSundayDatesByEmployee = new Map<string, string>();
+
+    employeeSundaysMap.forEach((sundays, empId) => {
+        sundays.sort((a, b) => a.date.getTime() - b.date.getTime());
+        const workedAll = sundays.length > 0 && sundays.every(s => s.workedMinutes > 0);
+        
+        if (workedAll && sundays.length >= 4) {
+            employeesWithFullSundays.add(empId);
+            const lastSunday = sundays[sundays.length - 1];
+            lastSundayDatesByEmployee.set(empId, lastSunday.date.toISOString().substring(0, 10));
+        }
+    });
+
     const processedTimeClocks = timeClocks.map(tc => {
         let overtimeData = {
             overtimeMinutes: 0,
@@ -91,6 +120,18 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
 
         if (hrRule && tc.employee.salary) {
             const workedMinutes = calculateWorkedMinutes(tc)
+            
+            let forceFullOvertime = false;
+            if (employeesWithFullSundays.has(tc.employee_id)) {
+                const isSunday = tc.date.getUTCDay() === 0 || tc.date.getDay() === 0;
+                if (isSunday) {
+                    const tcDateStr = tc.date.toISOString().substring(0, 10);
+                    if (lastSundayDatesByEmployee.get(tc.employee_id) === tcDateStr) {
+                        forceFullOvertime = true;
+                    }
+                }
+            }
+
             const calc = calculateOvertime({
                 baseSalary: Number(tc.employee.salary),
                 workedMinutes,
@@ -102,7 +143,8 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
                     he_multiplier_special: hrRule.he_multiplier_special,
                     daily_workload_minutes: hrRule.daily_workload_minutes,
                     tolerance_minutes: hrRule.tolerance_minutes
-                }
+                },
+                forceFullOvertime
             })
 
             overtimeData = {
