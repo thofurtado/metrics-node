@@ -280,8 +280,21 @@ model Account {
   payments            Payment[]
   transactions        Transaction[]
   transferTransaction TransferTransaction[]
+  adjustments         AccountAdjustment[]
 
   @@map("accounts")
+}
+
+model AccountAdjustment {
+  id               String   @id @default(uuid())
+  account_id       String
+  previous_balance Float
+  new_balance      Float
+  description      String?
+  created_at       DateTime @default(now())
+  account          Account  @relation(fields: [account_id], references: [id])
+
+  @@map("account_adjustments")
 }
 
 model CreditCard {

@@ -35,18 +35,13 @@ export class AdjustAccountBalanceUseCase {
                 return { account }
             }
 
-            const amount = Math.abs(diff)
-            const operation = diff > 0 ? 'IN' : 'OUT'
-
-            // Criar a transação de ajuste
-            await tx.transaction.create({
+            // Criar o registro de ajuste na nova tabela
+            await tx.accountAdjustment.create({
                 data: {
                     account_id: id,
-                    amount: amount,
-                    operation: operation,
-                    description: 'Ajuste de Saldo Manual',
-                    confirmed: true,
-                    date: new Date()
+                    previous_balance: currentBalance,
+                    new_balance: newBalance,
+                    description: 'Ajuste de Saldo Manual'
                 }
             })
 
