@@ -79,6 +79,7 @@ model Treatment {
   clients       Client?         @relation(fields: [client_id], references: [id])
   equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
   users         User?           @relation(fields: [user_id], references: [id])
+  sale          Sale?
 
   @@map("treatments")
 }
@@ -138,6 +139,7 @@ model Product {
   category       Category?       @relation(fields: [category_id], references: [id])
   stocks         Stock[]
   treatmentItems TreatmentItem[]
+  saleItems      SaleItem[]
 
   @@map("products")
 }
@@ -163,6 +165,7 @@ model Service {
   updated_at     DateTime        @default(now()) @updatedAt
   compositions   Composition[]
   treatmentItems TreatmentItem[]
+  saleItems      SaleItem[]
 
   @@map("services")
 }
@@ -181,6 +184,7 @@ model Supply {
   compositions   Composition[]
   stocks         Stock[]
   treatmentItems TreatmentItem[]
+  saleItems      SaleItem[]
 
   @@map("supplies")
 }
@@ -575,4 +579,37 @@ enum PayrollType {
   CONSUMACAO
   CESTA_BASICA
   VALE_TRANSPORTE
+}
+
+model Sale {
+  id           String   @id @default(uuid())
+  treatment_id String?  @unique
+  total_amount Float
+  discount     Float?   @default(0)
+  status       String   @default("COMPLETED")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  items     SaleItem[]
+  treatment Treatment? @relation(fields: [treatment_id], references: [id])
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id         String  @id @default(uuid())
+  sale_id    String
+  product_id String?
+  service_id String?
+  supply_id  String?
+  quantity   Float
+  unit_price Float
+  discount   Float?  @default(0)
+
+  sale    Sale     @relation(fields: [sale_id], references: [id])
+  product Product? @relation(fields: [product_id], references: [id])
+  service Service? @relation(fields: [service_id], references: [id])
+  supply  Supply?  @relation(fields: [supply_id], references: [id])
+
+  @@map("sale_items")
 }

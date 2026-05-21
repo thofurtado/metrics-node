@@ -162,6 +162,32 @@ export class FinishTreatmentUseCase {
 
             if (!closedTreatment) throw new ResourceNotFoundError()
 
+            // D. Create Sale in background to track metrics separately
+            const totalDiscount = (treatment as any).items?.reduce((acc: number, item: any) => acc + (Number(item.discount) || 0), 0) || 0
+
+            const saleItemsData = (treatment as any).items?.map((tItem: any) => ({
+                product_id: tItem.product_id || undefined,
+                service_id: tItem.service_id || undefined,
+                supply_id: tItem.supply_id || undefined,
+                quantity: Number(tItem.quantity),
+                unit_price: Number(tItem.salesValue) || 0,
+                discount: Number(tItem.discount) || 0,
+            })) || []
+
+            if (saleItemsData.length > 0) {
+                await tx.sale.create({
+                    data: {
+                        treatment_id: treatment.id,
+                        total_amount: Number(treatment.amount),
+                        discount: totalDiscount,
+                        status: 'COMPLETED',
+                        items: {
+                            create: saleItemsData
+                        }
+                    }
+                })
+            }
+
             return { treatment: closedTreatment }
         })
     }
