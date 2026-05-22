@@ -1,10 +1,33 @@
 import 'dotenv/config'
 import {z} from 'zod'
 
+// Safeguard (Trava de Segurança Antidestruição)
+if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
+    const dbUrl = process.env.DATABASE_URL || '';
+    const isProductionDb = dbUrl.includes('187.77.232.244') || 
+                           dbUrl.includes('db_marujo') || 
+                           dbUrl.includes('marujogastrobar') ||
+                           dbUrl.includes('aws.neon.tech') ||
+                           (dbUrl.includes('postgres') && 
+                            !dbUrl.includes('localhost') && 
+                            !dbUrl.includes('127.0.0.1') && 
+                            !dbUrl.includes('docker') &&
+                            !dbUrl.includes('apisolid')); // test db name
+
+    if (isProductionDb) {
+        console.error('\n🚨 ====================================================================');
+        console.error('🚨 ERRO CRÍTICO DE SEGURANÇA: Tentativa de rodar testes contra banco de dados de produção!');
+        console.error('🚨 DATABASE_URL detectada:', dbUrl);
+        console.error('🚨 A execução foi ABORTADA imediatamente para proteger os dados de produção.');
+        console.error('🚨 ====================================================================\n');
+        throw new Error('BLOQUEIO DE SEGURANÇA: Testes impedidos de rodar contra o banco de produção.');
+    }
+}
 
 // process.env: {NODE_ENV:  'dev', ...}
 // npm i zod
 // npm i dotenv
+
 
 
 const envSchema = z.object({

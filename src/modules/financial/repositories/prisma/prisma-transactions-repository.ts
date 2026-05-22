@@ -484,16 +484,18 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 balanceChange = targetAmount
             }
 
-            txOps.push(
-                prisma.account.update({
-                    where: { id: transaction.account_id || "" },
-                    data: {
-                        balance: {
-                            increment: balanceChange
+            if (transaction.account_id) {
+                txOps.push(
+                    prisma.account.update({
+                        where: { id: transaction.account_id },
+                        data: {
+                            balance: {
+                                increment: balanceChange
+                            }
                         }
-                    }
-                })
-            )
+                    })
+                )
+            }
         }
         
         txOps.push(
@@ -584,15 +586,17 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 })
 
                 // b) Atualiza o Saldo da Conta (da conta FINAL, onde o pagamento ocorreu)
-                await tx.account.update({
-                    where: { id: targetAccountId || "" },
-                    data: {
-                        balance: {
-                            // Adiciona/Remove o valor liquidado do saldo existente
-                            increment: accountBalanceChange,
+                if (targetAccountId) {
+                    await tx.account.update({
+                        where: { id: targetAccountId },
+                        data: {
+                            balance: {
+                                // Adiciona/Remove o valor liquidado do saldo existente
+                                increment: accountBalanceChange,
+                            },
                         },
-                    },
-                })
+                    })
+                }
             })
         } catch (error) {
             console.error('Erro na transação de liquidação:', error)
@@ -657,14 +661,16 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 })
 
                 // b) Atualiza o Saldo da Conta
-                await tx.account.update({
-                    where: { id: targetAccountId || "" },
-                    data: {
-                        balance: {
-                            increment: accountBalanceChange,
+                if (targetAccountId) {
+                    await tx.account.update({
+                        where: { id: targetAccountId },
+                        data: {
+                            balance: {
+                                increment: accountBalanceChange,
+                            },
                         },
-                    },
-                })
+                    })
+                }
             })
         } catch (error) {
             console.error('Erro na reversão da transação:', error)
@@ -986,9 +992,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 } else if (transaction.operation === 'expense') {
                     balanceChange = -transaction.amount
                 }
-                if (balanceChange !== 0) {
+                if (balanceChange !== 0 && transaction.account_id) {
                     await tx.account.update({
-                        where: { id: transaction.account_id || "" },
+                        where: { id: transaction.account_id },
                         data: {
                             balance: {
                                 increment: balanceChange
