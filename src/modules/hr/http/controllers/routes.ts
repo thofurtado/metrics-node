@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify"
-import { getStatus, register } from "./time-clock"
+import { getStatus, register, syncOffline } from "./time-clock"
 import { listTimeClocks, updateTimeClock, upsertTimeClock, bulkUpsertTimeClocks } from "./time-clocks-admin"
 import { createEmployee, listEmployees, updateEmployee, getEmployeeSummary, syncEmployees } from "./employees"
 import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBatch, deletePayrollBatch, getPayrollPreview, getEmployeePayrollEntries, listPendingDebts, updatePayrollEntry, calculateRateioExtras, getPayrollHistory, cancelPayrollEntry } from "./payroll"
@@ -9,6 +9,7 @@ import { listHolidays, createCustomHoliday, removeHoliday } from "./holidays"
 export async function kioskRoutes(app: FastifyInstance) {
     app.get("/hr/time-clock/status", getStatus)
     app.post("/hr/time-clock/register", register)
+    app.post("/hr/time-clock/sync-offline", syncOffline)
     app.get("/hr/employees/sync", syncEmployees)
 }
 

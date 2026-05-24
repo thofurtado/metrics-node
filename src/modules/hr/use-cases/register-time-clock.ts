@@ -7,6 +7,7 @@ interface Request {
     action: "clockIn" | "breakStart" | "breakEnd" | "clockOut" | "extraClockIn" | "extraClockOut"
     timestamp?: string
     isAdmin?: boolean // Zero Trust: Flag to allow manual timestamp override from HR panel
+    isOffline?: boolean // Confirmed kiosk offline sync flag
 }
 
 export class RegisterTimeClockUseCase {
@@ -15,7 +16,7 @@ export class RegisterTimeClockUseCase {
         private timeClocksRepository: PrismaTimeClocksRepository
     ) { }
 
-    async execute({ pin, action, timestamp, isAdmin = false }: Request) {
+    async execute({ pin, action, timestamp, isAdmin = false, isOffline = false }: Request) {
         const employee = await this.employeesRepository.findByPin(pin)
 
         if (!employee) {
@@ -24,8 +25,8 @@ export class RegisterTimeClockUseCase {
 
         // ZERO TRUST LOGIC:
         // By default, we ignore the client-sent timestamp to prevent fraud or clock drift issues.
-        // We only trust the client timestamp if the request is explicitly marked as an admin override.
-        const now = (isAdmin && timestamp) ? new Date(timestamp) : new Date()
+        // We trust the client timestamp if the request is an admin override OR authenticated kiosk offline sync.
+        const now = ((isAdmin || isOffline) && timestamp) ? new Date(timestamp) : new Date()
 
         const competenceDate = getCompetenceDate(now)
 

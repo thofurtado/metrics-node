@@ -122,3 +122,56 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
         })
     }
 }
+
+export async function syncOffline(request: FastifyRequest, reply: FastifyReply) {
+    const syncOfflineBodySchema = z.object({
+        punches: z.array(z.object({
+            pin: z.string(),
+            action: z.enum(["clockIn", "breakStart", "breakEnd", "clockOut", "extraClockIn", "extraClockOut"]),
+            timestamp: z.string()
+        }))
+    })
+
+    const { punches } = syncOfflineBodySchema.parse(request.body)
+
+    const registerTimeClockUseCase = new RegisterTimeClockUseCase(
+        employeesRepository,
+        timeClocksRepository
+    )
+
+    const results = []
+    const errors = []
+
+    for (const punch of punches) {
+        try {
+            const { employee, timestamp: savedTimestamp } = await registerTimeClockUseCase.execute({
+                pin: punch.pin,
+                action: punch.action,
+                timestamp: punch.timestamp,
+                isOffline: true
+            })
+            results.push({
+                pin: punch.pin,
+                action: punch.action,
+                timestamp: savedTimestamp,
+                success: true
+            })
+        } catch (err: any) {
+            console.error(`Error registering offline punch for PIN ${punch.pin}:`, err)
+            errors.push({
+                pin: punch.pin,
+                action: punch.action,
+                timestamp: punch.timestamp,
+                error: err.message || "Erro desconhecido"
+            })
+        }
+    }
+
+    return reply.status(200).send({
+        success: true,
+        syncedCount: results.length,
+        failedCount: errors.length,
+        results,
+        errors
+    })
+}
