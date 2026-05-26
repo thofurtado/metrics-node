@@ -615,6 +615,22 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             throw new ResourceNotFoundError()
         }
 
+        // Se já estiver Pendente, não faz nada
+        if (!existingTransaction.confirmed) {
+            return
+        }
+
+        // Localiza as transações filhas geradas por pagamentos parciais que estejam pendentes
+        const pendingChildren = await prisma.transaction.findMany({
+            where: {
+                parent_transaction_id: id,
+                confirmed: false,
+            }
+        })
+
+        const childrenAmountSum = pendingChildren.reduce((sum, child) => sum + child.amount, 0)
+        const newParentAmount = existingTransaction.amount + childrenAmountSum
+
         // Check for traceability (Fragmentation)
         const childCount = await prisma.transaction.count({
             where: { parent_transaction_id: id }
@@ -622,11 +638,6 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         if (existingTransaction.parent_transaction_id || childCount > 0) {
             console.warn("Atenção: Estornando parte de uma transação fragmentada. Verificar saldo original.")
-        }
-
-        // Se já estiver Pendente, não faz nada
-        if (!existingTransaction.confirmed) {
-            return
         }
 
         // 2. Determinar o impacto no saldo (Reverso da Liquidação)
@@ -648,10 +659,11 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         // 3. Executa a transação do banco de dados (atomicidade)
         try {
             await prisma.$transaction(async (tx) => {
-                // a) Atualiza a Transação: Marca como Pendente (false)
+                // a) Atualiza a Transação: Marca como Pendente (false) e restaura o amount original
                 await tx.transaction.update({
                     where: { id },
                     data: {
+                        amount: newParentAmount,
                         confirmed: false,
                         interest: 0,
                         discount: 0,
@@ -660,7 +672,18 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     },
                 })
 
-                // b) Atualiza o Saldo da Conta
+                // b) Exclui as transações filhas pendentes que foram mescladas de volta ao pai
+                if (pendingChildren.length > 0) {
+                    await tx.transaction.deleteMany({
+                        where: {
+                            id: {
+                                in: pendingChildren.map(child => child.id)
+                            }
+                        }
+                    })
+                }
+
+                // c) Atualiza o Saldo da Conta
                 if (targetAccountId) {
                     await tx.account.update({
                         where: { id: targetAccountId },

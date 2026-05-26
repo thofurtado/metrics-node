@@ -135,6 +135,11 @@ export class ChangeTransactionUseCase {
                 data_emissao: originalTransaction.data_emissao,
                 description: newDescription, // <-- DESCRIÇÃO NUMERADA
                 parent_transaction_id: originalTransaction.id, // Vínculo de Rastreabilidade
+
+                // Preservar metadados cruciais
+                transaction_group_id: originalTransaction.transaction_group_id,
+                supplier_id: originalTransaction.supplier_id,
+                credit_card_id: originalTransaction.credit_card_id,
             };
 
             // Cria a nova transação para o remanescente
