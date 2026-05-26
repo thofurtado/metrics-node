@@ -329,6 +329,7 @@ model Transaction {
   sector_id             String?
   description           String?
   confirmed             Boolean               @default(false)
+  checked               Boolean               @default(false)
   created_at            DateTime              @default(now())
   parent_transaction_id String?
   supplier_id           String?

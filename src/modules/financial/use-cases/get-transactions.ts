@@ -17,6 +17,7 @@ interface GetTreatmentsUseCaseRequest {
     type?: string // Added type
     sortBy?: string
     sortDirection?: string
+    checked?: string
 }
 
 
@@ -25,7 +26,7 @@ export class GetTransactionsUseCase {
     constructor(
         private transactionsRepository: TransactionsRepository
     ) { }
-    async execute({ pageIndex, perPage, description, value, sector_id, account_id, month, status, toDate, fromDate, supplier_id, type, sortBy, sortDirection }: GetTreatmentsUseCaseRequest): Promise<GetTransactionsDTO | null> {
+    async execute({ pageIndex, perPage, description, value, sector_id, account_id, month, status, toDate, fromDate, supplier_id, type, sortBy, sortDirection, checked }: GetTreatmentsUseCaseRequest): Promise<GetTransactionsDTO | null> {
         console.log('USE CASE ACCOUNT' + account_id)
         if (!perPage)
             perPage = 6
@@ -37,7 +38,7 @@ export class GetTransactionsUseCase {
             operation = 'expense'
         }
 
-        const transactions = await this.transactionsRepository.findMany(month, pageIndex, perPage, description, value, sector_id, account_id, status, toDate, supplier_id, operation, fromDate, sortBy, sortDirection)
+        const transactions = await this.transactionsRepository.findMany(month, pageIndex, perPage, description, value, sector_id, account_id, status, toDate, supplier_id, operation, fromDate, sortBy, sortDirection, checked)
         return transactions
 
     }

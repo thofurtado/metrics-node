@@ -712,7 +712,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string, checked?: string): Promise<GetTransactionsDTO | null> {
 
         let take = perPage ? Number(perPage) : 6
         let skip = 0
@@ -739,6 +739,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             confirmedFilter = true;
         } else if (status === 'overdue') {
             confirmedFilter = false;
+        }
+
+        // Checked filter logic
+        let checkedFilter: boolean | undefined = undefined;
+        if (checked === 'true') {
+            checkedFilter = true;
+        } else if (checked === 'false') {
+            checkedFilter = false;
         }
 
         const year = month.getFullYear()
@@ -816,6 +824,9 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 }] : []),
                 ...(confirmedFilter !== undefined ? [{
                     confirmed: confirmedFilter
+                }] : []),
+                ...(checkedFilter !== undefined ? [{
+                    checked: checkedFilter
                 }] : []),
                 ...(operation ? [{
                     operation: { equals: operation }

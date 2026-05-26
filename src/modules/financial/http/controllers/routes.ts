@@ -25,6 +25,7 @@ import { updatePayment } from '@/modules/financial/http/controllers/updatePaymen
 import { deletePayment } from '@/modules/financial/http/controllers/deletePayment'
 import { adjustAccountBalance } from '@/modules/financial/http/controllers/adjustAccountBalance'
 import { revertTransactionStatus } from '@/modules/financial/http/controllers/revertTransactionStatus'
+import { toggleTransactionChecked } from '@/modules/financial/http/controllers/toggleTransactionChecked'
 import { createRecurring } from './create-recurring'
 import { terminateTransactionGroup } from '@/modules/financial/http/controllers/terminate-transaction-group'
 import { getTransactionGroup } from '@/modules/financial/http/controllers/get-transaction-group'
@@ -52,6 +53,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.put('/transaction/:id', updateTransaction)
     app.delete('/transaction/:id', deleteTransaction)
     app.delete('/transaction/:id/forward', deleteFutureTransactions)
+    app.patch('/transaction/:id/checked', toggleTransactionChecked)
     app.get('/transfer-transactions', getTransferTransaction)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
