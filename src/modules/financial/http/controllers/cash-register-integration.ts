@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { MakeTransactionUseCase } from '@/modules/financial/use-cases/factories/make-transaction-use-case'
 import { env } from '@/env'
+import { prisma } from '@/lib/prisma'
 
 export async function cashRegisterIntegration(
     request: FastifyRequest,
@@ -34,7 +35,46 @@ export async function cashRegisterIntegration(
         // 4. Montar a data de vencimento (data do caixa)
         const dataVencimento = new Date(`${date}T12:00:00.000Z`)
 
-        // 5. Criar a transação via use case existente
+        // 5. Verificar se já existe uma transação com o mesmo método 'CAIXA' e mesma descrição para esta conta
+        const existingTransaction = await prisma.transaction.findFirst({
+            where: {
+                payment_method: 'CAIXA',
+                account_id,
+                description: finalDescription,
+            }
+        })
+
+        if (existingTransaction) {
+            const updatedTransaction = await prisma.transaction.update({
+                where: { id: existingTransaction.id },
+                data: {
+                    amount: totalAmount,
+                    totalValue: totalAmount,
+                }
+            })
+
+            // Ajusta o saldo da conta com a diferença de valores se a transação estiver confirmada
+            if (existingTransaction.confirmed) {
+                const diff = totalAmount - existingTransaction.amount
+                if (diff !== 0) {
+                    await prisma.account.update({
+                        where: { id: account_id },
+                        data: {
+                            balance: {
+                                increment: diff
+                            }
+                        }
+                    })
+                }
+            }
+
+            return reply.status(200).send({
+                message: 'Entrada de caixa atualizada com sucesso',
+                transaction: updatedTransaction
+            })
+        }
+
+        // 6. Criar a transação via use case existente se não existir anterior
         const transactionUseCase = MakeTransactionUseCase()
 
         const result = await transactionUseCase.execute({
