@@ -106,3 +106,35 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
 
     return reply.status(201).send({ message: 'Movimentações sincronizadas com sucesso' })
 }
+
+export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const maxUser = await prisma.user.aggregate({
+            _max: {
+                updated_at: true
+            }
+        })
+
+        const maxProduct = await prisma.product.aggregate({
+            _max: {
+                updated_at: true
+            }
+        })
+
+        // Retorna a data correspondente ou a data da época (epoch) caso as tabelas estejam vazias
+        const lastUserModified = maxUser._max.updated_at || new Date(0)
+        const lastProductModified = maxProduct._max.updated_at || new Date(0)
+
+        return reply.status(200).send({
+            lastUserModified: lastUserModified.toISOString(),
+            lastProductModified: lastProductModified.toISOString()
+        })
+    } catch (error: any) {
+        console.error('[Sync] Erro ao obter status de sincronização:', error)
+        return reply.status(500).send({
+            message: 'Erro ao processar status de sincronização',
+            details: error.message
+        })
+    }
+}
+

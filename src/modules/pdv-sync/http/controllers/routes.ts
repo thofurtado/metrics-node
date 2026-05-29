@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, getUsersSync, postStocksSync } from './pdv-sync-controller'
+import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus } from './pdv-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
@@ -10,6 +10,9 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
             return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API PDV inválida' })
         }
     })
+
+    app.get('/api/pdv/sync/status', getSyncStatus)
+    app.get('/api/pdv/status', getSyncStatus)
 
     app.get('/api/pdv/sync/products', getProductsSync)
     app.get('/api/pdv/sync/users', getUsersSync)
