@@ -38,17 +38,21 @@ export async function calculateRateio(request: FastifyRequest, reply: FastifyRep
 export async function generatePayrollBatch(request: FastifyRequest, reply: FastifyReply) {
     const generateBatchBodySchema = z.object({
         type: z.enum(["SALARIO_60", "VALE", "CESTA_BASICA", "VALE_TRANSPORTE"]),
-        referenceDate: z.string()
+        referenceDate: z.string(),
+        splitCesta: z.boolean().optional(),
+        deductDebtsOnAdvance: z.boolean().optional()
     })
 
-    const { type, referenceDate } = generateBatchBodySchema.parse(request.body)
+    const { type, referenceDate, splitCesta, deductDebtsOnAdvance } = generateBatchBodySchema.parse(request.body)
 
     const generatePayrollBatchUseCase = new GeneratePayrollBatchUseCase()
 
     try {
         const result = await generatePayrollBatchUseCase.execute({
             type: type as any,
-            referenceDate
+            referenceDate,
+            splitCesta,
+            deductDebtsOnAdvance
         })
         return reply.status(201).send(result)
     } catch (err) {

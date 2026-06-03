@@ -29,7 +29,7 @@ export class CalculatePointRateioUseCase {
         // Clear existing extras for this exact date to allow recalculation
         await prisma.payrollEntry.deleteMany({
             where: {
-                type: { in: ["DIA_EXTRA", "OTHER"] },
+                type: { in: ["DIA_EXTRA", "OTHER", "PONTUACAO_10"] },
                 referenceDate: payDate,
                 status: "PENDING"
             }

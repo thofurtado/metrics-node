@@ -12,10 +12,24 @@ function getISOWeek(d: Date) {
 interface Request {
     type: PayrollType
     referenceDate: string // YYYY-MM-DD
+    splitCesta?: boolean
+    deductDebtsOnAdvance?: boolean
 }
 
 export class GeneratePayrollBatchUseCase {
-    async execute({ type, referenceDate }: Request) {
+    private formatDebtsDescription(debts: any[]): string {
+        if (!debts || debts.length === 0) return ""
+        const byType = debts.reduce((acc, d) => {
+            const t = d.type === "VALE_TRANSPORTE" ? "VT" : d.type === "CONSUMACAO" ? "Consumo" : d.type === "ERRO" ? "Quebra" : d.type === "VALE" ? "Vale" : d.type;
+            acc[t] = (acc[t] || 0) + Math.abs(Number(d.amount))
+            return acc
+        }, {} as Record<string, number>)
+
+        const descParts = Object.entries(byType).map(([t, v]) => `${t}: R$${v.toFixed(2)}`)
+        return ` | Descontos (${descParts.join(", ")})`
+    }
+
+    async execute({ type, referenceDate, splitCesta, deductDebtsOnAdvance }: Request) {
         console.log(`[GenerateBatch] Starting batch for type: ${type}, date: ${referenceDate}`)
 
         const refDate = new Date(referenceDate)
@@ -80,29 +94,24 @@ export class GeneratePayrollBatchUseCase {
                     }
                 })
 
-                if (emp.isRegistered) {
-                    // Registered: 100% in one go. If any exists, skip.
-                    if (existingCestas.length > 0) {
-                        console.log(`[GenerateBatch] SKIP ${emp.name}: Registered already received Cesta.`)
-                        continue
-                    }
-                    amount = cestaValue
-                    console.log(`[GenerateBatch] ${emp.name}: Registered -> 100% (${amount})`)
-                } else {
-                    // Unregistered: 2 installments of 50%
-                    if (existingCestas.length >= 2) {
-                        console.log(`[GenerateBatch] SKIP ${emp.name}: Unregistered already received 2 Installments.`)
-                        continue
-                    }
+                const totalPaidAlready = existingCestas.reduce((acc, c) => acc + Number(c.amount), 0)
 
-                    amount = cestaValue / 2
-
-                    if (existingCestas.length === 0) {
-                        console.log(`[GenerateBatch] ${emp.name}: Unregistered -> 1st Installment 50% (${amount})`)
-                    } else {
-                        console.log(`[GenerateBatch] ${emp.name}: Unregistered -> 2nd Installment 50% (${amount})`)
-                    }
+                if (totalPaidAlready >= cestaValue) {
+                    console.log(`[GenerateBatch] SKIP ${emp.name}: Already received full Cesta.`)
+                    continue
                 }
+
+                if (splitCesta) {
+                    amount = cestaValue / 2
+                    if (totalPaidAlready + amount > cestaValue) {
+                        amount = cestaValue - totalPaidAlready
+                    }
+                    console.log(`[GenerateBatch] ${emp.name}: Cesta -> 50% (${amount})`)
+                } else {
+                    amount = cestaValue - totalPaidAlready
+                    console.log(`[GenerateBatch] ${emp.name}: Cesta -> Restante (${amount})`)
+                }
+
                 description = `Cesta Básica - Ref: ${monthName}`
 
 
@@ -155,7 +164,7 @@ export class GeneratePayrollBatchUseCase {
                     const debts = await prisma.payrollEntry.findMany({
                         where: {
                             employee_id: emp.id,
-                            type: { in: ["ERRO", "CONSUMACAO"] }, // Removed VALE
+                            type: { in: ["ERRO", "CONSUMACAO", "VALE_TRANSPORTE"] }, // Removed VALE
                             status: "PENDING"
                         }
                     })
@@ -163,7 +172,7 @@ export class GeneratePayrollBatchUseCase {
                     const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Diárias: R$${earnings.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Diárias: R$${earnings.toFixed(2)}${this.formatDebtsDescription(debts)}`
 
                 } else if (regType === "HOURLY") {
                     // Hourly Workers: 16th to End of PREVIOUS month (Normal Hours only)
@@ -187,7 +196,7 @@ export class GeneratePayrollBatchUseCase {
                     const debts = await prisma.payrollEntry.findMany({
                         where: {
                             employee_id: emp.id,
-                            type: { in: ["ERRO", "CONSUMACAO"] },
+                            type: { in: ["ERRO", "CONSUMACAO", "VALE_TRANSPORTE"] },
                             status: "PENDING"
                         }
                     })
@@ -195,7 +204,7 @@ export class GeneratePayrollBatchUseCase {
                     const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Salário (Saldo 16-End) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${this.formatDebtsDescription(debts)}`
 
                 } else {
                     // Fixed Employees: Base is 100% Salary.
@@ -257,7 +266,7 @@ export class GeneratePayrollBatchUseCase {
                     const debts = await prisma.payrollEntry.findMany({
                         where: {
                             employee_id: emp.id,
-                            type: { in: ["ERRO", "CONSUMACAO"] },
+                            type: { in: ["ERRO", "CONSUMACAO", "VALE_TRANSPORTE"] },
                             status: "PENDING"
                         }
                     })
@@ -266,7 +275,7 @@ export class GeneratePayrollBatchUseCase {
 
                     amount = earnings - advanceDeduction - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Salário (Saldo) - Ref: ${monthName} | Bruto: R$${salary.toFixed(2)}${unjustAbsencesCount > 0 ? ` | Faltas: -R$${unjustDeduction.toFixed(2)}` : ''} | Adiantamento: -R$${advanceDeduction.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Salário (Saldo) - Ref: ${monthName} | Bruto: R$${salary.toFixed(2)}${unjustAbsencesCount > 0 ? ` | Faltas: -R$${unjustDeduction.toFixed(2)}` : ''} | Adiantamento: -R$${advanceDeduction.toFixed(2)}${this.formatDebtsDescription(debts)}`
                 }
 
             } else if (type === "VALE") {
@@ -292,24 +301,25 @@ export class GeneratePayrollBatchUseCase {
                     }, 0)
                     earnings = totalDiarias
 
-                    // Subtract debts? Usually yes.
-                    const debts = await prisma.payrollEntry.findMany({
-                        where: {
-                            employee_id: emp.id,
-                            type: { in: ["VALE", "ERRO", "CONSUMACAO"] },
-                            status: "PENDING"
-                        }
-                    })
+                    // Subtract debts? Only if deductDebtsOnAdvance is true
+                    let debts: any[] = []
+                    if (deductDebtsOnAdvance) {
+                        debts = await prisma.payrollEntry.findMany({
+                            where: {
+                                employee_id: emp.id,
+                                type: { in: ["VALE", "ERRO", "CONSUMACAO", "VALE_TRANSPORTE"] },
+                                status: "PENDING"
+                            }
+                        })
+                    }
                     const debtsSum = debts.reduce((acc, d) => {
                         const val = Math.abs(Number(d.amount))
                         return acc + val
                     }, 0)
 
                     amount = totalDiarias - debtsSum
-                    // For Diaristas, if we subtract debts here, we should mark them as PAID so they aren't subtracted again on Day 5?
-                    // But usually Diaristas get paid twice a month independently.
-                    // So yes, mark debts as PAID using debtsToUpdate.
                     debtsToUpdate = debts.map(d => d.id)
+                    description = `Vale (Adiantamento) - Ref: ${monthName}${this.formatDebtsDescription(debts)}`
 
                 } else if (regType === "HOURLY") {
                     // Hourly Workers: 1st to 15th of CURRENT month (Normal Hours only)
@@ -328,29 +338,45 @@ export class GeneratePayrollBatchUseCase {
                     const totalHours = baseHours + dsrHours
                     earnings = totalHours * salary
 
-                    const debts = await prisma.payrollEntry.findMany({
-                        where: {
-                            employee_id: emp.id,
-                            type: { in: ["ERRO", "CONSUMACAO", "VALE"] }, // Here we subtract "Vale" too if any is pending
-                            status: "PENDING"
-                        }
-                    })
+                    let debts: any[] = []
+                    if (deductDebtsOnAdvance) {
+                        debts = await prisma.payrollEntry.findMany({
+                            where: {
+                                employee_id: emp.id,
+                                type: { in: ["ERRO", "CONSUMACAO", "VALE", "VALE_TRANSPORTE"] }, // Here we subtract "Vale" too if any is pending
+                                status: "PENDING"
+                            }
+                        })
+                    }
 
                     const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
                     amount = earnings - debtsSum
                     debtsToUpdate = debts.map(d => d.id)
-                    description = `Vale (Ref. 01-15) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${debtsSum > 0 ? ` | Descontos: -R$${debtsSum.toFixed(2)}` : ''}`
+                    description = `Vale (Ref. 01-15) - Ref: ${monthName} | Horas: ${baseHours.toFixed(1)}h + DSR: ${dsrHours.toFixed(1)}h x R$${salary.toFixed(2)}${this.formatDebtsDescription(debts)}`
 
                 } else {
                     // Fixed: 40% of Salary
-                    amount = salary * 0.40
-                    if (amount === 0) {
+                    earnings = salary * 0.40
+                    if (earnings === 0) {
                         console.log(`[GenerateBatch] Warning: ${emp.name} has 0 amounts (Salary: ${salary})`)
                     }
-                    // We do NOT subtract debts for Fixed employees on the Advance (Day 20).
-                    // Debts are subtracted on Day 5 Balancing.
+                    
+                    let debts: any[] = []
+                    if (deductDebtsOnAdvance) {
+                        debts = await prisma.payrollEntry.findMany({
+                            where: {
+                                employee_id: emp.id,
+                                type: { in: ["ERRO", "CONSUMACAO", "VALE", "VALE_TRANSPORTE"] },
+                                status: "PENDING"
+                            }
+                        })
+                    }
+
+                    const debtsSum = debts.reduce((acc, d) => acc + Math.abs(Number(d.amount)), 0)
+                    amount = earnings - debtsSum
+                    debtsToUpdate = debts.map(d => d.id)
+                    description = `Vale (Adiantamento) - Ref: ${monthName}${this.formatDebtsDescription(debts)}`
                 }
-                description = `Vale (Adiantamento) - Ref: ${monthName}`
             } else {
                 continue
             }

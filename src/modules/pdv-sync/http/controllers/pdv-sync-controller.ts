@@ -58,7 +58,7 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
 export async function postStocksSync(request: FastifyRequest, reply: FastifyReply) {
     const stockMovementSchema = z.array(
         z.object({
-            productId: z.number(), // no frontend enviamos int do ProdutoId
+            productId: z.union([z.string().uuid(), z.number()]), // backend agora aceita UUID ou Int
             quantity: z.number(),
             type: z.enum(['IN', 'OUT']),
             reason: z.enum(['COMPRA', 'VENDA', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCAO', 'QUEBRA', 'PERDA', 'CORTESIA', 'CONSUMO_INTERNO']).optional().default('VENDA'),
@@ -70,15 +70,15 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
 
     // Vamos processar de forma transacional
     for (const mov of movements) {
-        // Encontra o UUID do produto usando o display_id que assumimos ser o ProdutoId
-        const product = await prisma.product.findUnique({
-            where: {
-                display_id: mov.productId
-            }
+        // Encontra o UUID do produto usando id ou display_id
+        const product = await prisma.product.findFirst({
+            where: typeof mov.productId === 'string' 
+                ? { id: mov.productId }
+                : { display_id: mov.productId }
         })
 
         if (!product) {
-            console.warn(`[Sync] Produto com display_id ${mov.productId} não encontrado.`)
+            console.warn(`[Sync] Produto com identificador ${mov.productId} não encontrado.`)
             continue // Skip se não achar, para não travar os outros
         }
 
