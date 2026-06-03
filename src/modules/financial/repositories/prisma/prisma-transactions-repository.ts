@@ -789,22 +789,32 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         } else if (status === 'pending') {
             // Horizon Flow: "Todas as não pagas (independente data) + futuras até toDate"
             // Se confirmado = false, buscamos tudo <= toDate (que inclui passado + futuro próximo)
-            // Se toDate não for passado, assumimos um padrão (ex: hoje + 7 dias)
-            const targetDate = toDate ? new Date(toDate) : new Date(new Date().setDate(new Date().getDate() + 7));
+            // Se toDate não for passado, trazemos todas as pendentes (sem limite superior de data)
+            if (toDate) {
+                const targetDate = new Date(toDate);
+                targetDate.setHours(23, 59, 59, 999);
 
-            // Set end of day for targetDate to be inclusive
-            targetDate.setHours(23, 59, 59, 999);
-
-            if (fromDate) {
-                const startDate = new Date(fromDate);
-                startDate.setHours(0, 0, 0, 0);
-                dateFilter = {
-                    gte: startDate,
-                    lte: targetDate
+                if (fromDate) {
+                    const startDate = new Date(fromDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    dateFilter = {
+                        gte: startDate,
+                        lte: targetDate
+                    }
+                } else {
+                    dateFilter = {
+                        lte: targetDate
+                    }
                 }
             } else {
-                dateFilter = {
-                    lte: targetDate
+                if (fromDate) {
+                    const startDate = new Date(fromDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    dateFilter = {
+                        gte: startDate
+                    }
+                } else {
+                    dateFilter = undefined
                 }
             }
         } else {
