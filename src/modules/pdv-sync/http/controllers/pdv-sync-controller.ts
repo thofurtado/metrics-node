@@ -4,6 +4,9 @@ import { z } from 'zod'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const products = await prisma.product.findMany({
+        where: {
+            active: true
+        },
         select: {
             id: true,
             name: true,
@@ -11,7 +14,12 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
             price: true,
             active: true,
             category_id: true,
-            display_id: true
+            display_id: true,
+            category: {
+                select: {
+                    name: true
+                }
+            }
         }
     })
 
@@ -24,7 +32,8 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         Description: p.description,
         Price: p.price,
         Active: p.active,
-        CategoryId: p.category_id
+        CategoryId: p.category_id,
+        CategoryName: p.category?.name || "Geral"
     }))
 
     return reply.status(200).send(formatted)
