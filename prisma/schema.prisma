@@ -91,6 +91,7 @@ model TreatmentItem {
   quantity     Float
   salesValue   Float?
   discount     Float?
+  observations String?
   product_id   String?
   service_id   String?
   supply_id    String?

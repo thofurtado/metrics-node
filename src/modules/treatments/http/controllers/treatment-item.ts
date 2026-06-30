@@ -14,11 +14,12 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
         stock_id: z.string().nullish(),
         quantity: z.number(),
         value: z.number(),
-        discount: z.number().nullish()
+        discount: z.number().nullish(),
+        observations: z.string().nullish()
     })
 
     console.log('Controller createItemTreatment body:', request.body)
-    const { treatment_id, item_id, stock_id, quantity, value, discount } = registerBodySchema.parse(request.body)
+    const { treatment_id, item_id, stock_id, quantity, value, discount, observations } = registerBodySchema.parse(request.body)
 
     let itemTreatment
     try {
@@ -31,7 +32,8 @@ export async function createItemTreatment(request: FastifyRequest, reply: Fastif
             stock_id: stock_id ? stock_id : undefined,
             quantity,
             salesValue: value,
-            discount: discount ? discount : 0
+            discount: discount ? discount : 0,
+            observations: observations ? observations : undefined
         })
     } catch (err) {
         if (err instanceof InsufficientStockError) {

@@ -17,6 +17,7 @@ interface TreatmentItemUseCaseRequest {
     quantity: number
     salesValue: number
     discount?: number
+    observations?: string
 }
 interface TreatmentItemUseCaseResponse {
     treatmentItem: TreatmentItem & {
@@ -36,7 +37,7 @@ export class TreatmentItemUseCase {
         private stocksRepository: StocksRepository
     ) { }
     async execute({
-        item_id, treatment_id, stock_id, quantity, salesValue, discount
+        item_id, treatment_id, stock_id, quantity, salesValue, discount, observations
     }: TreatmentItemUseCaseRequest): Promise<TreatmentItemUseCaseResponse> {
         console.log(`[TreatmentItemUseCase] Executing for Treatment: ${treatment_id}, Item: ${item_id}, Qty: ${quantity}`)
 
@@ -164,7 +165,8 @@ export class TreatmentItemUseCase {
                     id: existingItem.id,
                     quantity: newQuantity,
                     salesValue,
-                    discount: discount || existingItem.discount
+                    discount: discount || existingItem.discount,
+                    observations: observations !== undefined ? observations : existingItem.observations
                 })
             } else {
                 console.log(`[TreatmentItemUseCase] Item new. Creating.`)
@@ -177,7 +179,8 @@ export class TreatmentItemUseCase {
                     stock_id: stock_id || null,
                     quantity,
                     salesValue,
-                    discount
+                    discount,
+                    observations: observations || null
                 })
             }
 
