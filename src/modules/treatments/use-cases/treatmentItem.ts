@@ -147,42 +147,21 @@ export class TreatmentItemUseCase {
             const finalSupplyId = itemType === 'SUPPLY' ? item_id : undefined
 
 
-            // Check if item already exists in this treatment
-            const existingItem = await this.treatmentItemsRepository.findByTreatmentAndItemId(
-                treatment_id,
-                finalProductId,
-                finalServiceId,
-                finalSupplyId
-            )
-
             let treatmentItemResult
 
-            if (existingItem) {
-                console.log(`[TreatmentItemUseCase] Item exists (ID: ${existingItem.id}). Updating quantity.`)
-                // Scenario A: Update existing
-                const newQuantity = existingItem.quantity + quantity
-                treatmentItemResult = await this.treatmentItemsRepository.update({
-                    id: existingItem.id,
-                    quantity: newQuantity,
-                    salesValue,
-                    discount: discount || existingItem.discount,
-                    observations: observations !== undefined ? observations : existingItem.observations
-                })
-            } else {
-                console.log(`[TreatmentItemUseCase] Item new. Creating.`)
-                // Scenario B: Create new
-                treatmentItemResult = await this.treatmentItemsRepository.create({
-                    treatment_id,
-                    product_id: finalProductId || null,
-                    service_id: finalServiceId || null,
-                    supply_id: finalSupplyId || null,
-                    stock_id: stock_id || null,
-                    quantity,
-                    salesValue,
-                    discount,
-                    observations: observations || null
-                })
-            }
+            console.log(`[TreatmentItemUseCase] Item new. Creating.`)
+            // Always Create new
+            treatmentItemResult = await this.treatmentItemsRepository.create({
+                treatment_id,
+                product_id: finalProductId || null,
+                service_id: finalServiceId || null,
+                supply_id: finalSupplyId || null,
+                stock_id: stock_id || null,
+                quantity,
+                salesValue,
+                discount,
+                observations: observations || null
+            })
 
             return {
                 treatmentItem: treatmentItemResult
