@@ -180,7 +180,9 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
   });
   const { description: queryDesc } = querySchema.parse(request.query);
   const multipartDesc = data.fields?.description ? (data.fields.description as any).value : undefined;
-  const description = multipartDesc || queryDesc || 'comprovante';
+  const multipartCaption = data.fields?.caption ? (data.fields.caption as any).value : undefined;
+  const multipartText = data.fields?.text ? (data.fields.text as any).value : undefined;
+  const description = multipartDesc || multipartCaption || multipartText || queryDesc || 'comprovante';
 
   const slug = slugify(String(description));
   const ext = data.filename.substring(data.filename.lastIndexOf('.'));
