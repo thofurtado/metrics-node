@@ -276,7 +276,7 @@ export async function deleteStandaloneReceipt(request: FastifyRequest, reply: Fa
 export async function linkReceiptToTransaction(request: FastifyRequest, reply: FastifyReply) {
   const linkParamsSchema = z.object({
     filename: z.string(),
-    transactionId: z.string().uuid(),
+    transactionId: z.string(),
   });
 
   const { filename, transactionId } = linkParamsSchema.parse(request.params);
