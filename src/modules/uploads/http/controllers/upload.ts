@@ -169,27 +169,41 @@ function slugify(text: string) {
 }
 
 export async function uploadStandaloneReceipt(request: FastifyRequest, reply: FastifyReply) {
-  const data = await request.file();
-  if (!data) {
+  let fileBuffer: Buffer | null = null;
+  let originalFilename = '';
+  let description = '';
+
+  const parts = request.parts();
+  for await (const part of parts) {
+    if (part.file) {
+      fileBuffer = await part.toBuffer();
+      originalFilename = part.filename;
+    } else {
+      if (['description', 'caption', 'text'].includes(part.fieldname)) {
+        description = String(part.value);
+      }
+    }
+  }
+
+  // Se não foi informada descrição nos campos multipart, tenta obter da query
+  if (!description) {
+    const querySchema = z.object({
+      description: z.string().optional(),
+    });
+    const { description: queryDesc } = querySchema.parse(request.query);
+    description = queryDesc || 'comprovante';
+  }
+
+  if (!fileBuffer) {
     return reply.status(400).send({ message: 'Nenhum arquivo enviado' });
   }
 
-  // Obter descrição (da query ou do form multipart)
-  const querySchema = z.object({
-    description: z.string().optional(),
-  });
-  const { description: queryDesc } = querySchema.parse(request.query);
-  const multipartDesc = data.fields?.description ? (data.fields.description as any).value : undefined;
-  const multipartCaption = data.fields?.caption ? (data.fields.caption as any).value : undefined;
-  const multipartText = data.fields?.text ? (data.fields.text as any).value : undefined;
-  const description = multipartDesc || multipartCaption || multipartText || queryDesc || 'comprovante';
-
-  const slug = slugify(String(description));
-  const ext = data.filename.substring(data.filename.lastIndexOf('.'));
+  // Usamos uma codificação segura base64url para armazenar a descrição original no nome do arquivo
+  const base64Desc = Buffer.from(description).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const ext = originalFilename.substring(originalFilename.lastIndexOf('.'));
   const timestamp = Date.now();
-  const filename = `${timestamp}_${slug}${ext}`;
+  const filename = `${timestamp}_b64_${base64Desc}${ext}`;
 
-  const fileBuffer = await data.toBuffer();
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
   const receiptsDir = path.join(baseDir, 'receipts');
 
@@ -220,11 +234,17 @@ export async function listStandaloneReceipts(request: FastifyRequest, reply: Fas
 
   const receipts = [];
   for (const filename of files) {
-    const match = filename.match(/^(\d+)_(.+)(\.[^.]+)$/);
-    if (match) {
-      const timestamp = Number(match[1]);
-      const slug = match[2];
-      const displayDescription = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const b64Match = filename.match(/^(\d+)_b64_(.+)(\.[^.]+)$/);
+    if (b64Match) {
+      const timestamp = Number(b64Match[1]);
+      const base64Desc = b64Match[2];
+      let displayDescription = 'comprovante';
+      try {
+        const base64 = base64Desc.replace(/-/g, '+').replace(/_/g, '/');
+        displayDescription = Buffer.from(base64, 'base64').toString('utf-8');
+      } catch (err) {
+        displayDescription = 'comprovante';
+      }
 
       receipts.push({
         filename,
@@ -233,6 +253,21 @@ export async function listStandaloneReceipts(request: FastifyRequest, reply: Fas
         url: `/uploads/receipts/${filename}`,
         timestamp
       });
+    } else {
+      const match = filename.match(/^(\d+)_(.+)(\.[^.]+)$/);
+      if (match) {
+        const timestamp = Number(match[1]);
+        const slug = match[2];
+        const displayDescription = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+        receipts.push({
+          filename,
+          description: displayDescription,
+          date: new Date(timestamp).toISOString(),
+          url: `/uploads/receipts/${filename}`,
+          timestamp
+        });
+      }
     }
   }
 
