@@ -47,11 +47,12 @@ model Address {
   id           String   @id @default(uuid())
   client_id    String
   street       String
-  number       Int
+  number       String
   neighborhood String
   city         String
   state        String
-  zipcode      Int?
+  zipcode      String?
+  complement   String?
   created_at   DateTime @default(now())
   updated_at   DateTime @default(now()) @updatedAt
   is_main      Boolean  @default(false)
@@ -141,6 +142,7 @@ model Product {
   stocks         Stock[]
   treatmentItems TreatmentItem[]
   saleItems      SaleItem[]
+  printDepartments ProductPrintDepartment[]
 
   @@map("products")
 }
@@ -614,4 +616,28 @@ model SaleItem {
   supply  Supply?  @relation(fields: [supply_id], references: [id])
 
   @@map("sale_items")
+}
+
+model PrintDepartment {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  products ProductPrintDepartment[]
+
+  @@map("print_departments")
+}
+
+model ProductPrintDepartment {
+  id                  String   @id @default(uuid())
+  product_id          String
+  print_department_id String
+  created_at          DateTime @default(now())
+
+  product    Product         @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  department PrintDepartment @relation(fields: [print_department_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, print_department_id])
+  @@map("product_print_departments")
 }

@@ -64,6 +64,120 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
     return reply.status(200).send(formatted)
 }
 
+export async function getClientsSync(request: FastifyRequest, reply: FastifyReply) {
+    const clients = await prisma.client.findMany({
+        include: {
+            addresses: {
+                where: { is_main: true }
+            }
+        }
+    })
+
+    const formatted = clients.map(c => ({
+        Uuid: c.id,
+        Name: c.name,
+        Identification: c.identification, // CpfCnpj no C#
+        Email: c.email,
+        Phone: c.phone, // Telefone no C#
+        CreatedAt: c.created_at,
+        Address: c.addresses.length > 0 ? {
+            Street: c.addresses[0].street,
+            Number: c.addresses[0].number,
+            Neighborhood: c.addresses[0].neighborhood,
+            City: c.addresses[0].city,
+            State: c.addresses[0].state,
+            Zipcode: c.addresses[0].zipcode,
+            Complement: c.addresses[0].complement
+        } : null
+    }))
+
+    return reply.status(200).send(formatted)
+}
+
+export async function postClientsSync(request: FastifyRequest, reply: FastifyReply) {
+    const clientsSchema = z.array(
+        z.object({
+            Uuid: z.string().uuid(),
+            Name: z.string(),
+            Identification: z.string().nullable().optional(),
+            Email: z.string().nullable().optional(),
+            Phone: z.string().nullable().optional(),
+            CreatedAt: z.string().datetime().optional(),
+            Address: z.object({
+                Street: z.string(),
+                Number: z.string(),
+                Neighborhood: z.string(),
+                City: z.string(),
+                State: z.string(),
+                Zipcode: z.string().nullable().optional(),
+                Complement: z.string().nullable().optional()
+            }).nullable().optional()
+        })
+    )
+
+    const parsedClients = clientsSchema.parse(request.body)
+
+    for (const c of parsedClients) {
+        // Upsert no client
+        await prisma.client.upsert({
+            where: { id: c.Uuid },
+            update: {
+                name: c.Name,
+                identification: c.Identification || null,
+                email: c.Email || null,
+                phone: c.Phone || null
+            },
+            create: {
+                id: c.Uuid,
+                name: c.Name,
+                identification: c.Identification || null,
+                email: c.Email || null,
+                phone: c.Phone || null,
+                created_at: c.CreatedAt ? new Date(c.CreatedAt) : new Date()
+            }
+        })
+
+        // Se veio endereço, vamos fazer um upsert tbm, marcando como is_main
+        if (c.Address) {
+            // Buscamos se o cliente já tem um endereço principal
+            const mainAddr = await prisma.address.findFirst({
+                where: { client_id: c.Uuid, is_main: true }
+            })
+
+            if (mainAddr) {
+                await prisma.address.update({
+                    where: { id: mainAddr.id },
+                    data: {
+                        street: c.Address.Street,
+                        number: c.Address.Number,
+                        neighborhood: c.Address.Neighborhood,
+                        city: c.Address.City,
+                        state: c.Address.State,
+                        zipcode: c.Address.Zipcode || null,
+                        complement: c.Address.Complement || null
+                    }
+                })
+            } else {
+                await prisma.address.create({
+                    data: {
+                        client_id: c.Uuid,
+                        street: c.Address.Street,
+                        number: c.Address.Number,
+                        neighborhood: c.Address.Neighborhood,
+                        city: c.Address.City,
+                        state: c.Address.State,
+                        zipcode: c.Address.Zipcode || null,
+                        complement: c.Address.Complement || null,
+                        is_main: true
+                    }
+                })
+            }
+        }
+    }
+
+    return reply.status(201).send({ message: 'Clientes sincronizados com sucesso' })
+}
+
 export async function postStocksSync(request: FastifyRequest, reply: FastifyReply) {
     const stockMovementSchema = z.array(
         z.object({

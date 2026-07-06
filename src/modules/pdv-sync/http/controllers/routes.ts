@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus } from './pdv-sync-controller'
+import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync } from './pdv-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
@@ -16,10 +16,14 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
 
     app.get('/api/pdv/sync/products', getProductsSync)
     app.get('/api/pdv/sync/users', getUsersSync)
+    app.get('/api/pdv/sync/clients', getClientsSync)
     app.post('/api/pdv/sync/stocks', postStocksSync)
+    app.post('/api/pdv/sync/clients', postClientsSync)
     
     // Suporte também a rota sem /sync/ para bater com a chamada do App.xaml.cs, se for diferente
     app.get('/api/pdv/products', getProductsSync)
     app.get('/api/pdv/users', getUsersSync)
+    app.get('/api/pdv/clients', getClientsSync)
     app.post('/api/pdv/stocks', postStocksSync)
+    app.post('/api/pdv/clients', postClientsSync)
 }
