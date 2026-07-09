@@ -24,6 +24,7 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
             category_id: true,
             display_id: true,
             updated_at: true,
+            image_url: true,
             category: {
                 select: {
                     name: true
@@ -43,7 +44,8 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         Active: p.active,
         CategoryId: p.category_id,
         CategoryName: p.category?.name || "Geral",
-        UpdatedAt: p.updated_at
+        UpdatedAt: p.updated_at,
+        ImageUrl: p.image_url
     }))
 
     return reply.status(200).send(formatted)
