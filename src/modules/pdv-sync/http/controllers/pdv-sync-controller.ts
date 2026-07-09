@@ -3,8 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
+    const querySchema = z.object({
+        lastSync: z.string().datetime().optional()
+    })
+    
+    const { lastSync } = querySchema.parse(request.query)
+
     const products = await prisma.product.findMany({
-        where: {
+        where: lastSync ? {
+            updated_at: { gt: new Date(lastSync) }
+        } : {
             active: true
         },
         select: {
@@ -15,6 +23,7 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
             active: true,
             category_id: true,
             display_id: true,
+            updated_at: true,
             category: {
                 select: {
                     name: true
@@ -33,7 +42,8 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         Price: p.price,
         Active: p.active,
         CategoryId: p.category_id,
-        CategoryName: p.category?.name || "Geral"
+        CategoryName: p.category?.name || "Geral",
+        UpdatedAt: p.updated_at
     }))
 
     return reply.status(200).send(formatted)
