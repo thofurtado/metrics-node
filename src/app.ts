@@ -52,6 +52,7 @@ app.register(fastifyMultipart, {
 app.register(fastifyStatic, {
     root: process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
     prefix: '/uploads/',
+    redirect: false, // Prevents 301 redirects to trailing slashes on directories which drop auth headers on POST
 })
 
 

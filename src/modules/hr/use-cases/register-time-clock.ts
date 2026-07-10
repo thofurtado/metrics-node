@@ -62,8 +62,10 @@ export class RegisterTimeClockUseCase {
                 // BETTER APPROACH FOR RETRY: Client sends same timestamp.
 
                 const diff = Math.abs(existingValue.getTime() - now.getTime())
-                if (diff < 2000) { // 2 seconds tolerance for "same request" retries
-                    // It's a duplicate request for the same action. Return success to clear the client queue.
+                if (diff < 2000 || isOffline) { 
+                    // It's a duplicate request for the same action or an offline sync for an already recorded action.
+                    // For offline sync, the kiosk might be retrying a punch that was already saved.
+                    // Return success to clear the client queue.
                     return {
                         employee: {
                             name: employee.name,
@@ -77,11 +79,13 @@ export class RegisterTimeClockUseCase {
             }
 
             // Basic validation flow
-            if (action === "breakStart" && !timeClock.clockIn) throw new Error("Must clock in before break")
-            if (action === "breakEnd" && !timeClock.breakStart) throw new Error("Must start break before ending it")
-            if (action === "clockOut" && !timeClock.clockIn) throw new Error("Must clock in before clock out")
-            if (action === "extraClockIn" && !timeClock.clockOut) throw new Error("Must do standard clock out before doing an extra shift")
-            if (action === "extraClockOut" && !timeClock.extraClockIn) throw new Error("Must start extra shift before clicking extra shift checkout")
+            if (!isOffline) {
+                if (action === "breakStart" && !timeClock.clockIn) throw new Error("Must clock in before break")
+                if (action === "breakEnd" && !timeClock.breakStart) throw new Error("Must start break before ending it")
+                if (action === "clockOut" && !timeClock.clockIn) throw new Error("Must clock in before clock out")
+                if (action === "extraClockIn" && !timeClock.clockOut) throw new Error("Must do standard clock out before doing an extra shift")
+                if (action === "extraClockOut" && !timeClock.extraClockIn) throw new Error("Must start extra shift before clicking extra shift checkout")
+            }
 
             await this.timeClocksRepository.update(timeClock.id, {
                 [action]: now
