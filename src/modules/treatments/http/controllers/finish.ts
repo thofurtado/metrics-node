@@ -8,13 +8,26 @@ export async function finish(request: FastifyRequest, reply: FastifyReply) {
         id: z.string().uuid(),
     })
 
+    const finishTreatmentBodySchema = z.object({
+        payments: z.array(z.object({
+            payment_id: z.string(),
+            amount: z.number(),
+            occurrences: z.number(),
+            date: z.string().optional(),
+            is_paid: z.boolean().optional(),
+            description: z.string().optional(),
+        })).optional()
+    }).optional()
+
     const { id } = finishTreatmentParamsSchema.parse(request.params)
+    const body = request.body ? finishTreatmentBodySchema.parse(request.body) : undefined
 
     try {
         const finishTreatmentUseCase = MakeFinishTreatmentUseCase()
 
         await finishTreatmentUseCase.execute({
             treatment_id: id,
+            payments: body?.payments,
         })
 
         return reply.status(200).send({ message: 'Treatment finished successfully' })

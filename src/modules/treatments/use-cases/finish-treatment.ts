@@ -12,6 +12,14 @@ import { SuppliesRepository } from '@/modules/items/repositories/supplies-reposi
 
 interface FinishTreatmentUseCaseRequest {
     treatment_id: string
+    payments?: Array<{
+        payment_id: string
+        amount: number
+        occurrences: number
+        date?: Date | string
+        is_paid?: boolean
+        description?: string
+    }>
 }
 
 interface FinishTreatmentUseCaseResponse {
@@ -29,7 +37,8 @@ export class FinishTreatmentUseCase {
     ) { }
 
     async execute({
-        treatment_id
+        treatment_id,
+        payments
     }: FinishTreatmentUseCaseRequest): Promise<FinishTreatmentUseCaseResponse> {
 
         // 1. Validation (Read-only first)
@@ -44,7 +53,11 @@ export class FinishTreatmentUseCase {
 
         const paymentEntries = await this.paymentEntrysRepository.findByTreatmentId(treatment_id)
 
-        const totalPaid = paymentEntries?.reduce((acc, entry) => acc + (Number(entry.amount) * entry.occurrences), 0) || 0
+        // Use custom payments from frontend if provided, otherwise fallback to DB
+        const hasCustomPayments = payments && payments.length > 0
+        const totalPaid = hasCustomPayments 
+            ? payments.reduce((acc, p) => acc + (p.amount * p.occurrences), 0)
+            : paymentEntries?.reduce((acc, entry) => acc + (Number(entry.amount) * entry.occurrences), 0) || 0
 
         // Tolerância de 5 centavos
         if (totalPaid < (treatment.amount - 0.05)) {
@@ -59,18 +72,11 @@ export class FinishTreatmentUseCase {
                 for (const tItem of (treatment as any).items) {
 
                     if (tItem.product_id) {
-                        // It is a Product
-                        // Cast safe here because Prisma Includes should have populated it if repo is correct
-                        // However, Repository typings doesn't guarantee 'product' populated in 'TreatmentItem' type unless explicitly typed.
-                        // Assuming findById populates: treatment.items[].product
                         const product = (tItem as any).product
 
                         if (product && product.is_composite && product.compositions && product.compositions.length > 0) {
-                            // Composable Product: Decrease stock from ingredients (Supplies)
                             for (const comp of product.compositions) {
                                 const quantityToDecrease = comp.quantity * tItem.quantity
-
-                                // Decrease Stock (False = Out)
                                 await this.suppliesRepository.changeStock(comp.supply_id, quantityToDecrease, false, tx)
 
                                 await tx.stock.create({
@@ -83,9 +89,7 @@ export class FinishTreatmentUseCase {
                                     }
                                 })
                             }
-
                         } else {
-                            // Standard Product: Decrease stock from the product itself
                             await this.productsRepository.changeStock(tItem.product_id, tItem.quantity, false, tx)
 
                             await tx.stock.create({
@@ -98,9 +102,7 @@ export class FinishTreatmentUseCase {
                                 }
                             })
                         }
-
                     } else if (tItem.supply_id) {
-                        // It is a Supply
                         await this.suppliesRepository.changeStock(tItem.supply_id, tItem.quantity, false, tx)
 
                         await tx.stock.create({
@@ -113,14 +115,28 @@ export class FinishTreatmentUseCase {
                             }
                         })
                     }
-                    // Services (service_id) do not consume stock
                 }
             }
 
             // B. Financial Transactions
-            if (paymentEntries) {
-                for (const entry of paymentEntries) {
-                    const paymentMethod = (entry as any).payments
+            const itemsToProcess = hasCustomPayments 
+                ? payments 
+                : paymentEntries?.map(pe => ({
+                    payment_id: pe.payment_id,
+                    amount: Number(pe.amount),
+                    occurrences: pe.occurrences,
+                    is_paid: undefined,
+                    description: undefined,
+                    date: undefined,
+                    _method: (pe as any).payments
+                })) || []
+
+            if (itemsToProcess.length > 0) {
+                for (const entry of itemsToProcess) {
+                    let paymentMethod = (entry as any)._method
+                    if (!paymentMethod) {
+                        paymentMethod = await tx.payment.findUnique({ where: { id: entry.payment_id } })
+                    }
 
                     if (!paymentMethod) continue;
 
@@ -132,13 +148,21 @@ export class FinishTreatmentUseCase {
                     }
 
                     for (let i = 0; i < entry.occurrences; i++) {
-                        const dueDate = new Date()
-                        dueDate.setMonth(dueDate.getMonth() + i)
+                        let dueDate = new Date()
+                        if (entry.date) {
+                            dueDate = new Date(entry.date)
+                        } else {
+                            dueDate.setMonth(dueDate.getMonth() + i)
+                        }
 
-                        let isConfirmed = false
+                        let isConfirmed = paymentMethod.in_sight
+                        if (entry.is_paid !== undefined) {
+                            isConfirmed = entry.is_paid
+                        }
 
-                        if (paymentMethod.in_sight) {
-                            isConfirmed = true
+                        let desc = `Atendimento #${treatment.id} - ${paymentMethod.name} (${i + 1}/${entry.occurrences})`
+                        if (entry.description) {
+                            desc = entry.description + (entry.occurrences > 1 ? ` (${i + 1}/${entry.occurrences})` : '')
                         }
 
                         const transaction = await this.transactionsRepository.create({
@@ -146,9 +170,10 @@ export class FinishTreatmentUseCase {
                             operation: 'income',
                             date: dueDate,
                             account_id: accountId,
-                            description: `Atendimento #${treatment.id} - ${paymentMethod.name} (${i + 1}/${entry.occurrences})`,
+                            description: desc,
                             confirmed: isConfirmed,
-                        }, tx)
+                            treatment_id: treatment.id // Add relationship
+                        } as any, tx)
 
                         if (isConfirmed) {
                             await this.accountsRepository.changeBalance(accountId, entry.amount, true, tx)

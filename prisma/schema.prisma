@@ -81,6 +81,7 @@ model Treatment {
   equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
   users         User?           @relation(fields: [user_id], references: [id])
   sale          Sale?
+  transactions  Transaction[]
 
   @@map("treatments")
 }
@@ -344,6 +345,8 @@ model Transaction {
   payment_method        String                @default("boleto")
   attachment_url        String?
   credit_card_id        String?
+  treatment_id          String?
+  treatments            Treatment?            @relation(fields: [treatment_id], references: [id])
   InstallmentPayment    InstallmentPayment[]
   payrollEntries        PayrollEntry[]
   accounts              Account?              @relation(fields: [account_id], references: [id])
