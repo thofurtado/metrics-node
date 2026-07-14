@@ -173,7 +173,7 @@ export class FinishTreatmentUseCase {
                         const transaction = await this.transactionsRepository.create({
                             amount: installmentAmount,
                             operation: 'income',
-                            date: dueDate,
+                            data_vencimento: dueDate,
                             account_id: accountId,
                             description: desc,
                             confirmed: isConfirmed,
