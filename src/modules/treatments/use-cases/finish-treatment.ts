@@ -56,8 +56,8 @@ export class FinishTreatmentUseCase {
         // Use custom payments from frontend if provided, otherwise fallback to DB
         const hasCustomPayments = payments && payments.length > 0
         const totalPaid = hasCustomPayments 
-            ? payments.reduce((acc, p) => acc + (p.amount * p.occurrences), 0)
-            : paymentEntries?.reduce((acc, entry) => acc + (Number(entry.amount) * entry.occurrences), 0) || 0
+            ? payments.reduce((acc, p) => acc + p.amount, 0) // p.amount is the TOTAL allocated to this method
+            : paymentEntries?.reduce((acc, entry) => acc + Number(entry.amount), 0) || 0 // assuming entry.amount is also total
 
         // Tolerância de 5 centavos
         if (totalPaid < (treatment.amount - 0.05)) {
@@ -147,6 +147,8 @@ export class FinishTreatmentUseCase {
                         continue
                     }
 
+                    const installmentAmount = Number((entry.amount / entry.occurrences).toFixed(2))
+
                     for (let i = 0; i < entry.occurrences; i++) {
                         let dueDate = new Date()
                         if (entry.date) {
@@ -160,13 +162,16 @@ export class FinishTreatmentUseCase {
                             isConfirmed = entry.is_paid
                         }
 
-                        let desc = `Atendimento #${treatment.id} - ${paymentMethod.name} (${i + 1}/${entry.occurrences})`
+                        let desc = `Atendimento #${treatment.id} - ${paymentMethod.name}`
                         if (entry.description) {
-                            desc = entry.description + (entry.occurrences > 1 ? ` (${i + 1}/${entry.occurrences})` : '')
+                            desc = entry.description
+                        }
+                        if (entry.occurrences > 1) {
+                            desc += ` (${i + 1}/${entry.occurrences})`
                         }
 
                         const transaction = await this.transactionsRepository.create({
-                            amount: entry.amount,
+                            amount: installmentAmount,
                             operation: 'income',
                             date: dueDate,
                             account_id: accountId,
@@ -176,7 +181,7 @@ export class FinishTreatmentUseCase {
                         } as any, tx)
 
                         if (isConfirmed) {
-                            await this.accountsRepository.changeBalance(accountId, entry.amount, true, tx)
+                            await this.accountsRepository.changeBalance(accountId, installmentAmount, true, tx)
                         }
                     }
                 }
