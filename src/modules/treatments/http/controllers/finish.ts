@@ -37,9 +37,11 @@ export async function finish(request: FastifyRequest, reply: FastifyReply) {
         }
         // Handle other specific errors (insufficient payment, etc)
         if (err instanceof Error) {
+            console.error('[FINISH TREATMENT ERROR]', err.message, err)
             return reply.status(400).send({ message: err.message })
         }
 
+        console.error('[FINISH TREATMENT UNKNOWN ERROR]', err)
         throw err
     }
 }
