@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync } from './pdv-sync-controller'
+import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync } from './pdv-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
@@ -26,4 +26,6 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/clients', getClientsSync)
     app.post('/api/pdv/stocks', postStocksSync)
     app.post('/api/pdv/clients', postClientsSync)
+    app.get('/api/pdv/sync/print-departments', getPrintDepartmentsSync)
+    app.get('/api/pdv/print-departments', getPrintDepartmentsSync)
 }

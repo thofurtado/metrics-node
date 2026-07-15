@@ -273,3 +273,21 @@ export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply
     }
 }
 
+export async function getPrintDepartmentsSync(request: FastifyRequest, reply: FastifyReply) {
+    const departments = await prisma.printDepartment.findMany({
+        include: {
+            products: true
+        }
+    })
+
+    const formatted = departments.map(d => ({
+        Uuid: d.id,
+        Name: d.name,
+        ProductUuids: d.products.map(p => p.product_id),
+        CreatedAt: d.created_at,
+        UpdatedAt: d.updated_at
+    }))
+
+    return reply.status(200).send(formatted)
+}
+
