@@ -172,6 +172,7 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
   let fileBuffer: Buffer | null = null;
   let originalFilename = '';
   let description = '';
+  let value: number | null = null;
 
   const parts = request.parts();
   for await (const part of parts) {
@@ -182,27 +183,34 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
       if (['description', 'caption', 'text'].includes(part.fieldname)) {
         description = String(part.value);
       }
+      if (['value', 'amount', 'valor'].includes(part.fieldname)) {
+        value = Number(part.value) || null;
+      }
     }
   }
 
   // Se não foi informada descrição nos campos multipart, tenta obter da query
-  if (!description) {
+  if (!description && !value) {
     const querySchema = z.object({
       description: z.string().optional(),
+      value: z.coerce.number().optional()
     });
-    const { description: queryDesc } = querySchema.parse(request.query);
-    description = queryDesc || 'comprovante';
+    const parsed = querySchema.parse(request.query);
+    description = parsed.description || 'comprovante';
+    value = parsed.value || null;
   }
+  if (!description) description = 'comprovante';
 
   if (!fileBuffer) {
     return reply.status(400).send({ message: 'Nenhum arquivo enviado' });
   }
 
-  // Usamos uma codificação segura base64url para armazenar a descrição original no nome do arquivo
-  const base64Desc = Buffer.from(description).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // Usamos uma codificação segura base64url para armazenar os metadados no nome do arquivo
+  const metadata = { d: description, v: value };
+  const base64Meta = Buffer.from(JSON.stringify(metadata)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const ext = originalFilename.substring(originalFilename.lastIndexOf('.'));
   const timestamp = Date.now();
-  const filename = `${timestamp}_b64_${base64Desc}${ext}`;
+  const filename = `${timestamp}_meta_${base64Meta}${ext}`;
 
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
   const receiptsDir = path.join(baseDir, 'receipts');
@@ -213,6 +221,7 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
   return reply.status(200).send({
     filename,
     description: String(description),
+    value,
     date: new Date(timestamp).toISOString(),
     url: `/uploads/receipts/${filename}`
   });
@@ -235,40 +244,49 @@ export async function listStandaloneReceipts(request: FastifyRequest, reply: Fas
   const receipts = [];
   for (const filename of files) {
     const b64Match = filename.match(/^(\d+)_b64_(.+)(\.[^.]+)$/);
-    if (b64Match) {
-      const timestamp = Number(b64Match[1]);
-      const base64Desc = b64Match[2];
-      let displayDescription = 'comprovante';
+    const metaMatch = filename.match(/^(\d+)_meta_(.+)(\.[^.]+)$/);
+    
+    let displayDescription = 'comprovante';
+    let displayValue: number | null = null;
+    let timestamp = 0;
+
+    if (metaMatch) {
+      timestamp = Number(metaMatch[1]);
       try {
-        const base64 = base64Desc.replace(/-/g, '+').replace(/_/g, '/');
+        const base64 = metaMatch[2].replace(/-/g, '+').replace(/_/g, '/');
+        const json = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+        displayDescription = json.d || 'comprovante';
+        displayValue = json.v || null;
+      } catch (err) {
+        displayDescription = 'comprovante';
+      }
+    } else if (b64Match) {
+      timestamp = Number(b64Match[1]);
+      try {
+        const base64 = b64Match[2].replace(/-/g, '+').replace(/_/g, '/');
         displayDescription = Buffer.from(base64, 'base64').toString('utf-8');
       } catch (err) {
         displayDescription = 'comprovante';
       }
-
-      receipts.push({
-        filename,
-        description: displayDescription,
-        date: new Date(timestamp).toISOString(),
-        url: `/uploads/receipts/${filename}`,
-        timestamp
-      });
     } else {
       const match = filename.match(/^(\d+)_(.+)(\.[^.]+)$/);
       if (match) {
-        const timestamp = Number(match[1]);
+        timestamp = Number(match[1]);
         const slug = match[2];
-        const displayDescription = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-
-        receipts.push({
-          filename,
-          description: displayDescription,
-          date: new Date(timestamp).toISOString(),
-          url: `/uploads/receipts/${filename}`,
-          timestamp
-        });
+        displayDescription = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+      } else {
+        continue;
       }
     }
+
+    receipts.push({
+      filename,
+      description: displayDescription,
+      value: displayValue,
+      date: new Date(timestamp).toISOString(),
+      url: `/uploads/receipts/${filename}`,
+      timestamp
+    });
   }
 
   receipts.sort((a, b) => b.timestamp - a.timestamp);
