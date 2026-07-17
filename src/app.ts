@@ -41,7 +41,35 @@ import fastifyMultipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
 import path from 'path'
 
+import { fastifyRequestContext, requestContext } from '@fastify/request-context'
+import { getPrismaForDomain } from '@/lib/tenant-manager'
+
 export const app = fastify({ logger: true })
+
+app.register(fastifyRequestContext)
+
+app.addHook('onRequest', async (request, reply) => {
+    // 1. Identificar o domínio pelo qual a API foi chamada (Host header)
+    let domain = request.hostname;
+    
+    // 2. Fallback para desenvolvimento local ou testes via header manual
+    if (request.headers['x-tenant-domain']) {
+        domain = request.headers['x-tenant-domain'] as string;
+    }
+
+    // Remove porta se houver (ex: localhost:3333 -> localhost)
+    domain = domain.split(':')[0];
+
+    // 3. Busca a conexão do Prisma no TenantManager
+    const tenantPrisma = await getPrismaForDomain(domain);
+    
+    if (!tenantPrisma) {
+        return reply.status(403).send({ message: `Acesso Negado: Cliente não reconhecido ou inativo para o domínio (${domain}).` });
+    }
+
+    // 4. Injeta a conexão Prisma perfeitamente isolada no contexto atual da requisição
+    requestContext.set('prisma', tenantPrisma);
+})
 
 app.register(fastifyMultipart, {
     limits: {

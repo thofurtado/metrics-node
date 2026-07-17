@@ -1,7 +1,13 @@
 import { PrismaClient } from '@prisma/client'
-import { env } from '@/env'
+import { requestContext } from '@fastify/request-context'
 
-
-export const prisma = new PrismaClient({
-    log: env.NODE_ENV == 'dev' ? ['query'] : [],
-})
+export const prisma = new Proxy({} as PrismaClient, {
+  get(target, prop) {
+    const tenantPrisma = requestContext.get('prisma') as PrismaClient | undefined;
+    if (!tenantPrisma) {
+      // Falha de segurança se tentar acessar o banco fora de uma requisição web mapeada
+      throw new Error('Tentativa de acessar o banco de dados sem contexto de Tenant (Request).');
+    }
+    return (tenantPrisma as any)[prop];
+  }
+});
