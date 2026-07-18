@@ -65,6 +65,9 @@ app.addHook('onRequest', async (request, reply) => {
     // Remove porta se houver (ex: localhost:3333 -> localhost)
     domain = domain.split(':')[0];
 
+    // Remove o 'www.' para garantir que 'www.eureca.com.br' e 'eureca.com.br' apontem pro mesmo banco
+    domain = domain.replace(/^www\./, '');
+
     // 3. Busca a conexão do Prisma no TenantManager
     const tenantPrisma = await getPrismaForDomain(domain);
     
