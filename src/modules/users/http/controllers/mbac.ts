@@ -31,11 +31,12 @@ export async function fetchUsersWithModules(request: FastifyRequest, reply: Fast
             id: true,
             name: true,
             email: true,
+            role: true,
             userModules: {
                 select: {
                     module: {
                         select: {
-                            slug: true, // usa slug, não name
+                            slug: true,
                             id: true
                         }
                     }
@@ -49,6 +50,7 @@ export async function fetchUsersWithModules(request: FastifyRequest, reply: Fast
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
         modules: user.userModules.map(um => um.module.slug)
     }))
 
