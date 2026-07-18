@@ -42,7 +42,7 @@ import fastifyStatic from '@fastify/static'
 import path from 'path'
 
 import { fastifyRequestContext, requestContext } from '@fastify/request-context'
-import { getPrismaForDomain } from '@/lib/tenant-manager'
+import { getPrismaForDomain, getDbNameForDomain } from '@/lib/tenant-manager'
 
 export const app = fastify({ logger: true })
 
@@ -50,7 +50,14 @@ app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
     // Ignora a verificação de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
-    if (request.method === 'OPTIONS' || request.url === '/public/health' || request.url.startsWith('/public/provision') || request.url === '/') {
+    // Também ignora arquivos estáticos da pasta de uploads (imagens possuem extensão)
+    if (
+        request.method === 'OPTIONS' || 
+        request.url === '/public/health' || 
+        request.url.startsWith('/public/provision') || 
+        request.url === '/' ||
+        (request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i))
+    ) {
         return;
     }
 
@@ -71,14 +78,15 @@ app.addHook('onRequest', async (request, reply) => {
 
     // 3. Busca a conexão do Prisma no TenantManager
     const tenantPrisma = await getPrismaForDomain(domain);
+    const tenantDbName = await getDbNameForDomain(domain);
     
-    if (!tenantPrisma) {
+    if (!tenantPrisma || !tenantDbName) {
         return reply.status(403).send({ message: `Acesso Negado: Cliente não reconhecido ou inativo para o domínio (${domain}).` });
     }
 
-    // 4. Injeta a conexão Prisma e o domínio perfeitamente isolados no contexto atual
+    // 4. Injeta a conexão Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
     requestContext.set('prisma', tenantPrisma);
-    requestContext.set('tenant', domain);
+    requestContext.set('tenant', tenantDbName);
 })
 
 app.register(fastifyMultipart, {
