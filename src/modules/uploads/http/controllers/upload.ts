@@ -6,8 +6,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { requestContext } from '@fastify/request-context';
 
-const prisma = new PrismaClient();
-
+// const prisma = new PrismaClient();
+const getPrisma = () => requestContext.get('prisma') as PrismaClient;
 export async function uploadTransactionReceipt(request: FastifyRequest, reply: FastifyReply) {
   const uploadParamsSchema = z.object({
     id: z.string().uuid(),
@@ -16,7 +16,7 @@ export async function uploadTransactionReceipt(request: FastifyRequest, reply: F
   const { id } = uploadParamsSchema.parse(request.params);
 
   // Verifica se a transação existe
-  const transaction = await prisma.transaction.findUnique({
+  const transaction = await getPrisma().transaction.findUnique({
     where: { id }
   });
 
@@ -44,7 +44,7 @@ export async function uploadTransactionReceipt(request: FastifyRequest, reply: F
   }
 
   // Atualiza no banco
-  const updatedTransaction = await prisma.transaction.update({
+  const updatedTransaction = await getPrisma().transaction.update({
     where: { id },
     data: { attachment_url: relativeUrl }
   });
@@ -61,7 +61,7 @@ export async function uploadProductImage(request: FastifyRequest, reply: Fastify
   
     const { id } = uploadParamsSchema.parse(request.params);
   
-    const product = await prisma.product.findUnique({
+    const product = await getPrisma().product.findUnique({
       where: { id }
     });
   
@@ -83,7 +83,7 @@ export async function uploadProductImage(request: FastifyRequest, reply: Fastify
       await storage.delete(product.image_url).catch(console.error);
     }
   
-    const updatedProduct = await prisma.product.update({
+    const updatedProduct = await getPrisma().product.update({
       where: { id },
       data: { image_url: relativeUrl }
     });
@@ -100,7 +100,7 @@ export async function uploadEmployeePhoto(request: FastifyRequest, reply: Fastif
 
     const { id } = uploadParamsSchema.parse(request.params);
 
-    const employee = await prisma.employee.findUnique({
+    const employee = await getPrisma().employee.findUnique({
         where: { id }
     });
 
@@ -122,7 +122,7 @@ export async function uploadEmployeePhoto(request: FastifyRequest, reply: Fastif
         await storage.delete(employee.photo_url).catch(console.error);
     }
 
-    const updatedEmployee = await prisma.employee.update({
+    const updatedEmployee = await getPrisma().employee.update({
         where: { id },
         data: { photo_url: relativeUrl }
     });
@@ -139,7 +139,7 @@ export async function deleteTransactionReceipt(request: FastifyRequest, reply: F
 
   const { id } = uploadParamsSchema.parse(request.params);
 
-  const transaction = await prisma.transaction.findUnique({
+  const transaction = await getPrisma().transaction.findUnique({
     where: { id }
   });
 
@@ -149,7 +149,7 @@ export async function deleteTransactionReceipt(request: FastifyRequest, reply: F
 
   if (transaction.attachment_url) {
     await storage.delete(transaction.attachment_url).catch(console.error);
-    await prisma.transaction.update({
+    await getPrisma().transaction.update({
       where: { id },
       data: { attachment_url: null }
     });
@@ -338,7 +338,7 @@ export async function linkReceiptToTransaction(request: FastifyRequest, reply: F
 
   const { filename, transactionId } = linkParamsSchema.parse(request.params);
 
-  const transaction = await prisma.transaction.findUnique({
+  const transaction = await getPrisma().transaction.findUnique({
     where: { id: transactionId }
   });
 
@@ -365,7 +365,7 @@ export async function linkReceiptToTransaction(request: FastifyRequest, reply: F
     await storage.delete(transaction.attachment_url).catch(console.error);
   }
 
-  const updatedTransaction = await prisma.transaction.update({
+  const updatedTransaction = await getPrisma().transaction.update({
     where: { id: transactionId },
     data: { attachment_url: relativeUrl }
   });
