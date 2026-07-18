@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { hash } from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -19,7 +20,22 @@ async function main() {
     })
   }
 
-  console.log('✅ Seed de módulos concluído com sucesso!')
+  // Criação do usuário admin padrão
+  const adminEmail = 'admin@admin.com'
+  const adminPassword = await hash('T0p1nf0r', 6)
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
+      name: 'Administrador',
+      email: adminEmail,
+      password_hash: adminPassword,
+      role: 'ADMIN'
+    }
+  })
+
+  console.log('✅ Seed de módulos e usuário admin concluído com sucesso!')
 }
 
 main()
