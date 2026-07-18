@@ -2,8 +2,10 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { requestContext } from '@fastify/request-context';
 
+// const prisma = new PrismaClient();
+const getPrisma = () => requestContext.get('prisma') as PrismaClient;
 export async function getReceipt(request: FastifyRequest, reply: FastifyReply) {
     const getParamsSchema = z.object({
         id: z.string().uuid(),
@@ -12,7 +14,7 @@ export async function getReceipt(request: FastifyRequest, reply: FastifyReply) {
     try {
         const { id } = getParamsSchema.parse(request.params);
 
-        const transaction = await prisma.transaction.findUnique({
+        const transaction = await getPrisma().transaction.findUnique({
             where: { id },
             select: {
                 id: true,
