@@ -4,6 +4,7 @@ import { storage } from '@/lib/storage';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
+import { requestContext } from '@fastify/request-context';
 
 const prisma = new PrismaClient();
 
@@ -212,8 +213,9 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
   const timestamp = Date.now();
   const filename = `${timestamp}_meta_${base64Meta}${ext}`;
 
+  const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-  const receiptsDir = path.join(baseDir, 'receipts');
+  const receiptsDir = path.join(baseDir, tenant, 'receipts');
 
   await fs.mkdir(receiptsDir, { recursive: true });
   await fs.writeFile(path.join(receiptsDir, filename), fileBuffer);
@@ -223,7 +225,7 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
     description: String(description),
     value,
     date: new Date(timestamp).toISOString(),
-    url: `/uploads/receipts/${filename}`
+    url: `/uploads/${tenant}/receipts/${filename}`
   });
 }
 
@@ -235,8 +237,9 @@ export async function listStandaloneReceipts(request: FastifyRequest, reply: Fas
 
   const { page, per_page } = listParamsSchema.parse(request.query);
 
+  const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-  const receiptsDir = path.join(baseDir, 'receipts');
+  const receiptsDir = path.join(baseDir, tenant, 'receipts');
 
   await fs.mkdir(receiptsDir, { recursive: true });
   const files = await fs.readdir(receiptsDir);
@@ -284,7 +287,7 @@ export async function listStandaloneReceipts(request: FastifyRequest, reply: Fas
       description: displayDescription,
       value: displayValue,
       date: new Date(timestamp).toISOString(),
-      url: `/uploads/receipts/${filename}`,
+      url: `/uploads/${tenant}/receipts/${filename}`,
       timestamp
     });
   }
@@ -310,8 +313,9 @@ export async function deleteStandaloneReceipt(request: FastifyRequest, reply: Fa
 
   const { filename } = deleteParamsSchema.parse(request.params);
 
+  const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-  const filePath = path.join(baseDir, 'receipts', filename);
+  const filePath = path.join(baseDir, tenant, 'receipts', filename);
 
   try {
     await fs.unlink(filePath);
@@ -342,8 +346,9 @@ export async function linkReceiptToTransaction(request: FastifyRequest, reply: F
     return reply.status(404).send({ message: 'Transação não encontrada' });
   }
 
+  const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-  const sourcePath = path.join(baseDir, 'receipts', filename);
+  const sourcePath = path.join(baseDir, tenant, 'receipts', filename);
 
   try {
     await fs.access(sourcePath);

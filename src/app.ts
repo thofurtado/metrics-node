@@ -49,6 +49,11 @@ export const app = fastify({ logger: true })
 app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
+    // Ignora a verificação de tenant para rotas de health check (ex: do Coolify)
+    if (request.url === '/public/health' || request.url === '/') {
+        return;
+    }
+
     // 1. Identificar o domínio pelo qual a API foi chamada (Host header)
     let domain = request.hostname;
     
@@ -67,8 +72,9 @@ app.addHook('onRequest', async (request, reply) => {
         return reply.status(403).send({ message: `Acesso Negado: Cliente não reconhecido ou inativo para o domínio (${domain}).` });
     }
 
-    // 4. Injeta a conexão Prisma perfeitamente isolada no contexto atual da requisição
+    // 4. Injeta a conexão Prisma e o domínio perfeitamente isolados no contexto atual
     requestContext.set('prisma', tenantPrisma);
+    requestContext.set('tenant', domain);
 })
 
 app.register(fastifyMultipart, {

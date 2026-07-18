@@ -2,6 +2,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
 
+import { requestContext } from '@fastify/request-context';
+
 export interface StorageAdapter {
   save(buffer: Buffer, folder: string, ext: string): Promise<string>;
   delete(relativePath: string): Promise<void>;
@@ -24,8 +26,11 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async save(buffer: Buffer, folder: string, ext: string): Promise<string> {
+    const tenant = requestContext.get('tenant') || 'default';
     const filename = `${crypto.randomUUID()}${ext}`;
-    const folderPath = path.join(this.baseDir, folder);
+    
+    // Agora salva em: /uploads/{tenant}/products/foto.jpg
+    const folderPath = path.join(this.baseDir, tenant, folder);
     
     await fs.mkdir(folderPath, { recursive: true });
     
@@ -33,7 +38,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     await fs.writeFile(filePath, buffer);
     
     // Retorna o caminho relativo para salvar no banco
-    return `/uploads/${folder}/${filename}`;
+    return `/uploads/${tenant}/${folder}/${filename}`;
   }
 
   async delete(relativePath: string): Promise<void> {
