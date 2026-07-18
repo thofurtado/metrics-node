@@ -50,13 +50,13 @@ app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
     // Ignora a verificação de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
-    // Também ignora arquivos estáticos da pasta de uploads (imagens possuem extensão)
+    // Também ignora arquivos estáticos da pasta de uploads apenas para requisições GET
     if (
         request.method === 'OPTIONS' || 
         request.url === '/public/health' || 
         request.url.startsWith('/public/provision') || 
         request.url === '/' ||
-        (request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i))
+        (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i))
     ) {
         return;
     }
