@@ -11,7 +11,7 @@ const pool = new Pool({
 const prismaClients = new Map<string, PrismaClient>();
 
 export async function getDbNameForDomain(domain: string): Promise<string | null> {
-  const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE domain = $1 AND status = $2', [domain, 'active']);
+  const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE $1 = ANY(string_to_array(replace(domain, \' \', \'\'), \',\')) AND status = $2', [domain, 'active']);
   if (result.rows.length === 0) {
     return null;
   }
