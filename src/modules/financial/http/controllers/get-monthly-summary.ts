@@ -28,12 +28,10 @@ export async function getMonthlySummary(request: FastifyRequest, reply: FastifyR
       data_vencimento: {
         gte: startDate,
         lte: endDate
-      },
-      deleted_at: null,
+      }
     },
     include: {
-      sectors: true,
-      transaction_receipts: true
+      sectors: true
     }
   })
 
@@ -48,19 +46,20 @@ export async function getMonthlySummary(request: FastifyRequest, reply: FastifyR
 
   transactions.forEach(t => {
     // We only consider INCOME and EXPENSE for this summary (ignoring TRANSFERS for PnL usually)
-    if (t.type === 'INCOME') {
+    const op = t.operation?.toLowerCase()
+    if (op === 'income' || op === 'receita') {
       totalRevenue += t.amount
       countRevenue++
-      if (t.status === 'completed') totalPaid += t.amount
+      if (t.confirmed) totalPaid += t.amount
       else totalOpen += t.amount
-    } else if (t.type === 'EXPENSE') {
+    } else if (op === 'expense' || op === 'despesa') {
       totalExpenses += t.amount
       countExpenses++
-      if (t.status === 'completed') totalPaid -= t.amount // Just tracking flow, but maybe totalPaid is only for expenses? Let's track Paid Expenses and Open Expenses separately, and Paid Incomes and Open Incomes.
+      if (t.confirmed) totalPaid -= t.amount 
       else totalOpen -= t.amount
       
-      if (t.juros_multa) {
-        totalInterest += t.juros_multa
+      if (t.interest) {
+        totalInterest += t.interest
       }
 
       const sectorName = t.sectors?.name || 'Sem Setor'
@@ -70,10 +69,10 @@ export async function getMonthlySummary(request: FastifyRequest, reply: FastifyR
   })
 
   // Recalculate status totals specifically
-  const incomePaid = transactions.filter(t => t.type === 'INCOME' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0)
-  const incomeOpen = transactions.filter(t => t.type === 'INCOME' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0)
-  const expensePaid = transactions.filter(t => t.type === 'EXPENSE' && t.status === 'completed').reduce((acc, t) => acc + t.amount, 0)
-  const expenseOpen = transactions.filter(t => t.type === 'EXPENSE' && t.status === 'pending').reduce((acc, t) => acc + t.amount, 0)
+  const incomePaid = transactions.filter(t => (t.operation?.toLowerCase() === 'income' || t.operation?.toLowerCase() === 'receita') && t.confirmed).reduce((acc, t) => acc + t.amount, 0)
+  const incomeOpen = transactions.filter(t => (t.operation?.toLowerCase() === 'income' || t.operation?.toLowerCase() === 'receita') && !t.confirmed).reduce((acc, t) => acc + t.amount, 0)
+  const expensePaid = transactions.filter(t => (t.operation?.toLowerCase() === 'expense' || t.operation?.toLowerCase() === 'despesa') && t.confirmed).reduce((acc, t) => acc + t.amount, 0)
+  const expenseOpen = transactions.filter(t => (t.operation?.toLowerCase() === 'expense' || t.operation?.toLowerCase() === 'despesa') && !t.confirmed).reduce((acc, t) => acc + t.amount, 0)
 
   const averageTicket = countRevenue > 0 ? totalRevenue / countRevenue : 0
 
