@@ -49,8 +49,8 @@ export const app = fastify({ logger: true })
 app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
-    // Ignora a verificação de tenant para rotas de health check (ex: do Coolify) e OPTIONS (Preflight do CORS)
-    if (request.method === 'OPTIONS' || request.url === '/public/health' || request.url === '/') {
+    // Ignora a verificação de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
+    if (request.method === 'OPTIONS' || request.url === '/public/health' || request.url === '/public/provision' || request.url === '/') {
         return;
     }
 
