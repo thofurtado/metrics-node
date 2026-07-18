@@ -5,6 +5,7 @@ import { checkoutClient } from './checkout-client'
 import { getReceipt } from './get-receipt'
 import { provisionTenant } from './provision'
 import { deprovisionTenant } from './deprovision'
+import { getTenantInfo } from './get-tenant-info'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -13,6 +14,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/transactions/:id/receipt', getReceipt)
     app.post('/public/provision', provisionTenant)
     app.delete('/public/provision/:dbName', deprovisionTenant)
+    app.get('/public/tenant-info', getTenantInfo)
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
