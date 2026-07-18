@@ -32,6 +32,7 @@ import { getTransactionGroup } from '@/modules/financial/http/controllers/get-tr
 import { deleteTransactionGroup } from '@/modules/financial/http/controllers/delete-transaction-group'
 import { getPaymentAgenda } from '@/modules/financial/http/controllers/get-payment-agenda'
 import { getOperationalSummary } from '@/modules/financial/http/controllers/get-operational-summary'
+import { getMonthlySummary } from '@/modules/financial/http/controllers/get-monthly-summary'
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
 
@@ -50,6 +51,7 @@ export async function financialRoutes(app: FastifyInstance) {
 
     app.post('/transaction', createTransaction)
     app.get('/transactions', getTransactions)
+    app.get('/transactions/monthly-summary', getMonthlySummary)
     app.put('/transaction/:id', updateTransaction)
     app.delete('/transaction/:id', deleteTransaction)
     app.delete('/transaction/:id/forward', deleteFutureTransactions)
