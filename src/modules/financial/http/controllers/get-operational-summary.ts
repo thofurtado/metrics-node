@@ -6,9 +6,10 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
     const getSummaryQuerySchema = z.object({
         month: z.string().optional().transform(m => m ? Number(m) : new Date().getMonth() + 1),
         year: z.string().optional().transform(y => y ? Number(y) : new Date().getFullYear()),
+        projectionDays: z.string().optional().transform(p => p ? Number(p) : 14),
     })
 
-    const { month, year } = getSummaryQuerySchema.parse(request.query)
+    const { month, year, projectionDays } = getSummaryQuerySchema.parse(request.query)
 
     try {
         // Datas base no fuso Brasil (evitar deslocamento UTC)
@@ -23,10 +24,10 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         const endOfToday = new Date(localNow)
         endOfToday.setHours(23, 59, 59, 999)
 
-        // Daqui a 14 dias (incluindo o dia final)
-        const fourteenDaysFromNow = new Date(localNow)
-        fourteenDaysFromNow.setDate(localNow.getDate() + 14)
-        fourteenDaysFromNow.setHours(23, 59, 59, 999)
+        // Daqui a X dias (incluindo o dia final)
+        const targetDaysFromNow = new Date(localNow)
+        targetDaysFromNow.setDate(localNow.getDate() + projectionDays)
+        targetDaysFromNow.setHours(23, 59, 59, 999)
 
         // Primeiro e último dia do mês filtrado
         const firstDayOfMonth = new Date(year, month - 1, 1, 0, 0, 0, 0)
@@ -54,24 +55,37 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         const totalVencido = Number(overdueAggr._sum.amount || 0)
 
         // ─────────────────────────────────────────────────────────────────
-        // 3. PROJEÇÃO 14 DIAS — despesas NÃO pagas de hoje até hoje+14
+        // 3. PROJEÇÃO DE X DIAS — despesas NÃO pagas de hoje até hoje+X
         // ─────────────────────────────────────────────────────────────────
         const projecaoAggr = await prisma.transaction.aggregate({
             _sum: { amount: true },
             where: {
                 operation: 'expense',
                 confirmed: false,
-                data_vencimento: { gte: startOfToday, lte: fourteenDaysFromNow },
+                data_vencimento: { gte: startOfToday, lte: targetDaysFromNow },
             },
         })
-        const projecao14Dias = Number(projecaoAggr._sum.amount || 0)
+        const projecaoDinheiro = Number(projecaoAggr._sum.amount || 0)
 
         // ─────────────────────────────────────────────────────────────────
-        // 4. RECEITA ACUMULADA — recebimentos CONFIRMADOS do mês
-        //    numEntradas  = quantidade de recebimentos confirmados do mês
-        //    ticketMedio  = receitaAcumulada / numEntradas
+        // 4. TICKET MÉDIO — Média de todas as receitas PAGAS do sistema
         // ─────────────────────────────────────────────────────────────────
-        const paidIncomeAggr = await prisma.transaction.aggregate({
+        const allTimePaidIncomeAggr = await prisma.transaction.aggregate({
+            _sum: { totalValue: true },
+            _count: { id: true },
+            where: {
+                operation: 'income',
+                confirmed: true,
+            },
+        })
+        const totalReceitaHistorica = Number(allTimePaidIncomeAggr._sum.totalValue || 0)
+        const numEntradasHistorica = allTimePaidIncomeAggr._count.id || 0
+        const ticketMedio = numEntradasHistorica > 0 ? totalReceitaHistorica / numEntradasHistorica : 0
+
+        // ─────────────────────────────────────────────────────────────────
+        // 5. RECEITAS DO MÊS — Pagas + Não Pagas
+        // ─────────────────────────────────────────────────────────────────
+        const paidIncomeMonthAggr = await prisma.transaction.aggregate({
             _sum: { totalValue: true },
             _count: { id: true },
             where: {
@@ -80,12 +94,24 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
                 data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const receitaAcumulada = Number(paidIncomeAggr._sum.totalValue || 0)
-        const numEntradas = paidIncomeAggr._count.id || 0
-        const ticketMedio = numEntradas > 0 ? receitaAcumulada / numEntradas : 0
+        const receitaPagaMes = Number(paidIncomeMonthAggr._sum.totalValue || 0)
+        const numEntradas = paidIncomeMonthAggr._count.id || 0 // Qtd. entradas pagas no mês
+
+        const pendingIncomeMonthAggr = await prisma.transaction.aggregate({
+            _sum: { amount: true },
+            where: {
+                operation: 'income',
+                confirmed: false,
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+            },
+        })
+        const receitaPendenteMes = Number(pendingIncomeMonthAggr._sum.amount || 0)
+
+        const totalReceitasMes = receitaPagaMes + receitaPendenteMes
+        const receitaAcumulada = receitaPagaMes // Mantém retrocompatibilidade caso algo use
 
         // ─────────────────────────────────────────────────────────────────
-        // 5. DESPESAS DO MÊS
+        // 6. DESPESAS DO MÊS
         //    totalDespesasMes = pendentes (amount) + pagas (totalValue) do mês
         //    despesasPagasMes = valor efetivo das despesas pagas no mês
         //    totalJurosPagos  = soma dos juros das despesas pagas no mês
@@ -117,16 +143,24 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         // Total = pagas + pendentes
         const totalDespesasMes = despesasPagasMes + pendingExpensesMes
 
+        // ─────────────────────────────────────────────────────────────────
+        // 7. BALANÇO MENSAL
+        // ─────────────────────────────────────────────────────────────────
+        const balancoMensal = totalReceitasMes - totalDespesasMes
+
         return reply.status(200).send({
             saldoDisponivel,
             totalVencido,
-            projecao14Dias,
+            projecaoDinheiro,
+            projecao14Dias: projecaoDinheiro, // Mantém p/ retrocompatibilidade
+            totalReceitasMes,
             receitaAcumulada,
             ticketMedio,
             numEntradas,
             totalDespesasMes,
             despesasPagasMes,
-            totalJurosPagos
+            totalJurosPagos,
+            balancoMensal
         })
     } catch (err) {
         console.error('[getOperationalSummary] Error:', err)
