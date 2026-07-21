@@ -4,6 +4,7 @@ import { createSector } from '@/modules/financial/http/controllers/sector'
 import { getSector } from '@/modules/financial/http/controllers/getSector'
 import { createAccount } from '@/modules/financial/http/controllers/account'
 import { getAccount } from '@/modules/financial/http/controllers/getAccount'
+import { getAccountHistory } from '@/modules/financial/http/controllers/getAccountHistory'
 import { createTransaction } from '@/modules/financial/http/controllers/transaction'
 import { getTransactions } from '@/modules/financial/http/controllers/getTransactions'
 import { getTransferTransaction } from '@/modules/financial/http/controllers/getTransferTransaction'
@@ -45,6 +46,7 @@ export async function financialRoutes(app: FastifyInstance) {
 
     app.post('/account', createAccount)
     app.get('/accounts', getAccount)
+    app.get('/account/:id/history', getAccountHistory)
     app.patch('/account/:id/adjust-balance', adjustAccountBalance)
     app.put('/account/:id', updateAccount)
     app.delete('/account/:id', deleteAccount)

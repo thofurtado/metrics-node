@@ -162,7 +162,8 @@ export class TransactionUseCase {
             // SIDE EFFECTS (Balance & Transfer) - Applied to the First Transaction
             // If the first transaction is confirmed, update the balance.
             if (firstTransaction.confirmed && firstTransaction.account_id) {
-                await this.accountsRepository.changeBalance(firstTransaction.account_id, firstTransaction.amount, isIncome, tx)
+                const effectiveAmount = firstTransaction.totalValue ?? firstTransaction.amount;
+                await this.accountsRepository.changeBalance(firstTransaction.account_id, effectiveAmount, isIncome, tx)
             }
 
             // Handle Transfer (Only single/first support usually, but logic kept generalized)

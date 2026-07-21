@@ -61,7 +61,7 @@ export class UpdateTransactionUseCase {
                 where: { id },
                 data: {
                     amount: newAmount,
-                    totalValue: newConfirmed ? newAmount : null, // If confirming, totalValue is the new amount
+                    totalValue: newConfirmed ? (confirmed === undefined && amount === undefined ? transaction.totalValue : newAmount) : null,
                     account_id: newAccountId,
                     data_vencimento: data_vencimento !== undefined ? data_vencimento : transaction.data_vencimento,
                     data_emissao: data_emissao !== undefined ? data_emissao : transaction.data_emissao,
