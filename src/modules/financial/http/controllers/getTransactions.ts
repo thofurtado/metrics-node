@@ -33,7 +33,7 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
             value: query.value,
             month: query.month || new Date(),
             sector_id: query.sector_id === 'all' ? undefined : query.sector_id,
-            account_id: query.account_id === 'all' ? undefined : query.account_id,
+            account_id: query.account_id === 'all' ? undefined : (typeof query.account_id === 'string' && query.account_id.includes(',') ? query.account_id.split(',') : query.account_id),
             status: query.status,
             toDate: query.toDate ? new Date(query.toDate) : undefined,
             fromDate: query.fromDate ? new Date(query.fromDate) : undefined,
