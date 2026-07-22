@@ -735,7 +735,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string, status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string, checked?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string | string[], status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string, checked?: string): Promise<GetTransactionsDTO | null> {
 
         let take = perPage ? Number(perPage) : 6
         let skip = 0
@@ -840,7 +840,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 }] : []),
                 ...(account !== undefined ? [{
                     accounts: {
-                        id: { equals: account }
+                        id: Array.isArray(account) ? { in: account } : { equals: account }
                     }
                 }] : []),
                 ...(supplier_id ? [{

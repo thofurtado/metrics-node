@@ -9,7 +9,7 @@ export async function getTransactions(request: FastifyRequest, reply: FastifyRep
         description: z.string().optional(),
         value: z.coerce.number().optional(),
         sector_id: z.string().optional(),
-        account_id: z.string().optional(),
+        account_id: z.union([z.string(), z.array(z.string())]).optional(),
         month: z.coerce.date().optional(),
         status: z.string().optional(),
         toDate: z.string().optional(),

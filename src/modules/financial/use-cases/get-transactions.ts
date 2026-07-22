@@ -8,7 +8,7 @@ interface GetTreatmentsUseCaseRequest {
     description?: string,
     value?: number,
     sector_id?: string
-    account_id?: string
+    account_id?: string | string[]
     status?: string // Added status
     month: Date
     toDate?: Date // Added toDate
