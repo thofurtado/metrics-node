@@ -121,28 +121,28 @@ model Interaction {
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  display_id     Int             @unique
-  price          Float
-  stock          Float?          @default(0)
-  min_stock      Float?          @default(0)
-  barcode        String?
-  ncm            String?
-  active         Boolean?        @default(true)
-  created_at     DateTime        @default(now())
-  description    String?
-  is_composite   Boolean         @default(false)
-  name           String
-  updated_at     DateTime        @default(now()) @updatedAt
-  cost           Float?          @default(0)
-  category_id    String?
-  measureUnit    MeasureUnit     @default(UNITARY)
-  image_url      String?
-  compositions   Composition[]
-  category       Category?       @relation(fields: [category_id], references: [id])
-  stocks         Stock[]
-  treatmentItems TreatmentItem[]
-  saleItems      SaleItem[]
+  id               String                   @id @default(uuid())
+  display_id       Int                      @unique
+  price            Float
+  stock            Float?                   @default(0)
+  min_stock        Float?                   @default(0)
+  barcode          String?
+  ncm              String?
+  active           Boolean?                 @default(true)
+  created_at       DateTime                 @default(now())
+  description      String?
+  is_composite     Boolean                  @default(false)
+  name             String
+  updated_at       DateTime                 @default(now()) @updatedAt
+  cost             Float?                   @default(0)
+  category_id      String?
+  measureUnit      MeasureUnit              @default(UNITARY)
+  image_url        String?
+  compositions     Composition[]
+  category         Category?                @relation(fields: [category_id], references: [id])
+  stocks           Stock[]
+  treatmentItems   TreatmentItem[]
+  saleItems        SaleItem[]
   printDepartments ProductPrintDepartment[]
 
   @@map("products")
@@ -244,6 +244,9 @@ model Payment {
   installment_limit  Int
   in_sight           Boolean
   account_id         String?
+  active             Boolean              @default(true)
+  active_for_in      Boolean              @default(true)
+  active_for_out     Boolean              @default(true)
   created_at         DateTime             @default(now())
   updated_at         DateTime             @default(now()) @updatedAt
   InstallmentPayment InstallmentPayment[]
@@ -338,6 +341,7 @@ model Transaction {
   parent_transaction_id String?
   supplier_id           String?
   transaction_group_id  String?
+  cashier_session_id    String?
   discount              Float?                @default(0)
   interest              Float?                @default(0)
   totalValue            Float?
@@ -357,6 +361,7 @@ model Transaction {
   supplier              Supplier?             @relation(fields: [supplier_id], references: [id])
   transactionGroup      TransactionGroup?     @relation(fields: [transaction_group_id], references: [id])
   TransferTransaction   TransferTransaction[]
+  cashierSession        CashierSession?       @relation(fields: [cashier_session_id], references: [id])
 
   @@map("transactions")
 }
@@ -550,6 +555,7 @@ model Holiday {
 enum Role {
   ADMIN
   TECHNICIAN
+  CASHIER
 }
 
 enum MeasureUnit {
@@ -589,16 +595,18 @@ enum PayrollType {
 }
 
 model Sale {
-  id           String   @id @default(uuid())
-  treatment_id String?  @unique
-  total_amount Float
-  discount     Float?   @default(0)
-  status       String   @default("COMPLETED")
-  created_at   DateTime @default(now())
-  updated_at   DateTime @default(now()) @updatedAt
+  id                 String   @id @default(uuid())
+  treatment_id       String?  @unique
+  cashier_session_id String?
+  total_amount       Float
+  discount           Float?   @default(0)
+  status             String   @default("COMPLETED")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now()) @updatedAt
 
-  items     SaleItem[]
-  treatment Treatment? @relation(fields: [treatment_id], references: [id])
+  items          SaleItem[]
+  treatment      Treatment?      @relation(fields: [treatment_id], references: [id])
+  cashierSession CashierSession? @relation(fields: [cashier_session_id], references: [id])
 
   @@map("sales")
 }
@@ -643,4 +651,74 @@ model ProductPrintDepartment {
 
   @@unique([product_id, print_department_id])
   @@map("product_print_departments")
+}
+
+model PaymentIdentifier {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  is_correntista_debt Boolean  @default(false)
+  is_stock_evasion    Boolean  @default(false)
+  active              Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @default(now()) @updatedAt
+
+  @@map("payment_identifiers")
+}
+
+model POSMachine {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  account_id String?
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("pos_machines")
+}
+
+model PaymentCondition {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  installments Int      @default(1)
+  active       Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+
+  @@map("payment_conditions")
+}
+
+model CashierSession {
+  id              String    @id @default(uuid())
+  user_id         String
+  opened_at       DateTime  @default(now())
+  closed_at       DateTime?
+  status          String    @default("OPEN")
+  initial_balance Float     @default(0)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  entries      CashierEntry[]
+  sales        Sale[]
+  transactions Transaction[]
+
+  @@map("cashier_sessions")
+}
+
+model CashierEntry {
+  id                 String   @id @default(uuid())
+  cashier_session_id String
+  origin             String?
+  bank               String?
+  payment_method     String
+  amount             Float
+  is_withdrawal      Boolean  @default(false)
+  is_addition        Boolean  @default(false)
+  is_tip             Boolean  @default(false)
+  identification     String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now()) @updatedAt
+
+  session CashierSession @relation(fields: [cashier_session_id], references: [id])
+
+  @@map("cashier_entries")
 }
