@@ -954,10 +954,20 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const virtualRows = Array.from(aggregatedByCard.values())
         const combinedTransactions = [...transactions, ...virtualRows]
 
+        const isDescending = sortDirection === 'desc' || (!sortDirection && sortBy === 'created_at');
+
         combinedTransactions.sort((a, b) => {
             const dateA = new Date(a.data_vencimento).getTime()
             const dateB = new Date(b.data_vencimento).getTime()
-            return dateA - dateB
+            
+            if (dateA !== dateB) {
+                return isDescending ? dateB - dateA : dateA - dateB
+            }
+            
+            // Stable sort for same dates
+            const idA = a.id || ''
+            const idB = b.id || ''
+            return isDescending ? idB.localeCompare(idA) : idA.localeCompare(idB)
         })
 
         return {
