@@ -69,7 +69,7 @@ export class GetAccountHistoryUseCase {
             }))
         ]
 
-        // Ordenar do mais recente para o mais antigo
+        // Ordenar do mais recente para o mais antigo (ordem original necessária para paginação e cálculo reverso de saldo)
         history.sort((a, b) => b.date.getTime() - a.date.getTime())
 
         // Paginação manual
