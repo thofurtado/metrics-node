@@ -53,7 +53,7 @@ export class GetAccountHistoryUseCase {
                 description: t.description,
                 operation: t.operation, // 'income' ou 'expense'
                 value: t.totalValue ?? t.amount,
-                date: t.data_emissao, // Usamos data_emissao (ou created_at) como momento do impacto
+                date: t.data_vencimento, // Usamos data_vencimento como momento do impacto pois ele é atualizado no ato da confirmação
                 created_at: t.created_at
             })),
             ...adjustments.map(a => ({
