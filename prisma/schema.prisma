@@ -693,6 +693,7 @@ model CashierSession {
   opened_at       DateTime  @default(now())
   closed_at       DateTime?
   status          String    @default("OPEN")
+  period          String    @default("Almoço")
   initial_balance Float     @default(0)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt

@@ -1,10 +1,13 @@
 import { FastifyInstance } from 'fastify'
-import { openCashierSession, getActiveSession, addCashierEntry, closeCashierSession, auditCashierSession, getPaymentMethodsConfig, getPaymentConditionsConfig, getPOSMachinesConfig } from './cashier-controller'
+import { openCashierSession, getActiveSession, addCashierEntry, closeCashierSession, auditCashierSession, getPaymentMethodsConfig, getPaymentConditionsConfig, getPOSMachinesConfig, getSessions, deleteSession } from './cashier-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export async function cashierRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
 
+    app.get('/api/cashier/sessions', getSessions)
+    app.delete('/api/cashier/sessions/:id', deleteSession)
+    
     app.post('/api/cashier/session/open', openCashierSession)
     app.get('/api/cashier/session/active', getActiveSession)
     app.post('/api/cashier/session/close', closeCashierSession)

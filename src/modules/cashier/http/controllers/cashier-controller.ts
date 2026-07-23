@@ -5,6 +5,7 @@ import { z } from 'zod'
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
         initial_balance: z.number().default(0),
+        period: z.string().default("Almoço"),
     })
     const data = openSchema.parse(request.body)
     const user_id = request.user.sub
@@ -18,6 +19,7 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         data: {
             user_id: user_id,
             initial_balance: data.initial_balance,
+            period: data.period,
             status: 'OPEN',
         }
     })
@@ -34,6 +36,22 @@ export async function getActiveSession(request: FastifyRequest, reply: FastifyRe
         return reply.status(404).send({ message: 'Nenhum caixa aberto encontrado.' })
     }
     return reply.status(200).send(session)
+}
+
+export async function getSessions(request: FastifyRequest, reply: FastifyReply) {
+    const sessions = await prisma.cashierSession.findMany({
+        orderBy: { opened_at: 'desc' },
+        include: { entries: true, sales: { include: { items: true } } }
+    })
+    return reply.status(200).send(sessions)
+}
+
+export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    await prisma.cashierEntry.deleteMany({ where: { cashier_session_id: id } })
+    await prisma.cashierSession.delete({ where: { id } })
+    return reply.status(204).send()
 }
 
 export async function addCashierEntry(request: FastifyRequest, reply: FastifyReply) {
