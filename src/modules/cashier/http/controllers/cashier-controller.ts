@@ -46,6 +46,19 @@ export async function getSessions(request: FastifyRequest, reply: FastifyReply) 
     return reply.status(200).send(sessions)
 }
 
+export async function getSessionDetails(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    const session = await prisma.cashierSession.findUnique({
+        where: { id },
+        include: { entries: true, sales: { include: { items: true } } }
+    })
+    if (!session) {
+        return reply.status(404).send({ message: 'Caixa não encontrado.' })
+    }
+    return reply.status(200).send({ session, entries: session.entries, summary: {} })
+}
+
 export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({ id: z.string().uuid() })
     const { id } = paramsSchema.parse(request.params)
