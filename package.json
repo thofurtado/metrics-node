@@ -8,6 +8,7 @@
     "build": "npx prisma generate && tsup src --out-dir build && npx prisma migrate deploy",
     "postinstall": "npx prisma generate",
     "start": "node build/server.js",
+    "migrate:all": "tsx scripts/migrate-all-tenants.ts",
     "test": "vitest run",
     "test:e2e": "vitest run --dir src/http",
     "test:e2e:watch": "vitest --dir src/http",
