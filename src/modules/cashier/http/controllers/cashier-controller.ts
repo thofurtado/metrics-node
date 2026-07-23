@@ -4,19 +4,19 @@ import { z } from 'zod'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
-        user_id: z.string().uuid(),
         initial_balance: z.number().default(0),
     })
     const data = openSchema.parse(request.body)
+    const user_id = request.user.sub
     const activeSession = await prisma.cashierSession.findFirst({
-        where: { user_id: data.user_id, status: 'OPEN' }
+        where: { user_id: user_id, status: 'OPEN' }
     })
     if (activeSession) {
         return reply.status(400).send({ message: 'Usuário já possui um caixa aberto.' })
     }
     const session = await prisma.cashierSession.create({
         data: {
-            user_id: data.user_id,
+            user_id: user_id,
             initial_balance: data.initial_balance,
             status: 'OPEN',
         }
@@ -25,8 +25,7 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
 }
 
 export async function getActiveSession(request: FastifyRequest, reply: FastifyReply) {
-    const querySchema = z.object({ user_id: z.string().uuid() })
-    const { user_id } = querySchema.parse(request.query)
+    const user_id = request.user.sub
     const session = await prisma.cashierSession.findFirst({
         where: { user_id, status: 'OPEN' },
         include: { entries: true, sales: { include: { items: true } } }
