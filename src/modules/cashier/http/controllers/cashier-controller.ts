@@ -168,3 +168,16 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
     return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
 }
+export async function getPaymentMethodsConfig(request: FastifyRequest, reply: FastifyReply) {
+    const methods = await prisma.payment.findMany({ where: { active: true } });
+    return reply.status(200).send(methods);
+}
+
+export async function getPaymentConditionsConfig(request: FastifyRequest, reply: FastifyReply) {
+    const conditions = await prisma.paymentCondition.findMany({ where: { active: true } });
+    return reply.status(200).send(conditions);
+}
+export async function getPOSMachinesConfig(request: FastifyRequest, reply: FastifyReply) {
+    const machines = await prisma.pOSMachine.findMany({ where: { active: true } });
+    return reply.status(200).send(machines);
+}
