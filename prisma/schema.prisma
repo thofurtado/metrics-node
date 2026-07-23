@@ -418,6 +418,7 @@ model SystemConfig {
   merchandise_module           Boolean  @default(true)
   financial_module             Boolean  @default(true)
   treatments_module            Boolean  @default(true)
+  cashier_module               Boolean  @default(false)
   updated_at                   DateTime @default(now()) @updatedAt
   hr_module                    Boolean  @default(true)
   cestaBasicaValue             Decimal  @default(0)
