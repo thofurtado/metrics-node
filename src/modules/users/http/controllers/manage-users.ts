@@ -133,3 +133,25 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         return reply.status(500).send({ message: 'Erro interno ao atualizar usuário.' })
     }
 }
+
+export async function deleteUser(request: FastifyRequest, reply: FastifyReply) {
+    const deleteUserParamsSchema = z.object({
+        id: z.string().uuid(),
+    })
+
+    const { id } = deleteUserParamsSchema.parse(request.params)
+
+    const user = await prisma.user.findUnique({
+        where: { id },
+    })
+
+    if (!user) {
+        return reply.status(404).send({ message: 'Usuário não encontrado.' })
+    }
+
+    await prisma.user.delete({
+        where: { id },
+    })
+
+    return reply.status(204).send()
+}
