@@ -95,6 +95,11 @@ export async function deleteSession(request: FastifyRequest, reply: FastifyReply
     return reply.status(204).send()
 }
 
+function normalizeString(str: string) {
+    if (!str) return ''
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
 export async function addCashierEntry(request: FastifyRequest, reply: FastifyReply) {
     const entrySchema = z.object({
         session_id: z.string().uuid(),
@@ -108,7 +113,8 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
         is_checked: z.boolean().default(false),
         type: z.string().optional(),
         identification: z.string().optional(),
-        client_id: z.string().uuid().optional(),
+        client_id: z.string().uuid().nullable().optional(),
+        employee_id: z.string().uuid().nullable().optional(),
     })
     const data = entrySchema.parse(request.body)
     const session = await prisma.cashierSession.findUnique({ where: { id: data.session_id } })
@@ -131,6 +137,8 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
             is_checked: data.is_checked || false,
             type: entryType,
             identification: data.identification,
+            client_id: data.client_id || null,
+            employee_id: data.employee_id || null,
         }
     })
     return reply.status(201).send(entry)
@@ -157,6 +165,8 @@ export async function updateCashierEntry(request: FastifyRequest, reply: Fastify
         is_addition: z.boolean().optional(),
         is_tip: z.boolean().optional(),
         type: z.string().optional(),
+        client_id: z.string().uuid().nullable().optional(),
+        employee_id: z.string().uuid().nullable().optional(),
     })
     const data = updateSchema.parse(request.body)
     const entry = await prisma.cashierEntry.update({
@@ -193,16 +203,19 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
     const operatorName = user ? user.name : 'Operador'
     const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
 
-    // Limpa transações anteriores criadas para essa sessão para evitar duplicações ao re-auditar
+    // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
     await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
+    await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
     let totalVendasEletronicas = 0
-    const padraoCasa = ['funcionário', 'pró-labore', 'cortesia', 'permuta', 'a prazo']
+    const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
 
     for (const entry of session.entries) {
         const amount = Number(entry.amount || 0)
         const method = (entry.payment_method || '').trim()
         const bank = (entry.bank || '').toUpperCase().trim()
+        const normMethod = normalizeString(method)
+        const normIdent = normalizeString(entry.identification || '')
 
         // Sangria (Retirada de Dinheiro Físico para Depósito)
         if (entry.is_withdrawal) {
@@ -219,9 +232,59 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             continue
         }
 
+        // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry)
+        if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
+            let employeeId = entry.employee_id
+            if (!employeeId) {
+                const emp = await prisma.employee.findFirst({
+                    where: {
+                        user: { name: { contains: entry.identification || '', mode: 'insensitive' } }
+                    }
+                })
+                if (emp) employeeId = emp.id
+            }
+
+            if (employeeId) {
+                await prisma.payrollEntry.create({
+                    data: {
+                        employee_id: employeeId,
+                        amount: amount,
+                        type: 'VALE',
+                        description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                        referenceDate: session.opened_at,
+                        status: 'PENDING'
+                    }
+                })
+            }
+            continue
+        }
+
+        // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, Cliente Casa, A Prazo)
+        if (entry.client_id || (normIdent && !normIdent.includes('dinheiro') && !normIdent.includes('caixa'))) {
+            let clientId = entry.client_id
+            if (!clientId && entry.identification) {
+                const cli = await prisma.client.findFirst({
+                    where: { name: { contains: entry.identification, mode: 'insensitive' } }
+                })
+                if (cli) clientId = cli.id
+            }
+
+            await prisma.transaction.create({
+                data: {
+                    operation: 'IN',
+                    amount,
+                    description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
+                    cashier_session_id: session.id,
+                    confirmed: false, // PENDENTE DE RECEBIMENTO
+                    supplier_id: clientId || undefined
+                }
+            })
+            continue
+        }
+
         // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora na transação eletrônica
-        if (method.toLowerCase() === 'dinheiro' || bank === 'CAIXA') continue
-        if (bank === 'CONTA DA CASA' || padraoCasa.some(p => method.toLowerCase().includes(p))) continue
+        if (normMethod === 'dinheiro' || bank === 'CAIXA') continue
+        if (bank === 'CONTA DA CASA' || padraoCasa.some(p => normMethod.includes(p))) continue
 
         // Se for venda eletrônica / cartão / pix / voucher / a prazo
         totalVendasEletronicas += amount
