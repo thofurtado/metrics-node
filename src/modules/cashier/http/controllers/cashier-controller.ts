@@ -381,6 +381,14 @@ export async function createPaymentIdentifier(request: FastifyRequest, reply: Fa
         is_stock_evasion: z.boolean().default(false),
     })
     const data = bodySchema.parse(request.body)
+
+    const existing = await prisma.paymentIdentifier.findUnique({
+        where: { name: data.name }
+    })
+    if (existing) {
+        return reply.status(400).send({ message: 'Já existe um identificador cadastrado com esse nome.' })
+    }
+
     const identifier = await prisma.paymentIdentifier.create({
         data: {
             name: data.name,
@@ -404,6 +412,16 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
     })
     const { id } = paramsSchema.parse(request.params)
     const data = bodySchema.parse(request.body)
+
+    if (data.name) {
+        const existing = await prisma.paymentIdentifier.findUnique({
+            where: { name: data.name }
+        })
+        if (existing && existing.id !== id) {
+            return reply.status(400).send({ message: 'Já existe um identificador cadastrado com esse nome.' })
+        }
+    }
+
     const identifier = await prisma.paymentIdentifier.update({
         where: { id },
         data: {
