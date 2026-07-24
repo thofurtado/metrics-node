@@ -1,8 +1,11 @@
 import { FastifyInstance } from 'fastify'
-import { openCashierSession, getActiveSession, addCashierEntry, deleteCashierEntry, updateCashierEntry, closeCashierSession, auditCashierSession, getPaymentMethodsConfig, getPaymentConditionsConfig, getPOSMachinesConfig, getSessions, deleteSession, getSessionDetails } from './cashier-controller'
+import { openCashierSession, getActiveSession, addCashierEntry, deleteCashierEntry, updateCashierEntry, closeCashierSession, auditCashierSession, getPaymentMethodsConfig, getPaymentConditionsConfig, getPOSMachinesConfig, getSessions, deleteSession, getSessionDetails, getCashierUsers } from './cashier-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export async function cashierRoutes(app: FastifyInstance) {
+    // Rota pública para buscar operadores de caixa (ADMIN ou CASHIER) sem estar logado
+    app.get('/api/cashier/users', getCashierUsers)
+
     app.addHook('onRequest', verifyJwt)
 
     app.get('/api/cashier/sessions', getSessions)

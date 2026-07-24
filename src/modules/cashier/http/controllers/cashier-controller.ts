@@ -249,3 +249,19 @@ export async function getPOSMachinesConfig(request: FastifyRequest, reply: Fasti
     const machines = await prisma.pOSMachine.findMany({ where: { active: true } });
     return reply.status(200).send(machines);
 }
+
+export async function getCashierUsers(request: FastifyRequest, reply: FastifyReply) {
+    const users = await prisma.user.findMany({
+        where: {
+            role: { in: ['ADMIN', 'CASHIER'] }
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+        },
+        orderBy: { name: 'asc' }
+    })
+    return reply.status(200).send({ users })
+}
