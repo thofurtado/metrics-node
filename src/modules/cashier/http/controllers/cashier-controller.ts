@@ -39,11 +39,39 @@ export async function getActiveSession(request: FastifyRequest, reply: FastifyRe
 }
 
 export async function getSessions(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.sub
+    let userRole = 'ADMIN'
+    if (userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        })
+        if (user) {
+            userRole = user.role
+        }
+    }
+
+    const whereCondition = userRole === 'CASHIER' ? { user_id: userId } : {}
+
     const sessions = await prisma.cashierSession.findMany({
+        where: whereCondition,
         orderBy: { opened_at: 'desc' },
         include: { entries: true, sales: { include: { items: true } } }
     })
-    return reply.status(200).send(sessions)
+
+    const userIds = Array.from(new Set(sessions.map(s => s.user_id)))
+    const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true }
+    })
+    const userMap = new Map(users.map(u => [u.id, u.name]))
+
+    const sessionsWithUser = sessions.map(s => ({
+        ...s,
+        operator_name: userMap.get(s.user_id) || 'Operador'
+    }))
+
+    return reply.status(200).send(sessionsWithUser)
 }
 
 export async function getSessionDetails(request: FastifyRequest, reply: FastifyReply) {
