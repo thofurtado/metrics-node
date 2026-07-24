@@ -101,6 +101,31 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
     return reply.status(201).send(entry)
 }
 
+export async function deleteCashierEntry(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    await prisma.cashierEntry.delete({ where: { id } })
+    return reply.status(204).send()
+}
+
+export async function updateCashierEntry(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    const updateSchema = z.object({
+        amount: z.number().optional(),
+        payment_method: z.string().optional(),
+        bank: z.string().optional(),
+        origin: z.string().optional(),
+        identification: z.string().optional(),
+    })
+    const data = updateSchema.parse(request.body)
+    const entry = await prisma.cashierEntry.update({
+        where: { id },
+        data,
+    })
+    return reply.status(200).send(entry)
+}
+
 export async function closeCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const closeSchema = z.object({ session_id: z.string().uuid() })
     const { session_id } = closeSchema.parse(request.body)
