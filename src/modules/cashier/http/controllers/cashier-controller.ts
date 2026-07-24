@@ -182,76 +182,61 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
     const session = await prisma.cashierSession.findUnique({
         where: { id: session_id },
-        include: { entries: true, sales: true }
+        include: { entries: true }
     })
 
-    if (!session || session.status !== 'PENDING') {
-        return reply.status(400).send({ message: 'Sessão inválida ou não está PENDENTE.' })
+    if (!session) {
+        return reply.status(400).send({ message: 'Sessão não encontrada.' })
     }
 
-    // PHASE 3: MOTOR FINANCEIRO
+    const user = await prisma.user.findUnique({ where: { id: session.user_id } })
+    const operatorName = user ? user.name : 'Operador'
+    const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
+
+    // Limpa transações anteriores criadas para essa sessão para evitar duplicações ao re-auditar
+    await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
+
+    let totalVendasEletronicas = 0
+    const padraoCasa = ['funcionário', 'pró-labore', 'cortesia', 'permuta', 'a prazo']
+
     for (const entry of session.entries) {
-        let identifier = null;
-        if (entry.identification) {
-            identifier = await prisma.paymentIdentifier.findFirst({ where: { name: entry.identification } })
-        }
+        const amount = Number(entry.amount || 0)
+        const method = (entry.payment_method || '').trim()
+        const bank = (entry.bank || '').toUpperCase().trim()
 
-        // Se for evasão de estoque (Cortesia, Pro-labore), ignorar no financeiro real, tratar apenas em relatórios.
-        if (identifier?.is_stock_evasion) {
-            continue; 
-        }
-
-        // Se for Fiado/Correntista (Permuta, Funcionario), gerar transação PENDENTE vinculada.
-        if (identifier?.is_correntista_debt) {
-            // Note: entry should have a client_id reference in a complete system. Assuming we look up or pass client_id in description for now.
-            await prisma.transaction.create({
-                data: {
-                    operation: 'IN',
-                    amount: entry.amount,
-                    description: `Fiado/Dívida - ${entry.payment_method} - ${entry.identification}`,
-                    cashier_session_id: session.id,
-                    confirmed: false, // PENDENTE DE RECEBIMENTO
-                }
-            })
-            continue;
-        }
-
-        // Sangria (Out) ou Suprimento (In)
+        // Sangria (Retirada de Dinheiro Físico para Depósito)
         if (entry.is_withdrawal) {
             await prisma.transaction.create({
                 data: {
                     operation: 'OUT',
-                    amount: entry.amount,
-                    description: `Sangria de Caixa`,
+                    amount,
+                    description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                     cashier_session_id: session.id,
                     confirmed: true,
+                    payment_method: 'DINHEIRO'
                 }
             })
-            continue;
+            continue
         }
 
-        if (entry.is_addition) {
-            await prisma.transaction.create({
-                data: {
-                    operation: 'IN',
-                    amount: entry.amount,
-                    description: `Suprimento de Caixa`,
-                    cashier_session_id: session.id,
-                    confirmed: true,
-                }
-            })
-            continue;
-        }
+        // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora na transação eletrônica
+        if (method.toLowerCase() === 'dinheiro' || bank === 'CAIXA') continue
+        if (bank === 'CONTA DA CASA' || padraoCasa.some(p => method.toLowerCase().includes(p))) continue
 
-        // Receita normal (Dinheiro, Cartão, Pix)
+        // Se for venda eletrônica / cartão / pix / voucher / a prazo
+        totalVendasEletronicas += amount
+    }
+
+    // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
+    if (totalVendasEletronicas > 0) {
         await prisma.transaction.create({
             data: {
                 operation: 'IN',
-                amount: entry.amount,
-                payment_method: entry.payment_method,
-                description: `Receita Caixa - ${entry.origin || 'Balcão'}`,
+                amount: totalVendasEletronicas,
+                description: `Vendas Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                 cashier_session_id: session.id,
                 confirmed: true,
+                payment_method: 'CAIXA'
             }
         })
     }
@@ -263,6 +248,96 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
     })
 
     return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
+}
+
+export async function getMonthlyCashAudit(request: FastifyRequest, reply: FastifyReply) {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+    const sessions = await prisma.cashierSession.findMany({
+        where: {
+            opened_at: {
+                gte: startOfMonth,
+                lte: endOfMonth
+            }
+        },
+        orderBy: { opened_at: 'asc' },
+        include: { entries: true }
+    })
+
+    const userIds = Array.from(new Set(sessions.map(s => s.user_id)))
+    const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true }
+    })
+    const userMap = new Map(users.map(u => [u.id, u.name]))
+
+    const auditItems = sessions.map((s) => {
+        const abertura = s.initial_balance || 0
+        let vendasDinheiro = 0
+        let sangrias = 0
+
+        for (const entry of s.entries) {
+            const amt = Number(entry.amount || 0)
+            const method = (entry.payment_method || '').trim()
+            const bank = (entry.bank || '').toUpperCase().trim()
+
+            if (entry.is_withdrawal) {
+                sangrias += amt
+            } else if (method.toLowerCase() === 'dinheiro' || bank === 'CAIXA') {
+                vendasDinheiro += amt
+            }
+        }
+
+        const saldoFisicoFinal = abertura + vendasDinheiro - sangrias
+
+        return {
+            id: s.id,
+            opened_at: s.opened_at,
+            closed_at: s.closed_at,
+            period: s.period,
+            status: s.status,
+            operator_name: userMap.get(s.user_id) || 'Operador',
+            abertura,
+            vendasDinheiro,
+            sangrias,
+            saldoFisicoFinal,
+            proximaAbertura: 0,
+            divergencia: 0,
+            statusComparacao: 'OK'
+        }
+    })
+
+    // Validação comparativa com a Abertura do Próximo Caixa
+    for (let i = 0; i < auditItems.length - 1; i++) {
+        const current = auditItems[i]
+        const next = auditItems[i + 1]
+        current.proximaAbertura = next.abertura
+        current.divergencia = next.abertura - current.saldoFisicoFinal
+        if (Math.abs(current.divergencia) > 0.05) {
+            current.statusComparacao = 'DIVERGENTE'
+        } else {
+            current.statusComparacao = 'BATENDO'
+        }
+    }
+
+    // Totais acumulados do mês
+    const totalAberturaInicial = auditItems.length > 0 ? auditItems[0].abertura : 0
+    const totalVendasDinheiroMes = auditItems.reduce((acc, item) => acc + item.vendasDinheiro, 0)
+    const totalSangriasMes = auditItems.reduce((acc, item) => acc + item.sangrias, 0)
+    const saldoFisicoAtualMes = auditItems.length > 0 ? auditItems[auditItems.length - 1].saldoFisicoFinal : 0
+
+    return reply.status(200).send({
+        sessions: auditItems,
+        summary: {
+            totalAberturaInicial,
+            totalVendasDinheiroMes,
+            totalSangriasMes,
+            saldoFisicoAtualMes,
+            totalCaixasMes: auditItems.length
+        }
+    })
 }
 export async function getPaymentMethodsConfig(request: FastifyRequest, reply: FastifyReply) {
     const methods = await prisma.payment.findMany({ where: { active: true } });

@@ -7,6 +7,7 @@ import {
     updateCashierEntry, 
     closeCashierSession, 
     auditCashierSession, 
+    getMonthlyCashAudit,
     getPaymentMethodsConfig, 
     getPaymentConditionsConfig, 
     getPOSMachinesConfig, 
@@ -34,6 +35,7 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.addHook('onRequest', verifyJwt)
 
         protectedApp.get('/api/cashier/sessions', getSessions)
+        protectedApp.get('/api/cashier/monthly-audit', getMonthlyCashAudit)
         protectedApp.get('/api/cashier/session/:id', getSessionDetails)
         protectedApp.delete('/api/cashier/sessions/:id', deleteSession)
         
