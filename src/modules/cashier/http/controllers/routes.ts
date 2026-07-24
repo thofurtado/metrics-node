@@ -1,5 +1,28 @@
 import { FastifyInstance } from 'fastify'
-import { openCashierSession, getActiveSession, addCashierEntry, deleteCashierEntry, updateCashierEntry, closeCashierSession, auditCashierSession, getPaymentMethodsConfig, getPaymentConditionsConfig, getPOSMachinesConfig, getSessions, deleteSession, getSessionDetails, getCashierUsers } from './cashier-controller'
+import { 
+    openCashierSession, 
+    getActiveSession, 
+    addCashierEntry, 
+    deleteCashierEntry, 
+    updateCashierEntry, 
+    closeCashierSession, 
+    auditCashierSession, 
+    getPaymentMethodsConfig, 
+    getPaymentConditionsConfig, 
+    getPOSMachinesConfig, 
+    getSessions, 
+    deleteSession, 
+    getSessionDetails, 
+    getCashierUsers,
+    getPOSMachines,
+    createPOSMachine,
+    updatePOSMachine,
+    deletePOSMachine,
+    getPaymentIdentifiers,
+    createPaymentIdentifier,
+    updatePaymentIdentifier,
+    deletePaymentIdentifier
+} from './cashier-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export async function cashierRoutes(app: FastifyInstance) {
@@ -25,5 +48,17 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.get('/api/payment-methods', getPaymentMethodsConfig)
         protectedApp.get('/api/conditions', getPaymentConditionsConfig)
         protectedApp.get('/api/machines', getPOSMachinesConfig)
+
+        // POS Machines Management
+        protectedApp.get('/api/pos-machines', getPOSMachines)
+        protectedApp.post('/api/pos-machines', createPOSMachine)
+        protectedApp.put('/api/pos-machines/:id', updatePOSMachine)
+        protectedApp.delete('/api/pos-machines/:id', deletePOSMachine)
+
+        // Payment Identifiers Management
+        protectedApp.get('/api/payment-identifiers', getPaymentIdentifiers)
+        protectedApp.post('/api/payment-identifiers', createPaymentIdentifier)
+        protectedApp.put('/api/payment-identifiers/:id', updatePaymentIdentifier)
+        protectedApp.delete('/api/payment-identifiers/:id', deletePaymentIdentifier)
     })
 }

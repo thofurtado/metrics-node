@@ -274,8 +274,137 @@ export async function getPaymentConditionsConfig(request: FastifyRequest, reply:
     return reply.status(200).send(conditions);
 }
 export async function getPOSMachinesConfig(request: FastifyRequest, reply: FastifyReply) {
-    const machines = await prisma.pOSMachine.findMany({ where: { active: true } });
+    const machines = await prisma.pOSMachine.findMany({
+        where: { active: true },
+        include: { rates: true }
+    });
     return reply.status(200).send(machines);
+}
+
+export async function getPOSMachines(request: FastifyRequest, reply: FastifyReply) {
+    const machines = await prisma.pOSMachine.findMany({
+        orderBy: { name: 'asc' },
+        include: { rates: true }
+    });
+    return reply.status(200).send(machines);
+}
+
+export async function createPOSMachine(request: FastifyRequest, reply: FastifyReply) {
+    const bodySchema = z.object({
+        name: z.string().min(1),
+        account_id: z.string().optional().nullable(),
+        rates: z.array(z.object({
+            payment_category: z.string(),
+            installments: z.number().default(1),
+            tax_percentage: z.number().default(0)
+        })).optional()
+    })
+    const data = bodySchema.parse(request.body)
+    const machine = await prisma.pOSMachine.create({
+        data: {
+            name: data.name,
+            account_id: data.account_id || null,
+            rates: data.rates && data.rates.length > 0 ? {
+                create: data.rates.map(r => ({
+                    payment_category: r.payment_category,
+                    installments: r.installments,
+                    tax_percentage: r.tax_percentage
+                }))
+            } : undefined
+        },
+        include: { rates: true }
+    })
+    return reply.status(201).send(machine)
+}
+
+export async function updatePOSMachine(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const bodySchema = z.object({
+        name: z.string().optional(),
+        account_id: z.string().optional().nullable(),
+        active: z.boolean().optional(),
+        rates: z.array(z.object({
+            payment_category: z.string(),
+            installments: z.number().default(1),
+            tax_percentage: z.number().default(0)
+        })).optional()
+    })
+    const { id } = paramsSchema.parse(request.params)
+    const data = bodySchema.parse(request.body)
+
+    if (data.rates !== undefined) {
+        await prisma.pOSMachineRate.deleteMany({ where: { pos_machine_id: id } })
+        if (data.rates.length > 0) {
+            await prisma.pOSMachineRate.createMany({
+                data: data.rates.map(r => ({
+                    pos_machine_id: id,
+                    payment_category: r.payment_category,
+                    installments: r.installments,
+                    tax_percentage: r.tax_percentage
+                }))
+            })
+        }
+    }
+
+    const machine = await prisma.pOSMachine.update({
+        where: { id },
+        data: {
+            name: data.name,
+            account_id: data.account_id !== undefined ? data.account_id : undefined,
+            active: data.active !== undefined ? data.active : undefined
+        },
+        include: { rates: true }
+    })
+    return reply.status(200).send(machine)
+}
+
+export async function deletePOSMachine(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    await prisma.pOSMachine.delete({ where: { id } })
+    return reply.status(204).send()
+}
+
+export async function getPaymentIdentifiers(request: FastifyRequest, reply: FastifyReply) {
+    const identifiers = await prisma.paymentIdentifier.findMany({
+        orderBy: { name: 'asc' }
+    });
+    return reply.status(200).send(identifiers);
+}
+
+export async function createPaymentIdentifier(request: FastifyRequest, reply: FastifyReply) {
+    const bodySchema = z.object({
+        name: z.string().min(1),
+        is_correntista_debt: z.boolean().default(false),
+        is_stock_evasion: z.boolean().default(false),
+    })
+    const data = bodySchema.parse(request.body)
+    const identifier = await prisma.paymentIdentifier.create({ data })
+    return reply.status(201).send(identifier)
+}
+
+export async function updatePaymentIdentifier(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const bodySchema = z.object({
+        name: z.string().optional(),
+        is_correntista_debt: z.boolean().optional(),
+        is_stock_evasion: z.boolean().optional(),
+        active: z.boolean().optional()
+    })
+    const { id } = paramsSchema.parse(request.params)
+    const data = bodySchema.parse(request.body)
+    const identifier = await prisma.paymentIdentifier.update({
+        where: { id },
+        data
+    })
+    return reply.status(200).send(identifier)
+}
+
+export async function deletePaymentIdentifier(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({ id: z.string().uuid() })
+    const { id } = paramsSchema.parse(request.params)
+    await prisma.paymentIdentifier.delete({ where: { id } })
+    return reply.status(204).send()
 }
 
 export async function getCashierUsers(request: FastifyRequest, reply: FastifyReply) {

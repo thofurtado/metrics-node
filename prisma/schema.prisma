@@ -668,14 +668,29 @@ model PaymentIdentifier {
 }
 
 model POSMachine {
-  id         String   @id @default(uuid())
-  name       String   @unique
+  id         String           @id @default(uuid())
+  name       String           @unique
   account_id String?
-  active     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
+  active     Boolean          @default(true)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @default(now()) @updatedAt
+  rates      POSMachineRate[]
 
   @@map("pos_machines")
+}
+
+model POSMachineRate {
+  id               String     @id @default(uuid())
+  pos_machine_id   String
+  payment_category String
+  installments     Int        @default(1)
+  tax_percentage   Float      @default(0)
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @default(now()) @updatedAt
+
+  posMachine POSMachine @relation(fields: [pos_machine_id], references: [id], onDelete: Cascade)
+
+  @@map("pos_machine_rates")
 }
 
 model PaymentCondition {
