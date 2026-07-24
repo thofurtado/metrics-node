@@ -252,6 +252,7 @@ model Payment {
   InstallmentPayment InstallmentPayment[]
   paymentEntrys      PaymentEntry[]
   accounts           Account?             @relation(fields: [account_id], references: [id])
+  identifiers        PaymentIdentifier[]
 
   @@map("payments")
 }
@@ -658,11 +659,14 @@ model ProductPrintDepartment {
 model PaymentIdentifier {
   id                  String   @id @default(uuid())
   name                String   @unique
+  payment_method_id   String?
   is_correntista_debt Boolean  @default(false)
   is_stock_evasion    Boolean  @default(false)
   active              Boolean  @default(true)
   created_at          DateTime @default(now())
   updated_at          DateTime @default(now()) @updatedAt
+
+  paymentMethod Payment? @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
 
   @@map("payment_identifiers")
 }

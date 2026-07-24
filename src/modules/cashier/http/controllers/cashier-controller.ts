@@ -367,7 +367,8 @@ export async function deletePOSMachine(request: FastifyRequest, reply: FastifyRe
 
 export async function getPaymentIdentifiers(request: FastifyRequest, reply: FastifyReply) {
     const identifiers = await prisma.paymentIdentifier.findMany({
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
+        include: { paymentMethod: true }
     });
     return reply.status(200).send(identifiers);
 }
@@ -375,11 +376,20 @@ export async function getPaymentIdentifiers(request: FastifyRequest, reply: Fast
 export async function createPaymentIdentifier(request: FastifyRequest, reply: FastifyReply) {
     const bodySchema = z.object({
         name: z.string().min(1),
+        payment_method_id: z.string().optional().nullable(),
         is_correntista_debt: z.boolean().default(false),
         is_stock_evasion: z.boolean().default(false),
     })
     const data = bodySchema.parse(request.body)
-    const identifier = await prisma.paymentIdentifier.create({ data })
+    const identifier = await prisma.paymentIdentifier.create({
+        data: {
+            name: data.name,
+            payment_method_id: data.payment_method_id || null,
+            is_correntista_debt: data.is_correntista_debt,
+            is_stock_evasion: data.is_stock_evasion
+        },
+        include: { paymentMethod: true }
+    })
     return reply.status(201).send(identifier)
 }
 
@@ -387,6 +397,7 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
     const paramsSchema = z.object({ id: z.string().uuid() })
     const bodySchema = z.object({
         name: z.string().optional(),
+        payment_method_id: z.string().optional().nullable(),
         is_correntista_debt: z.boolean().optional(),
         is_stock_evasion: z.boolean().optional(),
         active: z.boolean().optional()
@@ -395,7 +406,14 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
     const data = bodySchema.parse(request.body)
     const identifier = await prisma.paymentIdentifier.update({
         where: { id },
-        data
+        data: {
+            name: data.name,
+            payment_method_id: data.payment_method_id !== undefined ? data.payment_method_id : undefined,
+            is_correntista_debt: data.is_correntista_debt,
+            is_stock_evasion: data.is_stock_evasion,
+            active: data.active
+        },
+        include: { paymentMethod: true }
     })
     return reply.status(200).send(identifier)
 }
