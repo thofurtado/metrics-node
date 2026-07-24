@@ -1,4 +1,3 @@
-
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -9,6 +8,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         financial: z.boolean().optional(),
         treatments: z.boolean().optional(),
         cashier: z.boolean().optional(),
+        cashier_default_origin: z.enum(['Mesa', 'Balcão', 'Delivery']).optional(),
         hr_module: z.boolean().optional(),
         cestaBasicaValue: z.coerce.number().nullable().optional(),
         financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional(),
@@ -20,6 +20,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         financial, 
         treatments, 
         cashier,
+        cashier_default_origin,
         hr_module,
         cestaBasicaValue, 
         financial_management_profile,
@@ -41,6 +42,8 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial ?? existingConfig.financial_module,
                 treatments_module: treatments ?? existingConfig.treatments_module,
                 cashier_module: cashier ?? existingConfig.cashier_module,
+                // @ts-ignore
+                cashier_default_origin: cashier_default_origin ?? (existingConfig as any).cashier_default_origin ?? 'Mesa',
                 hr_module: hr_module ?? existingConfig.hr_module,
                 cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
                 financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile,
@@ -55,6 +58,8 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 financial_module: financial ?? true,
                 treatments_module: treatments ?? true,
                 cashier_module: cashier ?? false,
+                // @ts-ignore
+                cashier_default_origin: cashier_default_origin ?? 'Mesa',
                 hr_module: hr_module ?? true,
                 cestaBasicaValue: cestaBasicaValue ?? 0,
                 financial_management_profile: financial_management_profile ?? 'ANALYTICAL',
@@ -68,6 +73,8 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         merchandise: config.merchandise_module,
         financial: config.financial_module,
         treatments: config.treatments_module,
+        cashier: config.cashier_module,
+        cashier_default_origin: (config as any).cashier_default_origin || 'Mesa',
         hr_module: config.hr_module,
         cestaBasicaValue: Number(config.cestaBasicaValue || 0),
         financial_management_profile: config.financial_management_profile
