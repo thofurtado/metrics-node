@@ -77,6 +77,8 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
         is_withdrawal: z.boolean().default(false),
         is_addition: z.boolean().default(false),
         is_tip: z.boolean().default(false),
+        is_checked: z.boolean().default(false),
+        type: z.string().optional(),
         identification: z.string().optional(),
         client_id: z.string().uuid().optional(),
     })
@@ -85,6 +87,9 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
     if (!session || session.status !== 'OPEN') {
         return reply.status(400).send({ message: 'Caixa fechado ou não encontrado.' })
     }
+
+    const entryType = data.type || (data.is_withdrawal ? 'WITHDRAWAL' : data.is_addition ? 'ADDITION' : data.is_tip ? 'TIP' : 'SALE')
+
     const entry = await prisma.cashierEntry.create({
         data: {
             cashier_session_id: data.session_id,
@@ -92,9 +97,11 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
             bank: data.bank,
             payment_method: data.payment_method,
             amount: data.amount,
-            is_withdrawal: data.is_withdrawal,
-            is_addition: data.is_addition,
-            is_tip: data.is_tip,
+            is_withdrawal: data.is_withdrawal || entryType === 'WITHDRAWAL',
+            is_addition: data.is_addition || entryType === 'ADDITION',
+            is_tip: data.is_tip || entryType === 'TIP',
+            is_checked: data.is_checked || false,
+            type: entryType,
             identification: data.identification,
         }
     })
@@ -117,6 +124,11 @@ export async function updateCashierEntry(request: FastifyRequest, reply: Fastify
         bank: z.string().optional(),
         origin: z.string().optional(),
         identification: z.string().optional(),
+        is_checked: z.boolean().optional(),
+        is_withdrawal: z.boolean().optional(),
+        is_addition: z.boolean().optional(),
+        is_tip: z.boolean().optional(),
+        type: z.string().optional(),
     })
     const data = updateSchema.parse(request.body)
     const entry = await prisma.cashierEntry.update({

@@ -716,6 +716,8 @@ model CashierEntry {
   is_withdrawal      Boolean  @default(false)
   is_addition        Boolean  @default(false)
   is_tip             Boolean  @default(false)
+  is_checked         Boolean  @default(false)
+  type               String   @default("SALE")
   identification     String?
   created_at         DateTime @default(now())
   updated_at         DateTime @default(now()) @updatedAt
