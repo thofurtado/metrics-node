@@ -6,21 +6,24 @@ export async function cashierRoutes(app: FastifyInstance) {
     // Rota pública para buscar operadores de caixa (ADMIN ou CASHIER) sem estar logado
     app.get('/api/cashier/users', getCashierUsers)
 
-    app.addHook('onRequest', verifyJwt)
+    // Rotas protegidas por JWT
+    app.register(async (protectedApp) => {
+        protectedApp.addHook('onRequest', verifyJwt)
 
-    app.get('/api/cashier/sessions', getSessions)
-    app.get('/api/cashier/session/:id', getSessionDetails)
-    app.delete('/api/cashier/sessions/:id', deleteSession)
-    
-    app.post('/api/cashier/session/open', openCashierSession)
-    app.get('/api/cashier/session/active', getActiveSession)
-    app.post('/api/cashier/session/close', closeCashierSession)
-    app.post('/api/cashier/session/audit', auditCashierSession)
-    app.post('/api/cashier/entry', addCashierEntry)
-    app.delete('/api/cashier/entry/:id', deleteCashierEntry)
-    app.put('/api/cashier/entry/:id', updateCashierEntry)
-    
-    app.get('/api/payment-methods', getPaymentMethodsConfig)
-    app.get('/api/conditions', getPaymentConditionsConfig)
-    app.get('/api/machines', getPOSMachinesConfig)
+        protectedApp.get('/api/cashier/sessions', getSessions)
+        protectedApp.get('/api/cashier/session/:id', getSessionDetails)
+        protectedApp.delete('/api/cashier/sessions/:id', deleteSession)
+        
+        protectedApp.post('/api/cashier/session/open', openCashierSession)
+        protectedApp.get('/api/cashier/session/active', getActiveSession)
+        protectedApp.post('/api/cashier/session/close', closeCashierSession)
+        protectedApp.post('/api/cashier/session/audit', auditCashierSession)
+        protectedApp.post('/api/cashier/entry', addCashierEntry)
+        protectedApp.delete('/api/cashier/entry/:id', deleteCashierEntry)
+        protectedApp.put('/api/cashier/entry/:id', updateCashierEntry)
+        
+        protectedApp.get('/api/payment-methods', getPaymentMethodsConfig)
+        protectedApp.get('/api/conditions', getPaymentConditionsConfig)
+        protectedApp.get('/api/machines', getPOSMachinesConfig)
+    })
 }
