@@ -299,6 +299,10 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
     // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
     if (totalVendasEletronicas > 0) {
+        const defaultAccount = await prisma.account.findFirst({
+            where: { active: true }
+        })
+
         await prisma.transaction.create({
             data: {
                 operation: 'IN',
@@ -306,7 +310,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 description: `Vendas Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                 cashier_session_id: session.id,
                 confirmed: true,
-                payment_method: 'CAIXA'
+                payment_method: 'CAIXA',
+                account_id: defaultAccount ? defaultAccount.id : undefined
             }
         })
     }
