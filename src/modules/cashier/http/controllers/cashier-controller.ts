@@ -6,18 +6,28 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
     const openSchema = z.object({
         initial_balance: z.number().default(0),
         period: z.string().default("Almoço"),
+        user_id: z.string().uuid().optional(),
     })
     const data = openSchema.parse(request.body)
-    const user_id = request.user.sub
+    
+    let targetUserId = request.user.sub
+
+    if (data.user_id && data.user_id !== request.user.sub) {
+        const requester = await prisma.user.findUnique({ where: { id: request.user.sub } })
+        if (requester?.role === 'ADMIN') {
+            targetUserId = data.user_id
+        }
+    }
+
     const activeSession = await prisma.cashierSession.findFirst({
-        where: { user_id: user_id, status: 'OPEN' }
+        where: { user_id: targetUserId, status: 'OPEN' }
     })
     if (activeSession) {
         return reply.status(400).send({ message: 'Usuário já possui um caixa aberto.' })
     }
     const session = await prisma.cashierSession.create({
         data: {
-            user_id: user_id,
+            user_id: targetUserId,
             initial_balance: data.initial_balance,
             period: data.period,
             status: 'OPEN',
