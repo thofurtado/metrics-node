@@ -240,14 +240,12 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             continue
         }
 
-        // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry)
+        // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry do RH)
         if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
             let employeeId = entry.employee_id
-            if (!employeeId) {
+            if (!employeeId && entry.identification) {
                 const emp = await prisma.employee.findFirst({
-                    where: {
-                        user: { name: { contains: entry.identification || '', mode: 'insensitive' } }
-                    }
+                    where: { name: { contains: entry.identification, mode: 'insensitive' } }
                 })
                 if (emp) employeeId = emp.id
             }
@@ -267,8 +265,9 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             continue
         }
 
-        // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, Cliente Casa, A Prazo)
-        if (entry.client_id || (normIdent && !normIdent.includes('dinheiro') && !normIdent.includes('caixa'))) {
+        // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
+        const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
+        if (isClientePrazo) {
             let clientId = entry.client_id
             if (!clientId && entry.identification) {
                 const cli = await prisma.client.findFirst({
@@ -603,4 +602,16 @@ export async function getCashierUsers(request: FastifyRequest, reply: FastifyRep
         orderBy: { name: 'asc' }
     })
     return reply.status(200).send({ users })
+}
+
+export async function getCashierEmployees(request: FastifyRequest, reply: FastifyReply) {
+    const employees = await prisma.employee.findMany({
+        select: {
+            id: true,
+            name: true,
+            role: true
+        },
+        orderBy: { name: 'asc' }
+    })
+    return reply.status(200).send({ employees })
 }

@@ -15,6 +15,7 @@ import {
     deleteSession, 
     getSessionDetails, 
     getCashierUsers,
+    getCashierEmployees,
     getPOSMachines,
     createPOSMachine,
     updatePOSMachine,
@@ -29,6 +30,7 @@ import { verifyJwt } from '@/http/middlewares/verify-jwt'
 export async function cashierRoutes(app: FastifyInstance) {
     // Rota pública para buscar operadores de caixa (ADMIN ou CASHIER) sem estar logado
     app.get('/api/cashier/users', getCashierUsers)
+    app.get('/api/cashier/employees', getCashierEmployees)
 
     // Rotas protegidas por JWT
     app.register(async (protectedApp) => {
