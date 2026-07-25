@@ -300,9 +300,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
         // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
         if (totalVendasEletronicas > 0) {
-            const defaultAccount = await prisma.account.findFirst({
-                where: { active: true }
-            })
+            const defaultAccount = await prisma.account.findFirst()
 
             await prisma.transaction.create({
                 data: {
