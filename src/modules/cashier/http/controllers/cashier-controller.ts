@@ -7,6 +7,7 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         initial_balance: z.number().default(0),
         period: z.string().default("Almoço"),
         user_id: z.string().uuid().optional(),
+        opened_at: z.string().optional(),
     })
     const data = openSchema.parse(request.body)
     
@@ -31,6 +32,7 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
             initial_balance: data.initial_balance,
             period: data.period,
             status: 'OPEN',
+            opened_at: data.opened_at ? new Date(data.opened_at) : undefined,
         }
     })
     return reply.status(201).send(session)
