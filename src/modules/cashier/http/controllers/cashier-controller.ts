@@ -216,7 +216,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
-        let totalVendasEletronicas = 0
+        const vendasPorBanco = new Map<string, number>()
         const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
 
         for (const entry of session.entries) {
@@ -290,27 +290,51 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 continue
             }
 
-            // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora na transação eletrônica
+            // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora nas transações eletrônicas
             if (normMethod === 'dinheiro' || bank === 'CAIXA') continue
             if (bank === 'CONTA DA CASA' || padraoCasa.some(p => normMethod.includes(p))) continue
 
-            // Se for venda eletrônica / cartão / pix / voucher / a prazo
-            totalVendasEletronicas += amount
+            // Acumula vendas eletrônicas por Banco/Maquininha
+            const bankName = bank || method.toUpperCase() || 'CAIXA'
+            const currentTotal = vendasPorBanco.get(bankName) || 0
+            vendasPorBanco.set(bankName, currentTotal + amount)
         }
 
-        // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
-        if (totalVendasEletronicas > 0) {
-            const defaultAccount = await prisma.account.findFirst()
+        // Busca todas as maquininhas e contas financeiras ativas para vincular o account_id correto
+        const posMachines = await prisma.pOSMachine.findMany()
+        const accounts = await prisma.account.findMany()
+        const defaultAccount = accounts[0] || null
+
+        // Cria UMA transação no financeiro para CADA banco/maquininha com vendas no caixa
+        for (const [bankName, totalAmount] of vendasPorBanco.entries()) {
+            if (totalAmount <= 0) continue
+
+            // Localiza a conta bancária associada à maquininha ou banco
+            let targetAccountId: string | undefined = undefined
+
+            const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName)
+            if (matchedMachine && matchedMachine.account_id) {
+                targetAccountId = matchedMachine.account_id
+            } else {
+                const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
+                if (matchedAccount) {
+                    targetAccountId = matchedAccount.id
+                }
+            }
+
+            if (!targetAccountId && defaultAccount) {
+                targetAccountId = defaultAccount.id
+            }
 
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
-                    amount: totalVendasEletronicas,
-                    description: `Vendas Caixa ${session.period} ${operatorName} ${dateFormatted}`,
+                    amount: totalAmount,
+                    description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName}`,
                     cashier_session_id: session.id,
                     confirmed: true,
-                    payment_method: 'CAIXA',
-                    account_id: defaultAccount ? defaultAccount.id : undefined
+                    payment_method: bankName,
+                    account_id: targetAccountId
                 }
             })
         }
