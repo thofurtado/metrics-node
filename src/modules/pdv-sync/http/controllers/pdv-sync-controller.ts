@@ -291,3 +291,54 @@ export async function getPrintDepartmentsSync(request: FastifyRequest, reply: Fa
     return reply.status(200).send(formatted)
 }
 
+
+export async function getPaymentsSync(request: FastifyRequest, reply: FastifyReply) {
+    const payments = await prisma.payment.findMany({ where: { active: true, active_for_in: true } })
+    const formatted = payments.map(p => ({
+        Uuid: p.id,
+        Name: p.name,
+        InstallmentLimit: p.installment_limit,
+        InSight: p.in_sight,
+        AccountId: p.account_id,
+        Active: p.active,
+        CreatedAt: p.created_at
+    }))
+    return reply.status(200).send(formatted)
+}
+
+export async function getPaymentIdentifiersSync(request: FastifyRequest, reply: FastifyReply) {
+    const identifiers = await prisma.paymentIdentifier.findMany({ where: { active: true } })
+    const formatted = identifiers.map(i => ({
+        Uuid: i.id,
+        Name: i.name,
+        IsCorrentistaDebt: i.is_correntista_debt,
+        IsStockEvasion: i.is_stock_evasion,
+        Active: i.active,
+        CreatedAt: i.created_at
+    }))
+    return reply.status(200).send(formatted)
+}
+
+export async function getPaymentConditionsSync(request: FastifyRequest, reply: FastifyReply) {
+    const conditions = await prisma.paymentCondition.findMany({ where: { active: true } })
+    const formatted = conditions.map(c => ({
+        Uuid: c.id,
+        Name: c.name,
+        Installments: c.installments,
+        Active: c.active,
+        CreatedAt: c.created_at
+    }))
+    return reply.status(200).send(formatted)
+}
+
+export async function getPOSMachinesSync(request: FastifyRequest, reply: FastifyReply) {
+    const machines = await prisma.pOSMachine.findMany({ where: { active: true } })
+    const formatted = machines.map(m => ({
+        Uuid: m.id,
+        Name: m.name,
+        AccountId: m.account_id,
+        Active: m.active,
+        CreatedAt: m.created_at
+    }))
+    return reply.status(200).send(formatted)
+}

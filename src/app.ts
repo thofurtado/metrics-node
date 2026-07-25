@@ -34,6 +34,7 @@ import { uploadsRoutes } from '@/modules/uploads/http/controllers/routes'
 import { salesRoutes } from '@/modules/sales/http/controllers/routes'
 import { pdvSyncRoutes } from '@/modules/pdv-sync/http/controllers/routes'
 import { printDepartmentsRoutes } from '@/modules/print-departments/http/controllers/routes'
+import { cashierRoutes } from '@/modules/cashier/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { truncate } from 'node:fs'
@@ -141,7 +142,7 @@ app.register(publicRoutes)
 app.register(salesRoutes)
 app.register(pdvSyncRoutes)
 app.register(printDepartmentsRoutes)
-
+app.register(cashierRoutes)
 // Quiosque (Electron / metrics-ponto) - autenticado via x-api-key
 app.register(async (instance) => {
     instance.addHook('preHandler', async (request, reply) => {

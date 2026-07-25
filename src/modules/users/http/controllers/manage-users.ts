@@ -8,7 +8,7 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
         name: z.string(),
         email: z.string().email(),
         password: z.string().min(6),
-        role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER'),
+        role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).default('MEMBER'),
         modules: z.array(z.string()).default([]),
     })
 
@@ -23,6 +23,9 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
     }
 
     const password_hash = await hash(password, 6)
+
+    // Converte MEMBER -> TECHNICIAN se necessário
+    const dbRole = (role === 'MEMBER' ? 'TECHNICIAN' : role) as 'ADMIN' | 'TECHNICIAN' | 'CASHIER'
 
     // Primeiro resolvemos os IDs dos módulos baseados nos slugs
     let moduleIds: string[] = []
@@ -39,7 +42,7 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
             name,
             email,
             password_hash,
-            role,
+            role: dbRole,
             userModules: {
                 create: moduleIds.map(moduleId => ({
                     module_id: moduleId
@@ -60,15 +63,13 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         name: z.string().optional(),
         email: z.string().email().optional(),
         password: z.string().min(6).optional(),
-        role: z.enum(['ADMIN', 'MEMBER']).optional(),
+        role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).optional(),
         modules: z.array(z.string()).optional(),
     })
 
     const { id } = updateUserParamsSchema.parse(request.params)
     const { name, email, password, role, modules } = updateUserBodySchema.parse(request.body)
 
-    // Impede auto-remoção de privilégios ou settings, se necessário
-    // Por simplicidade, vamos permitir atualizar, mas garantir que email não duplique
     if (email) {
         const userWithSameEmail = await prisma.user.findUnique({ where: { email } })
         if (userWithSameEmail && userWithSameEmail.id !== id) {
@@ -84,13 +85,14 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
     const updateData: any = {
         name,
         email,
-        role,
+    }
+    if (role) {
+        updateData.role = role === 'MEMBER' ? 'TECHNICIAN' : role
     }
     if (password_hash) {
         updateData.password_hash = password_hash
     }
 
-    // Se módulos foram fornecidos, atualizamos eles também em uma transaction
     try {
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
@@ -103,12 +105,13 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
                 await tx.userModule.deleteMany({
                     where: { user_id: id }
                 })
-                
+
                 if (modules.length > 0) {
                     const dbModules = await tx.module.findMany({
                         where: { slug: { in: modules } },
                         select: { id: true }
                     })
+
                     await tx.userModule.createMany({
                         data: dbModules.map(m => ({
                             user_id: id,
@@ -118,11 +121,17 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
                 }
             }
         })
-    } catch (e: any) {
-        return reply.status(500).send({ message: 'Erro ao atualizar usuário.', details: e.message })
-    }
 
-    return reply.status(204).send()
+        const updatedUser = await prisma.user.findUnique({
+            where: { id },
+            select: { id: true, name: true, email: true, role: true }
+        })
+
+        return reply.send({ user: updatedUser })
+    } catch (err) {
+        console.error(err)
+        return reply.status(500).send({ message: 'Erro interno ao atualizar usuário.' })
+    }
 }
 
 export async function deleteUser(request: FastifyRequest, reply: FastifyReply) {
@@ -132,18 +141,17 @@ export async function deleteUser(request: FastifyRequest, reply: FastifyReply) {
 
     const { id } = deleteUserParamsSchema.parse(request.params)
 
-    // Proteção básica: não deletar a si mesmo
-    if (request.user && request.user.sub === id) {
-        return reply.status(400).send({ message: 'Você não pode excluir a sua própria conta.' })
+    const user = await prisma.user.findUnique({
+        where: { id },
+    })
+
+    if (!user) {
+        return reply.status(404).send({ message: 'Usuário não encontrado.' })
     }
 
-    try {
-        await prisma.user.delete({
-            where: { id }
-        })
-    } catch (e: any) {
-        return reply.status(500).send({ message: 'Erro ao excluir usuário.', details: e.message })
-    }
+    await prisma.user.delete({
+        where: { id },
+    })
 
     return reply.status(204).send()
 }

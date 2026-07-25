@@ -9,6 +9,9 @@ export async function getPublicUsers(request: FastifyRequest, reply: FastifyRepl
     }
 
     const users = await prisma.user.findMany({
+        where: {
+            role: { not: 'CASHIER' }
+        },
         select: {
             id: true,
             name: true,
