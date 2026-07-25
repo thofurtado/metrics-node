@@ -79,7 +79,15 @@ export async function getSessionDetails(request: FastifyRequest, reply: FastifyR
     const { id } = paramsSchema.parse(request.params)
     const session = await prisma.cashierSession.findUnique({
         where: { id },
-        include: { entries: true, sales: { include: { items: true } } }
+        include: {
+            entries: {
+                include: {
+                    client: { select: { id: true, name: true } },
+                    employee: { select: { id: true, name: true } }
+                }
+            },
+            sales: { include: { items: true } }
+        }
     })
     if (!session) {
         return reply.status(404).send({ message: 'Caixa não encontrado.' })
