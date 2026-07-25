@@ -245,10 +245,18 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
                 let employeeId = entry.employee_id
                 if (!employeeId && entry.identification) {
-                    const emp = await prisma.employee.findFirst({
-                        where: { name: { contains: entry.identification, mode: 'insensitive' } }
-                    })
-                    if (emp) employeeId = emp.id
+                    const cleanSearch = entry.identification.replace(/^(Mesa|Balcão|Delivery)\s*/i, '').trim()
+                    if (cleanSearch) {
+                        const emp = await prisma.employee.findFirst({
+                            where: { name: { contains: cleanSearch, mode: 'insensitive' } }
+                        })
+                        if (emp) employeeId = emp.id
+                    }
+                }
+
+                if (!employeeId) {
+                    const firstEmp = await prisma.employee.findFirst()
+                    if (firstEmp) employeeId = firstEmp.id
                 }
 
                 if (employeeId) {
