@@ -195,134 +195,139 @@ export async function closeCashierSession(request: FastifyRequest, reply: Fastif
 }
 
 export async function auditCashierSession(request: FastifyRequest, reply: FastifyReply) {
-    const auditSchema = z.object({ session_id: z.string().uuid() })
-    const { session_id } = auditSchema.parse(request.body)
+    try {
+        const auditSchema = z.object({ session_id: z.string().uuid() })
+        const { session_id } = auditSchema.parse(request.body)
 
-    const session = await prisma.cashierSession.findUnique({
-        where: { id: session_id },
-        include: { entries: true }
-    })
+        const session = await prisma.cashierSession.findUnique({
+            where: { id: session_id },
+            include: { entries: true }
+        })
 
-    if (!session) {
-        return reply.status(400).send({ message: 'Sessão não encontrada.' })
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: session.user_id } })
-    const operatorName = user ? user.name : 'Operador'
-    const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
-
-    // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
-    await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
-    await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
-
-    let totalVendasEletronicas = 0
-    const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
-
-    for (const entry of session.entries) {
-        const amount = Number(entry.amount || 0)
-        const method = (entry.payment_method || '').trim()
-        const bank = (entry.bank || '').toUpperCase().trim()
-        const normMethod = normalizeString(method)
-        const normIdent = normalizeString(entry.identification || '')
-
-        // Sangria (Retirada de Dinheiro Físico para Depósito)
-        if (entry.is_withdrawal) {
-            await prisma.transaction.create({
-                data: {
-                    operation: 'OUT',
-                    amount,
-                    description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}`,
-                    cashier_session_id: session.id,
-                    confirmed: true,
-                    payment_method: 'DINHEIRO'
-                }
-            })
-            continue
+        if (!session) {
+            return reply.status(400).send({ message: 'Sessão não encontrada.' })
         }
 
-        // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry do RH)
-        if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
-            let employeeId = entry.employee_id
-            if (!employeeId && entry.identification) {
-                const emp = await prisma.employee.findFirst({
-                    where: { name: { contains: entry.identification, mode: 'insensitive' } }
-                })
-                if (emp) employeeId = emp.id
-            }
+        const user = await prisma.user.findUnique({ where: { id: session.user_id } })
+        const operatorName = user ? user.name : 'Operador'
+        const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
 
-            if (employeeId) {
-                await prisma.payrollEntry.create({
+        // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
+        await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
+        await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
+
+        let totalVendasEletronicas = 0
+        const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
+
+        for (const entry of session.entries) {
+            const amount = Number(entry.amount || 0)
+            const method = (entry.payment_method || '').trim()
+            const bank = (entry.bank || '').toUpperCase().trim()
+            const normMethod = normalizeString(method)
+            const normIdent = normalizeString(entry.identification || '')
+
+            // Sangria (Retirada de Dinheiro Físico para Depósito)
+            if (entry.is_withdrawal) {
+                await prisma.transaction.create({
                     data: {
-                        employee_id: employeeId,
-                        amount: amount,
-                        type: 'VALE',
-                        description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                        referenceDate: session.opened_at,
-                        status: 'PENDING'
+                        operation: 'expense',
+                        amount,
+                        description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}`,
+                        cashier_session_id: session.id,
+                        confirmed: true,
+                        payment_method: 'DINHEIRO'
                     }
                 })
+                continue
             }
-            continue
+
+            // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry do RH)
+            if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
+                let employeeId = entry.employee_id
+                if (!employeeId && entry.identification) {
+                    const emp = await prisma.employee.findFirst({
+                        where: { name: { contains: entry.identification, mode: 'insensitive' } }
+                    })
+                    if (emp) employeeId = emp.id
+                }
+
+                if (employeeId) {
+                    await prisma.payrollEntry.create({
+                        data: {
+                            employee_id: employeeId,
+                            amount: amount,
+                            type: 'VALE',
+                            description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                            referenceDate: new Date(session.opened_at),
+                            status: 'PENDING'
+                        }
+                    })
+                }
+                continue
+            }
+
+            // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
+            const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
+            if (isClientePrazo) {
+                let clientId = entry.client_id
+                if (!clientId && entry.identification) {
+                    const cli = await prisma.client.findFirst({
+                        where: { name: { contains: entry.identification, mode: 'insensitive' } }
+                    })
+                    if (cli) clientId = cli.id
+                }
+
+                await prisma.transaction.create({
+                    data: {
+                        operation: 'income',
+                        amount,
+                        description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
+                        cashier_session_id: session.id,
+                        confirmed: false, // PENDENTE DE RECEBIMENTO
+                        supplier_id: clientId || undefined
+                    }
+                })
+                continue
+            }
+
+            // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora na transação eletrônica
+            if (normMethod === 'dinheiro' || bank === 'CAIXA') continue
+            if (bank === 'CONTA DA CASA' || padraoCasa.some(p => normMethod.includes(p))) continue
+
+            // Se for venda eletrônica / cartão / pix / voucher / a prazo
+            totalVendasEletronicas += amount
         }
 
-        // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
-        const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
-        if (isClientePrazo) {
-            let clientId = entry.client_id
-            if (!clientId && entry.identification) {
-                const cli = await prisma.client.findFirst({
-                    where: { name: { contains: entry.identification, mode: 'insensitive' } }
-                })
-                if (cli) clientId = cli.id
-            }
+        // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
+        if (totalVendasEletronicas > 0) {
+            const defaultAccount = await prisma.account.findFirst({
+                where: { active: true }
+            })
 
             await prisma.transaction.create({
                 data: {
-                    operation: 'IN',
-                    amount,
-                    description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
+                    operation: 'income',
+                    amount: totalVendasEletronicas,
+                    description: `Vendas Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                     cashier_session_id: session.id,
-                    confirmed: false, // PENDENTE DE RECEBIMENTO
-                    supplier_id: clientId || undefined
+                    confirmed: true,
+                    payment_method: 'CAIXA',
+                    account_id: defaultAccount ? defaultAccount.id : undefined
                 }
             })
-            continue
         }
 
-        // Se for Dinheiro ou Evasão de Estoque (Cortesia, Pró-labore), ignora na transação eletrônica
-        if (normMethod === 'dinheiro' || bank === 'CAIXA') continue
-        if (bank === 'CONTA DA CASA' || padraoCasa.some(p => normMethod.includes(p))) continue
-
-        // Se for venda eletrônica / cartão / pix / voucher / a prazo
-        totalVendasEletronicas += amount
-    }
-
-    // Se houve vendas eletrônicas, cria a ÚNICA transação consolidada de entrada no financeiro
-    if (totalVendasEletronicas > 0) {
-        const defaultAccount = await prisma.account.findFirst({
-            where: { active: true }
+        // Mudar status para CONFERIDO
+        const updatedSession = await prisma.cashierSession.update({
+            where: { id: session.id },
+            data: { status: 'CONFERIDO' }
         })
 
-        await prisma.transaction.create({
-            data: {
-                operation: 'IN',
-                amount: totalVendasEletronicas,
-                description: `Vendas Caixa ${session.period} ${operatorName} ${dateFormatted}`,
-                cashier_session_id: session.id,
-                confirmed: true,
-                payment_method: 'CAIXA',
-                account_id: defaultAccount ? defaultAccount.id : undefined
-            }
-        })
+        return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
+    } catch (error: any) {
+        console.error('[auditCashierSession Error]', error)
+        return reply.status(500).send({ message: error?.message || 'Erro ao auditar caixa.' })
     }
-
-    // Mudar status para CONFERIDO
-    const updatedSession = await prisma.cashierSession.update({
-        where: { id: session.id },
-        data: { status: 'CONFERIDO' }
-    })
-
-    return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
 }
 
 export async function getMonthlyCashAudit(request: FastifyRequest, reply: FastifyReply) {
