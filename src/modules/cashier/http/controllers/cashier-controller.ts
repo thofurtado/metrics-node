@@ -250,6 +250,19 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         payment_method: 'DINHEIRO'
                     }
                 })
+
+                if (entry.employee_id) {
+                    await prisma.payrollEntry.create({
+                        data: {
+                            employee_id: entry.employee_id,
+                            amount: amount,
+                            type: 'VALE',
+                            description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                            referenceDate: new Date(session.opened_at),
+                            status: 'PENDING'
+                        }
+                    })
+                }
                 continue
             }
 
