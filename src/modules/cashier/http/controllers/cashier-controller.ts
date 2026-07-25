@@ -304,7 +304,6 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
                         cashier_session_id: session.id,
                         confirmed: false, // PENDENTE DE RECEBIMENTO
-                        supplier_id: clientId || undefined
                     }
                 })
                 continue
