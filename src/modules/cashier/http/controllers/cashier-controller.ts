@@ -190,6 +190,72 @@ export async function updateCashierEntry(request: FastifyRequest, reply: Fastify
     return reply.status(200).send(entry)
 }
 
+export async function resolveCashierDivergence(request: FastifyRequest, reply: FastifyReply) {
+    const resolveSchema = z.object({
+        session_id: z.string().uuid(),
+        amount: z.number(),
+        action: z.enum(['JUSTIFY', 'DESTINATION']),
+        reason: z.string(),
+        account_id: z.string().optional()
+    })
+
+    const data = resolveSchema.parse(request.body)
+    const { session_id, amount, action, reason, account_id } = data
+
+    const session = await prisma.cashierSession.findUnique({
+        where: { id: session_id }
+    })
+
+    if (!session) {
+        return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
+    }
+
+    const userId = request.user.sub
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (user?.role !== 'ADMIN') {
+        return reply.status(403).send({ message: 'Apenas administradores podem resolver divergências.' })
+    }
+    
+    const isWithdrawal = amount < 0;
+    const absAmount = Math.abs(amount);
+
+    let bankName = 'Caixa Central'
+    if (action === 'DESTINATION' && account_id) {
+        const account = await prisma.account.findUnique({ where: { id: account_id }})
+        if (account) bankName = account.name
+    }
+
+    const entry = await prisma.cashierEntry.create({
+        data: {
+            cashier_session_id: session.id,
+            amount: absAmount,
+            payment_method: 'Dinheiro',
+            bank: bankName,
+            is_withdrawal: isWithdrawal,
+            is_addition: !isWithdrawal,
+            type: action === 'DESTINATION' ? 'SANGRIA_DESTINO' : 'AJUSTE_AUDITORIA',
+            identification: reason,
+        }
+    })
+
+    if (action === 'DESTINATION' && isWithdrawal && account_id) {
+        await prisma.transaction.create({
+            data: {
+                operation: 'income',
+                amount: absAmount,
+                description: `Destino de Caixa (${session.period}) - ${reason}`,
+                account_id: account_id,
+                cashier_session_id: session.id,
+                confirmed: true,
+                payment_method: 'DINHEIRO',
+                category_id: null
+            }
+        })
+    }
+
+    return reply.status(200).send({ message: 'Divergência resolvida com sucesso.', entry })
+}
+
 export async function closeCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const closeSchema = z.object({ session_id: z.string().uuid() })
     const { session_id } = closeSchema.parse(request.body)
