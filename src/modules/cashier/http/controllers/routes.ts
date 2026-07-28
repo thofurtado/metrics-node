@@ -6,6 +6,7 @@ import {
     deleteCashierEntry, 
     updateCashierEntry, 
     closeCashierSession, 
+    submitCashierForReview,
     auditCashierSession, 
     getMonthlyCashAudit,
     getPaymentMethodsConfig, 
@@ -44,6 +45,7 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.post('/api/cashier/session/open', openCashierSession)
         protectedApp.get('/api/cashier/session/active', getActiveSession)
         protectedApp.post('/api/cashier/session/close', closeCashierSession)
+        protectedApp.post('/api/cashier/session/submit', submitCashierForReview)
         protectedApp.post('/api/cashier/session/audit', auditCashierSession)
         protectedApp.post('/api/cashier/entry', addCashierEntry)
         protectedApp.delete('/api/cashier/entry/:id', deleteCashierEntry)

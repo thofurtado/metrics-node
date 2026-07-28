@@ -21,10 +21,13 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
     }
 
     const activeSession = await prisma.cashierSession.findFirst({
-        where: { user_id: targetUserId, status: 'OPEN' }
+        where: { user_id: targetUserId, status: { in: ['OPEN', 'PENDING'] } }
     })
     if (activeSession) {
-        return reply.status(400).send({ message: 'Usuário já possui um caixa aberto.' })
+        const msg = activeSession.status === 'PENDING'
+            ? 'Usuário já possui um caixa aguardando conferência. Finalize a conferência antes de abrir um novo.'
+            : 'Usuário já possui um caixa aberto.'
+        return reply.status(400).send({ message: msg, existingSessionId: activeSession.id })
     }
     const session = await prisma.cashierSession.create({
         data: {
@@ -204,6 +207,37 @@ export async function closeCashierSession(request: FastifyRequest, reply: Fastif
         data: { status: 'PENDING', closed_at: new Date() }
     })
     return reply.status(200).send(session)
+}
+
+/**
+ * Envia o caixa para conferência: OPEN → PENDING.
+ * Pode ser chamado pelo próprio operador (CASHIER) ou por um ADMIN.
+ * Não realiza auditoria financeira — isso fica a cargo de auditCashierSession (ADMIN).
+ */
+export async function submitCashierForReview(request: FastifyRequest, reply: FastifyReply) {
+    const bodySchema = z.object({ session_id: z.string().uuid() })
+    const { session_id } = bodySchema.parse(request.body)
+
+    const session = await prisma.cashierSession.findUnique({ where: { id: session_id } })
+    if (!session) {
+        return reply.status(404).send({ message: 'Caixa não encontrado.' })
+    }
+    if (session.status !== 'OPEN') {
+        return reply.status(400).send({ message: 'Apenas caixas abertos podem ser enviados para conferência.' })
+    }
+
+    // Se não for ADMIN, só permite enviar o próprio caixa
+    const userId = request.user.sub
+    const requester = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (requester?.role !== 'ADMIN' && session.user_id !== userId) {
+        return reply.status(403).send({ message: 'Sem permissão para enviar este caixa para conferência.' })
+    }
+
+    const updated = await prisma.cashierSession.update({
+        where: { id: session_id },
+        data: { status: 'PENDING', closed_at: new Date() }
+    })
+    return reply.status(200).send(updated)
 }
 
 export async function auditCashierSession(request: FastifyRequest, reply: FastifyReply) {
