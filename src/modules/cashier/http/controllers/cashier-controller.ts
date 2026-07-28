@@ -61,8 +61,36 @@ export async function getSessions(request: FastifyRequest, reply: FastifyReply) 
 
     const sessions = await prisma.cashierSession.findMany({
         where: whereCondition,
-        orderBy: { opened_at: 'desc' },
         include: { entries: true, sales: { include: { items: true } } }
+    })
+
+    const periodPriority: Record<string, number> = {
+        'manhã': 1,
+        'almoço': 2,
+        'tarde': 3,
+        'jantar': 4,
+        'noite': 5
+    }
+
+    sessions.sort((a, b) => {
+        const dateA = new Date(a.opened_at.getFullYear(), a.opened_at.getMonth(), a.opened_at.getDate()).getTime()
+        const dateB = new Date(b.opened_at.getFullYear(), b.opened_at.getMonth(), b.opened_at.getDate()).getTime()
+
+        if (dateA !== dateB) {
+            return dateB - dateA // Descending date
+        }
+
+        const pA = (a.period || '').toLowerCase()
+        const pB = (b.period || '').toLowerCase()
+        
+        const prioA = periodPriority[pA] || 0
+        const prioB = periodPriority[pB] || 0
+
+        if (prioA !== prioB) {
+            return prioB - prioA // Descending priority
+        }
+
+        return b.opened_at.getTime() - a.opened_at.getTime() // Descending exact time
     })
 
     const userIds = Array.from(new Set(sessions.map(s => s.user_id)))
@@ -487,8 +515,39 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
                 lte: endOfMonth
             }
         },
-        orderBy: { opened_at: 'asc' },
         include: { entries: true }
+    })
+
+    const periodPriority: Record<string, number> = {
+        'manhã': 1,
+        'almoço': 2,
+        'tarde': 3,
+        'jantar': 4,
+        'noite': 5
+    }
+
+    sessions.sort((a, b) => {
+        // Obter apenas a data sem as horas
+        const dateA = new Date(a.opened_at.getFullYear(), a.opened_at.getMonth(), a.opened_at.getDate()).getTime()
+        const dateB = new Date(b.opened_at.getFullYear(), b.opened_at.getMonth(), b.opened_at.getDate()).getTime()
+
+        if (dateA !== dateB) {
+            return dateA - dateB // Ordena por data (asc)
+        }
+
+        // Se for o mesmo dia, ordena pelo turno (Almoço antes da Janta)
+        const pA = (a.period || '').toLowerCase()
+        const pB = (b.period || '').toLowerCase()
+        
+        const prioA = periodPriority[pA] || 99
+        const prioB = periodPriority[pB] || 99
+
+        if (prioA !== prioB) {
+            return prioA - prioB
+        }
+
+        // Critério de desempate caso tenham o mesmo turno ou turnos não reconhecidos
+        return a.opened_at.getTime() - b.opened_at.getTime()
     })
 
     const userIds = Array.from(new Set(sessions.map(s => s.user_id)))
