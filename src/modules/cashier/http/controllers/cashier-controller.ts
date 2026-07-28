@@ -20,15 +20,6 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         }
     }
 
-    const activeSession = await prisma.cashierSession.findFirst({
-        where: { user_id: targetUserId, status: { in: ['OPEN', 'PENDING'] } }
-    })
-    if (activeSession) {
-        const msg = activeSession.status === 'PENDING'
-            ? 'Usuário já possui um caixa aguardando conferência. Finalize a conferência antes de abrir um novo.'
-            : 'Usuário já possui um caixa aberto.'
-        return reply.status(400).send({ message: msg, existingSessionId: activeSession.id })
-    }
     const session = await prisma.cashierSession.create({
         data: {
             user_id: targetUserId,
