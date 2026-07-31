@@ -833,6 +833,12 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 {
                     credit_card_id: null
                 },
+                {
+                    OR: [
+                        { cashier_session_id: null },
+                        { operation: 'cashier_summary' }
+                    ]
+                },
                 ...(sector !== undefined ? [{
                     sectors: {
                         id: { equals: sector }
@@ -862,7 +868,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     checked: checkedFilter
                 }] : []),
                 ...(operation ? [{
-                    operation: { equals: operation }
+                    operation: { in: operation === 'income' ? ['income', 'cashier_summary'] : [operation] }
                 }] : [])
             ]
         }

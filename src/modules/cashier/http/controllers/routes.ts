@@ -8,6 +8,7 @@ import {
     closeCashierSession, 
     submitCashierForReview,
     auditCashierSession, 
+    revertCashierAudit,
     getMonthlyCashAudit,
     resolveCashierDivergence,
     getPaymentMethodsConfig, 
@@ -48,6 +49,7 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.post('/api/cashier/session/close', closeCashierSession)
         protectedApp.post('/api/cashier/session/submit', submitCashierForReview)
         protectedApp.post('/api/cashier/session/audit', auditCashierSession)
+        protectedApp.post('/api/cashier/session/revert', revertCashierAudit)
         protectedApp.post('/api/cashier/session/resolve-divergence', resolveCashierDivergence)
         protectedApp.post('/api/cashier/entry', addCashierEntry)
         protectedApp.delete('/api/cashier/entry/:id', deleteCashierEntry)

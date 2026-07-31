@@ -120,13 +120,16 @@ export async function getSessionDetails(request: FastifyRequest, reply: FastifyR
                     employee: { select: { id: true, name: true } }
                 }
             },
-            sales: { include: { items: true } }
+            sales: { include: { items: true } },
+            transactions: {
+                orderBy: { created_at: 'asc' }
+            }
         }
     })
     if (!session) {
         return reply.status(404).send({ message: 'Caixa não encontrado.' })
     }
-    return reply.status(200).send({ session, entries: session.entries, summary: {} })
+    return reply.status(200).send({ session, entries: session.entries, summary: {}, transactions: session.transactions })
 }
 
 export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
@@ -450,6 +453,16 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             vendasPorBanco.set(bankName, currentTotal + amount)
         }
 
+        let summaryTotal = 0;
+        for (const entry of session.entries) {
+            const amount = Number(entry.amount || 0)
+            if (entry.is_withdrawal) {
+                summaryTotal -= amount;
+            } else {
+                summaryTotal += amount;
+            }
+        }
+
         // Busca todas as maquininhas e contas financeiras ativas para vincular o account_id correto
         const posMachines = await prisma.pOSMachine.findMany()
         const accounts = await prisma.account.findMany()
@@ -489,6 +502,18 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             })
         }
 
+        // Criar transação de RESUMO para a listagem (não afeta saldos devido ao tipo)
+        await prisma.transaction.create({
+            data: {
+                operation: 'cashier_summary',
+                amount: summaryTotal > 0 ? summaryTotal : Math.abs(summaryTotal),
+                description: `Fechamento de Caixa ${session.period} ${operatorName} ${dateFormatted}`,
+                cashier_session_id: session.id,
+                confirmed: true,
+                payment_method: 'CAIXA'
+            }
+        })
+
         // Mudar status para CONFERIDO
         const updatedSession = await prisma.cashierSession.update({
             where: { id: session.id },
@@ -499,6 +524,40 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
     } catch (error: any) {
         console.error('[auditCashierSession Error]', error)
         return reply.status(500).send({ message: error?.message || 'Erro ao auditar caixa.' })
+    }
+}
+
+export async function revertCashierAudit(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const revertSchema = z.object({ session_id: z.string().uuid() })
+        const { session_id } = revertSchema.parse(request.body)
+
+        const session = await prisma.cashierSession.findUnique({
+            where: { id: session_id }
+        })
+
+        if (!session) {
+            return reply.status(404).send({ message: 'Sessão não encontrada.' })
+        }
+
+        if (session.status !== 'CONFERIDO') {
+            return reply.status(400).send({ message: 'Apenas caixas conferidos podem ser revertidos.' })
+        }
+
+        // Deleta todas as transações financeiras e vales/registros do payroll associados
+        await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
+        await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
+
+        // Retorna o status para PENDING (Aguardando nova conferência)
+        const updatedSession = await prisma.cashierSession.update({
+            where: { id: session.id },
+            data: { status: 'PENDING' }
+        })
+
+        return reply.status(200).send({ message: 'Conferência revertida com sucesso. As transações financeiras foram excluídas.', session: updatedSession })
+    } catch (error: any) {
+        console.error('[revertCashierAudit Error]', error)
+        return reply.status(500).send({ message: error?.message || 'Erro ao reverter auditoria de caixa.' })
     }
 }
 
