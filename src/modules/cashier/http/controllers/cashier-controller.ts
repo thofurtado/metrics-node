@@ -266,17 +266,16 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
         }
     })
 
-    if (action === 'DESTINATION' && isWithdrawal && account_id) {
+    if (action === 'DESTINATION' && account_id) {
         await prisma.transaction.create({
             data: {
                 operation: 'income',
                 amount: absAmount,
-                description: `Destino de Caixa (${session.period}) - ${reason}`,
+                description: `Destino de Caixa (${session.period || ''}) - ${reason}`,
                 account_id: account_id,
                 cashier_session_id: session.id,
                 confirmed: true,
                 payment_method: 'DINHEIRO',
-                category_id: null
             }
         })
     }
