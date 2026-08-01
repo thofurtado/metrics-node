@@ -570,9 +570,18 @@ export async function revertCashierAudit(request: FastifyRequest, reply: Fastify
 }
 
 export async function getMonthlyCashAudit(request: FastifyRequest, reply: FastifyReply) {
+    const querySchema = z.object({
+        month: z.string().optional(),
+        year: z.string().optional(),
+    })
+    const { month, year } = querySchema.parse(request.query)
+
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    const targetYear = year ? parseInt(year, 10) : now.getFullYear()
+    const targetMonth = month ? parseInt(month, 10) - 1 : now.getMonth()
+
+    const startOfMonth = new Date(targetYear, targetMonth, 1)
+    const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59)
 
     const sessions = await prisma.cashierSession.findMany({
         where: {
