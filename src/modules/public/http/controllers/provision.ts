@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Pool } from 'pg'
 import { execSync } from 'child_process'
 import { env } from '@/env'
+import { getSchemaHash } from './db-status'
 
 export async function provisionTenant(request: FastifyRequest, reply: FastifyReply) {
     const provisionBodySchema = z.object({
@@ -60,6 +61,17 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
             env: { ...process.env, DATABASE_URL: newDbUrl },
             stdio: 'inherit'
         })
+
+        // 5. Atualizar informações de schemaVersion no db_master
+        try {
+            const currentHash = getSchemaHash()
+            const pool2 = new Pool({ connectionString: masterUrl })
+            await pool2.query('UPDATE "Tenant" SET "schemaVersion" = $1, "dbSyncedAt" = NOW() WHERE "dbName" = $2', [currentHash, dbName])
+            await pool2.end()
+            console.log(`Metadata do banco ${dbName} atualizado no db_master.`)
+        } catch (dbErr: any) {
+            console.error('Erro ao atualizar metadata no db_master:', dbErr)
+        }
 
         console.log(`✅ Provisionamento do banco ${dbName} concluído com sucesso!`)
         return reply.status(200).send({ message: 'Banco de dados criado e populado com sucesso!' })

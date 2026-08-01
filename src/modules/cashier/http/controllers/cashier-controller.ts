@@ -135,6 +135,14 @@ export async function getSessionDetails(request: FastifyRequest, reply: FastifyR
 export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({ id: z.string().uuid() })
     const { id } = paramsSchema.parse(request.params)
+    
+    // Deleta todas as transações financeiras geradas por esse caixa (resumos, liquidações, sangrias, a prazo, divergências)
+    await prisma.transaction.deleteMany({ where: { cashier_session_id: id } })
+    
+    // Deleta os vales e consumos de funcionários gerados no RH por essa sessão de caixa
+    await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${id}` } } })
+    
+    // Deleta os lançamentos e a sessão do caixa
     await prisma.cashierEntry.deleteMany({ where: { cashier_session_id: id } })
     await prisma.cashierSession.delete({ where: { id } })
     return reply.status(204).send()

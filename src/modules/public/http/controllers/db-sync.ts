@@ -1,0 +1,51 @@
+import { FastifyReply, FastifyRequest } from 'fastify'
+import { z } from 'zod'
+import { Pool } from 'pg'
+import { execSync } from 'child_process'
+import { getSchemaHash } from './db-status'
+
+export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply) {
+  // Check API Key
+  const apiKey = request.headers['x-api-key']
+  if (apiKey !== (process.env.API_KEY_PONTO || 'metrics_secret_key_2026')) {
+    return reply.status(401).send({ message: 'Acesso não autorizado para sincronização' })
+  }
+
+  const syncBodySchema = z.object({
+    dbName: z.string().min(1)
+  })
+
+  const { dbName } = syncBodySchema.parse(request.body)
+
+  // Validate dbName to avoid SQL injection
+  if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
+    return reply.status(400).send({ message: 'Nome de banco de dados inválido.' })
+  }
+
+  try {
+    console.log(`🚀 Iniciando sincronização (db push) para o banco: ${dbName}`)
+
+    // 1. Construct database URL
+    const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
+    const dbUrl = `${baseUrl}/${dbName}?schema=public`
+
+    // 2. Run prisma db push
+    execSync(`npx prisma db push --accept-data-loss`, { 
+      env: { ...process.env, DATABASE_URL: dbUrl },
+      stdio: 'inherit'
+    })
+
+    // 3. Update Tenant schemaVersion in db_master
+    const currentHash = getSchemaHash()
+    const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
+    const pool = new Pool({ connectionString: masterUrl })
+    await pool.query('UPDATE "Tenant" SET "schemaVersion" = $1, "dbSyncedAt" = NOW() WHERE "dbName" = $2', [currentHash, dbName])
+    await pool.end()
+
+    console.log(`✅ Sincronização do banco ${dbName} concluída com sucesso!`)
+    return reply.status(200).send({ success: true, message: 'Banco de dados sincronizado com sucesso!' })
+  } catch (error: any) {
+    console.error('❌ Erro na sincronização:', error)
+    return reply.status(500).send({ message: 'Erro ao sincronizar banco de dados', details: error.message })
+  }
+}
