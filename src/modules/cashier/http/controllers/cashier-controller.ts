@@ -267,6 +267,7 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
     const entry = await prisma.cashierEntry.create({
         data: {
             cashier_session_id: session.id,
+            origin: action === 'DESTINATION' && account_id ? account_id : null,
             amount: absAmount,
             payment_method: 'Dinheiro',
             bank: bankName,
@@ -280,7 +281,7 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
     if (action === 'DESTINATION' && account_id) {
         await prisma.transaction.create({
             data: {
-                operation: 'income',
+                operation: isWithdrawal ? 'expense' : 'income',
                 amount: absAmount,
                 description: `Destino de Caixa (${session.period || ''}) - ${reason}`,
                 account_id: account_id,
@@ -366,6 +367,31 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const bank = (entry.bank || '').toUpperCase().trim()
             const normMethod = normalizeString(method)
             const normIdent = normalizeString(entry.identification || '')
+
+            // Sangria de Destino / Divergência Destinada
+            if (entry.type === 'SANGRIA_DESTINO') {
+                let targetAccountId = entry.origin || undefined
+                if (!targetAccountId && entry.bank) {
+                    const matchedAcc = accounts.find(a => a.name.toUpperCase().includes(entry.bank!.toUpperCase()))
+                    if (matchedAcc) targetAccountId = matchedAcc.id
+                }
+                if (!targetAccountId && defaultAccount) {
+                    targetAccountId = defaultAccount.id
+                }
+
+                await prisma.transaction.create({
+                    data: {
+                        operation: entry.is_withdrawal ? 'expense' : 'income',
+                        amount,
+                        description: `Destino de Caixa (${session.period}) - ${entry.identification || 'Divergência de Caixa'}`,
+                        account_id: targetAccountId,
+                        cashier_session_id: session.id,
+                        confirmed: true,
+                        payment_method: 'DINHEIRO'
+                    }
+                })
+                continue
+            }
 
             // Sangria (Retirada de Dinheiro Físico para Depósito)
             if (entry.is_withdrawal) {
@@ -664,7 +690,8 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             proximaAbertura: null as number | null,
             hasNextSession: false,
             divergencia: 0,
-            statusComparacao: 'OK'
+            statusComparacao: 'OK',
+            resolutionDetails: null as any
         }
     })
 
@@ -672,10 +699,21 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
     for (let i = 0; i < auditItems.length - 1; i++) {
         const current = auditItems[i]
         const next = auditItems[i + 1]
+        const sessionObj = sessions.find(s => s.id === current.id)
+        const resolutionEntry = sessionObj?.entries?.find((e: any) => e.type === 'SANGRIA_DESTINO' || e.type === 'AJUSTE_AUDITORIA')
+
         current.proximaAbertura = next.abertura
         current.hasNextSession = true
         current.divergencia = next.abertura - current.saldoFisicoFinal
-        if (Math.abs(current.divergencia) > 0.05) {
+        
+        if (resolutionEntry) {
+            current.statusComparacao = 'RESOLVIDO'
+            current.resolutionDetails = {
+                type: resolutionEntry.type,
+                reason: resolutionEntry.identification,
+                bank: resolutionEntry.bank
+            }
+        } else if (Math.abs(current.divergencia) > 0.05) {
             current.statusComparacao = 'DIVERGENTE'
         } else {
             current.statusComparacao = 'BATENDO'
