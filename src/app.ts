@@ -56,6 +56,8 @@ app.addHook('onRequest', async (request, reply) => {
         request.method === 'OPTIONS' || 
         request.url === '/public/health' || 
         request.url.startsWith('/public/provision') || 
+        request.url === '/public/db-status' ||
+        request.url === '/public/db-sync' ||
         request.url === '/' ||
         (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i))
     ) {
