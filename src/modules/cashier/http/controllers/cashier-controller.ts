@@ -587,7 +587,6 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         where: {
             opened_at: {
                 gte: startOfMonth,
-                lte: endOfMonth
             }
         },
         include: { entries: true }
@@ -662,7 +661,8 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             vendasDinheiro,
             sangrias,
             saldoFisicoFinal,
-            proximaAbertura: 0,
+            proximaAbertura: null as number | null,
+            hasNextSession: false,
             divergencia: 0,
             statusComparacao: 'OK'
         }
@@ -673,6 +673,7 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         const current = auditItems[i]
         const next = auditItems[i + 1]
         current.proximaAbertura = next.abertura
+        current.hasNextSession = true
         current.divergencia = next.abertura - current.saldoFisicoFinal
         if (Math.abs(current.divergencia) > 0.05) {
             current.statusComparacao = 'DIVERGENTE'
@@ -681,20 +682,26 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         }
     }
 
+    // Filtrar apenas os itens pertencentes ao mês solicitado para o relatório
+    const filteredMonthItems = auditItems.filter(item => {
+        const d = new Date(item.opened_at)
+        return d >= startOfMonth && d <= endOfMonth
+    })
+
     // Totais acumulados do mês
-    const totalAberturaInicial = auditItems.length > 0 ? auditItems[0].abertura : 0
-    const totalVendasDinheiroMes = auditItems.reduce((acc, item) => acc + item.vendasDinheiro, 0)
-    const totalSangriasMes = auditItems.reduce((acc, item) => acc + item.sangrias, 0)
-    const saldoFisicoAtualMes = auditItems.length > 0 ? auditItems[auditItems.length - 1].saldoFisicoFinal : 0
+    const totalAberturaInicial = filteredMonthItems.length > 0 ? filteredMonthItems[0].abertura : 0
+    const totalVendasDinheiroMes = filteredMonthItems.reduce((acc, item) => acc + item.vendasDinheiro, 0)
+    const totalSangriasMes = filteredMonthItems.reduce((acc, item) => acc + item.sangrias, 0)
+    const saldoFisicoAtualMes = filteredMonthItems.length > 0 ? filteredMonthItems[filteredMonthItems.length - 1].saldoFisicoFinal : 0
 
     return reply.status(200).send({
-        sessions: auditItems,
+        sessions: filteredMonthItems,
         summary: {
             totalAberturaInicial,
             totalVendasDinheiroMes,
             totalSangriasMes,
             saldoFisicoAtualMes,
-            totalCaixasMes: auditItems.length
+            totalCaixasMes: filteredMonthItems.length
         }
     })
 }
