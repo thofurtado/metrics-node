@@ -752,3 +752,46 @@ model CashierEntry {
 
   @@map("cashier_entries")
 }
+
+model CompanyProfile {
+  id              String   @id @default(uuid())
+  tradeName       String
+  logo_url        String?
+  banner_url      String?
+  
+  // Design Tokens (White Label)
+  primaryColor    String   @default("#FF5722")
+  secondaryColor  String   @default("#FFFFFF")
+  backgroundColor String   @default("#F9F9F9")
+  
+  whatsappNumber  String   
+  street          String?
+  number          String?
+  neighborhood    String?
+  city            String?
+  state           String?
+  isOpenManual    Boolean  @default(true) 
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+  
+  businessHours   BusinessHour[]
+
+  @@map("company_profiles")
+}
+
+model BusinessHour {
+  id                 String         @id @default(uuid())
+  company_profile_id String
+  dayOfWeek          Int            // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sab
+  openTime           String         // ex: "18:00"
+  closeTime          String         // ex: "23:00"
+  isOpen             Boolean        @default(true)
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @default(now()) @updatedAt
+
+  companyProfile     CompanyProfile @relation(fields: [company_profile_id], references: [id], onDelete: Cascade)
+
+  @@map("business_hours")
+}
+

@@ -8,6 +8,7 @@ import { deprovisionTenant } from './deprovision'
 import { getTenantInfo } from './get-tenant-info'
 import { getDbStatus } from './db-status'
 import { syncTenantDb } from './db-sync'
+import { getProfile } from './get-profile'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -19,6 +20,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/tenant-info', getTenantInfo)
     app.get('/public/db-status', getDbStatus)
     app.post('/public/db-sync', syncTenantDb)
+    app.get('/public/profile', getProfile)
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
