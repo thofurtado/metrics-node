@@ -16,7 +16,7 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
     })
 
     if (!profile) {
-      return reply.status(404).send({ message: 'Company profile not found.' })
+      return reply.status(200).send(null)
     }
 
     return reply.status(200).send(profile)

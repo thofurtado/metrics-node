@@ -1,7 +1,13 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
-import { prisma } from '@/lib/prisma' // Assuming lib/prisma exposes the prisma client
+import { requestContext } from '@fastify/request-context'
 
 export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = requestContext.get('prisma')
+
+    if (!prisma) {
+        return reply.status(500).send({ message: 'Internal server error: Prisma client not found in context.' })
+    }
+
     try {
         const products = await prisma.product.findMany({
             where: {
