@@ -258,6 +258,10 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
     const isWithdrawal = amount < 0;
     const absAmount = Math.abs(amount);
 
+    const sessionUser = await prisma.user.findUnique({ where: { id: session.user_id } })
+    const operatorName = sessionUser ? sessionUser.name : 'Operador'
+    const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
+
     let bankName = 'Caixa Central'
     if (action === 'DESTINATION' && account_id) {
         const account = await prisma.account.findUnique({ where: { id: account_id }})
@@ -283,11 +287,14 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
             data: {
                 operation: isWithdrawal ? 'expense' : 'income',
                 amount: absAmount,
-                description: `Destino de Caixa (${session.period || ''}) - ${reason}`,
+                totalValue: absAmount,
+                description: `Destino de Caixa ${session.period || ''} ${operatorName} ${dateFormatted} - ${reason}`,
                 account_id: account_id,
                 cashier_session_id: session.id,
                 confirmed: true,
                 payment_method: 'DINHEIRO',
+                data_vencimento: session.opened_at,
+                data_emissao: session.opened_at,
             }
         })
     }
@@ -383,11 +390,14 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     data: {
                         operation: entry.is_withdrawal ? 'expense' : 'income',
                         amount,
-                        description: `Destino de Caixa (${session.period}) - ${entry.identification || 'Divergência de Caixa'}`,
+                        totalValue: amount,
+                        description: `Destino de Caixa ${session.period} ${operatorName} ${dateFormatted} - ${entry.identification || 'Divergência de Caixa'}`,
                         account_id: targetAccountId,
                         cashier_session_id: session.id,
                         confirmed: true,
-                        payment_method: 'DINHEIRO'
+                        payment_method: 'DINHEIRO',
+                        data_vencimento: session.opened_at,
+                        data_emissao: session.opened_at,
                     }
                 })
                 continue
@@ -399,10 +409,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     data: {
                         operation: 'expense',
                         amount,
+                        totalValue: amount,
                         description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                         cashier_session_id: session.id,
                         confirmed: true,
-                        payment_method: 'DINHEIRO'
+                        payment_method: 'DINHEIRO',
+                        data_vencimento: session.opened_at,
+                        data_emissao: session.opened_at,
                     }
                 })
 
@@ -472,6 +485,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
                         cashier_session_id: session.id,
                         confirmed: false, // PENDENTE DE RECEBIMENTO
+                        data_vencimento: session.opened_at,
+                        data_emissao: session.opened_at,
                     }
                 })
                 continue
@@ -527,11 +542,14 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 data: {
                     operation: 'income',
                     amount: totalAmount,
+                    totalValue: totalAmount,
                     description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName}`,
                     cashier_session_id: session.id,
                     confirmed: true,
                     payment_method: bankName,
-                    account_id: targetAccountId
+                    account_id: targetAccountId,
+                    data_vencimento: session.opened_at,
+                    data_emissao: session.opened_at,
                 }
             })
         }
@@ -544,7 +562,9 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 description: `Fechamento de Caixa ${session.period} ${operatorName} ${dateFormatted}`,
                 cashier_session_id: session.id,
                 confirmed: true,
-                payment_method: 'CAIXA'
+                payment_method: 'CAIXA',
+                data_vencimento: session.opened_at,
+                data_emissao: session.opened_at,
             }
         })
 
@@ -657,6 +677,12 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
     })
     const userMap = new Map(users.map(u => [u.id, u.name]))
 
+    const sessionIds = sessions.map(s => s.id)
+    const transactions = await prisma.transaction.findMany({
+        where: { cashier_session_id: { in: sessionIds } },
+        select: { cashier_session_id: true, description: true }
+    })
+
     const auditItems = sessions.map((s) => {
         const abertura = s.initial_balance || 0
         let vendasDinheiro = 0
@@ -706,7 +732,16 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         current.hasNextSession = true
         current.divergencia = next.abertura - current.saldoFisicoFinal
         
-        if (resolutionEntry) {
+        // Verifica se a entrada de resolução existe e se a transação financeira não foi deletada
+        let isActuallyResolved = !!resolutionEntry
+        if (resolutionEntry && resolutionEntry.type === 'SANGRIA_DESTINO') {
+            const destTx = transactions.find(t => t.cashier_session_id === current.id && t.description?.startsWith('Destino de Caixa'))
+            if (!destTx) {
+                isActuallyResolved = false
+            }
+        }
+
+        if (isActuallyResolved) {
             current.statusComparacao = 'RESOLVIDO'
             current.resolutionDetails = {
                 type: resolutionEntry.type,
