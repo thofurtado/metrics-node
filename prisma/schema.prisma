@@ -782,9 +782,10 @@ model CompanyProfile {
   
   isOpenManual    Boolean  @default(true) 
   
-  // Credenciais de Integração Marketplace
+  // Credenciais de Integração Marketplace e Pagamentos
   ifoodMerchantId String?
   anotaAiApiKey   String?
+  pixKey          String?
   
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
