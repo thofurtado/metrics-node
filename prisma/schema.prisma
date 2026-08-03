@@ -756,6 +756,8 @@ model CashierEntry {
 model CompanyProfile {
   id              String   @id @default(uuid())
   tradeName       String
+  companyName     String?
+  document        String?
   logo_url        String?
   banner_url      String?
   
@@ -770,7 +772,19 @@ model CompanyProfile {
   neighborhood    String?
   city            String?
   state           String?
+  zipcode         String?
+  
+  // Regras de Entrega (Padrão iFood / Anota AI)
+  deliveryFee     Float    @default(0)
+  minOrderValue   Float    @default(0)
+  deliveryTimeMin Int      @default(30)
+  deliveryTimeMax Int      @default(60)
+  
   isOpenManual    Boolean  @default(true) 
+  
+  // Credenciais de Integração Marketplace
+  ifoodMerchantId String?
+  anotaAiApiKey   String?
   
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
