@@ -3,6 +3,7 @@ import { Pool } from 'pg'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
+import { LATEST_SCHEMA_CHANGES, LATEST_SCHEMA_VERSION } from '../../../../config/schema-changelog'
 
 export function getSchemaHash(): string {
   try {
@@ -77,6 +78,8 @@ export async function getDbStatus(request: FastifyRequest, reply: FastifyReply) 
 
     return reply.status(200).send({
       currentHash,
+      schemaVersionLabel: LATEST_SCHEMA_VERSION,
+      latestSchemaChanges: LATEST_SCHEMA_CHANGES,
       databases
     })
   } catch (error: any) {
