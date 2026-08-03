@@ -70,32 +70,69 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         // ─────────────────────────────────────────────────────────────────
         // 4. TICKET MÉDIO — Média de todas as receitas PAGAS do sistema
         // ─────────────────────────────────────────────────────────────────
-        const allTimePaidIncomeAggr = await prisma.transaction.aggregate({
+        // Entradas avulsas (sem cashier_session_id)
+        const allTimePaidIncomeNonSessionAggr = await prisma.transaction.aggregate({
             _sum: { totalValue: true },
             _count: { id: true },
             where: {
                 operation: 'income',
                 confirmed: true,
+                cashier_session_id: null
             },
         })
-        const totalReceitaHistorica = Number(allTimePaidIncomeAggr._sum.totalValue || 0)
-        const numEntradasHistorica = allTimePaidIncomeAggr._count.id || 0
+        const totalReceitaHistoricaNonSession = Number(allTimePaidIncomeNonSessionAggr._sum.totalValue || 0)
+        const numEntradasHistoricaNonSession = allTimePaidIncomeNonSessionAggr._count.id || 0
+
+        // Entradas de caixas (com cashier_session_id)
+        const groupedHistoricalSessions = await prisma.transaction.groupBy({
+            by: ['cashier_session_id'],
+            where: {
+                operation: 'income',
+                confirmed: true,
+                cashier_session_id: { not: null }
+            },
+            _sum: { totalValue: true }
+        })
+        const numEntradasHistoricaSessions = groupedHistoricalSessions.length
+        const totalReceitaHistoricaSessions = groupedHistoricalSessions.reduce((acc, curr) => acc + Number(curr._sum.totalValue || 0), 0)
+
+        const totalReceitaHistorica = totalReceitaHistoricaNonSession + totalReceitaHistoricaSessions
+        const numEntradasHistorica = numEntradasHistoricaNonSession + numEntradasHistoricaSessions
         const ticketMedio = numEntradasHistorica > 0 ? totalReceitaHistorica / numEntradasHistorica : 0
 
         // ─────────────────────────────────────────────────────────────────
         // 5. RECEITAS DO MÊS — Pagas + Não Pagas
         // ─────────────────────────────────────────────────────────────────
-        const paidIncomeMonthAggr = await prisma.transaction.aggregate({
+        // Receitas do mês avulsas (sem cashier_session_id)
+        const paidIncomeMonthNonSessionAggr = await prisma.transaction.aggregate({
             _sum: { totalValue: true },
             _count: { id: true },
             where: {
                 operation: 'income',
                 confirmed: true,
+                cashier_session_id: null,
                 data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const receitaPagaMes = Number(paidIncomeMonthAggr._sum.totalValue || 0)
-        const numEntradas = paidIncomeMonthAggr._count.id || 0 // Qtd. entradas pagas no mês
+        const receitaPagaMesNonSession = Number(paidIncomeMonthNonSessionAggr._sum.totalValue || 0)
+        const numEntradasMesNonSession = paidIncomeMonthNonSessionAggr._count.id || 0
+
+        // Receitas do mês de caixas (com cashier_session_id)
+        const groupedMonthlySessions = await prisma.transaction.groupBy({
+            by: ['cashier_session_id'],
+            where: {
+                operation: 'income',
+                confirmed: true,
+                cashier_session_id: { not: null },
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
+            },
+            _sum: { totalValue: true }
+        })
+        const numEntradasMesSessions = groupedMonthlySessions.length
+        const receitaPagaMesSessions = groupedMonthlySessions.reduce((acc, curr) => acc + Number(curr._sum.totalValue || 0), 0)
+
+        const receitaPagaMes = receitaPagaMesNonSession + receitaPagaMesSessions
+        const numEntradas = numEntradasMesNonSession + numEntradasMesSessions // Qtd. entradas pagas no mês (agrupada por caixa)
 
         const pendingIncomeMonthAggr = await prisma.transaction.aggregate({
             _sum: { amount: true },

@@ -44,12 +44,20 @@ export async function getMonthlySummary(request: FastifyRequest, reply: FastifyR
   let totalOpen = 0
   let expensesByCategoryMap = new Map<string, number>()
 
+  let distinctCashierSessions = new Set<string>()
+  let transactionsWithoutCashierSession = 0
+
   transactions.forEach(t => {
     // We only consider INCOME and EXPENSE for this summary (ignoring TRANSFERS for PnL usually)
     const op = t.operation?.toLowerCase()
     if (op === 'income' || op === 'receita') {
       totalRevenue += t.amount
-      countRevenue++
+      
+      if (t.cashier_session_id) {
+        distinctCashierSessions.add(t.cashier_session_id)
+      } else {
+        transactionsWithoutCashierSession++
+      }
       if (t.confirmed) totalPaid += t.amount
       else totalOpen += t.amount
     } else if (op === 'expense' || op === 'despesa') {
@@ -73,6 +81,8 @@ export async function getMonthlySummary(request: FastifyRequest, reply: FastifyR
   const incomeOpen = transactions.filter(t => (t.operation?.toLowerCase() === 'income' || t.operation?.toLowerCase() === 'receita') && !t.confirmed).reduce((acc, t) => acc + t.amount, 0)
   const expensePaid = transactions.filter(t => (t.operation?.toLowerCase() === 'expense' || t.operation?.toLowerCase() === 'despesa') && t.confirmed).reduce((acc, t) => acc + t.amount, 0)
   const expenseOpen = transactions.filter(t => (t.operation?.toLowerCase() === 'expense' || t.operation?.toLowerCase() === 'despesa') && !t.confirmed).reduce((acc, t) => acc + t.amount, 0)
+
+  countRevenue = distinctCashierSessions.size + transactionsWithoutCashierSession
 
   const averageTicket = countRevenue > 0 ? totalRevenue / countRevenue : 0
 
