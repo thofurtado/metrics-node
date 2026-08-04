@@ -32,6 +32,9 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
                 data_vencimento: true,
                 operation: true,
                 amount: true,
+                discount: true,
+                interest: true,
+                totalValue: true,
                 confirmed: true
             },
             orderBy: {
@@ -57,7 +60,7 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
         initialBalance: number,
         startDate: Date,
         endDate: Date,
-        transactions: { data_vencimento: Date; operation: string; amount: number; confirmed: boolean }[]
+        transactions: { data_vencimento: Date; operation: string; amount: number; discount: number | null; interest: number | null; totalValue: number | null; confirmed: boolean }[]
     ): DailyBalance[] {
         const dailyBalances: DailyBalance[] = []
         let runningBalance = initialBalance
@@ -71,10 +74,11 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
 
         // Calcular saldo de hoje
         const todayBalanceChange = todayTransactions.reduce((sum, transaction) => {
+            const finalAmount = transaction.totalValue ?? (transaction.amount - (transaction.discount || 0) + (transaction.interest || 0))
             if (transaction.operation === 'income') {
-                return sum + transaction.amount
+                return sum + finalAmount
             } else {
-                return sum - transaction.amount
+                return sum - finalAmount
             }
         }, 0)
 
@@ -110,10 +114,11 @@ export class PrismaBalanceProjectionRepository implements BalanceProjectionRepos
             const dayTransactions = transactionsByDate.get(dateString) || []
 
             const dayBalanceChange = dayTransactions.reduce((sum, transaction) => {
+                const finalAmount = transaction.totalValue ?? (transaction.amount - (transaction.discount || 0) + (transaction.interest || 0))
                 if (transaction.operation === 'income') {
-                    return sum + transaction.amount
+                    return sum + finalAmount
                 } else {
-                    return sum - transaction.amount
+                    return sum - finalAmount
                 }
             }, 0)
 

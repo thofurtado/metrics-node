@@ -36,6 +36,7 @@ import { getOperationalSummary } from '@/modules/financial/http/controllers/get-
 import { getMonthlySummary } from '@/modules/financial/http/controllers/get-monthly-summary'
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
+import { listSettlements, revertSettlement } from '@/modules/financial/http/controllers/settlements'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -59,6 +60,10 @@ export async function financialRoutes(app: FastifyInstance) {
     app.delete('/transaction/:id/forward', deleteFutureTransactions)
     app.patch('/transaction/:id/checked', toggleTransactionChecked)
     app.get('/transfer-transactions', getTransferTransaction)
+
+    // Liquidações (Transfer Transactions automatizadas)
+    app.get('/settlements', listSettlements)
+    app.delete('/settlements/:id', revertSettlement)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
     app.put('/transaction-groups/:groupId/readjust', readjustTransactionGroup)

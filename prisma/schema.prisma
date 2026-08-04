@@ -287,12 +287,12 @@ model Account {
   description         String?
   balance             Float
   goal                Float?
+  is_transit          Boolean               @default(false)
   created_at          DateTime              @default(now())
   updated_at          DateTime              @default(now()) @updatedAt
   creditCards         CreditCard[]
   payments            Payment[]
   transactions        Transaction[]
-  transferTransaction TransferTransaction[]
   adjustments         AccountAdjustment[]
 
   @@map("accounts")
@@ -362,7 +362,8 @@ model Transaction {
   sectors               Sector?               @relation(fields: [sector_id], references: [id])
   supplier              Supplier?             @relation(fields: [supplier_id], references: [id])
   transactionGroup      TransactionGroup?     @relation(fields: [transaction_group_id], references: [id])
-  TransferTransaction   TransferTransaction[]
+  transferSource        TransferTransaction?  @relation("TransferSource")
+  transferDest          TransferTransaction?  @relation("TransferDest")
   cashierSession        CashierSession?       @relation(fields: [cashier_session_id], references: [id])
 
   @@map("transactions")
@@ -382,10 +383,15 @@ model TransactionGroup {
 
 model TransferTransaction {
   id                     String      @id @default(uuid())
-  destination_account_id String
-  transaction_id         String
-  accounts               Account     @relation(fields: [destination_account_id], references: [id])
-  transaction            Transaction @relation(fields: [transaction_id], references: [id])
+  source_transaction_id  String      @unique
+  dest_transaction_id    String      @unique
+  fee_amount             Float       @default(0)
+  description            String?
+  is_automated           Boolean     @default(true)
+  created_at             DateTime    @default(now())
+
+  sourceTransaction      Transaction @relation("TransferSource", fields: [source_transaction_id], references: [id])
+  destTransaction        Transaction @relation("TransferDest", fields: [dest_transaction_id], references: [id])
 
   @@map("transfer_transactions")
 }

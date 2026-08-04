@@ -35,7 +35,24 @@ async function main() {
     }
   })
 
-  console.log('✅ Seed de módulos e usuário admin concluído com sucesso!')
+  // Criação da Conta Transitória (Cartões)
+  const existingTransit = await prisma.account.findFirst({
+    where: { is_transit: true }
+  })
+
+  if (!existingTransit) {
+    await prisma.account.create({
+      data: {
+        name: 'Conta de Liquidação (Cartões)',
+        description: 'Conta transitória para valores aguardando compensação das maquininhas',
+        balance: 0,
+        is_transit: true
+      }
+    })
+    console.log('✅ Conta Transitória criada com sucesso!')
+  }
+
+  console.log('✅ Seed de módulos, usuário admin e conta transitória concluído com sucesso!')
 }
 
 main()

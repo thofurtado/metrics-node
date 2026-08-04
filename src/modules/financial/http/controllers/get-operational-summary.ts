@@ -68,71 +68,77 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         const projecaoDinheiro = Number(projecaoAggr._sum.amount || 0)
 
         // ─────────────────────────────────────────────────────────────────
-        // 4. TICKET MÉDIO — Média de todas as receitas PAGAS do sistema
+        // 4. TICKET MÉDIO E NÚMERO DE ENTRADAS — Via Repositório de Caixa
         // ─────────────────────────────────────────────────────────────────
-        // Entradas avulsas (sem cashier_session_id)
+        
+        // Entradas Históricas Totais (Avulsas + Caixas)
+        // 1. Avulsas
         const allTimePaidIncomeNonSessionAggr = await prisma.transaction.aggregate({
-            _sum: { totalValue: true },
             _count: { id: true },
-            where: {
-                operation: 'income',
-                confirmed: true,
-                cashier_session_id: null
-            },
+            where: { operation: 'income', confirmed: true, cashier_session_id: null },
         })
-        const totalReceitaHistoricaNonSession = Number(allTimePaidIncomeNonSessionAggr._sum.totalValue || 0)
         const numEntradasHistoricaNonSession = allTimePaidIncomeNonSessionAggr._count.id || 0
 
-        // Entradas de caixas (com cashier_session_id)
-        const groupedHistoricalSessions = await prisma.transaction.groupBy({
-            by: ['cashier_session_id'],
-            where: {
-                operation: 'income',
-                confirmed: true,
-                cashier_session_id: { not: null }
-            },
-            _sum: { totalValue: true }
+        // 2. Caixas Fechados (Sessões)
+        const closedSessionsCount = await prisma.cashierSession.count({
+            where: { status: { not: 'OPEN' } }
         })
-        const numEntradasHistoricaSessions = groupedHistoricalSessions.length
-        const totalReceitaHistoricaSessions = groupedHistoricalSessions.reduce((acc, curr) => acc + Number(curr._sum.totalValue || 0), 0)
-
-        const totalReceitaHistorica = totalReceitaHistoricaNonSession + totalReceitaHistoricaSessions
+        const numEntradasHistoricaSessions = closedSessionsCount
         const numEntradasHistorica = numEntradasHistoricaNonSession + numEntradasHistoricaSessions
+
+        // Receita Bruta Histórica (para Ticket Médio)
+        // 1. Avulsas (do financeiro)
+        const allTimeRevenueNonSessionAggr = await prisma.transaction.aggregate({
+            _sum: { totalValue: true },
+            where: { operation: 'income', confirmed: true, cashier_session_id: null }
+        })
+        const totalReceitaHistoricaNonSession = Number(allTimeRevenueNonSessionAggr._sum.totalValue || 0)
+
+        // 2. Caixas Fechados (do Repositório de Caixa - valor de face das vendas)
+        const cashierEntriesAggr = await prisma.cashierEntry.aggregate({
+            _sum: { amount: true },
+            where: {
+                type: 'SALE',
+                is_withdrawal: false,
+                session: { status: { not: 'OPEN' } }
+            }
+        })
+        const totalReceitaHistoricaSessions = Number(cashierEntriesAggr._sum.amount || 0)
+        
+        const totalReceitaHistorica = totalReceitaHistoricaNonSession + totalReceitaHistoricaSessions
         const ticketMedio = numEntradasHistorica > 0 ? totalReceitaHistorica / numEntradasHistorica : 0
 
-        // ─────────────────────────────────────────────────────────────────
-        // 5. RECEITAS DO MÊS — Pagas + Não Pagas
-        // ─────────────────────────────────────────────────────────────────
-        // Receitas do mês avulsas (sem cashier_session_id)
-        const paidIncomeMonthNonSessionAggr = await prisma.transaction.aggregate({
-            _sum: { totalValue: true },
+        // Número de Entradas do Mês atual (para exibir no Dashboard)
+        const monthNonSessionAggr = await prisma.transaction.aggregate({
             _count: { id: true },
             where: {
-                operation: 'income',
-                confirmed: true,
-                cashier_session_id: null,
-                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
-            },
+                operation: 'income', confirmed: true, cashier_session_id: null,
+                data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            }
         })
-        const receitaPagaMesNonSession = Number(paidIncomeMonthNonSessionAggr._sum.totalValue || 0)
-        const numEntradasMesNonSession = paidIncomeMonthNonSessionAggr._count.id || 0
+        const monthClosedSessionsCount = await prisma.cashierSession.count({
+            where: { 
+                status: { not: 'OPEN' },
+                opened_at: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+            }
+        })
+        const numEntradas = (monthNonSessionAggr._count.id || 0) + monthClosedSessionsCount
 
-        // Receitas do mês de caixas (com cashier_session_id)
-        const groupedMonthlySessions = await prisma.transaction.groupBy({
-            by: ['cashier_session_id'],
+        // ─────────────────────────────────────────────────────────────────
+        // 5. RECEITAS FINANCEIRAS DO MÊS — Pagas + Não Pagas
+        // ─────────────────────────────────────────────────────────────────
+        // Aqui mantemos a leitura da tabela Transaction, pois reflete o que 
+        // efetivamente entra/entrou de dinheiro/cartão/fiado pago no banco.
+        
+        const paidIncomeMonthAggr = await prisma.transaction.aggregate({
+            _sum: { totalValue: true },
             where: {
                 operation: 'income',
                 confirmed: true,
-                cashier_session_id: { not: null },
                 data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
-            _sum: { totalValue: true }
         })
-        const numEntradasMesSessions = groupedMonthlySessions.length
-        const receitaPagaMesSessions = groupedMonthlySessions.reduce((acc, curr) => acc + Number(curr._sum.totalValue || 0), 0)
-
-        const receitaPagaMes = receitaPagaMesNonSession + receitaPagaMesSessions
-        const numEntradas = numEntradasMesNonSession + numEntradasMesSessions // Qtd. entradas pagas no mês (agrupada por caixa)
+        const receitaPagaMes = Number(paidIncomeMonthAggr._sum.totalValue || 0)
 
         const pendingIncomeMonthAggr = await prisma.transaction.aggregate({
             _sum: { amount: true },
@@ -145,7 +151,7 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
         const receitaPendenteMes = Number(pendingIncomeMonthAggr._sum.amount || 0)
 
         const totalReceitasMes = receitaPagaMes + receitaPendenteMes
-        const receitaAcumulada = receitaPagaMes // Mantém retrocompatibilidade caso algo use
+        const receitaAcumulada = receitaPagaMes // Mantém retrocompatibilidade
 
         // ─────────────────────────────────────────────────────────────────
         // 6. DESPESAS DO MÊS

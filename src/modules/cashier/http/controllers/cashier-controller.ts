@@ -468,27 +468,11 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             }
 
             // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
+            // (Fiado não gera mais Transação Financeira no Fechamento. Fica como promessa e só vira transação no recebimento)
             const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
             if (isClientePrazo) {
-                let clientId = entry.client_id
-                if (!clientId && entry.identification) {
-                    const cli = await prisma.client.findFirst({
-                        where: { name: { contains: entry.identification, mode: 'insensitive' } }
-                    })
-                    if (cli) clientId = cli.id
-                }
-
-                await prisma.transaction.create({
-                    data: {
-                        operation: 'income',
-                        amount,
-                        description: `A Prazo Caixa - ${entry.identification || 'Cliente'}`,
-                        cashier_session_id: session.id,
-                        confirmed: false, // PENDENTE DE RECEBIMENTO
-                        data_vencimento: session.opened_at,
-                        data_emissao: session.opened_at,
-                    }
-                })
+                // No futuro podemos criar um registro na tabela "AccountsReceivable" ou similar, 
+                // mas para a Transaction financeira oficial, ignoramos.
                 continue
             }
 
@@ -516,21 +500,28 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         const posMachines = await prisma.pOSMachine.findMany()
         const accounts = await prisma.account.findMany()
         const defaultAccount = accounts[0] || null
+        const transitAccount = accounts.find(a => a.is_transit)
 
         // Cria UMA transação no financeiro para CADA banco/maquininha com vendas no caixa
         for (const [bankName, totalAmount] of vendasPorBanco.entries()) {
             if (totalAmount <= 0) continue
 
-            // Localiza a conta bancária associada à maquininha ou banco
+            // Localiza a conta bancária associada
             let targetAccountId: string | undefined = undefined
 
-            const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName)
-            if (matchedMachine && matchedMachine.account_id) {
-                targetAccountId = matchedMachine.account_id
+            // Para recebimentos de cartões/maquininhas, o valor vai para a Conta Transitória
+            if (transitAccount && bankName !== 'DINHEIRO' && bankName !== 'CAIXA') {
+                targetAccountId = transitAccount.id
             } else {
-                const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
-                if (matchedAccount) {
-                    targetAccountId = matchedAccount.id
+                // Lógica fallback
+                const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName)
+                if (matchedMachine && matchedMachine.account_id) {
+                    targetAccountId = matchedMachine.account_id
+                } else {
+                    const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
+                    if (matchedAccount) {
+                        targetAccountId = matchedAccount.id
+                    }
                 }
             }
 
