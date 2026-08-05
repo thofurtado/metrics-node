@@ -168,6 +168,7 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
         identification: z.string().optional(),
         client_id: z.string().uuid().nullable().optional(),
         employee_id: z.string().uuid().nullable().optional(),
+        sector_id: z.string().uuid().nullable().optional(),
     })
     const data = entrySchema.parse(request.body)
     const session = await prisma.cashierSession.findUnique({ where: { id: data.session_id } })
@@ -192,6 +193,7 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
             identification: data.identification,
             client_id: data.client_id || null,
             employee_id: data.employee_id || null,
+            sector_id: data.sector_id || null,
         }
     })
     return reply.status(201).send(entry)
@@ -220,6 +222,7 @@ export async function updateCashierEntry(request: FastifyRequest, reply: Fastify
         type: z.string().optional(),
         client_id: z.string().uuid().nullable().optional(),
         employee_id: z.string().uuid().nullable().optional(),
+        sector_id: z.string().uuid().nullable().optional(),
     })
     const data = updateSchema.parse(request.body)
     const entry = await prisma.cashierEntry.update({
@@ -410,12 +413,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         operation: 'expense',
                         amount,
                         totalValue: amount,
-                        description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}`,
+                        description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}${entry.identification ? ` - ${entry.identification}` : ''}`,
                         cashier_session_id: session.id,
                         confirmed: true,
                         payment_method: 'DINHEIRO',
                         data_vencimento: session.opened_at,
                         data_emissao: session.opened_at,
+                        sector_id: entry.sector_id || null,
                     }
                 })
 

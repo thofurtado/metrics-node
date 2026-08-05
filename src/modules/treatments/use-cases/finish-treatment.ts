@@ -177,8 +177,15 @@ export class FinishTreatmentUseCase {
                             account_id: accountId,
                             description: desc,
                             confirmed: isConfirmed,
-                            treatment_id: treatment.id // Add relationship
+                            treatment_id: treatment.id // Legacy column (to be removed in Phase 2)
                         } as any, tx)
+
+                        await tx.treatmentTransaction.create({
+                            data: {
+                                treatment_id: treatment.id,
+                                transaction_id: transaction.id
+                            }
+                        })
 
                         if (isConfirmed) {
                             await this.accountsRepository.changeBalance(accountId, installmentAmount, true, tx)
