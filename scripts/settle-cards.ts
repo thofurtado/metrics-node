@@ -51,39 +51,9 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
       return;
     }
 
-    const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } });
-
-    const normalizeString = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-
     for (const tx of pendingTransactions) {
-      const paymentMethodRaw = tx.payment_method || '';
-      
-      let taxPercentage = 0;
-      let machineName = '';
-
-      // Tenta extrair o nome da máquina da descrição: 
-      // Ex: "Caixa Almoço Operador 05/08/2026 - SAFRA Crédito"
-      if (tx.description && tx.description.includes(' - ')) {
-        const parts = tx.description.split(' - ');
-        const afterDash = parts[parts.length - 1].trim(); 
-        const cleanPaymentRaw = paymentMethodRaw.trim();
-        if (cleanPaymentRaw) {
-            const regex = new RegExp(cleanPaymentRaw, 'i');
-            machineName = afterDash.replace(regex, '').trim();
-        } else {
-            machineName = afterDash;
-        }
-      }
-
-      const matchedMachine = posMachines.find(m => m.name.toUpperCase() === machineName.toUpperCase());
-
-      if (matchedMachine && matchedMachine.rates.length > 0) {
-        const normPayment = normalizeString(paymentMethodRaw);
-        const rate = matchedMachine.rates.find(r => normalizeString(r.payment_category).includes(normPayment));
-        if (rate) {
-          taxPercentage = rate.tax_percentage;
-        }
-      }
+      const taxPercentage = tx.interest || 0;
+      const machineName = tx.description?.split('-')[1]?.trim().split(' ')[0] || 'Desconhecida';
 
       const grossAmount = tx.amount;
       const feeAmount = (grossAmount * taxPercentage) / 100;
@@ -108,7 +78,8 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
           confirmed: true,
           data_emissao: new Date(),
           data_vencimento: new Date(),
-          payment_method: 'TRANSFERENCIA',
+          payment_method: tx.payment_method,
+          cashier_session_id: tx.cashier_session_id
         }
       });
 
@@ -135,7 +106,9 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
             confirmed: true,
             data_emissao: new Date(),
             data_vencimento: new Date(),
-            payment_method: 'TAXA_BANCARIA',
+            payment_method: tx.payment_method,
+            parent_transaction_id: tx.id,
+            cashier_session_id: tx.cashier_session_id
           }
         });
       }

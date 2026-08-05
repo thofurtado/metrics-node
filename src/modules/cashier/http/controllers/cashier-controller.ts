@@ -515,12 +515,15 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName.toUpperCase())
             let settlementDays = 0
             
+            let taxPercentage = 0
+            
             // Tenta achar a taxa que case com o tipo (crédito/débito)
             if (matchedMachine && matchedMachine.rates.length > 0) {
                 const normPayment = normalizeString(paymentMethodRaw)
                 const rate = matchedMachine.rates.find(r => normalizeString(r.payment_category).includes(normPayment))
                 if (rate) {
                     settlementDays = rate.settlement_days
+                    taxPercentage = rate.tax_percentage
                 } else if (normPayment.includes('crédito') || normPayment.includes('credito')) {
                     settlementDays = 30
                 } else if (normPayment.includes('débito') || normPayment.includes('debito')) {
@@ -574,6 +577,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     account_id: targetAccountId,
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
+                    interest: taxPercentage, // Snapshot da taxa da maquininha!
                 }
             })
         }
@@ -834,7 +838,8 @@ export async function createPOSMachine(request: FastifyRequest, reply: FastifyRe
         rates: z.array(z.object({
             payment_category: z.string(),
             installments: z.number().default(1),
-            tax_percentage: z.number().default(0)
+            tax_percentage: z.number().default(0),
+            settlement_days: z.number().default(1)
         })).optional()
     })
     const data = bodySchema.parse(request.body)
@@ -846,7 +851,8 @@ export async function createPOSMachine(request: FastifyRequest, reply: FastifyRe
                 create: data.rates.map(r => ({
                     payment_category: r.payment_category,
                     installments: r.installments,
-                    tax_percentage: r.tax_percentage
+                    tax_percentage: r.tax_percentage,
+                    settlement_days: r.settlement_days
                 }))
             } : undefined
         },
@@ -864,7 +870,8 @@ export async function updatePOSMachine(request: FastifyRequest, reply: FastifyRe
         rates: z.array(z.object({
             payment_category: z.string(),
             installments: z.number().default(1),
-            tax_percentage: z.number().default(0)
+            tax_percentage: z.number().default(0),
+            settlement_days: z.number().default(1)
         })).optional()
     })
     const { id } = paramsSchema.parse(request.params)
@@ -878,7 +885,8 @@ export async function updatePOSMachine(request: FastifyRequest, reply: FastifyRe
                     pos_machine_id: id,
                     payment_category: r.payment_category,
                     installments: r.installments,
-                    tax_percentage: r.tax_percentage
+                    tax_percentage: r.tax_percentage,
+                    settlement_days: r.settlement_days
                 }))
             })
         }

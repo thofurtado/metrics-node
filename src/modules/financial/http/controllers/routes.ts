@@ -37,6 +37,7 @@ import { getMonthlySummary } from '@/modules/financial/http/controllers/get-mont
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
 import { listSettlements, revertSettlement } from '@/modules/financial/http/controllers/settlements'
+import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -64,6 +65,7 @@ export async function financialRoutes(app: FastifyInstance) {
     // Liquidações (Transfer Transactions automatizadas)
     app.get('/settlements', listSettlements)
     app.delete('/settlements/:id', revertSettlement)
+    app.post('/trigger-settlement', { onRequest: [verifyUserRole('ADMIN')] }, triggerSettlement)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
     app.put('/transaction-groups/:groupId/readjust', readjustTransactionGroup)
