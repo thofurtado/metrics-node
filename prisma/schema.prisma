@@ -764,6 +764,7 @@ model CashierSession {
   entries      CashierEntry[]
   sales        Sale[]
   transactions Transaction[]
+  clientTabs   ClientTab[]
 
   @@map("cashier_sessions")
 }
