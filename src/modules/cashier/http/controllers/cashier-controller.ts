@@ -480,10 +480,11 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             if (normMethod === 'dinheiro' || bank === 'CAIXA') continue
             if (bank === 'CONTA DA CASA' || padraoCasa.some(p => normMethod.includes(p))) continue
 
-            // Acumula vendas eletrônicas por Banco/Maquininha
+            // Acumula vendas eletrônicas por Banco/Maquininha + Tipo de Pagamento
             const bankName = bank || method.toUpperCase() || 'CAIXA'
-            const currentTotal = vendasPorBanco.get(bankName) || 0
-            vendasPorBanco.set(bankName, currentTotal + amount)
+            const key = `${bankName}|${method.toLowerCase()}`
+            const currentTotal = vendasPorBanco.get(key) || 0
+            vendasPorBanco.set(key, currentTotal + amount)
         }
 
         let summaryTotal = 0;
@@ -497,24 +498,54 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         }
 
         // Busca todas as maquininhas e contas financeiras ativas para vincular o account_id correto
-        const posMachines = await prisma.pOSMachine.findMany()
+        const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } })
         const accounts = await prisma.account.findMany()
         const defaultAccount = accounts[0] || null
         const transitAccount = accounts.find(a => a.is_transit)
 
         // Cria UMA transação no financeiro para CADA banco/maquininha com vendas no caixa
-        for (const [bankName, totalAmount] of vendasPorBanco.entries()) {
+        for (const [key, totalAmount] of vendasPorBanco.entries()) {
+            const [bankName, paymentMethodRaw] = key.split('|')
             if (totalAmount <= 0) continue
 
             // Localiza a conta bancária associada
             let targetAccountId: string | undefined = undefined
 
+            // Determina a máquina e a taxa para saber os dias de liquidação
+            const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName.toUpperCase())
+            let settlementDays = 0
+            
+            // Tenta achar a taxa que case com o tipo (crédito/débito)
+            if (matchedMachine && matchedMachine.rates.length > 0) {
+                const normPayment = normalizeString(paymentMethodRaw)
+                const rate = matchedMachine.rates.find(r => normalizeString(r.payment_category).includes(normPayment))
+                if (rate) {
+                    settlementDays = rate.settlement_days
+                } else if (normPayment.includes('crédito') || normPayment.includes('credito')) {
+                    settlementDays = 30
+                } else if (normPayment.includes('débito') || normPayment.includes('debito')) {
+                    settlementDays = 1
+                }
+            } else if (normalizeString(paymentMethodRaw).includes('crédito') || normalizeString(paymentMethodRaw).includes('credito')) {
+                settlementDays = 30
+            } else if (normalizeString(paymentMethodRaw).includes('débito') || normalizeString(paymentMethodRaw).includes('debito')) {
+                settlementDays = 1
+            }
+
+            // Calcula a data de vencimento (liquidação prevista)
+            const due_date = new Date(session.opened_at)
+            if (settlementDays > 0) {
+                due_date.setDate(due_date.getDate() + settlementDays)
+            }
+
+            let isTransit = false
+
             // Para recebimentos de cartões/maquininhas, o valor vai para a Conta Transitória
             if (transitAccount && bankName !== 'DINHEIRO' && bankName !== 'CAIXA') {
                 targetAccountId = transitAccount.id
+                isTransit = true
             } else {
                 // Lógica fallback
-                const matchedMachine = posMachines.find(m => m.name.toUpperCase() === bankName)
                 if (matchedMachine && matchedMachine.account_id) {
                     targetAccountId = matchedMachine.account_id
                 } else {
@@ -529,17 +560,19 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 targetAccountId = defaultAccount.id
             }
 
+            const paymentDisplay = paymentMethodRaw ? paymentMethodRaw.charAt(0).toUpperCase() + paymentMethodRaw.slice(1) : ''
+
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
                     amount: totalAmount,
                     totalValue: totalAmount,
-                    description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName}`,
+                    description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName} ${paymentDisplay}`,
                     cashier_session_id: session.id,
-                    confirmed: true,
-                    payment_method: bankName,
+                    confirmed: !isTransit, // Se for transitório, é PENDENTE (false). Se for dinheiro/real, já entra CONFIRMADO.
+                    payment_method: paymentMethodRaw,
                     account_id: targetAccountId,
-                    data_vencimento: session.opened_at,
+                    data_vencimento: due_date,
                     data_emissao: session.opened_at,
                 }
             })

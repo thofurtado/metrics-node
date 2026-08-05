@@ -697,6 +697,7 @@ model POSMachineRate {
   payment_category String
   installments     Int        @default(1)
   tax_percentage   Float      @default(0)
+  settlement_days  Int        @default(1)
   created_at       DateTime   @default(now())
   updated_at       DateTime   @default(now()) @updatedAt
 
