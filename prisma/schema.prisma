@@ -40,6 +40,7 @@ model Client {
   equipments     Equipment[]
   treatments     Treatment[]
   cashierEntries CashierEntry[]
+  clientTabs     ClientTab[]
 
   @@map("clients")
 }
@@ -79,10 +80,11 @@ model Treatment {
   paymentEntrys PaymentEntry[]
   items         TreatmentItem[]
   clients       Client?         @relation(fields: [client_id], references: [id])
-  equipments    Equipment?      @relation(fields: [equipment_id], references: [id])
-  users         User?           @relation(fields: [user_id], references: [id])
-  sale          Sale?
-  transactions  Transaction[]
+  equipments           Equipment?             @relation(fields: [equipment_id], references: [id])
+  users                User?                  @relation(fields: [user_id], references: [id])
+  sale                 Sale?
+  transactions         Transaction[]
+  treatmentTransactions TreatmentTransaction[]
 
   @@map("treatments")
 }
@@ -365,6 +367,7 @@ model Transaction {
   transferSource        TransferTransaction?  @relation("TransferSource")
   transferDest          TransferTransaction?  @relation("TransferDest")
   cashierSession        CashierSession?       @relation(fields: [cashier_session_id], references: [id])
+  treatmentTransactions TreatmentTransaction[]
 
   @@map("transactions")
 }
@@ -696,14 +699,44 @@ model POSMachineRate {
   pos_machine_id   String
   payment_category String
   installments     Int        @default(1)
-  tax_percentage   Float      @default(0)
-  settlement_days  Int        @default(1)
-  created_at       DateTime   @default(now())
-  updated_at       DateTime   @default(now()) @updatedAt
+  tax_percentage         Float      @default(0)
+  advance_tax_percentage Float      @default(0)
+  settlement_days        Int        @default(1)
+  created_at             DateTime   @default(now())
+  updated_at             DateTime   @default(now()) @updatedAt
 
   posMachine POSMachine @relation(fields: [pos_machine_id], references: [id], onDelete: Cascade)
 
   @@map("pos_machine_rates")
+}
+
+model TreatmentTransaction {
+  id             String      @id @default(uuid())
+  treatment_id   String
+  transaction_id String
+  created_at     DateTime    @default(now())
+
+  treatment      Treatment   @relation(fields: [treatment_id], references: [id], onDelete: Cascade)
+  transaction    Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+
+  @@unique([treatment_id, transaction_id])
+  @@map("treatment_transactions")
+}
+
+model ClientTab {
+  id                 String   @id @default(uuid())
+  client_id          String
+  amount             Float
+  description        String?
+  cashier_session_id String?
+  is_paid            Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now()) @updatedAt
+
+  client             Client          @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  cashierSession     CashierSession? @relation(fields: [cashier_session_id], references: [id], onDelete: SetNull)
+
+  @@map("client_tabs")
 }
 
 model PaymentCondition {
