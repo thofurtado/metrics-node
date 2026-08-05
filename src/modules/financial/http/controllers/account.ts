@@ -12,11 +12,10 @@ export async function createAccount(request: FastifyRequest, reply: FastifyReply
         name: z.string(),
         balance: z.number(),
         description: z.string().nullish(),
-        goal: z.number().nullish(),
-        is_transit: z.boolean().default(false).optional()
+        goal: z.number().nullish()
     })
 
-    const { name, description, balance, goal, is_transit } = registerBodySchema.parse(request.body)
+    const { name, description, balance, goal } = registerBodySchema.parse(request.body)
     let account
     try {
 
@@ -26,8 +25,7 @@ export async function createAccount(request: FastifyRequest, reply: FastifyReply
             name,
             description: description || null,
             balance,
-            goal: goal || null,
-            is_transit
+            goal: goal || null
         })
     } catch (err) {
         if(err instanceof Error ){

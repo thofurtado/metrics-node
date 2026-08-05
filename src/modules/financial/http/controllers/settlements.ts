@@ -50,7 +50,7 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
     // Localizar a conta transitória
     const transitAccount = await prisma.account.findFirst({ where: { is_transit: true } })
     if (!transitAccount) {
-        return reply.status(400).send({ message: 'Conta transitória não encontrada.' })
+        return reply.status(200).send([])
     }
 
     // Buscar transações na conta transitória que não estão confirmadas

@@ -8,7 +8,6 @@ interface AccountUseCaseRequest {
     description?: string | null;
     goal?: number | null;
     balance: number;
-    is_transit?: boolean;
 }
 
 interface AccountUseCaseResponse {
@@ -20,7 +19,7 @@ export class AccountUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        name, description, goal, balance, is_transit
+        name, description, goal, balance
     }: AccountUseCaseRequest): Promise<AccountUseCaseResponse> {
 
         const accountWithSameName = await this.accountsRepository.findByName(name)
@@ -36,12 +35,10 @@ export class AccountUseCase {
             name,
             description,
             goal,
-            balance,
-            is_transit
+            balance
         })
         return {
             account
         }
     }
 }
-

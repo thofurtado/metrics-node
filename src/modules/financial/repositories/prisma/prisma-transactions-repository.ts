@@ -848,7 +848,15 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     accounts: {
                         id: Array.isArray(account) ? { in: account } : { equals: account }
                     }
-                }] : []),
+                }] : [
+                    // Se não estiver buscando uma conta específica, oculta transações da conta transitória
+                    {
+                        OR: [
+                            { accounts: null },
+                            { accounts: { is_transit: false } }
+                        ]
+                    }
+                ]),
                 ...(supplier_id ? [{
                     supplier_id: { equals: supplier_id }
                 }] : []),
