@@ -45,3 +45,25 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
         return reply.status(500).send({ message: 'Erro ao reverter liquidação.', details: error.message })
     }
 }
+
+export async function getPendingSettlements(request: FastifyRequest, reply: FastifyReply) {
+    // Localizar a conta transitória
+    const transitAccount = await prisma.account.findFirst({ where: { is_transit: true } })
+    if (!transitAccount) {
+        return reply.status(400).send({ message: 'Conta transitória não encontrada.' })
+    }
+
+    // Buscar transações na conta transitória que não estão confirmadas
+    const pendingTransactions = await prisma.transaction.findMany({
+        where: {
+            account_id: transitAccount.id,
+            confirmed: false,
+            operation: 'income',
+        },
+        orderBy: {
+            data_vencimento: 'asc'
+        }
+    })
+
+    return reply.status(200).send(pendingTransactions)
+}

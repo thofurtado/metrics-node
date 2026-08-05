@@ -36,7 +36,7 @@ import { getOperationalSummary } from '@/modules/financial/http/controllers/get-
 import { getMonthlySummary } from '@/modules/financial/http/controllers/get-monthly-summary'
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
-import { listSettlements, revertSettlement } from '@/modules/financial/http/controllers/settlements'
+import { listSettlements, revertSettlement, getPendingSettlements } from '@/modules/financial/http/controllers/settlements'
 import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
 
 export async function financialRoutes(app: FastifyInstance) {
@@ -64,6 +64,7 @@ export async function financialRoutes(app: FastifyInstance) {
 
     // Liquidações (Transfer Transactions automatizadas)
     app.get('/settlements', listSettlements)
+    app.get('/pending-settlements', getPendingSettlements)
     app.delete('/settlements/:id', revertSettlement)
     app.post('/trigger-settlement', { onRequest: [verifyUserRole('ADMIN')] }, triggerSettlement)
 
