@@ -26,7 +26,8 @@ import {
     getPaymentIdentifiers,
     createPaymentIdentifier,
     updatePaymentIdentifier,
-    deletePaymentIdentifier
+    deletePaymentIdentifier,
+    updateCashierSessionBalance
 } from './cashier-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
@@ -42,6 +43,7 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.get('/api/cashier/sessions', getSessions)
         protectedApp.get('/api/cashier/monthly-audit', getMonthlyCashAudit)
         protectedApp.get('/api/cashier/session/:id', getSessionDetails)
+        protectedApp.put('/api/cashier/session/:id/balance', updateCashierSessionBalance)
         protectedApp.delete('/api/cashier/sessions/:id', deleteSession)
         
         protectedApp.post('/api/cashier/session/open', openCashierSession)

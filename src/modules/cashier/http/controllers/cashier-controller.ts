@@ -392,7 +392,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
                 await prisma.transaction.create({
                     data: {
-                        operation: entry.is_withdrawal ? 'expense' : 'income',
+                        operation: entry.is_withdrawal ? 'income' : 'expense',
                         amount,
                         totalValue: amount,
                         description: `Destino de Caixa ${session.period} ${operatorName} ${dateFormatted} - ${entry.identification || 'Divergência de Caixa'}`,
@@ -1047,4 +1047,36 @@ export async function getCashierEmployees(request: FastifyRequest, reply: Fastif
         orderBy: { name: 'asc' }
     })
     return reply.status(200).send({ employees })
+}
+
+export async function updateCashierSessionBalance(request: FastifyRequest, reply: FastifyReply) {
+    const updateSchema = z.object({
+        initial_balance: z.number().min(0)
+    })
+    
+    const paramsSchema = z.object({
+        id: z.string().uuid()
+    })
+
+    const { id } = paramsSchema.parse(request.params)
+    const { initial_balance } = updateSchema.parse(request.body)
+
+    const session = await prisma.cashierSession.findUnique({
+        where: { id }
+    })
+
+    if (!session) {
+        return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
+    }
+
+    if (session.status === 'CLOSED' || session.status === 'AUDITED') {
+        return reply.status(400).send({ message: 'Não é possível alterar o saldo de um caixa já fechado ou auditado.' })
+    }
+
+    const updatedSession = await prisma.cashierSession.update({
+        where: { id },
+        data: { initial_balance }
+    })
+
+    return reply.status(200).send({ message: 'Saldo inicial atualizado com sucesso.', session: updatedSession })
 }
