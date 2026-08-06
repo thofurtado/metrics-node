@@ -369,6 +369,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
         const vendasPorBanco = new Map<string, number>()
+        const vendasAPrazo = new Map<string, number>()
         const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
 
         for (const entry of session.entries) {
@@ -472,11 +473,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             }
 
             // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
-            // (Fiado não gera mais Transação Financeira no Fechamento. Fica como promessa e só vira transação no recebimento)
             const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
             if (isClientePrazo) {
-                // No futuro podemos criar um registro na tabela "AccountsReceivable" ou similar, 
-                // mas para a Transaction financeira oficial, ignoramos.
+                const clientName = entry.identification || 'Cliente Não Identificado'
+                const methodType = normMethod.includes('permuta') ? 'PERMUTA' : 'A PRAZO'
+                const key = `${methodType}|${clientName}`
+                const currentTotal = vendasAPrazo.get(key) || 0
+                vendasAPrazo.set(key, currentTotal + amount)
                 continue
             }
 
@@ -582,6 +585,31 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
                     interest: taxPercentage, // Snapshot da taxa da maquininha!
+                }
+            })
+        }
+
+        // Cria transações na Conta Transitória para Fiado/A Prazo agrupado por cliente
+        for (const [key, totalAmount] of vendasAPrazo.entries()) {
+            const [methodName, clientName] = key.split('|')
+            if (totalAmount <= 0) continue
+
+            const due_date = new Date(session.opened_at)
+            due_date.setDate(due_date.getDate() + 30) // Padrão 30 dias para fiado
+
+            await prisma.transaction.create({
+                data: {
+                    operation: 'income',
+                    amount: totalAmount,
+                    totalValue: totalAmount,
+                    description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${methodName}: ${clientName}`,
+                    cashier_session_id: session.id,
+                    confirmed: false, // A prazo sempre entra pendente na transitória
+                    payment_method: methodName,
+                    account_id: transitAccount?.id || defaultAccount?.id,
+                    data_vencimento: due_date,
+                    data_emissao: session.opened_at,
+                    interest: 0,
                 }
             })
         }

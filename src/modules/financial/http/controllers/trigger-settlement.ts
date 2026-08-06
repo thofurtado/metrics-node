@@ -24,6 +24,7 @@ export async function triggerSettlement(request: FastifyRequest, reply: FastifyR
                 account_id: transitAccount.id,
                 confirmed: false,
                 operation: 'income',
+                payment_method: { notIn: ['A PRAZO', 'PERMUTA'] },
                 ...(onlyToday === 'true' ? { data_vencimento: { lte: today } } : {})
             }
         })

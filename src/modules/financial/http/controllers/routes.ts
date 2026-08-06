@@ -38,6 +38,7 @@ import { extractTransactionData } from '@/modules/financial/http/controllers/ext
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
 import { listSettlements, revertSettlement, getPendingSettlements } from '@/modules/financial/http/controllers/settlements'
 import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
+import { settleTermDebt } from '@/modules/financial/http/controllers/settle-term-debt'
 
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
@@ -67,6 +68,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.get('/pending-settlements', getPendingSettlements)
     app.delete('/settlements/:id', revertSettlement)
     app.post('/trigger-settlement', { onRequest: [verifyUserRole('ADMIN')] }, triggerSettlement)
+    app.post('/settle-term-debt', { onRequest: [verifyUserRole('ADMIN')] }, settleTermDebt)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
     app.put('/transaction-groups/:groupId/readjust', readjustTransactionGroup)
