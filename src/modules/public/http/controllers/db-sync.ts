@@ -29,11 +29,12 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
     const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
     const dbUrl = `${baseUrl}/${dbName}?schema=public`
 
-    // 2. Run prisma db push
-    execSync(`npx prisma db push --accept-data-loss`, { 
+    // 2. Run prisma migrate deploy
+    const result = execSync(`npx prisma migrate deploy`, { 
       env: { ...process.env, DATABASE_URL: dbUrl },
-      stdio: 'inherit'
+      encoding: 'utf-8'
     })
+    console.log(result)
 
     // 3. Update Tenant schemaVersion in db_master
     const currentHash = getSchemaHash()
@@ -43,7 +44,7 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
     await pool.end()
 
     console.log(`✅ Sincronização do banco ${dbName} concluída com sucesso!`)
-    return reply.status(200).send({ success: true, message: 'Banco de dados sincronizado com sucesso!' })
+    return reply.status(200).send({ success: true, message: 'Banco de dados sincronizado com sucesso!', log: result })
   } catch (error: any) {
     console.error('❌ Erro na sincronização:', error)
     return reply.status(500).send({ message: 'Erro ao sincronizar banco de dados', details: error.message })

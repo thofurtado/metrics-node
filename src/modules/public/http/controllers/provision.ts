@@ -51,10 +51,11 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
         console.log(`🏗️ Construindo schema do Prisma no novo banco...`)
         
         // Passar a variável de ambiente para que o Prisma conecte no banco certo
-        execSync(`npx prisma db push --accept-data-loss`, { 
+        const migrateResult = execSync(`npx prisma migrate deploy`, { 
             env: { ...process.env, DATABASE_URL: newDbUrl },
-            stdio: 'inherit' // Permite ver os logs do prisma no console do servidor
+            encoding: 'utf-8'
         })
+        console.log(migrateResult)
 
         console.log(`🌱 Populando módulos e usuário admin padrão no novo banco...`)
         execSync(`npx prisma db seed`, { 
