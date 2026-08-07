@@ -861,10 +861,17 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     supplier_id: { equals: supplier_id }
                 }] : []),
                 ...(description ? [{
-                    description: {
-                        contains: description,
-                        mode: Prisma.QueryMode.insensitive
-                    }
+                    OR: [
+                        {
+                            description: {
+                                contains: description,
+                                mode: Prisma.QueryMode.insensitive
+                            }
+                        },
+                        ...(description.length === 36 ? [{
+                            id: { equals: description }
+                        }] : [])
+                    ]
                 }] : []),
                 ...(value !== undefined && value !== null ? [{
                     amount: { equals: value }
