@@ -258,6 +258,10 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
         return reply.status(403).send({ message: 'Apenas administradores podem resolver divergências.' })
     }
     
+    if (action === 'DESTINATION' && amount > 0) {
+        return reply.status(400).send({ message: 'Não é possível destinar sobras de caixa para contas bancárias. Utilize apenas Justificativa.' })
+    }
+
     const isWithdrawal = amount < 0;
     const absAmount = Math.abs(amount);
 
@@ -271,6 +275,9 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
         if (account) bankName = account.name
     }
 
+    // Embed the resolver's name in the identification for frontend parsing
+    const formattedReason = `${reason}|@|${user.name}`
+
     const entry = await prisma.cashierEntry.create({
         data: {
             cashier_session_id: session.id,
@@ -281,14 +288,15 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
             is_withdrawal: isWithdrawal,
             is_addition: !isWithdrawal,
             type: action === 'DESTINATION' ? 'SANGRIA_DESTINO' : 'AJUSTE_AUDITORIA',
-            identification: reason,
+            identification: formattedReason,
         }
     })
 
+    let createdTransaction = null
     if (action === 'DESTINATION' && account_id) {
-        await prisma.transaction.create({
+        createdTransaction = await prisma.transaction.create({
             data: {
-                operation: isWithdrawal ? 'expense' : 'income',
+                operation: 'income', // The missing physical cash is ENTERING the bank account
                 amount: absAmount,
                 totalValue: absAmount,
                 description: `Destino de Caixa ${session.period || ''} ${operatorName} ${dateFormatted} - ${reason}`,
@@ -302,7 +310,11 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
         })
     }
 
-    return reply.status(200).send({ message: 'Divergência resolvida com sucesso.', entry })
+    return reply.status(200).send({ 
+        message: 'Divergência resolvida com sucesso.', 
+        entry,
+        transaction_id: createdTransaction?.id
+    })
 }
 
 export async function closeCashierSession(request: FastifyRequest, reply: FastifyReply) {
@@ -365,7 +377,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
 
         // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
-        await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
+        // (Excluindo Destino de Caixa, pois são tratados na resolução de divergência)
+        await prisma.transaction.deleteMany({ 
+            where: { 
+                cashier_session_id: session.id,
+                description: { not: { startsWith: 'Destino de Caixa' } }
+            } 
+        })
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
         const vendasPorBanco = new Map<string, number>()
@@ -381,29 +399,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             // Sangria de Destino / Divergência Destinada
             if (entry.type === 'SANGRIA_DESTINO') {
-                let targetAccountId = entry.origin || undefined
-                if (!targetAccountId && entry.bank) {
-                    const matchedAcc = accounts.find(a => a.name.toUpperCase().includes(entry.bank!.toUpperCase()))
-                    if (matchedAcc) targetAccountId = matchedAcc.id
-                }
-                if (!targetAccountId && defaultAccount) {
-                    targetAccountId = defaultAccount.id
-                }
-
-                await prisma.transaction.create({
-                    data: {
-                        operation: entry.is_withdrawal ? 'income' : 'expense',
-                        amount,
-                        totalValue: amount,
-                        description: `Destino de Caixa ${session.period} ${operatorName} ${dateFormatted} - ${entry.identification || 'Divergência de Caixa'}`,
-                        account_id: targetAccountId,
-                        cashier_session_id: session.id,
-                        confirmed: true,
-                        payment_method: 'DINHEIRO',
-                        data_vencimento: session.opened_at,
-                        data_emissao: session.opened_at,
-                    }
-                })
+                // Já tratado em resolveCashierDivergence e não foi apagado
                 continue
             }
 
@@ -802,11 +798,27 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         }
 
         if (isActuallyResolved) {
+            let reason = resolutionEntry.identification || ''
+            let author = 'Sistema'
+            if (reason.includes('|@|')) {
+                const parts = reason.split('|@|')
+                reason = parts[0]
+                author = parts[1] || 'Sistema'
+            }
+
+            let transactionId = null
+            if (resolutionEntry.type === 'SANGRIA_DESTINO') {
+                const destTx = transactions.find(t => t.cashier_session_id === current.id && t.description?.startsWith('Destino de Caixa'))
+                if (destTx) transactionId = destTx.id
+            }
+
             current.statusComparacao = 'RESOLVIDO'
             current.resolutionDetails = {
                 type: resolutionEntry.type,
-                reason: resolutionEntry.identification,
-                bank: resolutionEntry.bank
+                reason: reason,
+                author: author,
+                bank: resolutionEntry.bank,
+                transaction_id: transactionId
             }
         } else if (Math.abs(current.divergencia) > 0.05) {
             current.statusComparacao = 'DIVERGENTE'
