@@ -624,10 +624,10 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             }
         })
 
-        // Mudar status para CONFERIDO
+        // Mudar status para CHECKED
         const updatedSession = await prisma.cashierSession.update({
             where: { id: session.id },
-            data: { status: 'CONFERIDO' }
+            data: { status: 'CHECKED' }
         })
 
         return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
@@ -650,7 +650,7 @@ export async function revertCashierAudit(request: FastifyRequest, reply: Fastify
             return reply.status(404).send({ message: 'Sessão não encontrada.' })
         }
 
-        if (session.status !== 'CONFERIDO') {
+        if (session.status !== 'CHECKED') {
             return reply.status(400).send({ message: 'Apenas caixas conferidos podem ser revertidos.' })
         }
 
