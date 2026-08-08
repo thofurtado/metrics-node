@@ -6,8 +6,10 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
     const querySchema = z.object({
         page: z.string().optional().default('1'),
         limit: z.string().optional().default('10'),
+        sortBy: z.string().optional().default('data_emissao'),
+        sortDir: z.string().optional().default('desc'),
     })
-    const { page, limit } = querySchema.parse(request.query)
+    const { page, limit, sortBy, sortDir } = querySchema.parse(request.query)
     const take = parseInt(limit, 10)
     const skip = (parseInt(page, 10) - 1) * take
 
@@ -21,7 +23,7 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
     const [transactions, total] = await Promise.all([
         prisma.transaction.findMany({
             where: whereClause,
-            orderBy: { data_vencimento: 'desc' },
+            orderBy: { [sortBy]: sortDir === 'asc' ? 'asc' : 'desc' },
             include: { accounts: true },
             skip,
             take,
@@ -68,9 +70,11 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
 export async function getPendingSettlements(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
         page: z.string().optional().default('1'),
-        limit: z.string().optional().default('50'), // By default we can show more pending items
+        limit: z.string().optional().default('50'),
+        sortBy: z.string().optional().default('data_vencimento'),
+        sortDir: z.string().optional().default('asc'),
     })
-    const { page, limit } = querySchema.parse(request.query)
+    const { page, limit, sortBy, sortDir } = querySchema.parse(request.query)
     const take = parseInt(limit, 10)
     const skip = (parseInt(page, 10) - 1) * take
 
@@ -83,7 +87,7 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
     const [transactions, total] = await Promise.all([
         prisma.transaction.findMany({
             where: whereClause,
-            orderBy: { data_vencimento: 'asc' },
+            orderBy: { [sortBy]: sortDir === 'asc' ? 'asc' : 'desc' },
             include: { accounts: true },
             skip,
             take,
