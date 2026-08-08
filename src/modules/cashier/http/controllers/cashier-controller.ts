@@ -503,8 +503,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         // Busca todas as maquininhas e contas financeiras ativas para vincular o account_id correto
         const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } })
         const accounts = await prisma.account.findMany()
-        const defaultAccount = accounts[0] || null
-        const transitAccount = accounts.find(a => a.is_transit)
+        const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
 
         // Cria UMA transação no financeiro para CADA banco/maquininha com vendas no caixa
         for (const [key, totalAmount] of vendasPorBanco.entries()) {
@@ -544,21 +543,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 due_date.setDate(due_date.getDate() + settlementDays)
             }
 
-            let isTransit = false
-
-            // Para recebimentos de cartões/maquininhas, o valor vai para a Conta Transitória
-            if (transitAccount && bankName !== 'DINHEIRO' && bankName !== 'CAIXA') {
-                targetAccountId = transitAccount.id
-                isTransit = true
+            // Determina a conta de destino real
+            if (matchedMachine && matchedMachine.account_id) {
+                targetAccountId = matchedMachine.account_id
             } else {
-                // Lógica fallback
-                if (matchedMachine && matchedMachine.account_id) {
-                    targetAccountId = matchedMachine.account_id
-                } else {
-                    const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
-                    if (matchedAccount) {
-                        targetAccountId = matchedAccount.id
-                    }
+                const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
+                if (matchedAccount) {
+                    targetAccountId = matchedAccount.id
                 }
             }
 
@@ -568,19 +559,23 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             const paymentDisplay = paymentMethodRaw ? paymentMethodRaw.charAt(0).toUpperCase() + paymentMethodRaw.slice(1) : ''
 
+            // Calcula o valor líquido subtraindo a taxa
+            const feeAmount = (totalAmount * taxPercentage) / 100
+            const netAmount = totalAmount - feeAmount
+
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
-                    amount: totalAmount,
+                    amount: netAmount,
                     totalValue: totalAmount,
                     description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName} ${paymentDisplay}`,
                     cashier_session_id: session.id,
-                    confirmed: !isTransit, // Se for transitório, é PENDENTE (false). Se for dinheiro/real, já entra CONFIRMADO.
+                    confirmed: false, // Cartões/PIX entram sempre como pendentes até a liquidação
                     payment_method: paymentMethodRaw,
                     account_id: targetAccountId,
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
-                    interest: taxPercentage, // Snapshot da taxa da maquininha!
+                    interest: taxPercentage, // Guarda a taxa para relatórios futuros
                 }
             })
         }
@@ -600,9 +595,9 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     totalValue: totalAmount,
                     description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${methodName}: ${clientName}`,
                     cashier_session_id: session.id,
-                    confirmed: false, // A prazo sempre entra pendente na transitória
+                    confirmed: false, // A prazo sempre entra pendente
                     payment_method: methodName,
-                    account_id: transitAccount?.id || defaultAccount?.id,
+                    account_id: defaultAccount?.id,
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
                     interest: 0,

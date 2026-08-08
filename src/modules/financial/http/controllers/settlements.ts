@@ -3,40 +3,59 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 export async function listSettlements(request: FastifyRequest, reply: FastifyReply) {
-    const settlements = await prisma.transferTransaction.findMany({
-        where: { is_automated: true },
-        orderBy: { created_at: 'desc' },
-        include: {
-            sourceTransaction: { include: { accounts: true, creditCard: true } },
-            destTransaction: { include: { accounts: true } }
+    const querySchema = z.object({
+        page: z.string().optional().default('1'),
+        limit: z.string().optional().default('10'),
+    })
+    const { page, limit } = querySchema.parse(request.query)
+    const take = parseInt(limit, 10)
+    const skip = (parseInt(page, 10) - 1) * take
+
+    const whereClause: any = {
+        confirmed: true,
+        operation: 'income',
+        payment_method: { notIn: ['A PRAZO', 'PERMUTA', 'DINHEIRO', 'CAIXA'] },
+        cashier_session_id: { not: null }
+    }
+
+    const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+            where: whereClause,
+            orderBy: { data_vencimento: 'desc' },
+            include: { accounts: true },
+            skip,
+            take,
+        }),
+        prisma.transaction.count({ where: whereClause })
+    ])
+
+    return reply.status(200).send({
+        data: transactions,
+        meta: {
+            total,
+            page: parseInt(page, 10),
+            limit: take,
+            totalPages: Math.ceil(total / take)
         }
     })
-    return reply.status(200).send(settlements)
 }
 
 export async function revertSettlement(request: FastifyRequest, reply: FastifyReply) {
     const revertSchema = z.object({ id: z.string().uuid() })
     const { id } = revertSchema.parse(request.params)
 
-    const transfer = await prisma.transferTransaction.findUnique({
+    const transaction = await prisma.transaction.findUnique({
         where: { id }
     })
 
-    if (!transfer) {
-        return reply.status(404).send({ message: 'Liquidação não encontrada.' })
+    if (!transaction) {
+        return reply.status(404).send({ message: 'Transação não encontrada.' })
     }
 
     try {
-        await prisma.transferTransaction.delete({
-            where: { id }
-        })
-
-        await prisma.transaction.deleteMany({
-            where: {
-                id: {
-                    in: [transfer.source_transaction_id, transfer.dest_transaction_id]
-                }
-            }
+        await prisma.transaction.update({
+            where: { id },
+            data: { confirmed: false }
         })
 
         return reply.status(200).send({ message: 'Liquidação revertida com sucesso.' })
@@ -47,23 +66,38 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
 }
 
 export async function getPendingSettlements(request: FastifyRequest, reply: FastifyReply) {
-    // Localizar a conta transitória
-    const transitAccount = await prisma.account.findFirst({ where: { is_transit: true } })
-    if (!transitAccount) {
-        return reply.status(200).send([])
+    const querySchema = z.object({
+        page: z.string().optional().default('1'),
+        limit: z.string().optional().default('50'), // By default we can show more pending items
+    })
+    const { page, limit } = querySchema.parse(request.query)
+    const take = parseInt(limit, 10)
+    const skip = (parseInt(page, 10) - 1) * take
+
+    const whereClause: any = {
+        confirmed: false,
+        operation: 'income',
+        payment_method: { notIn: ['A PRAZO', 'PERMUTA', 'DINHEIRO', 'CAIXA'] }
     }
 
-    // Buscar transações na conta transitória que não estão confirmadas
-    const pendingTransactions = await prisma.transaction.findMany({
-        where: {
-            account_id: transitAccount.id,
-            confirmed: false,
-            operation: 'income',
-        },
-        orderBy: {
-            data_vencimento: 'asc'
+    const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+            where: whereClause,
+            orderBy: { data_vencimento: 'asc' },
+            include: { accounts: true },
+            skip,
+            take,
+        }),
+        prisma.transaction.count({ where: whereClause })
+    ])
+
+    return reply.status(200).send({
+        data: transactions,
+        meta: {
+            total,
+            page: parseInt(page, 10),
+            limit: take,
+            totalPages: Math.ceil(total / take)
         }
     })
-
-    return reply.status(200).send(pendingTransactions)
 }
