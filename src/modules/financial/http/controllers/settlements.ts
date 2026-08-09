@@ -6,7 +6,7 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
     const querySchema = z.object({
         page: z.string().optional().default('1'),
         limit: z.string().optional().default('10'),
-        sortBy: z.string().optional().default('data_emissao'),
+        sortBy: z.string().optional().default('data_vencimento'),
         sortDir: z.string().optional().default('desc'),
     })
     const { page, limit, sortBy, sortDir } = querySchema.parse(request.query)
