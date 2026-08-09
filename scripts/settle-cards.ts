@@ -40,6 +40,16 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
       where: {
         account_id: transitAccount.id,
         confirmed: false,
+        payment_method: {
+          in: [
+            'CREDITO', 'DEBITO', 'PIX', 'VOUCHER', 
+            'crédito', 'débito', 'pix', 'voucher',
+            'Crédito', 'Débito', 'Pix', 'Voucher',
+            'Cartão de Crédito', 'Cartão de Débito',
+            'cartão de crédito', 'cartão de débito',
+            'Cartão de crédito', 'Cartão de débito'
+          ]
+        },
         data_vencimento: {
           lte: new Date()
         }
@@ -52,19 +62,28 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
     }
 
     for (const tx of pendingTransactions) {
+      const destMatch = tx.description?.match(/\[DEST:\s*([^\]]+)\]/)
+      const targetAccountId = destMatch ? destMatch[1] : defaultAccount.id
+
       const taxPercentage = tx.interest || 0;
       const machineName = tx.description?.split('-')[1]?.trim().split(' ')[0] || 'Desconhecida';
+      const paymentMethodRaw = tx.payment_method || '';
 
-      const grossAmount = tx.amount;
-      const feeAmount = (grossAmount * taxPercentage) / 100;
-      const netAmount = grossAmount - feeAmount;
+      const grossAmount = tx.totalValue || tx.amount;
+      const netAmount = tx.amount;
+      const feeAmount = grossAmount - netAmount;
 
       console.log(`[${dbName}] Liquidando TX ${tx.id} (${machineName} - ${paymentMethodRaw}): Bruto R$${grossAmount}, Taxa R$${feeAmount}, Líquido R$${netAmount}`);
+
+      const cleanDescription = tx.description?.replace(/\[DEST:\s*[^\]]+\]/, '').trim() || 'Liquidação'
 
       // Atualiza a transação transitória como confirmada
       await prisma.transaction.update({
         where: { id: tx.id },
-        data: { confirmed: true }
+        data: { 
+            confirmed: true,
+            description: `${cleanDescription} (Liquidado)`
+        }
       });
 
       // Cria a transação de destino na conta real (valor líquido)
@@ -72,14 +91,20 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
         data: {
           operation: 'income',
           amount: netAmount,
-          totalValue: netAmount,
-          description: `Liquidação: ${tx.description}`,
-          account_id: defaultAccount.id,
+          totalValue: grossAmount,
+          description: `Liquidação: ${cleanDescription}`,
+          account_id: targetAccountId,
           confirmed: true,
-          data_emissao: new Date(),
+          data_emissao: tx.data_emissao,
           data_vencimento: new Date(),
           payment_method: tx.payment_method,
-          cashier_session_id: tx.cashier_session_id
+          cashier_session_id: tx.cashier_session_id,
+          interest: tx.interest,
+          category_id: tx.category_id,
+          sector_id: tx.sector_id,
+          client_id: tx.client_id,
+          supplier_id: tx.supplier_id,
+          employee_id: tx.employee_id,
         }
       });
 
@@ -93,25 +118,9 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
           is_automated: true
         }
       });
-
-      // Se houver taxa, registrar a despesa na conta real para conciliação contábil correta
-      if (feeAmount > 0) {
-        await prisma.transaction.create({
-          data: {
-            operation: 'expense',
-            amount: feeAmount,
-            totalValue: feeAmount,
-            description: `Taxa Máquina (${taxPercentage}%): ${tx.description}`,
-            account_id: defaultAccount.id,
-            confirmed: true,
-            data_emissao: new Date(),
-            data_vencimento: new Date(),
-            payment_method: tx.payment_method,
-            parent_transaction_id: tx.id,
-            cashier_session_id: tx.cashier_session_id
-          }
-        });
-      }
+      // Observação: O script antigo criava uma segunda transação expense subtraindo a taxa
+      // da conta destino, mas o valor `netAmount` que entra na conta destino JÁ está com a 
+      // taxa deduzida pela API principal, causando dedução dupla. A duplicidade foi corrigida aqui.
     }
 
   } catch (err) {

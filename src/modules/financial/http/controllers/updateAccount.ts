@@ -12,12 +12,21 @@ export async function updateAccount(request: FastifyRequest, reply: FastifyReply
         name: z.string().optional(),
         description: z.string().nullable().optional(),
         goal: z.number().nullable().optional(),
+        is_transit: z.boolean().optional(),
     })
 
     const { id } = updateAccountParamsSchema.parse(request.params)
-    const { name, description, goal } = updateAccountBodySchema.parse(request.body)
+    const { name, description, goal, is_transit } = updateAccountBodySchema.parse(request.body)
 
     try {
+        if (is_transit === true) {
+            const { prisma } = require('@/lib/prisma')
+            const existingTransit = await prisma.account.findFirst({ where: { is_transit: true, id: { not: id } } })
+            if (existingTransit) {
+                return reply.status(400).send({ message: 'Já existe uma conta transitória configurada. Apenas uma é permitida.' })
+            }
+        }
+
         const updateAccountUseCase = MakeUpdateAccountUseCase()
 
         await updateAccountUseCase.execute({
@@ -25,6 +34,7 @@ export async function updateAccount(request: FastifyRequest, reply: FastifyReply
             name,
             description,
             goal,
+            is_transit
         })
     } catch (err) {
         if (err instanceof ResourceNotFoundError) {

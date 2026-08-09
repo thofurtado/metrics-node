@@ -16,7 +16,16 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
     const whereClause: any = {
         confirmed: true,
         operation: 'income',
-        payment_method: { notIn: ['A PRAZO', 'PERMUTA', 'DINHEIRO', 'CAIXA'] },
+        payment_method: { 
+            in: [
+                'CREDITO', 'DEBITO', 'PIX', 'VOUCHER', 
+                'crédito', 'débito', 'pix', 'voucher',
+                'Crédito', 'Débito', 'Pix', 'Voucher',
+                'Cartão de Crédito', 'Cartão de Débito',
+                'cartão de crédito', 'cartão de débito',
+                'Cartão de crédito', 'Cartão de débito'
+            ]
+        },
         cashier_session_id: { not: null }
     }
 
@@ -81,7 +90,16 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
     const whereClause: any = {
         confirmed: false,
         operation: 'income',
-        payment_method: { notIn: ['A PRAZO', 'PERMUTA', 'DINHEIRO', 'CAIXA'] }
+        payment_method: { 
+            in: [
+                'CREDITO', 'DEBITO', 'PIX', 'VOUCHER', 
+                'crédito', 'débito', 'pix', 'voucher',
+                'Crédito', 'Débito', 'Pix', 'Voucher',
+                'Cartão de Crédito', 'Cartão de Débito',
+                'cartão de crédito', 'cartão de débito',
+                'Cartão de crédito', 'Cartão de débito'
+            ]
+        }
     }
 
     const [transactions, total] = await Promise.all([

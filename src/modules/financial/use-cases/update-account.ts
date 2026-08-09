@@ -7,6 +7,7 @@ interface UpdateAccountUseCaseRequest {
     name?: string
     description?: string | null
     goal?: number | null
+    is_transit?: boolean
 }
 
 interface UpdateAccountUseCaseResponse {
@@ -21,6 +22,7 @@ export class UpdateAccountUseCase {
         name,
         description,
         goal,
+        is_transit
     }: UpdateAccountUseCaseRequest): Promise<UpdateAccountUseCaseResponse> {
         const account = await this.accountsRepository.findById(id)
 
@@ -32,6 +34,7 @@ export class UpdateAccountUseCase {
             name,
             description,
             goal,
+            is_transit
             // Balance is NOT updated here to ensure integrity
         })
 

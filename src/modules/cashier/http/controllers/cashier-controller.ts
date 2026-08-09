@@ -405,21 +405,6 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             // Sangria (Retirada de Dinheiro Físico para Depósito)
             if (entry.is_withdrawal) {
-                await prisma.transaction.create({
-                    data: {
-                        operation: 'expense',
-                        amount,
-                        totalValue: amount,
-                        description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}${entry.identification ? ` - ${entry.identification}` : ''}`,
-                        cashier_session_id: session.id,
-                        confirmed: true,
-                        payment_method: 'DINHEIRO',
-                        data_vencimento: session.opened_at,
-                        data_emissao: session.opened_at,
-                        sector_id: entry.sector_id || null,
-                    }
-                })
-
                 if (entry.employee_id) {
                     await prisma.payrollEntry.create({
                         data: {
@@ -429,6 +414,21 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                             description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
                             referenceDate: new Date(session.opened_at),
                             status: 'PENDING'
+                        }
+                    })
+                } else {
+                    await prisma.transaction.create({
+                        data: {
+                            operation: 'expense',
+                            amount,
+                            totalValue: amount,
+                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}${entry.identification ? ` - ${entry.identification}` : ''}`,
+                            cashier_session_id: session.id,
+                            confirmed: true,
+                            payment_method: 'DINHEIRO',
+                            data_vencimento: session.opened_at,
+                            data_emissao: session.opened_at,
+                            sector_id: entry.sector_id || null,
                         }
                     })
                 }
@@ -559,6 +559,16 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             const paymentDisplay = paymentMethodRaw ? paymentMethodRaw.charAt(0).toUpperCase() + paymentMethodRaw.slice(1) : ''
 
+            // Lógica Conta Transitória com Marcador de Destino
+            const transitAccount = accounts.find(a => a.is_transit)
+            let finalAccountIdToUse = targetAccountId
+            let finalDescription = `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName} ${paymentDisplay}`
+
+            if (transitAccount && targetAccountId) {
+                finalAccountIdToUse = transitAccount.id
+                finalDescription += ` [DEST: ${targetAccountId}]`
+            }
+
             // Calcula o valor líquido subtraindo a taxa
             const feeAmount = (totalAmount * taxPercentage) / 100
             const netAmount = totalAmount - feeAmount
@@ -568,11 +578,11 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     operation: 'income',
                     amount: netAmount,
                     totalValue: totalAmount,
-                    description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${bankName} ${paymentDisplay}`,
+                    description: finalDescription,
                     cashier_session_id: session.id,
                     confirmed: false, // Cartões/PIX entram sempre como pendentes até a liquidação
                     payment_method: paymentMethodRaw,
-                    account_id: targetAccountId,
+                    account_id: finalAccountIdToUse,
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
                     interest: taxPercentage, // Guarda a taxa para relatórios futuros
