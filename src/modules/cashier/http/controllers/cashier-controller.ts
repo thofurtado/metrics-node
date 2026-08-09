@@ -576,8 +576,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
-                    amount: netAmount,
-                    totalValue: totalAmount,
+                    amount: totalAmount, // Valor Original/Cheio (Ex: 25.90)
+                    totalValue: netAmount, // Valor Líquido/Efetivo (Ex: 25.25)
                     description: finalDescription,
                     cashier_session_id: session.id,
                     confirmed: false, // Cartões/PIX entram sempre como pendentes até a liquidação
@@ -659,6 +659,31 @@ export async function revertCashierAudit(request: FastifyRequest, reply: Fastify
             return reply.status(400).send({ message: 'Apenas caixas conferidos podem ser revertidos.' })
         }
 
+        // Busca todas as transações que serão deletadas para reverter saldo e apagar vínculos
+        const txsToDelete = await prisma.transaction.findMany({ 
+            where: { cashier_session_id: session.id } 
+        })
+
+        for (const tx of txsToDelete) {
+            // Se foi confirmada em uma conta real, revertemos o saldo
+            if (tx.confirmed && tx.account_id) {
+                const amountToRevert = tx.totalValue || tx.amount;
+                if (tx.operation === 'income') {
+                    await prisma.account.update({
+                        where: { id: tx.account_id },
+                        data: { balance: { decrement: amountToRevert } }
+                    })
+                } else if (tx.operation === 'expense') {
+                    await prisma.account.update({
+                        where: { id: tx.account_id },
+                        data: { balance: { increment: amountToRevert } }
+                    })
+                }
+            }
+        }
+
+        const txIds = txsToDelete.map(t => t.id)
+        
         // Deleta todas as transações financeiras e vales/registros do payroll associados
         await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })

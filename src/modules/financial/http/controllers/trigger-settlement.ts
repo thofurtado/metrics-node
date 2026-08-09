@@ -66,45 +66,23 @@ export async function triggerSettlement(request: FastifyRequest, reply: FastifyR
                 // Tem conta de destino, então estava na transitória. Fazer transferência.
                 const cleanDescription = tx.description?.replace(/\[DEST:\s*[^\]]+\]/, '').trim() || 'Liquidação'
 
-                // Atualiza a transação na conta transitória
+                // Atualiza a própria transação movendo-a para a conta real
                 await prisma.transaction.update({
                     where: { id: tx.id },
                     data: {
                         confirmed: true,
+                        account_id: targetAccountId,
                         data_vencimento: new Date(),
                         description: `${cleanDescription} (Liquidado)`
                     }
                 })
 
-                // Cria a transação de entrada na conta final
-                const destTx = await prisma.transaction.create({
-                    data: {
-                        operation: 'income',
-                        amount: tx.amount,
-                        totalValue: tx.amount,
-                        description: `Liquidação: ${cleanDescription}`,
-                        account_id: targetAccountId,
-                        confirmed: true,
-                        payment_method: tx.payment_method,
-                        data_vencimento: new Date(),
-                        data_emissao: tx.data_emissao,
-                        cashier_session_id: tx.cashier_session_id,
-                        interest: tx.interest,
-                        category_id: tx.category_id,
-                        sector_id: tx.sector_id,
-                        client_id: tx.client_id,
-                        supplier_id: tx.supplier_id,
-                        employee_id: tx.employee_id,
-                    }
+                // Atualiza o saldo da conta destino com o valor LÍQUIDO (totalValue)
+                await prisma.account.update({
+                    where: { id: targetAccountId },
+                    data: { balance: { increment: tx.totalValue || tx.amount } }
                 })
-
-                // Vincula as duas na TransferTransaction (para histórico)
-                await prisma.transferTransaction.create({
-                    data: {
-                        source_transaction_id: tx.id,
-                        dest_transaction_id: destTx.id,
-                    }
-                })
+                
                 settledCount++;
             } else {
                 // Fluxo normal direto na conta
@@ -115,6 +93,14 @@ export async function triggerSettlement(request: FastifyRequest, reply: FastifyR
                         data_vencimento: new Date()
                     }
                 })
+
+                // Se era direto na conta, atualizar saldo!
+                if (tx.account_id) {
+                    await prisma.account.update({
+                        where: { id: tx.account_id },
+                        data: { balance: { increment: tx.totalValue || tx.amount } }
+                    })
+                }
                 settledCount++;
             }
         }

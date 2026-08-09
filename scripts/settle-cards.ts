@@ -77,50 +77,21 @@ async function processTenantSettlements(tenantUrl: string, dbName: string) {
 
       const cleanDescription = tx.description?.replace(/\[DEST:\s*[^\]]+\]/, '').trim() || 'Liquidação'
 
-      // Atualiza a transação transitória como confirmada
+      // Atualiza a própria transação movendo-a para a conta real
       await prisma.transaction.update({
         where: { id: tx.id },
         data: { 
             confirmed: true,
+            account_id: targetAccountId,
             description: `${cleanDescription} (Liquidado)`
         }
       });
 
-      // Cria a transação de destino na conta real (valor líquido)
-      const destTx = await prisma.transaction.create({
-        data: {
-          operation: 'income',
-          amount: netAmount,
-          totalValue: grossAmount,
-          description: `Liquidação: ${cleanDescription}`,
-          account_id: targetAccountId,
-          confirmed: true,
-          data_emissao: tx.data_emissao,
-          data_vencimento: new Date(),
-          payment_method: tx.payment_method,
-          cashier_session_id: tx.cashier_session_id,
-          interest: tx.interest,
-          category_id: tx.category_id,
-          sector_id: tx.sector_id,
-          client_id: tx.client_id,
-          supplier_id: tx.supplier_id,
-          employee_id: tx.employee_id,
-        }
-      });
-
-      // Cria a relação de transferência
-      await prisma.transferTransaction.create({
-        data: {
-          source_transaction_id: tx.id,
-          dest_transaction_id: destTx.id,
-          fee_amount: feeAmount,
-          description: `Liquidação Automática ${machineName} ${paymentMethodRaw}`,
-          is_automated: true
-        }
-      });
-      // Observação: O script antigo criava uma segunda transação expense subtraindo a taxa
-      // da conta destino, mas o valor `netAmount` que entra na conta destino JÁ está com a 
-      // taxa deduzida pela API principal, causando dedução dupla. A duplicidade foi corrigida aqui.
+      // Atualiza o saldo da conta destino com o valor LÍQUIDO (totalValue)
+      await prisma.account.update({
+          where: { id: targetAccountId },
+          data: { balance: { increment: tx.totalValue || tx.amount } }
+      })
     }
 
   } catch (err) {
