@@ -12,9 +12,25 @@ export class PrismaAccountsRepository implements AccountsRepository {
                     name: 'asc'
                 }
             ],
-
         })
-        return accounts
+
+        const pendingBalances = await prisma.transaction.groupBy({
+            by: ['account_id'],
+            where: {
+                confirmed: false,
+                operation: 'income'
+            },
+            _sum: {
+                amount: true
+            }
+        })
+
+        const pendingMap = new Map(pendingBalances.map(pb => [pb.account_id, pb._sum.amount || 0]))
+
+        return accounts.map(account => ({
+            ...account,
+            pending_balance: pendingMap.get(account.id) || 0
+        }))
     }
     async create(data: Prisma.AccountCreateInput) {
         const account = await prisma.account.create({

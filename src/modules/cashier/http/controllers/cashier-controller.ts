@@ -308,6 +308,12 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
                 data_emissao: session.opened_at,
             }
         })
+
+        // Atualizar saldo da conta de destino!
+        await prisma.account.update({
+            where: { id: account_id },
+            data: { balance: { increment: absAmount } }
+        })
     }
 
     return reply.status(200).send({ 
@@ -598,6 +604,9 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const due_date = new Date(session.opened_at)
             due_date.setDate(due_date.getDate() + 30) // Padrão 30 dias para fiado
 
+            const isTransit = accounts.find(a => a.is_transit);
+            const accountToUse = isTransit ? isTransit.id : defaultAccount?.id;
+
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
@@ -607,7 +616,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     cashier_session_id: session.id,
                     confirmed: false, // A prazo sempre entra pendente
                     payment_method: methodName,
-                    account_id: defaultAccount?.id,
+                    account_id: accountToUse,
                     data_vencimento: due_date,
                     data_emissao: session.opened_at,
                     interest: 0,

@@ -185,7 +185,8 @@ export async function uploadStandaloneReceipt(request: FastifyRequest, reply: Fa
         description = String(part.value);
       }
       if (['value', 'amount', 'valor'].includes(part.fieldname)) {
-        value = Number(part.value) || null;
+        const stringValue = String(part.value).replace(',', '.');
+        value = Number(stringValue) || null;
       }
     }
   }
