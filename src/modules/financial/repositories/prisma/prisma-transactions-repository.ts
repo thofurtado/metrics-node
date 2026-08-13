@@ -735,7 +735,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         return updatedTransaction;
     }
-    async findMany(month: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string | string[], status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string, checked?: string): Promise<GetTransactionsDTO | null> {
+    async findMany(month?: Date, pageIndex?: number, perPage?: number, description?: string, value?: number, sector_id?: string, account_id?: string | string[], status?: string, toDate?: Date, supplier_id?: string, operation?: string, fromDate?: Date, sortBy?: string, sortDirection?: string, checked?: string): Promise<GetTransactionsDTO | null> {
 
         let take = perPage ? Number(perPage) : 6
         let skip = 0
@@ -772,8 +772,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             checkedFilter = false;
         }
 
-        const year = month.getFullYear()
-        const monthNumber = month.getMonth() + 1
+        const year = month?.getFullYear()
+        const monthNumber = month ? month.getMonth() + 1 : undefined
 
         // Define date filter logic
         let dateFilter: Prisma.DateTimeFilter<"Transaction"> | undefined;
@@ -819,9 +819,13 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             }
         } else {
             // Default Month Flow (History)
-            dateFilter = {
-                gte: new Date(year, monthNumber - 1, 1), // Start of month
-                lt: new Date(year, monthNumber, 1), // End of month (excluding the last day)
+            if (month && year !== undefined && monthNumber !== undefined) {
+                dateFilter = {
+                    gte: new Date(year, monthNumber - 1, 1), // Start of month
+                    lt: new Date(year, monthNumber, 1), // End of month (excluding the last day)
+                }
+            } else {
+                dateFilter = undefined
             }
         }
 
