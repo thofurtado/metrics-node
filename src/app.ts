@@ -1,4 +1,4 @@
-import fastify from 'fastify'
+﻿import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
 import { z, ZodError } from 'zod'
 import i18next from 'i18next'
@@ -28,7 +28,7 @@ import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
 import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
-import { telemetryRoutes } from '@/modules/equipments/http/controllers/routes'
+import { telemetryRoutes, adminEquipmentsRoutes } from '@/modules/equipments/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 import { publicRoutes } from '@/modules/public/http/controllers/routes'
 import { uploadsRoutes } from '@/modules/uploads/http/controllers/routes'
@@ -51,8 +51,8 @@ export const app = fastify({ logger: true })
 app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
-    // Ignora a verificação de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
-    // Também ignora arquivos estáticos da pasta de uploads apenas para requisições GET
+    // Ignora a verificaÃ§Ã£o de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
+    // TambÃ©m ignora arquivos estÃ¡ticos da pasta de uploads apenas para requisiÃ§Ãµes GET
     if (
         request.method === 'OPTIONS' || 
         request.url === '/public/health' || 
@@ -65,7 +65,7 @@ app.addHook('onRequest', async (request, reply) => {
         return;
     }
 
-    // 1. Identificar o domínio pelo qual a API foi chamada (Host header)
+    // 1. Identificar o domÃ­nio pelo qual a API foi chamada (Host header)
     let domain = request.hostname;
     
     // 2. Fallback para desenvolvimento local ou testes via header manual
@@ -76,19 +76,19 @@ app.addHook('onRequest', async (request, reply) => {
     // Remove porta se houver (ex: localhost:3333 -> localhost)
     domain = domain.split(':')[0];
 
-    // Remove o 'www.' e 'api.' para garantir que as requisições encontrem o cliente base
+    // Remove o 'www.' e 'api.' para garantir que as requisiÃ§Ãµes encontrem o cliente base
     domain = domain.replace(/^www\./, '');
     domain = domain.replace(/^api\./, '');
 
-    // 3. Busca a conexão do Prisma no TenantManager
+    // 3. Busca a conexÃ£o do Prisma no TenantManager
     const tenantPrisma = await getPrismaForDomain(domain);
     const tenantDbName = await getDbNameForDomain(domain);
     
     if (!tenantPrisma || !tenantDbName) {
-        return reply.status(403).send({ message: `Acesso Negado: Cliente não reconhecido ou inativo para o domínio (${domain}).` });
+        return reply.status(403).send({ message: `Acesso Negado: Cliente nÃ£o reconhecido ou inativo para o domÃ­nio (${domain}).` });
     }
 
-    // 4. Injeta a conexão Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
+    // 4. Injeta a conexÃ£o Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
     requestContext.set('prisma', tenantPrisma);
     requestContext.set('tenant', tenantDbName);
 })
@@ -152,7 +152,7 @@ app.register(async (instance) => {
         const apiKey = request.headers['x-api-key']
         const validKey = process.env.API_KEY_PONTO || 'metrics_secret_key_2026'
         if (apiKey !== validKey) {
-            return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API inválida' })
+            return reply.status(401).send({ message: 'Acesso nÃ£o autorizado: Chave de API invÃ¡lida' })
         }
     })
     instance.register(kioskRoutes)
@@ -166,7 +166,7 @@ app.register(async (instance) => {
     instance.register(hrAdminRoutes)
 })
 
-// Integração externa: Conferência de Caixa → Metrics (autenticação via API Key no próprio controller)
+// IntegraÃ§Ã£o externa: ConferÃªncia de Caixa â†’ Metrics (autenticaÃ§Ã£o via API Key no prÃ³prio controller)
 import { cashRegisterIntegration } from '@/modules/financial/http/controllers/cash-register-integration'
 app.register(async (instance) => {
     instance.post('/integration/cash-register', cashRegisterIntegration)
@@ -178,19 +178,20 @@ app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {
         return reply
             .status(400)
-            .send({ message: 'Erro de validação', issues: error.format() })
+            .send({ message: 'Erro de validaÃ§Ã£o', issues: error.format() })
     }
 
     if (error instanceof ResourceNotFoundError) {
-        return reply.status(404).send({ message: 'Recurso não encontrado' })
+        return reply.status(404).send({ message: 'Recurso nÃ£o encontrado' })
     }
 
     if (env.NODE_ENV !== 'production') {
         console.error(error)
     } else {
-        // Logging habilitado temporariamente para debugar o erro 500 em produção (Coolify)
+        // Logging habilitado temporariamente para debugar o erro 500 em produÃ§Ã£o (Coolify)
         console.error('ERRO INTERNO (PROD):', error)
         //TODO: deveriamos fazer o logo para uma ferramenta externa como datadog/ new relic/sentry
     }
     return reply.status(500).send({ messagem: 'Erro interno do servidor', details: error.message })
 })
+
