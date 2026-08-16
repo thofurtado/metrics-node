@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import { requestContext } from '@fastify/request-context';
 
 // const prisma = new PrismaClient();
-const getPrisma = () => requestContext.get('prisma') as PrismaClient;
+const getPrisma = () => requestContext.get('prisma') as unknown as PrismaClient;
 export async function uploadTransactionReceipt(request: FastifyRequest, reply: FastifyReply) {
   const uploadParamsSchema = z.object({
     id: z.string().uuid(),

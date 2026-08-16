@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { requestContext } from '@fastify/request-context';
 
 // const prisma = new PrismaClient();
-const getPrisma = () => requestContext.get('prisma') as PrismaClient;
+const getPrisma = () => requestContext.get('prisma') as unknown as PrismaClient;
 export async function getReceipt(request: FastifyRequest, reply: FastifyReply) {
     const getParamsSchema = z.object({
         id: z.string().uuid(),

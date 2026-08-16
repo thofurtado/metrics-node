@@ -2,7 +2,7 @@ import {Address, Prisma} from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { AddressesRepository } from '@/modules/users/repositories/addresses-repository'
 
-export class InMemoryAddressessRepository implements AddressesRepository {
+export class InMemoryAddressesRepository implements AddressesRepository {
 
     public items: Address[] = []
     async update(data: Prisma.AddressUncheckedUpdateInput): Promise<{ id: string; client_id: string; street: string; number: number; neighborhood: string; city: string; state: string; zipcode: number | null }> {

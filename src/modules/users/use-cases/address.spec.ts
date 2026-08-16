@@ -1,6 +1,6 @@
 import {expect, describe, it,beforeEach} from 'vitest'
 import { AddressUseCase } from '@/modules/users/use-cases/address'
-import { InMemoryAddressessRepository } from '@/modules/users/repositories/in-memory/in-memory-addressess-repository'
+import { InMemoryAddressesRepository } from '@/modules/users/repositories/in-memory/in-memory-addressess-repository'
 import { InMemoryClientsRepository } from '@/modules/clients/repositories/in-memory/in-memory-clients-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 
@@ -8,14 +8,14 @@ import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 
 
 let clientsRepository: InMemoryClientsRepository
-let addressRepository: InMemoryAddressessRepository
+let addressRepository: InMemoryAddressesRepository
 let addressUseCase: AddressUseCase
 
 
 describe('Address Use Case', () => {
     beforeEach(() => {
 
-        addressRepository = new InMemoryAddressessRepository()
+        addressRepository = new InMemoryAddressesRepository()
         clientsRepository = new InMemoryClientsRepository()
         addressUseCase = new AddressUseCase(addressRepository,clientsRepository)
     })

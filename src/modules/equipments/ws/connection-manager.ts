@@ -5,12 +5,12 @@ class ConnectionManager {
 
     addConnection(equipmentId: string, connection: SocketStream) {
         this.connections.set(equipmentId, connection)
-        console.log(\[WS] Equipment \ connected. Total: \\)
+        console.log(`[WS] Equipment ${equipmentId} connected. Total: ${this.connections.size}`)
     }
 
     removeConnection(equipmentId: string) {
         this.connections.delete(equipmentId)
-        console.log(\[WS] Equipment \ disconnected. Total: \\)
+        console.log(`[WS] Equipment ${equipmentId} disconnected. Total: ${this.connections.size}`)
     }
 
     sendCommand(equipmentId: string, command: string) {
@@ -24,4 +24,3 @@ class ConnectionManager {
 }
 
 export const connectionManager = new ConnectionManager()
-

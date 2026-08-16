@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { connectionManager } from '../ws/connection-manager'
+import { connectionManager } from '../../ws/connection-manager'
 
 export async function sendCommand(
   request: FastifyRequest,
