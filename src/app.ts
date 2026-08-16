@@ -164,6 +164,7 @@ app.register(async (instance) => {
 app.register(async (instance) => {
     instance.addHook('onRequest', verifyJwt)
     instance.register(hrAdminRoutes)
+    instance.register(adminEquipmentsRoutes)
 })
 
 // IntegraÃ§Ã£o externa: ConferÃªncia de Caixa â†’ Metrics (autenticaÃ§Ã£o via API Key no prÃ³prio controller)
@@ -194,4 +195,5 @@ app.setErrorHandler((error, _, reply) => {
     }
     return reply.status(500).send({ messagem: 'Erro interno do servidor', details: error.message })
 })
+
 
