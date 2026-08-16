@@ -1,4 +1,4 @@
-﻿-- DropForeignKey
+-- DropForeignKey
 ALTER TABLE "equipments" DROP CONSTRAINT "equipments_client_id_fkey";
 
 -- AlterTable
