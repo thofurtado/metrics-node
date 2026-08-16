@@ -28,6 +28,7 @@ import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
 import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
+import { telemetryRoutes } from '@/modules/equipments/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 import { publicRoutes } from '@/modules/public/http/controllers/routes'
 import { uploadsRoutes } from '@/modules/uploads/http/controllers/routes'
@@ -155,6 +156,7 @@ app.register(async (instance) => {
         }
     })
     instance.register(kioskRoutes)
+    instance.register(telemetryRoutes)
 })
 
 

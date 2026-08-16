@@ -227,7 +227,7 @@ model Stock {
 
 model Equipment {
   id             String      @id @default(uuid())
-  client_id      String
+  client_id      String?
   type           String
   brand          String?
   identification String?
@@ -235,7 +235,12 @@ model Equipment {
   entry          DateTime    @default(now())
   created_at     DateTime    @default(now())
   updated_at     DateTime    @default(now()) @updatedAt
-  client         Client      @relation(fields: [client_id], references: [id])
+
+  last_telemetry Json?
+  is_online      Boolean     @default(false)
+  last_seen_at   DateTime?
+
+  client         Client?     @relation(fields: [client_id], references: [id])
   treatments     Treatment[]
 
   @@map("equipments")

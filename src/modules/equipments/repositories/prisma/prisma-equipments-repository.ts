@@ -32,6 +32,15 @@ export class PrismaEquipmentsRepository implements EquipmentsRepository {
         })
         return equiepments
     }
+
+    async findOrphans(): Promise<Equipment[]> {
+        const equipments = await prisma.equipment.findMany({
+            where: {
+                client_id: null
+            }
+        })
+        return equipments
+    }
     findMany(type?: string | undefined, brand?: string | undefined, identification?: string | undefined): Promise<Equipment[] | null> {
         const equiepments = prisma.equipment.findMany({
             where: {
@@ -41,5 +50,13 @@ export class PrismaEquipmentsRepository implements EquipmentsRepository {
             }
         })
         return equiepments
+    }
+    
+    async update(id: string, data: Prisma.EquipmentUpdateInput) {
+        const equipment = await prisma.equipment.update({
+            where: { id },
+            data
+        })
+        return equipment
     }
 }
