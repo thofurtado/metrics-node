@@ -1,3 +1,4 @@
+import fastifyWebsocket from '@fastify/websocket'
 ﻿import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
 import { z, ZodError } from 'zod'
@@ -128,6 +129,8 @@ app.register(fastifyJwt, {
 }
 )
 app.register(fastifyCookie)
+
+app.register(fastifyWebsocket)
 
 app.register(usersRoutes)
 app.register(financialRoutes)

@@ -35,13 +35,13 @@
     "vitest": "1.6.1"
   },
   "dependencies": {
-    "prisma": "^6.0.0",
     "@fastify/cookie": "11.0.2",
     "@fastify/cors": "11.1.0",
     "@fastify/jwt": "10.0.0",
     "@fastify/multipart": "10.0.0",
     "@fastify/request-context": "7.0.0",
     "@fastify/static": "9.1.0",
+    "@fastify/websocket": "11.3.0",
     "@prisma/client": "^6.0.0",
     "@types/fastify-cors": "2.1.0",
     "axios": "^1.6.0",
@@ -53,6 +53,7 @@
     "fastify-pagination": "0.1.2",
     "i18next": "25.8.17",
     "pg": "8.19.0",
+    "prisma": "^6.0.0",
     "tsup": "8.5.0",
     "uuid": "13.0.0",
     "vitest-environment-prisma": "file:prisma/vitest-environment-prisma",
