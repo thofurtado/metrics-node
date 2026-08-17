@@ -1,9 +1,9 @@
-import { SocketStream } from '@fastify/websocket'
+import { WebSocket } from 'ws'
 
 class ConnectionManager {
-    private connections = new Map<string, SocketStream>()
+    private connections = new Map<string, WebSocket>()
 
-    addConnection(equipmentId: string, connection: SocketStream) {
+    addConnection(equipmentId: string, connection: WebSocket) {
         this.connections.set(equipmentId, connection)
         console.log(`[WS] Equipment ${equipmentId} connected. Total: ${this.connections.size}`)
     }
@@ -16,7 +16,7 @@ class ConnectionManager {
     sendCommand(equipmentId: string, command: string) {
         const conn = this.connections.get(equipmentId)
         if (conn) {
-            conn.socket.send(JSON.stringify({ action: command }))
+            conn.send(JSON.stringify({ action: command }))
             return true
         }
         return false
