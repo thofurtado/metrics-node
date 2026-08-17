@@ -27,11 +27,14 @@ export class UpdateEquipmentTelemetryUseCase {
       last_telemetry: telemetry,
       last_seen_at: new Date(),
       is_online: true,
-    }; if (telemetry?.osInfo?.hostname) { updateData.hostname = telemetry.osInfo.hostname; }; const updatedEquipment = await this.equipmentsRepository.update(id, updateData)
+    }
+
+    const updatedEquipment = await this.equipmentsRepository.update(id, updateData)
 
     return {
       equipment: updatedEquipment,
     }
   }
 }
+
 
