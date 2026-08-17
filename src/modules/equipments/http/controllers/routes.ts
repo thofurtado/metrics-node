@@ -1,6 +1,6 @@
-﻿import { sendCommand } from './send-command'
+import { sendCommand } from './send-command'
 import { connectionManager } from '../../ws/connection-manager'
-ï»¿import { FastifyInstance } from 'fastify'
+import { FastifyInstance } from 'fastify'
 import { updateTelemetry } from './update-telemetry'
 import { provisionEquipment } from './provision-equipment'
 import { linkEquipmentClient } from './link-equipment-client'
