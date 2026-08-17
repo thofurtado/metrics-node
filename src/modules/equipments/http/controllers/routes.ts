@@ -1,6 +1,6 @@
-import { sendCommand } from './send-command'
+﻿import { sendCommand } from './send-command'
 import { connectionManager } from '../../ws/connection-manager'
-﻿import { FastifyInstance } from 'fastify'
+ï»¿import { FastifyInstance } from 'fastify'
 import { updateTelemetry } from './update-telemetry'
 import { provisionEquipment } from './provision-equipment'
 import { linkEquipmentClient } from './link-equipment-client'
@@ -19,7 +19,7 @@ export async function telemetryRoutes(app: FastifyInstance) {
     // @ts-ignore
     const { id } = req.params;
     connectionManager.addConnection(id, connection);
-    connection.socket.on('close', () => {
+    connection.on('close', () => {
       connectionManager.removeConnection(id);
     });
   })
