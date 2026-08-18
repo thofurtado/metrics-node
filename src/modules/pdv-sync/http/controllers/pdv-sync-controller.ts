@@ -301,6 +301,7 @@ export async function getPaymentsSync(request: FastifyRequest, reply: FastifyRep
         InSight: p.in_sight,
         AccountId: p.account_id,
         Active: p.active,
+        SefazTpag: p.sefaz_tPag,
         CreatedAt: p.created_at
     }))
     return reply.status(200).send(formatted)
@@ -341,4 +342,15 @@ export async function getPOSMachinesSync(request: FastifyRequest, reply: Fastify
         CreatedAt: m.created_at
     }))
     return reply.status(200).send(formatted)
+}
+
+export async function getSystemConfigSync(request: FastifyRequest, reply: FastifyReply) {
+    let config = await prisma.systemConfig.findFirst()
+    if (!config) {
+        config = await prisma.systemConfig.create({ data: {} })
+    }
+    return reply.status(200).send({
+        BlindCashierClosure: config.blind_cashier_closure,
+        CashierDefaultOrigin: config.cashier_default_origin
+    })
 }

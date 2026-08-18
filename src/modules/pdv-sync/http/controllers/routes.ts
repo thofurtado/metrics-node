@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync } from './pdv-sync-controller'
+import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
@@ -26,6 +26,7 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/sync/payment-identifiers', getPaymentIdentifiersSync)
     app.get('/api/pdv/sync/payment-conditions', getPaymentConditionsSync)
     app.get('/api/pdv/sync/pos-machines', getPOSMachinesSync)
+    app.get('/api/pdv/sync/config', getSystemConfigSync)
     
     // Suporte também a rota sem /sync/ para bater com a chamada do App.xaml.cs, se for diferente
     app.get('/api/pdv/products', getProductsSync)
@@ -41,4 +42,5 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/payment-identifiers', getPaymentIdentifiersSync)
     app.get('/api/pdv/payment-conditions', getPaymentConditionsSync)
     app.get('/api/pdv/pos-machines', getPOSMachinesSync)
+    app.get('/api/pdv/config', getSystemConfigSync)
 }
