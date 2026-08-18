@@ -30,6 +30,8 @@ const updateProfileBodySchema = z.object({
   minOrderValue: z.number().optional(),
   deliveryTimeMin: z.number().optional(),
   deliveryTimeMax: z.number().optional(),
+  availableNeighborhoods: z.array(z.string()).optional(),
+  deliverySectors: z.array(z.any()).optional(),
   ifoodMerchantId: z.string().nullable().optional(),
   anotaAiApiKey: z.string().nullable().optional(),
   pixKey: z.string().nullable().optional(),
