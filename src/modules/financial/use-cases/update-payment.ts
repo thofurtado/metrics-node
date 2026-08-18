@@ -8,6 +8,7 @@ interface UpdatePaymentUseCaseRequest {
     name?: string
     installment_limit?: number
     in_sight?: boolean
+    show_in_menu?: boolean
     account_id?: string
 }
 
@@ -26,6 +27,7 @@ export class UpdatePaymentUseCase {
         name,
         installment_limit,
         in_sight,
+            show_in_menu,
         account_id
     }: UpdatePaymentUseCaseRequest): Promise<UpdatePaymentUseCaseResponse> {
         const payment = await this.paymentsRepository.findById(id)

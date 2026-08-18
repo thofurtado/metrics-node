@@ -12,11 +12,13 @@ export async function updatePayment(request: FastifyRequest, reply: FastifyReply
         name: z.string().optional(),
         installment_limit: z.number().optional(),
         in_sight: z.boolean().optional(),
+        show_in_menu: z.boolean().optional(),
         account_id: z.string().uuid().optional(),
     })
 
     const { id } = updatePaymentParamsSchema.parse(request.params)
-    const { name, installment_limit, in_sight, account_id } = updatePaymentBodySchema.parse(request.body)
+    const { name, installment_limit, in_sight,
+            show_in_menu, account_id } = updatePaymentBodySchema.parse(request.body)
 
     try {
         const updatePaymentUseCase = MakeUpdatePaymentUseCase()
