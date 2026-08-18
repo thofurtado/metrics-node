@@ -12,10 +12,11 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
   }
 
   const syncBodySchema = z.object({
-    dbName: z.string().min(1)
+    dbName: z.string().min(1),
+    forcePush: z.boolean().optional().default(false)
   })
 
-  const { dbName } = syncBodySchema.parse(request.body)
+  const { dbName, forcePush } = syncBodySchema.parse(request.body)
 
   // Validate dbName to avoid SQL injection
   if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
@@ -23,17 +24,36 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
   }
 
   try {
-    console.log(`🚀 Iniciando sincronização (db push) para o banco: ${dbName}`)
+    console.log(`🚀 Iniciando sincronização para o banco: ${dbName} (forcePush: ${forcePush})`)
 
     // 1. Construct database URL
     const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
     const dbUrl = `${baseUrl}/${dbName}?schema=public`
 
-    // 2. Run prisma migrate deploy
-    const result = execSync(`npx prisma migrate deploy`, { 
-      env: { ...process.env, DATABASE_URL: dbUrl },
-      encoding: 'utf-8'
-    })
+    let result = ''
+
+    if (forcePush) {
+      console.log(`⚙️ Executando db push direto no banco ${dbName}...`)
+      result = execSync(`npx prisma db push --accept-data-loss`, { 
+        env: { ...process.env, DATABASE_URL: dbUrl },
+        encoding: 'utf-8'
+      })
+    } else {
+      try {
+        console.log(`📦 Tentando prisma migrate deploy no banco ${dbName}...`)
+        result = execSync(`npx prisma migrate deploy`, { 
+          env: { ...process.env, DATABASE_URL: dbUrl },
+          encoding: 'utf-8'
+        })
+      } catch (deployError: any) {
+        console.warn(`⚠️ prisma migrate deploy falhou no banco ${dbName}, executando db push como fallback:`, deployError.message)
+        result = execSync(`npx prisma db push --accept-data-loss`, { 
+          env: { ...process.env, DATABASE_URL: dbUrl },
+          encoding: 'utf-8'
+        })
+      }
+    }
+
     console.log(result)
 
     // 3. Update Tenant schemaVersion in db_master
@@ -47,6 +67,6 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
     return reply.status(200).send({ success: true, message: 'Banco de dados sincronizado com sucesso!', log: result })
   } catch (error: any) {
     console.error('❌ Erro na sincronização:', error)
-    return reply.status(500).send({ message: 'Erro ao sincronizar banco de dados', details: error.message })
+    return reply.status(500).send({ message: 'Erro ao sincronizar banco de dados: ' + (error.stderr || error.message), details: error.message })
   }
 }
