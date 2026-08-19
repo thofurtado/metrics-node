@@ -8,6 +8,7 @@ interface ChangeTransactionUseCaseRequest {
     id: string
     amount: number // Valor que está sendo pago/recebido (liquidação)
     interest?: number
+    fine?: number
     discount?: number
     date: Date // Data efetiva do pagamento/recebimento
     remainingDate?: Date // Data de vencimento da parcela restante (opcional)
@@ -77,6 +78,7 @@ export class ChangeTransactionUseCase {
         id,
         amount: amountPaid,
         interest = 0,
+        fine = 0,
         discount = 0,
         date,
         remainingDate,
@@ -103,7 +105,7 @@ export class ChangeTransactionUseCase {
         }
 
         // 4. Validação: Impedir Pagamento Excedente (considerando juros/desconto)
-        const totalCalculated = Number((originalTransaction.amount + interest - discount).toFixed(2))
+        const totalCalculated = Number((originalTransaction.amount + interest + fine - discount).toFixed(2))
         if (amountPaid > totalCalculated + 0.01) {
             throw new Error(`O valor pago (${amountPaid}) não pode ser maior que o valor total calculado (${totalCalculated}).`)
         }
@@ -112,7 +114,7 @@ export class ChangeTransactionUseCase {
         // O valor remanescente é o que faltava do original menos o que foi amortizado do principal.
         // Se eu tinha 100, paguei 110 (sendo 10 juros), amortizei 100. Resta 0.
         // Se eu tinha 100, paguei 60 (sendo 10 juros), amortizei 50. Resta 50.
-        const amortizedAmount = amountPaid - interest + discount
+        const amortizedAmount = amountPaid - interest - fine + discount
         const remainingAmount = Number((originalTransaction.amount - amortizedAmount).toFixed(2));
 
         // Se houver saldo restante, cria uma nova transação
@@ -152,6 +154,7 @@ export class ChangeTransactionUseCase {
             amount: amortizedAmount, // the principal paid
             totalValue: amountPaid, // the exact cash flow
             interest,
+            fine,
             discount,
             date,
             account_id, // Passa a nova conta para a repository atualizar antes de confirmar

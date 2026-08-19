@@ -3,6 +3,7 @@ export interface ChangeTransactionStatusParams {
     amount: number
     totalValue: number
     interest?: number
+    fine?: number
     discount?: number
     date: Date
     account_id?: string

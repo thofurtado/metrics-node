@@ -15,6 +15,7 @@ export async function changeTransactionStatus(
     const switchTransactionBodySchema = z.object({
         amount: z.number().positive(),
         interest: z.number().optional().default(0),
+        fine: z.number().optional().default(0),
         discount: z.number().optional().default(0),
         data_vencimento: z.string().or(z.date()).transform((val) => new Date(val)).optional(), // Data de liquidação
         date: z.string().or(z.date()).transform((val) => new Date(val)).optional(), // backward compat
@@ -36,11 +37,11 @@ export async function changeTransactionStatus(
 
 
     // Valida e extrai os dados do corpo da requisição (Body)
-    const { amount, interest, discount, date: rawDate, data_vencimento: rawDv, remainingDate, account_id, payment_method } = switchTransactionBodySchema.parse(
+    const { amount, interest, fine, discount, date: rawDate, data_vencimento: rawDv, remainingDate, account_id, payment_method } = switchTransactionBodySchema.parse(
         request.body,
     )
     const date = rawDv || rawDate || new Date()
-    console.log({ amount, interest, discount, date, remainingDate, account_id, payment_method })
+    console.log({ amount, interest, fine, discount, date, remainingDate, account_id, payment_method })
     try {
         const changeTransactionStatusUseCase = MakeChangeTransactionStatusUseCase()
 
@@ -50,6 +51,7 @@ export async function changeTransactionStatus(
             id,
             amount, // Valor pago (parcial ou total)
             interest,
+            fine,
             discount,
             date, // Data de confirmação/pagamento
             remainingDate, // Passa a nova data de vencimento da parcela restante (opcional)

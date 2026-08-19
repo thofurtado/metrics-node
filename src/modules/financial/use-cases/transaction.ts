@@ -21,6 +21,7 @@ interface TransactionUseCaseRequest {
     interval_frequency?: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
     custom_installments?: { data_vencimento: Date, data_emissao?: Date, amount: number }[];
     interest?: number | null;
+    fine?: number | null;
     discount?: number | null;
     totalValue?: number | null;
     credit_card_id?: string | null;
@@ -37,7 +38,7 @@ export class TransactionUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, discount, totalValue, credit_card_id
+        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, fine, discount, totalValue, credit_card_id
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
         // Test for the right operation
@@ -112,6 +113,7 @@ export class TransactionUseCase {
                                     supplier_id: supplier_id || null,
                                     payment_method: payment_method || "BOLETO",
                                     interest: isFirst ? interest : 0,
+                                    fine: isFirst ? fine : 0,
                                     discount: isFirst ? discount : 0,
                                     totalValue: isFirst && totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
                                     credit_card_id: credit_card_id || null,

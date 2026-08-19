@@ -354,6 +354,7 @@ model Transaction {
   cashier_session_id    String?
   discount              Float?                @default(0)
   interest              Float?                @default(0)
+  fine                  Float?                @default(0)
   totalValue            Float?
   data_emissao          DateTime              @default(now())
   payment_method        String                @default("boleto")

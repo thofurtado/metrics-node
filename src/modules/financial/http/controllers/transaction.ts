@@ -28,6 +28,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             amount: z.number()
         })).nullish(),
         interest: z.number().nullish(),
+        fine: z.number().nullish(),
         discount: z.number().nullish(),
         totalValue: z.number().nullish(),
         credit_card_id: z.string().uuid().nullish(),
@@ -51,6 +52,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         interval_frequency,
         custom_installments,
         interest,
+        fine,
         discount,
         totalValue,
         credit_card_id,
@@ -77,6 +79,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             interval_frequency: interval_frequency || undefined,
             custom_installments: custom_installments || undefined,
             interest: interest || null,
+            fine: fine || null,
             discount: discount || null,
             totalValue: totalValue || null,
             credit_card_id: credit_card_id || null,
