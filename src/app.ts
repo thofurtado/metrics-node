@@ -27,6 +27,8 @@ import { productsRoutes } from '@/modules/products/http/controllers/routes'
 import { servicesRoutes } from '@/modules/services/http/controllers/routes'
 import { suppliesRoutes } from '@/modules/supplies/http/controllers/routes'
 import { categoriesRoutes } from '@/modules/categories/http/controllers/routes'
+import { subcategoriesRoutes } from '@/modules/subcategories/http/controllers/routes'
+import { complementsRoutes } from '@/modules/complements/http/controllers/routes'
 import { suppliersRoutes } from '@/modules/suppliers/http/controllers/routes'
 import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes'
 import { telemetryRoutes, adminEquipmentsRoutes } from '@/modules/equipments/http/controllers/routes'
@@ -142,6 +144,8 @@ app.register(productsRoutes)
 app.register(servicesRoutes)
 app.register(suppliesRoutes)
 app.register(categoriesRoutes)
+app.register(subcategoriesRoutes)
+app.register(complementsRoutes)
 app.register(suppliersRoutes)
 app.register(systemConfigRoutes)
 app.register(publicRoutes)
