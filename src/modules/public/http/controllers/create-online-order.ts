@@ -88,8 +88,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             'Pagamento: ' + infoPagamento,
             'Taxa de Entrega: R$ ' + body.delivery_fee.toFixed(2),
             body.notes ? 'Obs: ' + body.notes : null
-        ].filter(Boolean).join('
-');
+        ].filter(Boolean).join('\n');
 
         const treatment = await prisma.treatment.create({
             data: {
