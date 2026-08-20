@@ -9,6 +9,9 @@ import { getTenantInfo } from './get-tenant-info'
 import { getDbStatus } from './db-status'
 import { syncTenantDb } from './db-sync'
 import { getProfile } from './get-profile'
+import { createOnlineOrder } from './create-online-order'
+import { getPendingOnlineOrders } from './get-pending-online-orders'
+import { updateOnlineOrderStatus } from './update-online-order-status'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -21,6 +24,13 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/db-status', getDbStatus)
     app.post('/public/db-sync', syncTenantDb)
     app.get('/public/profile', getProfile)
+
+    // Pipeline do Cardápio Online & PDV
+    app.post('/public/orders', createOnlineOrder)
+    app.get('/public/orders/pending', getPendingOnlineOrders)
+    app.get('/api/pdv/orders/pending', getPendingOnlineOrders)
+    app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
+    app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
