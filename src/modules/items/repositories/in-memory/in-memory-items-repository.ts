@@ -10,30 +10,48 @@ export class InMemoryItemsRepository implements ItemsRepository {
 
     public items: ItemWithExtensions[] = []
 
-    async update(data: Prisma.ItemUpdateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions> {
-        const id = (data as any).id as string
-        const index = this.items.findIndex((item) => item.id === id)
+    async update(idOrData: any, dataOrTx?: any, maybeTx?: any): Promise<ItemWithExtensions> {
+        let id: string;
+        let d: any;
+        if (typeof idOrData === 'string') {
+            id = idOrData;
+            d = dataOrTx || {};
+        } else {
+            id = idOrData.id;
+            d = idOrData;
+        }
+
+        const index = this.items.findIndex((item) => item.id === id);
 
         if (index === -1) {
-            throw new Error('Item not found.')
+            throw new Error('Item not found.');
         }
 
         const currentItem = this.items[index]
-        const d = data as any
-
+        
         // Mimic Prisma nested update
         let product = currentItem.product
         let service = currentItem.service
         let supply = currentItem.supply
 
         if (d.product?.update) {
-            product = { ...product, ...d.product.update }
+            product = { ...product, ...d.product.update };
         }
         if (d.service?.update) {
-            service = { ...service, ...d.service.update }
+            service = { ...service, ...d.service.update };
         }
         if (d.supply?.update) {
-            supply = { ...supply, ...d.supply.update }
+            supply = { ...supply, ...d.supply.update };
+        }
+        if (d.stock !== undefined) {
+            (currentItem as any).stock = d.stock;
+            if (product) product.stock = d.stock;
+            if (supply) supply.stock = d.stock;
+        }
+        if (d.cost !== undefined) {
+            (currentItem as any).cost = d.cost;
+            if (product) product.cost = d.cost;
+            if (supply) supply.cost = d.cost;
         }
 
         const updatedItem = {
@@ -63,19 +81,34 @@ export class InMemoryItemsRepository implements ItemsRepository {
         // Need to cast to any to access create prop easily as Prisma types are complex union types
         const d = data as any
 
-        if (d.product?.create) {
+        if (d.product?.create || type === 'PRODUCT' || type === RuntimeItemType.PRODUCT) {
+            const pData = d.product?.create || {};
             product = {
                 id,
-                ...d.product.create,
-                stock: d.product.create.stock || 0,
-                min_stock: d.product.create.min_stock || 0,
-            }
+                ...pData,
+                price: d.price ?? pData.price ?? 0,
+                cost: d.cost ?? pData.cost ?? 0,
+                stock: d.stock ?? pData.stock ?? 0,
+                min_stock: d.min_stock ?? pData.min_stock ?? 0,
+            };
         }
-        if (d.service?.create) {
-            service = { id, ...d.service.create }
+        if (d.service?.create || type === 'SERVICE' || type === RuntimeItemType.SERVICE) {
+            const sData = d.service?.create || {};
+            service = {
+                id,
+                ...sData,
+                price: d.price ?? sData.price ?? 0,
+                cost: d.cost ?? sData.cost ?? 0,
+            };
         }
-        if (d.supply?.create) {
-            supply = { id, ...d.supply.create, stock: d.supply.create.stock || 0 }
+        if (d.supply?.create || type === 'SUPPLY' || type === RuntimeItemType.SUPPLY) {
+            const supData = d.supply?.create || {};
+            supply = {
+                id,
+                ...supData,
+                cost: d.cost ?? supData.cost ?? 0,
+                stock: d.stock ?? supData.stock ?? 0,
+            };
         }
 
         const item: ItemWithExtensions = {
@@ -187,20 +220,18 @@ export class InMemoryItemsRepository implements ItemsRepository {
         const index = this.items.findIndex((item) => item.id === id)
         if (index !== -1) {
             const item = this.items[index]
-            if (item.type === 'PRODUCT' && item.product) {
-                const current = item.product.stock ?? 0
-                // @ts-ignore
-                item.product.stock = operationType ? current + stock : current - stock
-                if (cost !== undefined) {
-                    item.product.cost = cost
-                }
-            } else if (item.type === 'SUPPLY' && item.supply) {
-                const current = item.supply.stock ?? 0
-                // @ts-ignore
-                item.supply.stock = operationType ? current + stock : current - stock
-                if (cost !== undefined) {
-                    item.supply.cost = cost
-                }
+            const currentFlat = (item as any).stock ?? 0;
+            (item as any).stock = operationType ? currentFlat + stock : currentFlat - stock;
+
+            if (item.product) {
+                const current = item.product.stock ?? currentFlat;
+                item.product.stock = operationType ? current + stock : current - stock;
+                if (cost !== undefined) item.product.cost = cost;
+            }
+            if (item.supply) {
+                const current = item.supply.stock ?? currentFlat;
+                item.supply.stock = operationType ? current + stock : current - stock;
+                if (cost !== undefined) item.supply.cost = cost;
             }
 
         } else {

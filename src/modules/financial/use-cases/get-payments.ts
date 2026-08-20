@@ -5,6 +5,6 @@ export class GetPaymentsUseCase {
 
     async execute() {
         const payments = await this.paymentsRepository.findMany()
-        return payments
+        return { payments }
     }
 }

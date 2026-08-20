@@ -6,8 +6,11 @@ import { ThisNameAlreadyExistsError } from '@/errors/this-name-already-exists-er
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
 import { prisma } from '@/lib/prisma'
 
-// Define locally if not in Prisma
-export type ItemType = 'PRODUCT' | 'SERVICE' | 'SUPPLY'
+export enum ItemType {
+    PRODUCT = 'PRODUCT',
+    SERVICE = 'SERVICE',
+    SUPPLY = 'SUPPLY'
+}
 
 interface CreateItemUseCaseRequest {
     name: string,

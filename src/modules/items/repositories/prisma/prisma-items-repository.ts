@@ -78,35 +78,58 @@ export class PrismaItemsRepository implements ItemsRepository {
     async create(data: ItemCreateInput, tx?: Prisma.TransactionClient): Promise<ItemWithExtensions> {
         const prismaClient = tx || prisma
 
-        // Delegate to specific create based on union type discrimination
-        if (data.type === 'PRODUCT') {
-            const { type, ...createData } = data
-            // Need to handle relation creation if nested... or just flat data?
-            // The input type is intersection with Prisma.ProductCreateInput.
+        if (data.type === "PRODUCT") {
+            const { type, product, ...flatData } = data as any;
+            const merged: any = {
+                name: flatData.name,
+                display_id: flatData.display_id || product?.create?.display_id || Math.floor(Math.random() * 900000) + 100000,
+                price: flatData.price !== undefined ? flatData.price : (product?.create?.price ?? 0),
+                cost: flatData.cost !== undefined ? flatData.cost : (product?.create?.cost ?? 0),
+                stock: flatData.stock !== undefined ? flatData.stock : (product?.create?.stock ?? 0),
+                min_stock: flatData.min_stock !== undefined ? flatData.min_stock : (product?.create?.min_stock ?? 0),
+                barcode: flatData.barcode || product?.create?.barcode || null,
+                active: flatData.active !== undefined ? flatData.active : true,
+            };
+            if (flatData.category_id) merged.category_id = flatData.category_id;
             const created = await prismaClient.product.create({
-                data: createData as Prisma.ProductCreateInput,
+                data: merged as Prisma.ProductCreateInput,
                 include: { category: true, compositions: { include: { supply: true } } }
-            })
-            return this.normalize(created, 'PRODUCT')
+            });
+            return this.normalize(created, "PRODUCT");
 
-        } else if (data.type === 'SERVICE') {
-            const { type, ...createData } = data
+        } else if (data.type === "SERVICE") {
+            const { type, service, ...flatData } = data as any;
+            const merged: any = {
+                name: flatData.name,
+                display_id: flatData.display_id || service?.create?.display_id || Math.floor(Math.random() * 900000) + 100000,
+                price: flatData.price !== undefined ? flatData.price : (service?.create?.price ?? 0),
+                
+                estimated_time: flatData.estimated_time || service?.create?.estimated_time || null,
+                active: flatData.active !== undefined ? flatData.active : true,
+            };
             const created = await prismaClient.service.create({
-                data: createData as Prisma.ServiceCreateInput,
+                data: merged as Prisma.ServiceCreateInput,
                 include: { compositions: { include: { supply: true } } }
-            })
-            return this.normalize(created, 'SERVICE')
+            });
+            return this.normalize(created, "SERVICE");
 
-        } else if (data.type === 'SUPPLY') {
-            const { type, ...createData } = data
+        } else if (data.type === "SUPPLY") {
+            const { type, supply, ...flatData } = data as any;
+            const merged: any = {
+                name: flatData.name,
+                cost: flatData.cost !== undefined ? flatData.cost : (supply?.create?.cost ?? 0),
+                stock: flatData.stock !== undefined ? flatData.stock : (supply?.create?.stock ?? 0),
+                
+                unit: flatData.unit || supply?.create?.unit || "UN",
+                active: flatData.active !== undefined ? flatData.active : true,
+            };
             const created = await prismaClient.supply.create({
-                data: createData as Prisma.SupplyCreateInput
-            })
-            return this.normalize(created, 'SUPPLY')
+                data: merged as Prisma.SupplyCreateInput
+            });
+            return this.normalize(created, "SUPPLY");
         }
-        throw new Error('Invalid Item Type')
+        throw new Error("Invalid Item Type");
     }
-
     async findByName(name: string, is_active?: boolean): Promise<ItemWithExtensions[] | null> {
         // This is expensive as it needs to query 3 tables and merge?
         // Or do we assume unique names across all?

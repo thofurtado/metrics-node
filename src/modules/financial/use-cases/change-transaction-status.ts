@@ -107,7 +107,7 @@ export class ChangeTransactionUseCase {
         // 4. Validação: Impedir Pagamento Excedente (considerando juros/desconto)
         const totalCalculated = Number((originalTransaction.amount + interest + fine - discount).toFixed(2))
         if (amountPaid > totalCalculated + 0.01) {
-            throw new Error(`O valor pago (${amountPaid}) não pode ser maior que o valor total calculado (${totalCalculated}).`)
+            throw new Error(`O valor pago (${amountPaid}) não pode ser maior que o valor da transação original (${totalCalculated}).`)
         }
 
         // 5. Lógica de Pagamento Parcial

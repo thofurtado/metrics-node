@@ -110,7 +110,8 @@ describe('Finish Treatment Use Case', () => {
 
         // Check Stock Decrement
         const updatedItem = await itemsRepository.findById(item.id)
-        expect(updatedItem?.stock).toBe(9)
+        const itemStock = (updatedItem as any)?.product?.stock ?? (updatedItem as any)?.stock;
+        expect(itemStock).toBe(9)
 
         // Check Transaction Created
         const txs: any = (<any>transactionsRepository).items
@@ -222,7 +223,8 @@ describe('Finish Treatment Use Case', () => {
 
         // Stock Decremented
         const updatedSSD = await itemsRepository.findById(ssd.id)
-        expect(updatedSSD?.stock).toBe(4)
+        const ssdStock = (updatedSSD as any)?.product?.stock ?? (updatedSSD as any)?.stock;
+        expect(ssdStock).toBe(4)
 
         // Transaction Created for the 100
         const txs: any = (<any>transactionsRepository).items

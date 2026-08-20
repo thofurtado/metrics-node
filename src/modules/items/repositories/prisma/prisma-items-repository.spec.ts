@@ -1,7 +1,7 @@
 import { expect, describe, it, beforeAll } from 'vitest'
 import { PrismaItemsRepository } from '@/modules/items/repositories/prisma/prisma-items-repository'
 import { prisma } from '@/lib/prisma'
-import { ItemType } from '@prisma/client'
+import { ItemType } from '@/modules/items/use-cases/item'
 
 describe('PrismaItemsRepository Cascade Delete', () => {
     let sut: PrismaItemsRepository
@@ -40,7 +40,7 @@ describe('PrismaItemsRepository Cascade Delete', () => {
         await sut.remove(item.id)
 
         // 4. Verify Parent is gone
-        const deletedItem = await prisma.item.findUnique({
+        const deletedItem = await (prisma as any).product.findUnique({
             where: { id: item.id }
         })
         expect(deletedItem).toBeNull()

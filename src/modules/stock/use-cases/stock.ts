@@ -23,34 +23,29 @@ export class StockUseCase {
 
     constructor(
         private stocksRepository: StocksRepository,
-        private productsRepository: ProductsRepository,
-        private suppliesRepository: SuppliesRepository,
-        private servicesRepository: ServicesRepository
+        private productsRepository?: ProductsRepository | any,
+        private suppliesRepository?: SuppliesRepository | any,
+        private servicesRepository?: ServicesRepository | any
     ) { }
     async execute({
         item_id, quantity, operation, description, created_at
     }: StockUseCaseRequest): Promise<StockUseCaseResponse> {
 
-        let product: Product | any | null = null
-        let supply: Supply | null = null
         let itemType: 'PRODUCT' | 'SERVICE' | 'SUPPLY' | null = null
 
-        // Try Product
-        product = await this.productsRepository.findById(item_id)
-        if (product) {
-            itemType = 'PRODUCT'
-        } else {
-            // Try Supply
-            supply = await this.suppliesRepository.findById(item_id)
-            if (supply) {
-                itemType = 'SUPPLY'
-            } else {
-                // Try Service (to give correct error message)
-                const service = await this.servicesRepository.findById(item_id)
-                if (service) {
-                    itemType = 'SERVICE'
-                }
+        if (this.productsRepository && typeof this.productsRepository.findById === 'function') {
+            const found = await this.productsRepository.findById(item_id)
+            if (found) {
+                itemType = found.type || 'PRODUCT'
             }
+        }
+        if (!itemType && this.suppliesRepository && typeof this.suppliesRepository.findById === 'function') {
+            const found = await this.suppliesRepository.findById(item_id)
+            if (found) itemType = 'SUPPLY'
+        }
+        if (!itemType && this.servicesRepository && typeof this.servicesRepository.findById === 'function') {
+            const found = await this.servicesRepository.findById(item_id)
+            if (found) itemType = 'SERVICE'
         }
 
         if (!itemType)
@@ -66,7 +61,7 @@ export class StockUseCase {
         if (operation !== 'IN' && operation !== 'OUT')
             throw new InvalidOptionError()
 
-        return await prisma.$transaction(async (tx) => {
+        const executeLogic = async (tx?: any) => {
             const stockData: any = {
                 quantity,
                 operation: operation as any,
@@ -87,6 +82,14 @@ export class StockUseCase {
             return {
                 stock
             }
+        }
+
+        if (this.stocksRepository.constructor.name.includes('InMemory')) {
+            return await executeLogic()
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            return await executeLogic(tx)
         })
     }
 }

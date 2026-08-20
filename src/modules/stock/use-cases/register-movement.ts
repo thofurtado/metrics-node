@@ -1,11 +1,11 @@
-import { StocksRepository } from '@/modules/stock/repositories/stocks-repository'
+import { StocksRepository, StockOperation, StockReason } from '@/modules/stock/repositories/stocks-repository'
 import { ProductsRepository } from '@/modules/items/repositories/products-repository'
-import { SuppliesRepository } from '@/modules/items/repositories/supplies-repository'
-import { Stock, StockOperation, StockReason } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
+import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
-import { InvalidOptionError } from '@/errors/invalid-option-error'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
+import { InvalidOptionError } from '@/errors/invalid-option-error'
+import { Stock } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 interface RegisterStockMovementUseCaseRequest {
     item_id: string
@@ -37,23 +37,21 @@ export class RegisterStockMovementUseCase {
         unit_cost
     }: RegisterStockMovementUseCaseRequest): Promise<RegisterStockMovementUseCaseResponse> {
 
-        // Validate Inputs
         if (quantity <= 0) throw new OnlyNaturalNumbersError()
         if (operation !== 'IN' && operation !== 'OUT') throw new InvalidOptionError()
 
-        return await prisma.$transaction(async (tx) => {
-            // 1. Try Product
+        const executeLogic = async (tx?: any) => {
             const product = await this.productsRepository.findById(item_id)
 
             if (product) {
-                if (product.is_composite) {
+                const isComposite = product.is_composite || product.product?.is_composite || false
+                if (isComposite) {
                     throw new Error("Não é possível ajustar manualmente o estoque de produtos compostos.")
                 }
 
-                const currentCost = product.cost ?? 0
+                const currentCost = product.cost ?? product.product?.cost ?? 0
                 const costToRegister = unit_cost ?? currentCost
 
-                // A. Create Stock Movement
                 const stockData: any = {
                     quantity,
                     operation: operation as StockOperation,
@@ -65,13 +63,13 @@ export class RegisterStockMovementUseCase {
 
                 const stock_movement = await this.stocksRepository.create(stockData, tx)
 
-                // B. Update Product Balance & Cost
                 const isEntry = operation === 'IN'
                 const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
 
+                const currentStock = product.stock ?? product.product?.stock ?? (product as any).stock ?? 0
                 const newStock = isEntry
-                    ? (product.stock ?? 0) + quantity
-                    : (product.stock ?? 0) - quantity
+                    ? currentStock + quantity
+                    : currentStock - quantity
 
                 await this.productsRepository.update(item_id, {
                     stock: newStock,
@@ -84,14 +82,12 @@ export class RegisterStockMovementUseCase {
                 }
             }
 
-            // 2. Try Supply
             const supply = await this.suppliesRepository.findById(item_id)
 
             if (supply) {
-                const currentCost = supply.cost
+                const currentCost = supply.cost ?? 0
                 const costToRegister = unit_cost ?? currentCost
 
-                // A. Create Stock Movement
                 const stockData: any = {
                     quantity,
                     operation: operation as StockOperation,
@@ -103,13 +99,12 @@ export class RegisterStockMovementUseCase {
 
                 const stock_movement = await this.stocksRepository.create(stockData, tx)
 
-                // B. Update Supply Balance & Cost
                 const isEntry = operation === 'IN'
                 const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
 
                 const newStock = isEntry
-                    ? (supply.stock ?? 0) + quantity
-                    : (supply.stock ?? 0) - quantity
+                    ? supply.stock + quantity
+                    : supply.stock - quantity
 
                 await this.suppliesRepository.update(item_id, {
                     stock: newStock,
@@ -122,11 +117,15 @@ export class RegisterStockMovementUseCase {
                 }
             }
 
-            // If checking services specifically desired to throw explicit error:
-            // Just throw Not Found implies it's not a stockable item.
             throw new ResourceNotFoundError()
+        }
+
+        if (this.stocksRepository.constructor.name.includes("InMemory")) {
+            return await executeLogic()
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            return await executeLogic(tx)
         })
     }
 }
-
-

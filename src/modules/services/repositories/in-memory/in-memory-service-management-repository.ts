@@ -1,7 +1,6 @@
 import { ServiceManagementData, ServiceManagementRepository } from '@/modules/services/repositories/service-management-repository.ts'
 import { Treatment } from '@prisma/client'
 
-
 export class InMemoryServiceManagementRepository implements ServiceManagementRepository {
     public items: Treatment[] = []
 
@@ -21,24 +20,24 @@ export class InMemoryServiceManagementRepository implements ServiceManagementRep
 
         const totalTreatments = monthTreatments.length
 
-        // 2. Atendimentos concluídos (CORREÇÃO: todos os resolvidos este mês, independente de quando começaram)
+        // 2. Atendimentos concluídos (todos os resolvidos este mês)
         const completedTreatments = this.items.filter(t => {
-            if (t.status !== 'resolved' || !t.ending_date) return false
-            
-            const endingDate = new Date(t.ending_date)
-            return endingDate >= startOfMonth && endingDate < startOfNextMonth
-        }).length
+            if (t.status !== 'resolved' || !t.ending_date) return false;
+            const endingDate = new Date(t.ending_date);
+            return endingDate >= startOfMonth && endingDate < startOfNextMonth;
+        }).length;
 
-        // 3. Atendimentos na bancada (TODOS os em aberto, independente do mês)
+        // 3. Atendimentos na bancada
         const inWorkbench = this.items.filter(t => t.status === 'in_workbench').length
 
-        // 4. Atendimentos externos em aberto (TODOS os em aberto, independente do mês)
+        // 4. Atendimentos externos em aberto
         const externalOpen = this.items.filter(t => 
             ['pending', 'in_progress', 'follow_up'].includes(t.status)
         ).length
 
-        // 5. Tempo médio de atendimento (apenas os INICIADOS este mês)
-        const averageTreatmentTime = this.calculateAverageTime(monthTreatments, now)
+        // 5. Tempo médio de atendimento
+        const completedList = this.items.filter(t => t.status === 'resolved' && t.ending_date)
+        const averageTreatmentTime = this.calculateAverageTime(completedList.length > 0 ? completedList : monthTreatments, now)
 
         return {
             totalTreatments,

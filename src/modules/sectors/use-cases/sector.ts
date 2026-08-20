@@ -18,8 +18,8 @@ export class SectorUseCase {
         private sectorsRepository: SectorsRepository
     ) { }
     async execute({
-        name, budget, type
-    }: SectorUseCaseRequest): Promise<SectorUseCaseResponse> {
+        name, budget, type = "out"
+    }: Partial<SectorUseCaseRequest> & { name: string }): Promise<SectorUseCaseResponse> {
 
         const sectorWithSameName = await this.sectorsRepository.findByName(name)
 
@@ -27,7 +27,7 @@ export class SectorUseCase {
             throw new ThisNameAlreadyExistsError()
         }
 
-        if(type !== 'in' && type !== 'out') {
+        if(type && type !== 'in' && type !== 'out') {
             throw new InvalidOptionError()
         }
 

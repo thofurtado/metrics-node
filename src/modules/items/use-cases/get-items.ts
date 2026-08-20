@@ -16,7 +16,7 @@ export class GetItemsUseCase {
     constructor(
         private itemsRepository: ItemsRepository
     ) { }
-    async execute({ page, limit, is_active, type, name, display_id, below_min_stock }: GetItemsUseCaseRequest): Promise<GetItemsDTO | null> {
+    async execute({ page = 1, limit = 10, is_active, type, name, display_id, below_min_stock }: Partial<GetItemsUseCaseRequest> = {}): Promise<GetItemsDTO | null> {
 
         // Cast type to match repository signature safe
         const result = await this.itemsRepository.findMany(is_active, type as any, page, limit, name, display_id, below_min_stock)

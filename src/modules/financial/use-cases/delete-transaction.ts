@@ -19,6 +19,10 @@ export class DeleteTransactionUseCase {
             throw new ResourceNotFoundError()
         }
 
+        if (transaction.confirmed) {
+            throw new TransactionAlreadyConfirmedError()
+        }
+
         await this.transactionsRepository.delete(id)
     }
 }

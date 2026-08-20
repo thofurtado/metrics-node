@@ -83,6 +83,7 @@ describe('Get Service Management Data Use Case', () => {
         createTreatment(serviceManagementRepository, {
             opening_date: new Date(currentDate.getFullYear(), currentDate.getMonth(), 1),
             status: 'resolved',
+            ending_date: new Date(currentDate.getFullYear(), currentDate.getMonth(), 2),
             request: 'Finalizado este mês'
         })
 
@@ -138,7 +139,7 @@ describe('Get Service Management Data Use Case', () => {
         // Atendimento de 2 dias
         createTreatment(serviceManagementRepository, {
             opening_date: new Date(currentDate.getTime() - (2 * 24 * 60 * 60 * 1000)), // 2 dias atrás
-            ending_date: new Date(currentDate.getTime() - (1 * 24 * 60 * 60 * 1000)), // 1 dia atrás
+            ending_date: currentDate, // hoje (2 dias de duração = 2880 min)
             status: 'resolved',
             request: 'Reparo rápido'
         })

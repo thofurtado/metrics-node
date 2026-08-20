@@ -1,7 +1,7 @@
 import { MakeItemUseCase } from '@/modules/items/use-cases/factories/make-item-use-case'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { ItemType } from '@prisma/client'
+import { ItemType } from '@/modules/items/use-cases/item'
 
 export async function createItem(request: FastifyRequest, reply: FastifyReply) {
 

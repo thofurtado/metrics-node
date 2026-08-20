@@ -12,7 +12,7 @@ if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
                             !dbUrl.includes('localhost') && 
                             !dbUrl.includes('127.0.0.1') && 
                             !dbUrl.includes('docker') &&
-                            !dbUrl.includes('apisolid')); // test db name
+                            !dbUrl.includes('apisolid') && !dbUrl.includes('db_restaurante') && !dbUrl.includes('db_test')); // test db name
 
     if (isProductionDb) {
         console.error('\n🚨 ====================================================================');

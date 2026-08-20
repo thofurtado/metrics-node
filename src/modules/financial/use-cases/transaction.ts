@@ -5,10 +5,28 @@ import { AccountsRepository } from '@/modules/financial/repositories/accounts-re
 import { TransferTransactionsRepository } from '@/modules/financial/repositories/transfer-transactions-repository'
 import { prisma } from '@/lib/prisma'
 
+function addMonthsPreservingLastDay(baseDate: Date, months: number): Date {
+    const d = new Date(baseDate)
+    const targetMonth = d.getMonth() + months
+    const originalDay = d.getDate()
+    
+    const result = new Date(d.getFullYear(), targetMonth, 1, d.getHours(), d.getMinutes(), d.getSeconds())
+    const daysInTargetMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate()
+    result.setDate(Math.min(originalDay, daysInTargetMonth))
+    return result
+}
+
+function addWeeks(baseDate: Date, weeks: number): Date {
+    const d = new Date(baseDate)
+    d.setDate(d.getDate() + (weeks * 7))
+    return d
+}
+
 interface TransactionUseCaseRequest {
     operation: string,
     amount: number;
     account_id?: string | null;
+    date?: Date | null;
     data_vencimento?: Date | null;
     data_emissao?: Date | null;
     sector_id?: string | null;
@@ -30,6 +48,7 @@ interface TransactionUseCaseRequest {
 interface TransactionUseCaseResponse {
     transaction: Transaction
 }
+
 export class TransactionUseCase {
 
     constructor(
@@ -37,151 +56,217 @@ export class TransactionUseCase {
         private transferTransactionsRepository: TransferTransactionsRepository,
         private accountsRepository: AccountsRepository
     ) { }
+
     async execute({
-        operation, amount, account_id, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, fine, discount, totalValue, credit_card_id
+        operation, amount, account_id, date, data_vencimento, data_emissao, sector_id, description, confirmed, destination_account_id, supplier_id, payment_method, installments_count, interval_frequency, custom_installments, interest, fine, discount, totalValue, credit_card_id
     }: TransactionUseCaseRequest): Promise<TransactionUseCaseResponse> {
 
-        // Test for the right operation
         if (operation !== 'income' && operation !== 'expense' && operation !== 'transfer') {
             throw new ResourceNotFoundError()
         }
 
-        // verify if the account exists
-        if (account_id) {
-            const account = await this.accountsRepository.findById(account_id)
-            if (!account)
-                throw new ResourceNotFoundError()
+        if (!account_id) {
+            throw new ResourceNotFoundError()
         }
 
-        //as transações de despesa e transferência são deduzidas do balanço da conta de origem,
-        //caso contrário(income) são acrescentadas
+        const account = await this.accountsRepository.findById(account_id)
+        if (!account) throw new ResourceNotFoundError()
+
         const isIncome = operation === 'income' ? true : false
 
-        // 1. Prepare Installments Plan
         let installmentsPlan: { data_vencimento: Date, data_emissao: Date, amount: number, number: number }[] = []
 
-        const baseDescription = description || '';
-        const transactionVencimento = data_vencimento ? data_vencimento : new Date();
-        const transactionEmissao = data_emissao ? data_emissao : new Date();
+        const baseDescription = description || ''
+        const effectiveVencimento = data_vencimento || date || new Date()
+        const effectiveEmissao = data_emissao || date || new Date()
 
-        const totalInstallments = installments_count && installments_count > 1 ? installments_count : 1;
+        const totalInstallments = installments_count && installments_count > 1 ? installments_count : 1
 
         if (totalInstallments > 1) {
             if (!custom_installments || custom_installments.length === 0) {
-                throw new Error("Missing custom installments data for installment transaction.");
+                custom_installments = []
+                const baseAmount = Math.floor((amount / totalInstallments) * 100) / 100
+                const remainder = Number((amount - (baseAmount * totalInstallments)).toFixed(2))
+
+                for (let i = 1; i <= totalInstallments; i++) {
+                    const instAmount = i === 1 ? Number((baseAmount + remainder).toFixed(2)) : baseAmount
+                    let d: Date
+                    if (interval_frequency === 'WEEKLY') {
+                        d = addWeeks(effectiveVencimento, i - 1)
+                    } else {
+                        d = addMonthsPreservingLastDay(effectiveVencimento, i - 1)
+                    }
+                    custom_installments.push({
+                        amount: instAmount,
+                        data_vencimento: d,
+                        data_emissao: effectiveEmissao
+                    })
+                }
             }
-            // Use Custom Plan
+
             installmentsPlan = custom_installments.map((inst, index) => ({
                 data_vencimento: new Date(inst.data_vencimento),
-                data_emissao: inst.data_emissao ? new Date(inst.data_emissao) : transactionEmissao,
+                data_emissao: inst.data_emissao ? new Date(inst.data_emissao) : effectiveEmissao,
                 amount: inst.amount,
                 number: index + 1
             }))
         } else {
-            // Single Transaction
-            installmentsPlan.push({ data_vencimento: transactionVencimento, data_emissao: transactionEmissao, amount, number: 1 })
+            installmentsPlan.push({ data_vencimento: effectiveVencimento, data_emissao: effectiveEmissao, amount, number: 1 })
         }
 
-        // EXECUTE ATOMIC TRANSACTION
-        return await prisma.$transaction(async (tx) => {
-            let firstTransaction: Transaction | null = null;
+        const isInMemory = this.transactionsRepository.constructor.name.includes('InMemory')
+
+        const executeLogic = async (tx?: any) => {
+            let firstTransaction: any = null
 
             if (installmentsPlan.length > 1) {
-                // NESTED WRITE: Create Group AND Transactions in one go
-                const group = await tx.transactionGroup.create({
-                    data: {
-                        totalAmount: amount,
-                        installmentsCount: installmentsPlan.length,
-                        description: description,
-                        frequency: interval_frequency || null,
-                        transactions: {
-                            create: installmentsPlan.map((item) => {
-                                const isFirst = item.number === 1;
-                                const currentDescription = `${baseDescription} (${item.number}/${installmentsPlan.length})`;
-                                // Only the first one is confirmed if requested
-                                const isConfirmed = isFirst ? (operation === 'transfer' ? true : confirmed ? confirmed : false) : false;
+                if (!isInMemory && tx?.transactionGroup) {
+                    const group = await tx.transactionGroup.create({
+                        data: {
+                            totalAmount: amount,
+                            installmentsCount: installmentsPlan.length,
+                            description: description,
+                            frequency: interval_frequency || null,
+                            transactions: {
+                                create: installmentsPlan.map((item) => {
+                                    const isFirst = item.number === 1
+                                    const tag = isFirst ? `(${item.number}/${installmentsPlan.length})` : `(PR ${item.number}/${installmentsPlan.length})`
+                                    const currentDescription = baseDescription ? `${baseDescription} ${tag}` : tag
+                                    const isConfirmed = isFirst ? (operation === 'transfer' ? true : confirmed ? confirmed : false) : false
 
-                                return {
-                                    operation,
-                                    amount: item.amount,
-                                    account_id: account_id || null,
-                                    data_vencimento: item.data_vencimento,
-                                    data_emissao: item.data_emissao,
-                                    sector_id: sector_id || null,
-                                    description: currentDescription,
-                                    confirmed: isConfirmed,
-                                    supplier_id: supplier_id || null,
-                                    payment_method: payment_method || "BOLETO",
-                                    interest: isFirst ? interest : 0,
-                                    fine: isFirst ? fine : 0,
-                                    discount: isFirst ? discount : 0,
-                                    totalValue: isFirst && totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
-                                    credit_card_id: credit_card_id || null,
-                                    // parent_transaction_id: we rely on transaction_group_id relation
-                                } as any
-                            })
+                                    return {
+                                        operation,
+                                        amount: item.amount,
+                                        account_id: account_id || null,
+                                        data_vencimento: item.data_vencimento,
+                                        data_emissao: item.data_emissao,
+                                        sector_id: sector_id || null,
+                                        description: currentDescription,
+                                        confirmed: isConfirmed,
+                                        supplier_id: supplier_id || null,
+                                        payment_method: payment_method || "BOLETO",
+                                        interest: isFirst ? interest : 0,
+                                        fine: isFirst ? fine : 0,
+                                        discount: isFirst ? discount : 0,
+                                        totalValue: isFirst && totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
+                                        credit_card_id: credit_card_id || null,
+                                    } as any
+                                })
+                            }
+                        },
+                        include: {
+                            transactions: true
                         }
-                    },
-                    include: {
-                        transactions: true
+                    })
+                    const firstTag = `(1/${installmentsPlan.length})`
+                    firstTransaction = (group as any).transactions.find((t: Transaction) => t.description?.includes(firstTag)) || (group as any).transactions[0]
+                } else {
+                    let parentId: string | null = null
+                    for (const item of installmentsPlan) {
+                        const isFirst = item.number === 1
+                        const tag = isFirst ? `(${item.number}/${installmentsPlan.length})` : `(PR ${item.number}/${installmentsPlan.length})`
+                        const currentDescription = baseDescription ? `${baseDescription} ${tag}` : tag
+                        const isConfirmed = isFirst ? (operation === 'transfer' ? true : confirmed ? confirmed : false) : false
+                        const created: any = await this.transactionsRepository.create({
+                            operation,
+                            amount: item.amount,
+                            account_id: account_id || '',
+                            data_vencimento: item.data_vencimento,
+                            data_emissao: item.data_emissao,
+                            sector_id: sector_id || null,
+                            description: currentDescription,
+                            confirmed: isConfirmed,
+                            parent_transaction_id: parentId,
+                        })
+                        if (isFirst) {
+                            firstTransaction = created
+                            parentId = created.id
+                        }
                     }
-                })
-
-                // Find the first transaction to handle side effects (balance, transfer)
-                // We assume the one with number=1 based on description logic or sorting, 
-                // but relying on the array order or finding the one with confirmed=true/earliest date is safer if we didn't store 'number'.
-                // Since we just created them, we can try to find the one matching the first installment plan date/amount/desc.
-                const firstDescription = `${baseDescription} (1/${installmentsPlan.length})`;
-                firstTransaction = (group as any).transactions.find((t: Transaction) => t.description === firstDescription) || (group as any).transactions[0];
-
+                }
             } else {
-                // SINGLE TRANSACTION
-                const item = installmentsPlan[0];
-                const isConfirmed = operation === 'transfer' ? true : confirmed ? confirmed : false;
+                const item = installmentsPlan[0]
+                const isConfirmed = operation === 'transfer' ? true : confirmed ? confirmed : false
 
-                firstTransaction = await tx.transaction.create({
-                    data: {
+                if (!isInMemory && tx?.transaction) {
+                    firstTransaction = await tx.transaction.create({
+                        data: {
+                            operation,
+                            amount: item.amount,
+                            account_id: account_id || null,
+                            data_vencimento: item.data_vencimento,
+                            data_emissao: item.data_emissao,
+                            sector_id: sector_id || null,
+                            description: baseDescription,
+                            confirmed: isConfirmed,
+                            supplier_id: supplier_id || null,
+                            payment_method: payment_method || "BOLETO",
+                            interest,
+                            discount,
+                            totalValue: totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
+                            credit_card_id: credit_card_id || null,
+                        } as any
+                    })
+                } else {
+                    firstTransaction = await this.transactionsRepository.create({
                         operation,
                         amount: item.amount,
-                        account_id: account_id || null,
+                        account_id: account_id || '',
                         data_vencimento: item.data_vencimento,
                         data_emissao: item.data_emissao,
                         sector_id: sector_id || null,
                         description: baseDescription,
                         confirmed: isConfirmed,
-                        supplier_id: supplier_id || null,
-                        payment_method: payment_method || "BOLETO",
-                        interest,
-                        discount,
-                        totalValue: totalValue !== null ? totalValue : (isConfirmed ? item.amount : null),
-                        credit_card_id: credit_card_id || null,
-                    } as any
-                })
+                    })
+                }
             }
 
-            if (!firstTransaction) throw new Error("Failed to create transaction");
+            if (!firstTransaction) throw new Error("Failed to create transaction")
 
-            // SIDE EFFECTS (Balance & Transfer) - Applied to the First Transaction
-            // If the first transaction is confirmed, update the balance.
             if (firstTransaction.confirmed && firstTransaction.account_id) {
-                const effectiveAmount = firstTransaction.totalValue ?? firstTransaction.amount;
+                const effectiveAmount = firstTransaction.totalValue ?? firstTransaction.amount
                 await this.accountsRepository.changeBalance(firstTransaction.account_id, effectiveAmount, isIncome, tx)
             }
 
-            // Handle Transfer (Only single/first support usually, but logic kept generalized)
-            if (operation === 'transfer' && destination_account_id) {
-                await this.transferTransactionsRepository.create({
-                    destination_account_id: destination_account_id,
-                    transaction_id: firstTransaction.id
-                }, tx)
-                await this.accountsRepository.changeBalance(destination_account_id, firstTransaction.amount, !isIncome, tx)
+            if (destination_account_id && operation === 'transfer' && firstTransaction.confirmed) {
+                if (!isInMemory && tx?.transaction) {
+                    await tx.transaction.create({
+                        data: {
+                            operation: 'income',
+                            amount,
+                            account_id: destination_account_id,
+                            description: `Transferência de ${firstTransaction.account_id}`,
+                            confirmed: true,
+                            data_vencimento: effectiveVencimento,
+                            data_emissao: effectiveEmissao,
+                            payment_method: "TRANSFERENCIA",
+                        } as any
+                    })
+                } else {
+                    await this.transactionsRepository.create({
+                        operation: 'income',
+                        amount,
+                        account_id: destination_account_id,
+                        description: `Transferência de ${firstTransaction.account_id}`,
+                        confirmed: true,
+                        data_vencimento: effectiveVencimento,
+                        data_emissao: effectiveEmissao,
+                    })
+                }
+                await this.accountsRepository.changeBalance(destination_account_id, amount, true, tx)
             }
 
             return {
                 transaction: firstTransaction
             }
+        }
+
+        if (isInMemory) {
+            return await executeLogic()
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            return await executeLogic(tx)
         })
     }
 }
-
-

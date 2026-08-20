@@ -5,7 +5,7 @@ import { InMemoryItemsRepository } from '@/modules/items/repositories/in-memory/
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
 import { InvalidOptionError } from '@/errors/invalid-option-error'
-import { ItemType } from '@prisma/client'
+import { ItemType } from '@/modules/items/use-cases/item'
 
 let stocksRepository: InMemoryStocksRepository
 let registerStockMovementUseCase: RegisterStockMovementUseCase

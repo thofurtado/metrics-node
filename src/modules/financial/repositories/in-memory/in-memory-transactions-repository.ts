@@ -121,15 +121,15 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             }
         } else if (status === 'completed') {
             filteredTransactions = filteredTransactions.filter(t => t.confirmed);
-            // Default history: current month
+            if (month) {
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const d = new Date(t.data_vencimento || t.date || new Date());
+                    return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
+                });
+            }
+        } else if (month) {
             filteredTransactions = filteredTransactions.filter(t => {
-                const d = new Date(t.data_vencimento);
-                return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
-            });
-        } else {
-            // Default behaviour (History Flow)
-            filteredTransactions = filteredTransactions.filter(t => {
-                const d = new Date(t.data_vencimento);
+                const d = new Date(t.data_vencimento || t.date || new Date());
                 return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
             });
         }
@@ -202,12 +202,14 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
         const updatedTransaction: any = {
             ...this.items[index],
             ...updateData,
+            date: updateData.data_vencimento ? new Date(updateData.data_vencimento) : (this.items[index].date || this.items[index].data_vencimento),
             id: transactionId
-        }
+        };
 
-        this.items[index] = updatedTransaction
+        this.items[index] = updatedTransaction;
 
-        return updatedTransaction
+        updatedTransaction.date = updatedTransaction.data_vencimento;
+        return updatedTransaction;
     }
 
     async create(data: Prisma.TransactionUncheckedCreateInput) {
@@ -216,11 +218,12 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             operation: data.operation as string,
             amount: data.amount as number,
             account_id: data.account_id as string,
-            data_vencimento: data.data_vencimento ? new Date(data.data_vencimento as string) : new Date(),
-            data_emissao: (data as any).data_emissao ? new Date((data as any).data_emissao as string) : new Date(),
+            data_vencimento: data.data_vencimento ? new Date(data.data_vencimento as any) : ((data as any).date ? new Date((data as any).date) : new Date()),
+            data_emissao: (data as any).data_emissao ? new Date((data as any).data_emissao as any) : ((data as any).date ? new Date((data as any).date) : new Date()),
             sector_id: data.sector_id as string || null,
             description: data.description as string || null,
             confirmed: data.confirmed as boolean || false,
+            date: data.data_vencimento ? new Date(data.data_vencimento as any) : ((data as any).date ? new Date((data as any).date) : new Date()),
             created_at: new Date(),
             supplier_id: (data as any).supplier_id as string || null,
             parent_transaction_id: (data as any).parent_transaction_id as string || null
@@ -335,9 +338,10 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
     async changeTransactionStatus(data: ChangeTransactionStatusParams): Promise<void> {
         const transactionIndex = this.items.findIndex(item => item.id === data.id)
         if (transactionIndex !== -1) {
-            this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed
-            this.items[transactionIndex].amount = data.amount
-            this.items[transactionIndex].data_vencimento = data.date
+            this.items[transactionIndex].confirmed = !this.items[transactionIndex].confirmed;
+            this.items[transactionIndex].amount = data.amount;
+            this.items[transactionIndex].data_vencimento = data.date;
+            this.items[transactionIndex].date = data.date;
         }
     }
 

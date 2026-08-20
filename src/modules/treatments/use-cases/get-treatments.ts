@@ -16,7 +16,7 @@ export class GetTreatmentsUseCase {
     constructor(
         private treatmentsRepository: TreatmentsRepository
     ) { }
-    async execute({ pageIndex, perPage, treatmentId, clientName, status }: GetTreatmentsUseCaseRequest): Promise<GetTreatmentDTO | null> {
+    async execute({ pageIndex = 1, perPage = 6, treatmentId, clientName, status }: Partial<GetTreatmentsUseCaseRequest> = {}): Promise<GetTreatmentDTO | null> {
         if (!perPage)
             perPage = 6
 
