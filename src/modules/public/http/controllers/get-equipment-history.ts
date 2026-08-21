@@ -20,12 +20,6 @@ export async function getEquipmentHistory(request: FastifyRequest, reply: Fastif
           id: true,
           name: true,
           phone: true,
-          group: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       },
       treatments: {
@@ -89,7 +83,7 @@ export async function getEquipmentHistory(request: FastifyRequest, reply: Fastif
       details: equipment.details,
       createdAt: equipment.created_at,
       clientName: equipment.client?.name || 'Cliente Particular',
-      groupName: equipment.client?.group?.name || null,
+      groupName: null,
       telemetry: equipment.last_telemetry,
       totalTreatments: equipment.treatments.length,
       treatments: formattedTreatments,
