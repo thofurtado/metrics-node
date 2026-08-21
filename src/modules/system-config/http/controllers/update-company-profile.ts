@@ -46,27 +46,27 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
   }
 
   try {
-    const { businessHours, ...data } = updateProfileBodySchema.parse(request.body)
+    const { businessHours, availableNeighborhoods, deliverySectors, ...rawDbData } = updateProfileBodySchema.parse(request.body)
 
     let profile = await prisma.companyProfile.findFirst()
 
     if (profile) {
       profile = await prisma.companyProfile.update({
         where: { id: profile.id },
-        data,
+        data: rawDbData,
       })
     } else {
       profile = await prisma.companyProfile.create({
         data: {
-          tradeName: data.tradeName ?? 'Restaurante',
-          primaryColor: data.primaryColor ?? '#FF5722',
-          secondaryColor: data.secondaryColor ?? '#FFFFFF',
-          backgroundColor: data.backgroundColor ?? '#F9F9F9',
-          logo_url: data.logo_url ?? null,
-          banner_url: data.banner_url ?? null,
-          isOpenManual: data.isOpenManual ?? true,
-          whatsappNumber: data.whatsappNumber ?? '',
-          ...data,
+          tradeName: rawDbData.tradeName ?? 'Restaurante',
+          primaryColor: rawDbData.primaryColor ?? '#FF5722',
+          secondaryColor: rawDbData.secondaryColor ?? '#FFFFFF',
+          backgroundColor: rawDbData.backgroundColor ?? '#F9F9F9',
+          logo_url: rawDbData.logo_url ?? null,
+          banner_url: rawDbData.banner_url ?? null,
+          isOpenManual: rawDbData.isOpenManual ?? true,
+          whatsappNumber: rawDbData.whatsappNumber ?? '',
+          ...rawDbData,
         },
       })
     }
@@ -104,4 +104,3 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
     return reply.status(500).send({ message: 'Internal server error.' })
   }
 }
-

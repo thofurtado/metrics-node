@@ -33,18 +33,36 @@ export async function getEquipmentHistory(request: FastifyRequest, reply: Fastif
               product: {
                 select: {
                   name: true,
+                  price: true,
                 },
               },
               service: {
                 select: {
                   name: true,
+                  price: true,
                 },
               },
             },
           },
           interactions: {
+            include: {
+              users: {
+                select: {
+                  name: true,
+                },
+              },
+            },
             orderBy: {
               created_at: 'asc',
+            },
+          },
+          paymentEntrys: {
+            include: {
+              payments: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -59,24 +77,53 @@ export async function getEquipmentHistory(request: FastifyRequest, reply: Fastif
     return reply.status(404).send({ message: 'Equipamento não encontrado no cadastro.' })
   }
 
-  const formattedTreatments = equipment.treatments.map((t) => ({
-    id: t.id,
-    openingDate: t.opening_date,
-    endingDate: t.ending_date,
-    request: t.request,
-    status: t.status,
-    observations: t.observations,
-    items: t.items.map((i) => ({
-      id: i.id,
-      name: i.product?.name || i.service?.name || i.observations || 'Serviço Técnico',
-      quantity: i.quantity,
-    })),
-    interactions: t.interactions.map((inter) => ({
-      id: inter.id,
-      observations: inter.observations,
-      createdAt: inter.created_at,
-    })),
-  }))
+  const formattedTreatments = equipment.treatments.map((t) => {
+    const items = t.items.map((i) => {
+      const unitPrice = i.salesValue ?? i.product?.price ?? i.service?.price ?? 0
+      const quantity = i.quantity || 1
+      return {
+        id: i.id,
+        name: i.product?.name || i.service?.name || i.observations || 'Serviço Especializado',
+        type: i.product_id ? ('product' as const) : ('service' as const),
+        quantity,
+        unitPrice,
+        totalPrice: unitPrice * quantity,
+      }
+    })
+
+    const totalItemsAmount = items.reduce((acc, item) => acc + item.totalPrice, 0)
+    const paymentsTotal = t.paymentEntrys.reduce((acc, p) => acc + (p.amount || 0), 0)
+    const totalAmount = paymentsTotal > 0 ? paymentsTotal : totalItemsAmount
+
+    const payments = t.paymentEntrys.map((p) => ({
+      id: p.id,
+      method: p.payments?.name || 'Pagamento',
+      amount: p.amount,
+      occurrences: p.occurrences,
+    }))
+
+    const isFinished = t.status === 'finished' || t.status === 'concluded' || t.status === 'done' || !!t.ending_date
+
+    return {
+      id: t.id,
+      openingDate: t.opening_date || t.created_at,
+      endingDate: t.ending_date,
+      request: t.request || 'Revisão técnica preventiva e diagnóstico geral',
+      status: t.status,
+      observations: t.observations, // Laudo de encerramento
+      items,
+      totalAmount,
+      payments,
+      isPaid: isFinished || payments.length > 0,
+      paidAt: t.ending_date || t.updated_at,
+      interactions: t.interactions.map((inter) => ({
+        id: inter.id,
+        description: inter.description,
+        authorName: inter.users?.name || 'Técnico Especialista',
+        createdAt: inter.date || inter.created_at,
+      })),
+    }
+  })
 
   return reply.status(200).send({
     equipment: {
