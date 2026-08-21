@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify'
+﻿import { FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
 import path from 'path'
 import { pipeline } from 'stream/promises'
@@ -17,7 +17,7 @@ export async function getLatestWindyVersion(request: FastifyRequest, reply: Fast
         ensureDir(DOWNLOADS_DIR)
         
         let versionInfo = {
-            version: '2.0.3',
+            version: '2.0.5',
             downloadUrl: 'https://api.metrics.dev.br/uploads/downloads/Metrics_Windy_Setup.exe',
             updatedAt: new Date().toISOString(),
             fileName: 'Metrics_Windy_Setup.exe'

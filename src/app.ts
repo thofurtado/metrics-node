@@ -1,4 +1,4 @@
-import fastifyWebsocket from '@fastify/websocket'
+﻿import fastifyWebsocket from '@fastify/websocket'
 ﻿import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
 import { z, ZodError } from 'zod'
@@ -63,7 +63,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url === '/public/db-status' ||
         request.url === '/public/db-sync' ||
         request.url === '/' ||
-        (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i))
+        request.url.startsWith('/public/windy') || request.url.startsWith('/api/public/windy') || request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx|exe)$/i))
     ) {
         return;
     }
