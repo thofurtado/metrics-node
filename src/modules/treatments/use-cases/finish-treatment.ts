@@ -77,8 +77,9 @@ export class FinishTreatmentUseCase {
             ? payments.reduce((acc, p) => acc + Number(p.amount), 0)
             : paymentEntries?.reduce((acc, entry) => acc + Number(entry.amount), 0) || 0
 
-        if (totalPaid < (treatment.amount - 0.05)) {
-            throw new Error(`Pagamento insuficiente. Total a pagar: ${treatment.amount.toFixed(2)}, Pago: ${totalPaid.toFixed(2)}`)
+                const requiredAmount = Number((treatment.amount || 0).toFixed(2))
+        if (requiredAmount > 0 && Math.round(totalPaid * 100) < Math.round(requiredAmount * 100) - 5) {
+            throw new Error(`Pagamento insuficiente. Total a pagar: R$ ${requiredAmount.toFixed(2)}, Pago: R$ ${totalPaid.toFixed(2)}`)
         }
 
         const executeLogic = async (tx?: any) => {
@@ -103,7 +104,7 @@ export class FinishTreatmentUseCase {
                                             supply_id: comp.supply_id,
                                             quantity: quantityToDecrease,
                                             operation: 'OUT',
-                                            description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
+                                            description: 'VENDA',
                                             created_at: new Date()
                                         }
                                     })
@@ -122,7 +123,7 @@ export class FinishTreatmentUseCase {
                                         product_id: prodId,
                                         quantity: tItem.quantity,
                                         operation: 'OUT',
-                                        description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
+                                        description: 'VENDA',
                                         created_at: new Date()
                                     }
                                 })
@@ -138,7 +139,7 @@ export class FinishTreatmentUseCase {
                                     supply_id: supplyId,
                                     quantity: tItem.quantity,
                                     operation: 'OUT',
-                                    description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
+                                    description: 'VENDA',
                                     created_at: new Date()
                                 }
                             })
@@ -163,15 +164,21 @@ export class FinishTreatmentUseCase {
 
             if (itemsToProcess.length > 0) {
                 for (const entry of itemsToProcess) {
-                    let paymentMethod = (entry as any)._method
+                                        let paymentMethod = (entry as any)._method
                     if (!paymentMethod && tx?.payment?.findUnique) {
                         paymentMethod = await tx.payment.findUnique({ where: { id: entry.payment_id } })
                     }
 
                     if (!paymentMethod) continue
 
-                    const accountId = paymentMethod.account_id
-                    if (!accountId) continue
+                    let accountId = paymentMethod.account_id
+                    if (!accountId && tx?.account?.findFirst) {
+                        const defaultAcc = await tx.account.findFirst({
+                            where: { is_transit: false },
+                            orderBy: { created_at: 'asc' }
+                        })
+                        accountId = defaultAcc?.id || null
+                    }
 
                     const installmentAmount = Number((entry.amount / entry.occurrences).toFixed(2))
 
