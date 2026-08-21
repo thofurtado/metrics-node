@@ -34,6 +34,7 @@ import { kioskRoutes, hrAdminRoutes } from '@/modules/hr/http/controllers/routes
 import { telemetryRoutes, adminEquipmentsRoutes } from '@/modules/equipments/http/controllers/routes'
 import { systemConfigRoutes } from '@/modules/system-config/http/controllers/routes'
 import { publicRoutes } from '@/modules/public/http/controllers/routes'
+import { vpnRoutes } from '@/modules/vpn/http/controllers/routes'
 import { uploadsRoutes } from '@/modules/uploads/http/controllers/routes'
 import { salesRoutes } from '@/modules/sales/http/controllers/routes'
 import { pdvSyncRoutes } from '@/modules/pdv-sync/http/controllers/routes'
