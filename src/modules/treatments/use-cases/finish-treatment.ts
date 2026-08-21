@@ -82,10 +82,12 @@ export class FinishTreatmentUseCase {
         }
 
         const executeLogic = async (tx?: any) => {
-            // A. Stock Update (Decrement)
+            // A. Stock Update (Decrement) - ONLY for Products and Supplies (skip Services)
             if ((treatment as any).items && (treatment as any).items.length > 0) {
                 for (const tItem of (treatment as any).items) {
-                    const prodId = tItem.product_id || tItem.item_id || (tItem as any).id
+                    const prodId = tItem.product_id || (tItem.product ? tItem.product.id : null)
+                    const supplyId = tItem.supply_id || (tItem.supply ? tItem.supply.id : null)
+
                     if (prodId) {
                         const product = (tItem as any).product
 
@@ -101,7 +103,7 @@ export class FinishTreatmentUseCase {
                                             supply_id: comp.supply_id,
                                             quantity: quantityToDecrease,
                                             operation: 'OUT',
-                                            description: 'VENDA',
+                                            description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
                                             created_at: new Date()
                                         }
                                     })
@@ -117,31 +119,32 @@ export class FinishTreatmentUseCase {
                             if (tx?.stock?.create) {
                                 await tx.stock.create({
                                     data: {
-                                        product_id: tItem.product_id || prodId,
+                                        product_id: prodId,
                                         quantity: tItem.quantity,
                                         operation: 'OUT',
-                                        description: 'VENDA',
+                                        description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
                                         created_at: new Date()
                                     }
                                 })
                             }
                         }
-                    } else if (tItem.supply_id) {
+                    } else if (supplyId) {
                         if (this.suppliesRepository?.changeStock) {
-                            await this.suppliesRepository.changeStock(tItem.supply_id, tItem.quantity, false, tx)
+                            await this.suppliesRepository.changeStock(supplyId, tItem.quantity, false, tx)
                         }
                         if (tx?.stock?.create) {
                             await tx.stock.create({
                                 data: {
-                                    supply_id: tItem.supply_id,
+                                    supply_id: supplyId,
                                     quantity: tItem.quantity,
                                     operation: 'OUT',
-                                    description: 'VENDA',
+                                    description: `VENDA O.S. #${treatment.id.slice(0, 8)}`,
                                     created_at: new Date()
                                 }
                             })
                         }
                     }
+                    // If service_id is present (or no physical item), skip stock decrement!
                 }
             }
 
@@ -187,13 +190,14 @@ export class FinishTreatmentUseCase {
 
                         const transactionDescription = entry.description 
                             ? entry.description 
-                            : `Recebimento O.S #${treatment.display_id || ''} - Parcela ${i + 1}/${entry.occurrences}`
+                            : `Recebimento O.S #${treatment.id.slice(0, 8)} - Parcela ${i + 1}/${entry.occurrences}`
 
                         let transaction: any = null
                         if (tx?.transaction?.create) {
                             transaction = await tx.transaction.create({
                                 data: {
                                     account_id: accountId,
+                                    treatment_id: treatment.id,
                                     amount: installmentAmount,
                                     operation: 'income',
                                     description: transactionDescription,
