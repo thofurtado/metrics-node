@@ -13,6 +13,7 @@ import { createOnlineOrder } from './create-online-order'
 import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
+import { getClientsSummaryForWindy, bindDeviceFromWindy } from './windy-device'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -33,7 +34,9 @@ export async function publicRoutes(app: FastifyInstance) {
     app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
     app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 
-    // Distribuição e Auto-Update do Windy
+    // Distribuição, Vinculação e Auto-Update do Windy
+    app.get('/api/public/windy/clients-summary', getClientsSummaryForWindy)
+    app.post('/api/public/windy/bind-device', bindDeviceFromWindy)
     app.get('/api/public/windy/latest', getLatestWindyVersion)
     app.get('/public/windy/latest', getLatestWindyVersion)
     app.get('/api/public/windy/download', downloadLatestWindy)
