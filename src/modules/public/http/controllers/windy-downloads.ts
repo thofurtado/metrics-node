@@ -17,7 +17,7 @@ export async function getLatestWindyVersion(request: FastifyRequest, reply: Fast
         ensureDir(DOWNLOADS_DIR)
         
         let versionInfo = {
-            version: '2.0.5',
+            version: '2.1.0',
             downloadUrl: 'https://api.metrics.dev.br/uploads/downloads/Metrics_Windy_Setup.exe',
             updatedAt: new Date().toISOString(),
             fileName: 'Metrics_Windy_Setup.exe'
