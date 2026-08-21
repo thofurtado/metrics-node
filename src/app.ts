@@ -63,7 +63,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url === '/public/db-status' ||
         request.url === '/public/db-sync' ||
         request.url === '/' ||
-        request.url.startsWith('/public/windy') || request.url.startsWith('/api/public/windy') || request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx|exe)$/i))
+        request.url.startsWith('/public/windy') || request.url.startsWith('/api/public/windy') || request.url.startsWith('/downloads/') || request.url.startsWith('/api/admin/downloads/windy') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx|exe)$/i))
     ) {
         return;
     }
