@@ -14,6 +14,7 @@ import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
 import { getClientsSummaryForWindy, bindDeviceFromWindy } from './windy-device'
+import { getEquipmentHistory } from './get-equipment-history'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -35,6 +36,9 @@ export async function publicRoutes(app: FastifyInstance) {
     app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 
     // Distribuição, Vinculação e Auto-Update do Windy
+    // Prontuário e Histórico Público de Equipamento
+    app.get('/public/equipments/:id/history', getEquipmentHistory)
+    app.get('/api/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/windy/clients-summary', getClientsSummaryForWindy)
     app.post('/api/public/windy/bind-device', bindDeviceFromWindy)
     app.get('/api/public/windy/latest', getLatestWindyVersion)
