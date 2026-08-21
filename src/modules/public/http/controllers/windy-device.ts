@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../../../../lib/prisma'
-import { HeadscaleService } from '../../vpn/services/headscale-service'
+import { HeadscaleService } from '@/modules/vpn/services/headscale-service'
 
 export async function getClientsSummaryForWindy(request: FastifyRequest, reply: FastifyReply) {
   const clients = await prisma.client.findMany({

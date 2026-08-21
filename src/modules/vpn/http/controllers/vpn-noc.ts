@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { prisma } from '../../../../lib/prisma'
-import { HeadscaleService } from '../services/headscale-service'
+import { HeadscaleService } from '@/modules/vpn/services/headscale-service'
 
 export async function getVpnNetworks(request: FastifyRequest, reply: FastifyReply) {
   // 1. Buscar grupos com clientes e equipamentos
