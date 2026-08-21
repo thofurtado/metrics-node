@@ -9,10 +9,14 @@ export async function getEquipmentHistory(request: FastifyRequest, reply: Fastif
 
   const { id } = paramsSchema.parse(request.params)
 
-  // Buscar por ID ou por identification
+  // Buscar por ID exato, por prefixo (ex: 8 primeiros dígitos) ou por identification
   const equipment = await prisma.equipment.findFirst({
     where: {
-      OR: [{ id }, { identification: id }],
+      OR: [
+        { id },
+        { id: { startsWith: id } },
+        { identification: id },
+      ],
     },
     include: {
       client: {
