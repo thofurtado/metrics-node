@@ -1,87 +1,75 @@
 ﻿import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '../../../../lib/prisma'
+import { Pool } from 'pg'
 import { HeadscaleService } from '@/modules/vpn/services/headscale-service'
 
+const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
+
 export async function getClientsSummaryForWindy(request: FastifyRequest, reply: FastifyReply) {
-  const clients = await prisma.client.findMany({
-    select: {
-      id: true,
-      name: true,
-      identification: true,
-    },
-    orderBy: { name: 'asc' },
-  })
+  let pool: Pool | null = null
+  try {
+    pool = new Pool({ connectionString: masterUrl })
+    const result = await pool.query('SELECT "id", "name", "domain", "status" FROM "Tenant" WHERE status = $1 ORDER BY name ASC', ['active'])
+    await pool.end()
+    pool = null
 
-  const formatted = clients.map((c) => ({
-    id: c.id,
-    name: c.name,
-    identification: c.identification || '',
-    groupId: '',
-    groupName: 'Sem Grupo',
-  }))
+    const formatted = result.rows.map((t) => ({
+      id: String(t.id),
+      name: t.name,
+      identification: t.domain || '',
+      groupId: '',
+      groupName: 'Empresa',
+    }))
 
-  return reply.status(200).send({ clients: formatted })
+    return reply.status(200).send({ clients: formatted })
+  } catch (error: any) {
+    if (pool) await pool.end().catch(() => {})
+    console.error('[Windy] Erro ao buscar empresas:', error)
+    return reply.status(500).send({ message: 'Erro ao carregar lista de empresas.', error: error.message })
+  }
 }
 
 export async function bindDeviceFromWindy(request: FastifyRequest, reply: FastifyReply) {
   const bodySchema = z.object({
     identification: z.string(), // Nome do computador ou ID gerado
-    clientId: z.string().uuid().optional(),
+    clientId: z.string().optional(),
     macAddress: z.string().optional(),
     vpnIp: z.string().optional(),
   })
 
   const { identification, clientId, macAddress, vpnIp } = bodySchema.parse(request.body)
 
-  let equipment = await prisma.equipment.findFirst({ where: { identification } })
-  let resolvedClientId = clientId
-  if (!resolvedClientId && equipment) { resolvedClientId = equipment.client_id }
-  if (!resolvedClientId) { return reply.status(400).send({ message: 'clientId obrigatório para o primeiro vínculo.' }) }
-
-  const client = await prisma.client.findUnique({
-    where: { id: resolvedClientId },
-  })
-
-  if (!client) {
-    return reply.status(404).send({ message: 'Cliente não encontrado.' })
+  if (!clientId) {
+    return reply.status(400).send({ message: 'clientId (ID da empresa) é obrigatório.' })
   }
 
-  if (equipment) {
-    equipment = await prisma.equipment.update({
-      where: { id: equipment.id },
-      data: {
-        client_id: client.id,
-        is_online: true,
-        last_seen_at: new Date(),
-        ...(vpnIp ? { vpn_ip: vpnIp } : {}),
-      },
+  let pool: Pool | null = null
+  try {
+    pool = new Pool({ connectionString: masterUrl })
+    const result = await pool.query('SELECT "id", "name", "domain" FROM "Tenant" WHERE "id" = $1', [clientId])
+    await pool.end()
+    pool = null
+
+    const tenant = result.rows[0]
+    if (!tenant) {
+      return reply.status(404).send({ message: 'Empresa não encontrada.' })
+    }
+
+    const headscaleUser = `client_${tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+    await HeadscaleService.createOrGetUser(headscaleUser)
+    const vpnAuthKey = await HeadscaleService.createPreAuthKey(headscaleUser, true)
+
+    return reply.status(200).send({
+      success: true,
+      clientName: tenant.name,
+      groupName: 'Rede Privada da Empresa',
+      headscaleUser,
+      vpnAuthKey,
+      loginServer: 'https://vpn.metrics.dev.br',
     })
-  } else {
-    equipment = await prisma.equipment.create({
-      data: {
-        client_id: client.id,
-        identification,
-        type: 'Computador Windows',
-        details: macAddress ? `MAC: ${macAddress}` : 'Agente Windy',
-        is_online: true,
-        last_seen_at: new Date(),
-        ...(vpnIp ? { vpn_ip: vpnIp } : {}),
-      },
-    })
+  } catch (error: any) {
+    if (pool) await pool.end().catch(() => {})
+    console.error('[Windy] Erro ao vincular dispositivo:', error)
+    return reply.status(500).send({ message: 'Erro ao vincular empresa.', error: error.message })
   }
-
-  const headscaleUser = `client_${client.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
-  await HeadscaleService.createOrGetUser(headscaleUser)
-  const vpnAuthKey = await HeadscaleService.createPreAuthKey(headscaleUser, true)
-
-  return reply.status(200).send({
-    success: true,
-    equipmentId: equipment.id,
-    clientName: client.name,
-    groupName: 'Rede Privada da Empresa',
-    headscaleUser,
-    vpnAuthKey,
-    loginServer: 'https://vpn.metrics.dev.br',
-  })
 }
