@@ -17,8 +17,8 @@ export async function getClientsSummaryForWindy(request: FastifyRequest, reply: 
     id: c.id,
     name: c.name,
     identification: c.identification || '',
-    groupId: null,
-    groupName: null,
+    groupId: '',
+    groupName: 'Sem Grupo',
   }))
 
   return reply.status(200).send({ clients: formatted })
