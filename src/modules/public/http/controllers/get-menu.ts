@@ -70,7 +70,7 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
             prisma.payment.findMany({
                 where: {
                     active: true,
-                    show_in_menu: true,
+                    // show_in_menu removed for compatibility
                 },
                 select: {
                     id: true,
