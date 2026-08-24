@@ -12,6 +12,7 @@ import { getProfile } from './get-profile'
 import { createOnlineOrder } from './create-online-order'
 import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
+import { ordersStream } from './orders-stream'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
 import { getClientsSummaryForWindy, bindDeviceFromWindy } from './windy-device'
 import { getEquipmentHistory } from './get-equipment-history'
@@ -32,6 +33,8 @@ export async function publicRoutes(app: FastifyInstance) {
     app.post('/public/orders', createOnlineOrder)
     app.get('/public/orders/pending', getPendingOnlineOrders)
     app.get('/api/pdv/orders/pending', getPendingOnlineOrders)
+    app.get('/public/orders/stream', ordersStream)
+    app.get('/api/pdv/orders/stream', ordersStream)
     app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
     app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 

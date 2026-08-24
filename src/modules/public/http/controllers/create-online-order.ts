@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
+import { sseManager } from '@/lib/sse-manager'
 
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -130,6 +131,29 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 }
             }
         });
+
+        // Dispara notificação SSE em tempo real para os PDVs do tenant conectado
+        const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
+        const orderDto = {
+            id: treatment.id,
+            display_id: treatment.display_id,
+            client_name: treatment.client?.name || body.client_name,
+            client_phone: treatment.client?.phone || body.client_phone,
+            address: enderecoFormatado,
+            total_amount: treatment.amount,
+            observations: treatment.observations,
+            created_at: treatment.created_at,
+            items: treatment.items.map(i => ({
+                id: i.id,
+                product_id: i.product_id,
+                name: i.product?.name || i.observation || 'Item',
+                quantity: i.quantity,
+                price: i.price,
+                observation: i.observation
+            }))
+        };
+
+        sseManager.notifyTenant(rawDomain, 'new_order', orderDto);
 
         return reply.status(201).send({
             message: 'Pedido realizado com sucesso!',
