@@ -1,8 +1,10 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '../../../../lib/prisma'
+import { requestContext } from '@fastify/request-context'
+import { prisma as defaultPrisma } from '../../../../lib/prisma'
 
 export async function checkoutClient(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = requestContext.get('prisma') || defaultPrisma
     const checkoutClientBodySchema = z.object({
         name: z.string(),
         phone: z.string(),
