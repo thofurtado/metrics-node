@@ -1075,7 +1075,18 @@ export async function deletePaymentIdentifier(request: FastifyRequest, reply: Fa
 export async function getCashierUsers(request: FastifyRequest, reply: FastifyReply) {
     const users = await prisma.user.findMany({
         where: {
-            role: { in: ['ADMIN', 'CASHIER'] }
+            OR: [
+                { role: { in: ['ADMIN', 'CASHIER'] } },
+                {
+                    userModules: {
+                        some: {
+                            module: {
+                                slug: 'cashier'
+                            }
+                        }
+                    }
+                }
+            ]
         },
         select: {
             id: true,
