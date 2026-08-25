@@ -69,7 +69,7 @@ export class CreateItemUseCase {
                 item = await this.productsRepository.create({
                     name,
                     description,
-                    category: category ? { connectOrCreate: { where: { name: category }, create: { name: category } } } : undefined,
+                    category: resolveCategoryClause(category),
                     price: price ?? 0,
                     stock: stock || 0,
                     min_stock: min_stock || 0,

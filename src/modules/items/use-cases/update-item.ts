@@ -4,6 +4,23 @@ import { SuppliesRepository } from '../repositories/supplies-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { prisma } from '@/lib/prisma'
 
+const isUuid = (val: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+
+function resolveCategoryClause(category?: string | null) {
+    if (!category || category.trim() === '') return undefined
+    const clean = category.trim()
+    if (isUuid(clean)) {
+        return { connect: { id: clean } }
+    }
+    return {
+        connectOrCreate: {
+            where: { name: clean },
+            create: { name: clean }
+        }
+    }
+}
+
 interface UpdateItemUseCaseRequest {
     id: string
     name?: string
@@ -40,7 +57,7 @@ export class UpdateItemUseCase {
             const productUpdate: any = {
                 name: data.name,
                 description: data.description,
-                category: data.category ? { connectOrCreate: { where: { name: data.category }, create: { name: data.category } } } : undefined,
+                category: data.category !== undefined ? (data.category ? resolveCategoryClause(data.category) : { disconnect: true }) : undefined,
                 active: data.active,
                 price: data.price,
                 min_stock: data.min_stock,
