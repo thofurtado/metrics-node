@@ -53,6 +53,11 @@ export async function fetchComplementGroups(request: FastifyRequest, reply: Fast
         where: { active: true },
         orderBy: { name: 'asc' },
       },
+      products: {
+        select: {
+          product_id: true,
+        },
+      },
       _count: {
         select: { products: true },
       },
@@ -83,6 +88,7 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
         linked_supply_id: z.string().nullable().optional(),
       })
     ).optional(),
+    product_ids: z.array(z.string().uuid()).optional(),
   })
 
   const { id } = paramsSchema.parse(request.params)
@@ -130,6 +136,21 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
       }
     }
 
+    if (data.product_ids !== undefined) {
+      await tx.productComplementGroup.deleteMany({
+        where: { group_id: id },
+      })
+      if (data.product_ids.length > 0) {
+        await tx.productComplementGroup.createMany({
+          data: data.product_ids.map((pId, idx) => ({
+            group_id: id,
+            product_id: pId,
+            order: idx,
+          })),
+        })
+      }
+    }
+
     return tx.complementGroup.update({
       where: { id },
       data: {
@@ -143,6 +164,9 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
         options: {
           where: { active: true },
           orderBy: { name: 'asc' },
+        },
+        products: {
+          select: { product_id: true },
         },
       },
     })
