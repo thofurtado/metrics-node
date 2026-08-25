@@ -14,6 +14,7 @@ import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
 import { ordersStream } from './orders-stream'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
+import { getLatestPdvVersion, downloadLatestPdv, uploadPdvRelease } from './pdv-downloads'
 import { getClientsSummaryForWindy, bindDeviceFromWindy } from './windy-device'
 import { getEquipmentHistory } from './get-equipment-history'
 
@@ -49,6 +50,13 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/api/public/windy/download', downloadLatestWindy)
     app.get('/downloads/Metrics_Windy_Setup.exe', downloadLatestWindy)
     app.post('/api/admin/downloads/windy', uploadWindyRelease)
+
+    // Distribuição e Auto-Update do Metrics PDV
+    app.get('/api/public/pdv/latest', getLatestPdvVersion)
+    app.get('/public/pdv/latest', getLatestPdvVersion)
+    app.get('/api/public/pdv/download', downloadLatestPdv)
+    app.get('/downloads/Instalar_MetricsPDV.exe', downloadLatestPdv)
+    app.post('/api/admin/downloads/pdv', uploadPdvRelease)
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
