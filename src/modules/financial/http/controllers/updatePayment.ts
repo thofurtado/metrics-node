@@ -13,12 +13,14 @@ export async function updatePayment(request: FastifyRequest, reply: FastifyReply
         installment_limit: z.number().optional(),
         in_sight: z.boolean().optional(),
         show_in_menu: z.boolean().optional(),
-        account_id: z.string().uuid().optional(),
+        active_for_out: z.boolean().optional(),
+        active_for_in: z.boolean().optional(),
+        account_id: z.string().uuid().optional().nullable(),
     })
 
     const { id } = updatePaymentParamsSchema.parse(request.params)
     const { name, installment_limit, in_sight,
-            show_in_menu, account_id } = updatePaymentBodySchema.parse(request.body)
+            show_in_menu, active_for_out, active_for_in, account_id } = updatePaymentBodySchema.parse(request.body)
 
     try {
         const updatePaymentUseCase = MakeUpdatePaymentUseCase()
@@ -28,7 +30,10 @@ export async function updatePayment(request: FastifyRequest, reply: FastifyReply
             name,
             installment_limit,
             in_sight,
-            account_id,
+            show_in_menu: show_in_menu !== undefined ? show_in_menu : active_for_out,
+            active_for_out: show_in_menu !== undefined ? show_in_menu : active_for_out,
+            active_for_in,
+            account_id: account_id || undefined,
         })
     } catch (err) {
         if (err instanceof ResourceNotFoundError) {

@@ -29,13 +29,26 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
         })
         return payment
     }
-    async findMany(): Promise<Payment[] | null> {
+    async findMany(): Promise<any[] | null> {
         const payments = await prisma.payment.findMany({
-            include: {
-                accounts: true
+            select: {
+                id: true,
+                name: true,
+                installment_limit: true,
+                in_sight: true,
+                account_id: true,
+                active: true,
+                active_for_in: true,
+                active_for_out: true,
+                created_at: true,
+                updated_at: true,
+                accounts: true,
             }
         })
-        return payments
+        return payments.map((p: any) => ({
+            ...p,
+            show_in_menu: p.active_for_out !== false,
+        }))
     }
     async findByName(name: string): Promise<Payment | null> {
         const payments = await prisma.payment.findFirst({ where: { name } })

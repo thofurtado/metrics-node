@@ -9,6 +9,8 @@ interface UpdatePaymentUseCaseRequest {
     installment_limit?: number
     in_sight?: boolean
     show_in_menu?: boolean
+    active_for_out?: boolean
+    active_for_in?: boolean
     account_id?: string
 }
 
@@ -27,9 +29,11 @@ export class UpdatePaymentUseCase {
         name,
         installment_limit,
         in_sight,
-            show_in_menu,
+        show_in_menu,
+        active_for_out,
+        active_for_in,
         account_id
-    }: UpdatePaymentUseCaseRequest): Promise<UpdatePaymentUseCaseResponse> {
+    }: UpdatePaymentUseCaseRequest): Promise<any> {
         const payment = await this.paymentsRepository.findById(id)
 
         if (!payment) {
@@ -43,10 +47,13 @@ export class UpdatePaymentUseCase {
             }
         }
 
+        const isMenuOut = show_in_menu !== undefined ? show_in_menu : active_for_out;
         const updatedPayment = await this.paymentsRepository.update(id, {
             name,
             installment_limit,
             in_sight,
+            active_for_out: isMenuOut,
+            active_for_in,
             account_id
         })
 
