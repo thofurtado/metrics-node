@@ -11,6 +11,7 @@ export interface HeadscaleNode {
 }
 
 export class HeadscaleService {
+  static lastError: string | null = null;
   private static get baseUrl() {
     return process.env.HEADSCALE_URL || 'https://vpn.metrics.dev.br'
   }
@@ -67,7 +68,9 @@ export class HeadscaleService {
       const key = response.data?.preAuthKey?.key || response.data?.key || `hskey-metrics-${cleanUser}-preauth`
       return key
     } catch (error: any) {
-      console.warn(`[HeadscaleService] Falha ao gerar chave via API: ${error.response?.data?.message || error.message}. Usando fallback.`)
+      const errMsg = error.response ? `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}` : error.message;
+      HeadscaleService.lastError = errMsg;
+      console.warn(`[HeadscaleService] Falha ao gerar chave via API: ${errMsg}. Usando fallback.`);
       return `hskey-metrics-${cleanUser}-preauth`
     }
   }
