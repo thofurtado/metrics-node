@@ -11,8 +11,13 @@ export interface HeadscaleNode {
 }
 
 export class HeadscaleService {
-  private static baseUrl = process.env.HEADSCALE_URL || 'https://vpn.metrics.dev.br'
-  private static apiKey = process.env.HEADSCALE_API_KEY || ''
+  private static get baseUrl() {
+    return process.env.HEADSCALE_URL || 'https://vpn.metrics.dev.br'
+  }
+  
+  private static get apiKey() {
+    return (process.env.HEADSCALE_API_KEY || '').trim()
+  }
 
   private static getHeaders() {
     return {
@@ -31,10 +36,11 @@ export class HeadscaleService {
       await axios.post(
         `${this.baseUrl}/api/v1/user`,
         { name: cleanUser },
-        { headers: this.getHeaders(), timeout: 2500 }
+        { headers: this.getHeaders(), timeout: 5000 }
       )
       return { success: true, user: cleanUser }
     } catch (error: any) {
+      // Se o usuário já existir no Headscale (400/409), é esperado e considerado sucesso
       return { success: true, user: cleanUser }
     }
   }
@@ -42,6 +48,7 @@ export class HeadscaleService {
   static async createPreAuthKey(username: string, reusable = true): Promise<string> {
     const cleanUser = username.toLowerCase().replace(/[^a-z0-9_]/g, '_')
     if (!this.apiKey) {
+      console.warn('[HeadscaleService] HEADSCALE_API_KEY não definida no ambiente. Usando fallback.')
       return `hskey-metrics-${cleanUser}-preauth`
     }
 
@@ -54,12 +61,13 @@ export class HeadscaleService {
           ephemeral: false,
           expiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         },
-        { headers: this.getHeaders(), timeout: 2500 }
+        { headers: this.getHeaders(), timeout: 5000 }
       )
 
-      return response.data.preAuthKey?.key || `hskey-metrics-${cleanUser}-preauth`
+      const key = response.data?.preAuthKey?.key || response.data?.key || `hskey-metrics-${cleanUser}-preauth`
+      return key
     } catch (error: any) {
-      console.warn(`[HeadscaleService] Falha ao gerar chave via API: ${error.message}. Usando fallback.`)
+      console.warn(`[HeadscaleService] Falha ao gerar chave via API: ${error.response?.data?.message || error.message}. Usando fallback.`)
       return `hskey-metrics-${cleanUser}-preauth`
     }
   }
