@@ -31,7 +31,7 @@ export class HeadscaleService {
       await axios.post(
         `${this.baseUrl}/api/v1/user`,
         { name: cleanUser },
-        { headers: this.getHeaders(), timeout: 5000 }
+        { headers: this.getHeaders(), timeout: 2500 }
       )
       return { success: true, user: cleanUser }
     } catch (error: any) {
@@ -54,7 +54,7 @@ export class HeadscaleService {
           ephemeral: false,
           expiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         },
-        { headers: this.getHeaders(), timeout: 5000 }
+        { headers: this.getHeaders(), timeout: 2500 }
       )
 
       return response.data.preAuthKey?.key || `hskey-metrics-${cleanUser}-preauth`
