@@ -46,14 +46,18 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
   }
 
   try {
-    const { businessHours, availableNeighborhoods, deliverySectors, ...rawDbData } = updateProfileBodySchema.parse(request.body)
+    const { businessHours, ...rawDbData } = updateProfileBodySchema.parse(request.body)
 
     let profile = await prisma.companyProfile.findFirst()
 
     if (profile) {
       profile = await prisma.companyProfile.update({
         where: { id: profile.id },
-        data: rawDbData,
+        data: {
+          ...rawDbData,
+          availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
+          deliverySectors: rawDbData.deliverySectors ?? [],
+        },
       })
     } else {
       profile = await prisma.companyProfile.create({
@@ -67,6 +71,8 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
           isOpenManual: rawDbData.isOpenManual ?? true,
           whatsappNumber: rawDbData.whatsappNumber ?? '',
           ...rawDbData,
+          availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
+          deliverySectors: rawDbData.deliverySectors ?? [],
         },
       })
     }

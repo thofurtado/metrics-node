@@ -837,6 +837,10 @@ model CompanyProfile {
   
   isOpenManual    Boolean  @default(true) 
   
+  // Bairros e Setores de Entrega
+  availableNeighborhoods String[] @default([])
+  deliverySectors        Json?    @default("[]")
+
   // Credenciais de Integração Marketplace e Pagamentos
   ifoodMerchantId String?
   anotaAiApiKey   String?
