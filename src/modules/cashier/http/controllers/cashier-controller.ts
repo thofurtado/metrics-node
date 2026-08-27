@@ -296,7 +296,7 @@ export async function resolveCashierDivergence(request: FastifyRequest, reply: F
     if (action === 'DESTINATION' && account_id) {
         createdTransaction = await prisma.transaction.create({
             data: {
-                operation: 'income', // The missing physical cash is ENTERING the bank account
+                operation: 'transfer', // Transferência/Custódia neutra: não infla o faturamento como venda duplicada
                 amount: absAmount,
                 totalValue: absAmount,
                 description: `Destino de Caixa ${session.period || ''} ${operatorName} ${dateFormatted} - ${reason}`,
@@ -409,20 +409,58 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 continue
             }
 
-            // Sangria (Retirada de Dinheiro Físico para Depósito)
+            // Sangria (Retirada de Dinheiro Físico)
             if (entry.is_withdrawal) {
-                if (entry.employee_id) {
-                    await prisma.payrollEntry.create({
-                        data: {
-                            employee_id: entry.employee_id,
-                            amount: amount,
-                            type: 'VALE',
-                            description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                            referenceDate: new Date(session.opened_at),
-                            status: 'PENDING'
+                const isVale = Boolean(entry.employee_id) || 
+                    normIdent.includes('vale') || 
+                    normIdent.includes('vt') || 
+                    normIdent.includes('funcionario') || 
+                    entry.type === 'WITHDRAWAL_EMPLOYEE'
+
+                const isRecolhimentoDonoOuCofre = 
+                    entry.type === 'WITHDRAWAL_OWNER' ||
+                    normIdent.includes('samir') ||
+                    normIdent.includes('manobra') ||
+                    normIdent.includes('troco') ||
+                    normIdent.includes('cofre') ||
+                    normIdent.includes('recolhimento') ||
+                    (normIdent === 'sangria' && !entry.sector_id) // Sangria genérica sem setor = recolhimento/cofre
+
+                if (isVale) {
+                    let employeeId = entry.employee_id
+                    if (!employeeId && entry.identification) {
+                        const cleanSearch = entry.identification.replace(/^(Vale|VT)\s*/i, '').trim()
+                        if (cleanSearch) {
+                            const emp = await prisma.employee.findFirst({
+                                where: { name: { contains: cleanSearch, mode: 'insensitive' } }
+                            })
+                            if (emp) employeeId = emp.id
                         }
-                    })
+                    }
+
+                    if (!employeeId) {
+                        const firstEmp = await prisma.employee.findFirst()
+                        if (firstEmp) employeeId = firstEmp.id
+                    }
+
+                    if (employeeId) {
+                        await prisma.payrollEntry.create({
+                            data: {
+                                employee_id: employeeId,
+                                amount: amount,
+                                type: 'VALE',
+                                description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                                referenceDate: new Date(session.opened_at),
+                                status: 'PENDING'
+                            }
+                        })
+                    }
+                } else if (isRecolhimentoDonoOuCofre) {
+                    // Recolhimento do Dono (Samir) / Retirada de Troco / Depósito em Cofre:
+                    // NÃO gera despesa (expense)! O dinheiro físico continua sendo da empresa e passa para a custódia do Dono/Caixa Central.
+                    continue
                 } else {
+                    // Despesa operacional real da empresa (músico, fornecedor, mercado, compras com setor)
                     await prisma.transaction.create({
                         data: {
                             operation: 'expense',
@@ -510,6 +548,40 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } })
         const accounts = await prisma.account.findMany()
         const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
+
+        // Acumula e cria a transação consolidada de Vendas em Dinheiro Físico (Reconhece o faturamento oficial)
+        let totalVendasDinheiro = 0
+        for (const entry of session.entries) {
+            if (!entry.is_withdrawal && !entry.is_addition) {
+                const normM = normalizeString(entry.payment_method || '')
+                if (normM.includes('dinheiro') || (entry.bank || '').toUpperCase() === 'CAIXA') {
+                    totalVendasDinheiro += Number(entry.amount || 0)
+                }
+            }
+        }
+
+        if (totalVendasDinheiro > 0) {
+            const centralAccount = accounts.find(a => 
+                normalizeString(a.name).includes('caixa central') || 
+                normalizeString(a.name) === 'central' ||
+                normalizeString(a.name).includes('cofre')
+            ) || defaultAccount
+
+            await prisma.transaction.create({
+                data: {
+                    operation: 'income',
+                    amount: totalVendasDinheiro,
+                    totalValue: totalVendasDinheiro,
+                    description: `Vendas em Dinheiro - Caixa ${session.period} ${operatorName} ${dateFormatted}`,
+                    cashier_session_id: session.id,
+                    confirmed: true,
+                    payment_method: 'DINHEIRO',
+                    account_id: centralAccount?.id || null,
+                    data_vencimento: session.opened_at,
+                    data_emissao: session.opened_at,
+                }
+            })
+        }
 
         // Cria UMA transação no financeiro para CADA banco/maquininha com vendas no caixa
         for (const [key, totalAmount] of vendasPorBanco.entries()) {
