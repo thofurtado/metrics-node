@@ -10,10 +10,14 @@ export async function getClientByPhone(request: FastifyRequest, reply: FastifyRe
     })
 
     const { phone } = getClientParamsSchema.parse(request.params)
+    const cleanPhone = phone.replace(/\D/g, '')
 
     const client = await prisma.client.findFirst({
         where: {
-            phone
+            OR: [
+                { phone: cleanPhone },
+                { phone: phone }
+            ]
         },
         include: {
             addresses: {

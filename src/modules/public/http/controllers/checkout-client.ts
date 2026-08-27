@@ -9,32 +9,35 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
         name: z.string(),
         phone: z.string(),
         street: z.string(),
-        number: z.union([z.string(), z.number()]).transform(v => {
-            const parsed = typeof v === 'number' ? v : parseInt(String(v).replace(/\D/g, ''), 10)
-            return isNaN(parsed) ? 0 : parsed
-        }),
+        number: z.union([z.string(), z.number()]).transform(v => String(v).trim()),
         neighborhood: z.string(),
         city: z.string(),
         state: z.string(),
         zipcode: z.union([z.string(), z.number(), z.null(), z.undefined()]).optional().transform(v => {
             if (!v) return undefined
-            const parsed = typeof v === 'number' ? v : parseInt(String(v).replace(/\D/g, ''), 10)
-            return isNaN(parsed) ? undefined : parsed
+            return String(v).trim()
         }),
+        complement: z.string().optional().nullable(),
         isNewAddress: z.boolean().optional()
     })
 
-    const { name, phone, street, number, neighborhood, city, state, zipcode, isNewAddress } = checkoutClientBodySchema.parse(request.body)
+    const { name, phone, street, number, neighborhood, city, state, zipcode, complement, isNewAddress } = checkoutClientBodySchema.parse(request.body)
+    const cleanPhone = phone.replace(/\D/g, '')
 
     let client = await prisma.client.findFirst({
-        where: { phone }
+        where: {
+            OR: [
+                { phone: cleanPhone },
+                { phone: phone }
+            ]
+        }
     })
 
     if (!client) {
         client = await prisma.client.create({
             data: {
                 name,
-                phone,
+                phone: cleanPhone || phone,
                 addresses: {
                     create: {
                         street,
@@ -42,7 +45,8 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
                         neighborhood,
                         city,
                         state,
-                        zipcode,
+                        zipcode: zipcode || undefined,
+                        complement: complement || undefined,
                         is_main: true
                     }
                 }
@@ -79,7 +83,14 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
             // Reutiliza o endereço existente definindo-o como principal
             await prisma.address.update({
                 where: { id: existingAddress.id },
-                data: { is_main: true }
+                data: {
+                    is_main: true,
+                    neighborhood,
+                    city,
+                    state,
+                    zipcode: zipcode || undefined,
+                    complement: complement || undefined
+                }
             })
         } else {
             // Cria o novo endereço principal
@@ -91,7 +102,8 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
                     neighborhood,
                     city,
                     state,
-                    zipcode,
+                    zipcode: zipcode || undefined,
+                    complement: complement || undefined,
                     is_main: true
                 }
             })
