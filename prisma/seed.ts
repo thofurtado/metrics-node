@@ -52,7 +52,16 @@ async function main() {
     console.log('✅ Conta Transitória criada com sucesso!')
   }
 
-  console.log('✅ Seed de módulos, usuário admin e conta transitória concluído com sucesso!')
+  // Criação da Configuração Padrão do Sistema (SystemConfig)
+  const existingConfig = await prisma.systemConfig.findFirst()
+  if (!existingConfig) {
+    await prisma.systemConfig.create({
+      data: {}
+    })
+    console.log('✅ Configuração padrão do sistema criada com sucesso!')
+  }
+
+  console.log('✅ Seed de módulos, usuário admin, conta transitória e configuração concluído com sucesso!')
 }
 
 main()

@@ -3,10 +3,13 @@ import { prisma } from '@/lib/prisma'
 
 export async function getModulesStatus(request: FastifyRequest, reply: FastifyReply) {
     // Tenta buscar a configuração existente (Singleton)
-    const config = await prisma.systemConfig.findFirst()
+    let config = await prisma.systemConfig.findFirst()
 
     if (!config) {
-        return reply.status(404).send({ message: 'System configuration not found.' })
+        // Se ainda não existir configuração no banco do tenant (ex: novo cliente), inicializa com os padrões
+        config = await prisma.systemConfig.create({
+            data: {}
+        })
     }
 
     return reply.send({
