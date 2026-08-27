@@ -62,8 +62,8 @@ export async function downloadLatestWindy(request: FastifyRequest, reply: Fastif
             return reply.send(stream)
         }
 
-        // Fallback: Redireciona para o download do release ou serve diretamente
-        return reply.status(404).send({ message: 'Instalador do Windy sendo sincronizado. Tente novamente em instantes.' })
+        // Fallback: Redireciona para o instalador oficial no GitHub caso não esteja no disco local
+        return reply.redirect('https://github.com/thofurtado/Metrics.Windy/raw/main/Installer/Metrics_Windy_Setup_Full.exe', 302)
     } catch (err: any) {
         return reply.status(500).send({ message: 'Erro ao baixar o instalador: ' + err.message })
     }
