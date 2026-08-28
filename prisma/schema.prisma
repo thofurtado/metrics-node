@@ -41,6 +41,8 @@ model Client {
   treatments     Treatment[]
   cashierEntries CashierEntry[]
   clientTabs     ClientTab[]
+  group_id       String?
+  group          ClientGroup?   @relation(fields: [group_id], references: [id])
 
   @@map("clients")
 }
@@ -928,4 +930,18 @@ model ProductComplementGroup {
 
   @@id([product_id, group_id])
   @@map("product_complement_groups")
+}
+
+model ClientGroup {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  headscale_user  String?
+  vpn_preauth_key String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+
+  clients         Client[]
+
+  @@map("client_groups")
 }
