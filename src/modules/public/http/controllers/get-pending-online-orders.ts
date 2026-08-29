@@ -47,12 +47,21 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             return 'pending';
         };
 
+        const profile = await prisma.companyProfile.findFirst();
+
         return reply.status(200).send({
+            profile: {
+                delivery_time_min: profile?.deliveryTimeMin || 30,
+                delivery_time_max: profile?.deliveryTimeMax || 60,
+                delivery_sectors: profile?.deliverySectors ? (typeof profile.deliverySectors === 'string' ? JSON.parse(profile.deliverySectors) : profile.deliverySectors) : []
+            },
             orders: pedidos.map(p => {
                 const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
-                const address = client?.addresses?.[0]
-                    ? `${client.addresses[0].street}, ${client.addresses[0].number} - ${client.addresses[0].neighborhood}`
+                const clientAddr = client?.addresses?.[0];
+                const address = clientAddr
+                    ? `${clientAddr.street}, ${clientAddr.number} - ${clientAddr.neighborhood}`
                     : '';
+                const neighborhood = clientAddr?.neighborhood || '';
 
                 return {
                     id: p.uuid,
@@ -61,7 +70,11 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     client_name: client?.name || 'Cliente',
                     client_phone: client?.phone || '',
                     address: address,
+                    neighborhood: neighborhood,
                     total_amount: p.valor_final,
+                    delivery_fee: p.valor_frete || 0,
+                    delivery_man: p.entregador || null,
+                    departed_at: p.hora_saida_rota || null,
                     observations: p.observacao || '',
                     created_at: p.data_abertura,
                     items: p.itens.map(i => {

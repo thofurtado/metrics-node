@@ -17,11 +17,12 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     const bodySchema = z.object({
         status: z.enum(['pending', 'in_preparation', 'dispatched', 'delivered', 'cancelled']),
         cashier_session_id: z.string().uuid().optional(),
-        payment_method: z.string().optional()
+        payment_method: z.string().optional(),
+        delivery_man: z.string().optional()
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method } = bodySchema.parse(request.body);
+    const { status, cashier_session_id, payment_method, delivery_man } = bodySchema.parse(request.body);
 
     try {
         const existingPedido = await prisma.pedido.findFirst({
@@ -53,7 +54,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 status_delivery: deliveryStatusMap[status] || 'Pendente',
                 status: mainStatus,
                 data_fechamento: status === 'delivered' ? new Date() : undefined,
-                hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota
+                hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota,
+                entregador: delivery_man !== undefined ? delivery_man : existingPedido.entregador
             }
         });
 
