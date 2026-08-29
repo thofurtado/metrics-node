@@ -49,28 +49,35 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
     const body = createOnlineOrderSchema.parse(request.body)
 
     try {
+        const cleanPhone = body.client_phone.replace(/\D/g, '');
         let client = await prisma.client.findFirst({
-            where: { phone: body.client_phone }
-        })
+            where: {
+                OR: [
+                    { phone: cleanPhone },
+                    { phone: body.client_phone }
+                ]
+            }
+        });
 
         if (!client) {
             client = await prisma.client.create({
                 data: {
                     name: body.client_name,
-                    phone: body.client_phone,
+                    phone: cleanPhone || body.client_phone,
                     addresses: {
                         create: {
                             street: body.street,
-                            number: parseInt(body.number.replace(/D/g, ''), 10) || 0,
+                            number: String(body.number || 'S/N'),
                             neighborhood: body.neighborhood,
                             city: body.city || 'Cidade',
                             state: body.state || 'UF',
-                            zipcode: body.zipcode ? parseInt(body.zipcode.replace(/D/g, ''), 10) : null,
+                            zipcode: body.zipcode ? String(body.zipcode) : undefined,
+                            complement: body.complement || undefined,
                             is_main: true
                         }
                     }
                 }
-            })
+            });
         }
 
         const lastTreatment = await prisma.treatment.findFirst({
