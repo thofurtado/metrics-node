@@ -4,42 +4,58 @@ import { Pool } from 'pg'
 import { execSync } from 'child_process'
 import { env } from '@/env'
 import { getSchemaHash } from './db-status'
+import { runTenantOnboarding } from '../services/tenant-onboarding'
 
 export async function provisionTenant(request: FastifyRequest, reply: FastifyReply) {
     const provisionBodySchema = z.object({
         dbName: z.string().min(1),
-        adminPassword: z.string().default('T0p1nf0r')
+        adminPassword: z.string().default('T0p1nf0r'),
+        masterUser: z.object({
+            name: z.string().min(1),
+            email: z.string().email(),
+            password: z.string().min(4)
+        }).optional(),
+        enabledModules: z.array(z.string()).optional(),
+        systemConfig: z.object({
+            merchandise_module: z.boolean().optional(),
+            financial_module: z.boolean().optional(),
+            treatments_module: z.boolean().optional(),
+            cashier_module: z.boolean().optional(),
+            hr_module: z.boolean().optional(),
+            financial_management_profile: z.string().optional(),
+            blind_cashier_closure: z.boolean().optional()
+        }).optional()
     })
 
-    const { dbName } = provisionBodySchema.parse(request.body)
+    const body = provisionBodySchema.parse(request.body)
+    const { dbName } = body
 
-    // Seguran√ßa b√°sica: s√≥ o master pode pedir isso (verifica√ß√£o de chave)
+    // SeguranÁa b·sica: sÛ o master pode pedir isso (verificaÁ„o de chave)
     const apiKey = request.headers['x-api-key']
     if (apiKey !== (process.env.API_KEY_PONTO || 'metrics_secret_key_2026')) {
-        return reply.status(401).send({ message: 'Acesso n√£o autorizado para provisionamento' })
+        return reply.status(401).send({ message: 'Acesso n„o autorizado para provisionamento' })
     }
 
-    // Valida√ß√£o b√°sica do dbName para evitar SQL Injection
+    // ValidaÁ„o b·sica do dbName para evitar SQL Injection
     if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
-        return reply.status(400).send({ message: 'Nome de banco de dados inv√°lido. Use apenas letras, n√∫meros e underscores.' })
+        return reply.status(400).send({ message: 'Nome de banco de dados inv·lido. Use apenas letras, n˙meros e underscores.' })
     }
 
     try {
-        console.log(`üöÄ Iniciando provisionamento autom√°tico para o banco: ${dbName}`)
+        console.log(`?? Iniciando provisionamento autom·tico para o banco: ${dbName}`)
 
         // 1. Conectar no Postgres root (usando a URL master)
         const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
-        // Trocamos o nome do banco final para 'postgres' para rodar o comando CREATE DATABASE
         const rootUrl = masterUrl.replace(/\/db_[^?]+/, '/postgres')
         const pool = new Pool({ connectionString: rootUrl })
 
-        // 2. Verificar se o banco j√° existe
+        // 2. Verificar se o banco j· existe
         const dbExists = await pool.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName])
         if (dbExists.rows.length === 0) {
-            console.log(`üì¶ Criando banco de dados ${dbName}...`)
+            console.log(`?? Criando banco de dados ${dbName}...`)
             await pool.query(`CREATE DATABASE "${dbName}"`)
         } else {
-            console.log(`‚ö†Ô∏è Banco de dados ${dbName} j√° existe, ignorando cria√ß√£o.`)
+            console.log(`?? Banco de dados ${dbName} j· existe, ignorando criaÁ„o.`)
         }
         await pool.end()
 
@@ -47,23 +63,29 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
         const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
         const newDbUrl = `${baseUrl}/${dbName}?schema=public`
 
-        // 4. Rodar as migra√ß√µes (Push) e o Seed!
-        console.log(`üèóÔ∏è Construindo schema do Prisma no novo banco...`)
-        
-        // Passar a vari√°vel de ambiente para que o Prisma conecte no banco certo
+        // 4. Rodar as migraÁıes (Push) e o Seed base
+        console.log(`??? Construindo schema do Prisma no novo banco...`)
         const migrateResult = execSync(`npx prisma migrate deploy`, { 
             env: { ...process.env, DATABASE_URL: newDbUrl },
             encoding: 'utf-8'
         })
         console.log(migrateResult)
 
-        console.log(`üå± Populando m√≥dulos e usu√°rio admin padr√£o no novo banco...`)
+        console.log(`?? Populando mÛdulos e usu·rio admin padr„o no novo banco...`)
         execSync(`npx prisma db seed`, { 
             env: { ...process.env, DATABASE_URL: newDbUrl },
             stdio: 'inherit'
         })
 
-        // 5. Atualizar informa√ß√µes de schemaVersion no db_master
+        // 5. Executar Onboarding Din‚mico (Usu·rio Master, MÛdulos selecionados, Contas, Pagamentos)
+        await runTenantOnboarding(newDbUrl, {
+            adminPassword: body.adminPassword,
+            masterUser: body.masterUser,
+            enabledModules: body.enabledModules,
+            systemConfig: body.systemConfig
+        })
+
+        // 6. Atualizar informaÁıes de schemaVersion no db_master
         try {
             const currentHash = getSchemaHash()
             const pool2 = new Pool({ connectionString: masterUrl })
@@ -74,11 +96,14 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
             console.error('Erro ao atualizar metadata no db_master:', dbErr)
         }
 
-        console.log(`‚úÖ Provisionamento do banco ${dbName} conclu√≠do com sucesso!`)
-        return reply.status(200).send({ message: 'Banco de dados criado e populado com sucesso!' })
+        console.log(`? Provisionamento e Onboarding do banco ${dbName} concluÌdo com sucesso!`)
+        return reply.status(200).send({ 
+            message: 'Banco de dados criado, migrado e configurado com sucesso!',
+            masterUserEmail: body.masterUser?.email || 'admin@admin.com'
+        })
 
     } catch (error: any) {
-        console.error('‚ùå Erro no provisionamento:', error)
+        console.error('? Erro no provisionamento:', error)
         return reply.status(500).send({ message: 'Erro ao provisionar banco de dados', details: error.message })
     }
 }
