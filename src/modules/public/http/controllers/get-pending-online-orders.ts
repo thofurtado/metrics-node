@@ -1,6 +1,11 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 
+function extractDisplayId(requestStr: string | null | undefined): number {
+    const match = (requestStr || '').match(/#(\d+)/);
+    return match ? parseInt(match[1], 10) : 1;
+}
+
 export async function getPendingOnlineOrders(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -42,7 +47,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         return reply.status(200).send({
             orders: orders.map(o => ({
                 id: o.id,
-                display_id: (o as any).display_id || 0,
+                display_id: extractDisplayId(o.request),
                 status: o.status,
                 client_name: o.client?.name || 'Cliente',
                 client_phone: o.client?.phone || '',
@@ -55,10 +60,10 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 items: o.items.map(i => ({
                     id: i.id,
                     product_id: i.product_id,
-                    name: i.product?.name || i.observation || 'Item',
+                    name: i.product?.name || i.observations || 'Item',
                     quantity: i.quantity,
-                    price: i.price,
-                    observation: i.observation
+                    price: i.salesValue || 0,
+                    observation: i.observations
                 }))
             }))
         });

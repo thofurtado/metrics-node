@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
 
+function extractDisplayId(requestStr: string | null | undefined): number {
+    const match = (requestStr || '').match(/#(\d+)/);
+    return match ? parseInt(match[1], 10) : 1;
+}
+
 export async function updateOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -37,6 +42,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             return reply.status(404).send({ message: 'Pedido não encontrado.' });
         }
 
+        const displayId = extractDisplayId(existingTreatment.request);
+
         const updated = await prisma.treatment.update({
             where: { id },
             data: {
@@ -47,7 +54,6 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
 
         // Se o status for 'delivered' e tiver cashier_session_id, lança automaticamente na sessão de caixa
         if (status === 'delivered' && cashier_session_id) {
-            // Extrai forma de pagamento das observações ou do body
             let formaPgto = payment_method || 'PIX';
             if (!payment_method && existingTreatment.observations) {
                 if (existingTreatment.observations.includes('Dinheiro')) formaPgto = 'Dinheiro';
@@ -57,7 +63,6 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             }
 
             const clientName = existingTreatment.client?.name || 'Cliente Online';
-            const displayId = (existingTreatment as any).display_id || '';
 
             await prisma.cashierEntry.create({
                 data: {
@@ -77,7 +82,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
         sseManager.notifyTenant(rawDomain, 'order_status_updated', {
             id: updated.id,
-            display_id: (updated as any).display_id,
+            display_id: displayId,
             status: updated.status,
             client_name: existingTreatment.client?.name || 'Cliente',
             client_phone: existingTreatment.client?.phone || '',

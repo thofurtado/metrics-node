@@ -1,3 +1,8 @@
+
+function extractDisplayId(requestStr: string | null | undefined): number {
+    const match = (requestStr || '').match(/#(\d+)/);
+    return match ? parseInt(match[1], 10) : 1;
+}
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
@@ -54,7 +59,7 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
             for (const o of pendingOrders) {
                 const orderDto = {
                     id: o.id,
-                    display_id: o.display_id,
+                    display_id: extractDisplayId(o.request),
                     client_name: o.client?.name || 'Cliente',
                     client_phone: o.client?.phone || '',
                     address: o.client?.addresses?.[0]

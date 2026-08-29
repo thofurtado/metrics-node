@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
 
+function extractDisplayId(requestStr: string | null | undefined): number {
+    const match = (requestStr || '').match(/#(\d+)/);
+    return match ? parseInt(match[1], 10) : 1;
+}
+
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -80,11 +85,14 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             });
         }
 
-        const lastTreatment = await prisma.treatment.findFirst({
-            orderBy: { created_at: 'desc' },
-            select: { display_id: true }
-        })
-        const nextDisplayId = (lastTreatment?.display_id || 0) + 1
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const countToday = await prisma.treatment.count({
+            where: {
+                created_at: { gte: today }
+            }
+        });
+        const displayId = countToday + 1;
 
         const enderecoFormatado = body.street + ', ' + body.number + ' - ' + body.neighborhood + (body.complement ? ' (' + body.complement + ')' : '');
         const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name;
@@ -100,13 +108,11 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         const treatment = await prisma.treatment.create({
             data: {
-                display_id: nextDisplayId,
                 client_id: client.id,
-                request: 'DELIVERY ONLINE #' + nextDisplayId + ' - ' + body.client_name,
+                request: 'DELIVERY ONLINE #' + displayId + ' - ' + body.client_name,
                 observations: fullObservations,
                 amount: body.total_amount,
                 status: 'pending',
-                payment_status: 'pending',
                 opening_date: new Date(),
                 items: {
                     create: body.items.map(item => {
@@ -120,7 +126,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                             product_id: item.product_id,
                             quantity: item.quantity,
                             price: item.unit_price,
-                            observation: itemDescription
+                            observations: itemDescription
                         };
                     })
                 }
@@ -143,7 +149,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
         const orderDto = {
             id: treatment.id,
-            display_id: treatment.display_id,
+            display_id: displayId,
             client_name: treatment.client?.name || body.client_name,
             client_phone: treatment.client?.phone || body.client_phone,
             address: enderecoFormatado,
@@ -153,10 +159,10 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             items: treatment.items.map(i => ({
                 id: i.id,
                 product_id: i.product_id,
-                name: i.product?.name || i.observation || 'Item',
+                name: i.product?.name || i.observations || 'Item',
                 quantity: i.quantity,
-                price: i.price,
-                observation: i.observation
+                price: i.salesValue || 0,
+                observation: i.observations
             }))
         };
 
@@ -165,8 +171,8 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         return reply.status(201).send({
             message: 'Pedido realizado com sucesso!',
             order_id: treatment.id,
-            display_id: treatment.display_id,
-            status: 'PENDING_ACCEPT',
+            display_id: displayId,
+            status: 'pending',
             total_amount: treatment.amount,
             estimated_time_minutes: 40
         });
