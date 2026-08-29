@@ -130,14 +130,13 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                             ? ' + [' + item.complements.map(c => c.quantity + 'x ' + c.name + ' (R$ ' + c.price.toFixed(2) + ')').join(', ') + ']'
                             : '';
                         
-                        const itemDescription = item.name + complementStr + (item.notes ? ' (Obs: ' + item.notes + ')' : '');
-
+                        const itemNotes = item.notes ? item.notes.trim() : (item.observation ? item.observation.trim() : null);
                         return {
                             produto_id: item.product_id,
                             quantidade: item.quantity,
                             valor_unitario: item.unit_price,
                             valor_total: item.unit_price * item.quantity,
-                            observacao: itemDescription,
+                            observacao: itemNotes,
                             complementos_json: JSON.stringify({
                                 complements: item.complements || [],
                                 fractions: item.fractions || []

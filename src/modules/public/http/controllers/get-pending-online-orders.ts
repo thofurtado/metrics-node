@@ -70,7 +70,10 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                             complements = i.complementos_json ? JSON.parse(i.complementos_json) : [];
                         } catch (e) {}
 
-                        // Limpa observação para não repetir os adicionais nem o nome do produto
+                        const prodName = (i.produto_id && productMap.get(i.produto_id))
+                            || (i.observacao ? i.observacao.split(' + [')[0]?.split(' (Obs:')[0] : 'Item');
+
+                        // Limpa observação para nunca repetir os adicionais nem o nome do produto
                         let cleanObs = i.observacao || '';
                         if (cleanObs.includes('(Obs: ')) {
                             cleanObs = cleanObs.split('(Obs: ')[1]?.replace(/\)$/, '') || '';
@@ -78,8 +81,9 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                             cleanObs = '';
                         }
 
-                        const prodName = (i.produto_id && productMap.get(i.produto_id))
-                            || (i.observacao ? i.observacao.split(' + [')[0]?.split(' (Obs:')[0] : 'Item');
+                        if (cleanObs.trim().toLowerCase() === prodName.trim().toLowerCase()) {
+                            cleanObs = '';
+                        }
 
                         return {
                             id: i.uuid,
