@@ -854,6 +854,7 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
         const abertura = s.initial_balance || 0
         let vendasDinheiro = 0
         let sangrias = 0
+        let suprimentos = 0
 
         for (const entry of s.entries) {
             const amt = Number(entry.amount || 0)
@@ -862,12 +863,14 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
 
             if (entry.is_withdrawal) {
                 sangrias += amt
+            } else if (entry.is_addition) {
+                suprimentos += amt
             } else if (method.toLowerCase() === 'dinheiro' || bank === 'CAIXA') {
                 vendasDinheiro += amt
             }
         }
 
-        const saldoFisicoFinal = abertura + vendasDinheiro - sangrias
+        const saldoFisicoFinal = abertura + vendasDinheiro + suprimentos - sangrias
 
         return {
             id: s.id,

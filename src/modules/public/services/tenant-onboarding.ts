@@ -30,9 +30,9 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
     })
 
     try {
-        console.log(`[Onboarding] Iniciando configuração estruturada para o tenant...`)
+        console.log(`[Onboarding] Iniciando configuraï¿½ï¿½o estruturada para o tenant...`)
 
-        // 1. Garantir que o usuário Suporte (admin@admin.com) possui acesso a TODOS os módulos existentes
+        // 1. Garantir que o usuï¿½rio Suporte (admin@admin.com) possui acesso a TODOS os mï¿½dulos existentes
         const allModules = await prisma.module.findMany()
         const supportAdmin = await prisma.user.findUnique({
             where: { email: 'admin@admin.com' }
@@ -54,10 +54,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     }
                 })
             }
-            console.log(`[Onboarding] Permissões globais do Suporte (admin@admin.com) vinculadas.`)
+            console.log(`[Onboarding] Permissï¿½es globais do Suporte (admin@admin.com) vinculadas.`)
         }
 
-        // 2. Se foi enviado um usuário Master da empresa (dono/gerente)
+        // 2. Se foi enviado um usuï¿½rio Master da empresa (dono/gerente)
         if (data.masterUser && data.masterUser.email) {
             const masterPass = data.masterUser.password || '123456'
             const password_hash = await hash(masterPass, 6)
@@ -76,7 +76,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                 }
             })
 
-            // Vincular aos módulos habilitados (ou todos se não especificado)
+            // Vincular aos mï¿½dulos habilitados (ou todos se nï¿½o especificado)
             const targetModules = data.enabledModules && data.enabledModules.length > 0
                 ? allModules.filter(m => data.enabledModules!.includes(m.slug))
                 : allModules
@@ -96,10 +96,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     }
                 })
             }
-            console.log(`[Onboarding] Usuário Master (${clientUser.email}) criado com ${targetModules.length} módulos.`)
+            console.log(`[Onboarding] Usuï¿½rio Master (${clientUser.email}) criado com ${targetModules.length} mï¿½dulos.`)
         }
 
-        // 3. Atualizar SystemConfig com flags de módulos e parâmetros operacionais
+        // 3. Atualizar SystemConfig com flags de mï¿½dulos e parï¿½metros operacionais
         const existingConfig = await prisma.systemConfig.findFirst()
         const isCashierEnabled = data.systemConfig?.cashier_module ?? true
         const isFinanceEnabled = data.systemConfig?.financial_module ?? true
@@ -120,10 +120,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     blind_cashier_closure: data.systemConfig?.blind_cashier_closure ?? false
                 }
             })
-            console.log(`[Onboarding] SystemConfig atualizado com os módulos contratados.`)
+            console.log(`[Onboarding] SystemConfig atualizado com os mï¿½dulos contratados.`)
         }
 
-        // 4. Criar Caixa Central se não existir
+        // 4. Criar Caixa Central se nï¿½o existir
         let caixaCentral = await prisma.account.findFirst({
             where: { name: 'Caixa Central' }
         })
@@ -132,7 +132,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             caixaCentral = await prisma.account.create({
                 data: {
                     name: 'Caixa Central',
-                    description: 'Conta principal para movimentações em dinheiro e gaveta do PDV',
+                    description: 'Conta principal para movimentaï¿½ï¿½es em dinheiro e gaveta do PDV',
                     balance: 0,
                     is_transit: false
                 }
@@ -140,12 +140,12 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             console.log(`[Onboarding] Conta Caixa Central criada.`)
         }
 
-        // 5. Criar Formas de Pagamento Padrão e Identificadores
+        // 5. Criar Formas de Pagamento Padrï¿½o e Identificadores
         const defaultPayments = [
             { name: 'Dinheiro', in_sight: true, installment_limit: 1, account_id: caixaCentral.id, sefaz_tPag: '01' },
             { name: 'PIX', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '17' },
-            { name: 'Cartão de Débito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04' },
-            { name: 'Cartão de Crédito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03' },
+            { name: 'Cartï¿½o de Dï¿½bito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04' },
+            { name: 'Cartï¿½o de Crï¿½dito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03' },
         ]
 
         for (const p of defaultPayments) {
@@ -184,7 +184,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
         }
         console.log(`[Onboarding] Formas de Pagamento e Identificadores criados.`)
 
-        // 6. Criar Departamentos de Impressão Padrão
+        // 6. Criar Departamentos de Impressï¿½o Padrï¿½o
         const defaultPrintDepartments = ['Caixa', 'Cozinha', 'Bar']
         for (const depName of defaultPrintDepartments) {
             const existingDep = await prisma.printDepartment.findUnique({
@@ -197,7 +197,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        // 7. Criar Categorias de Produto Padrão
+        // 7. Criar Categorias de Produto Padrï¿½o
         const defaultCategories = ['Geral', 'Bebidas', 'Alimentos', 'Sobremesas']
         for (const catName of defaultCategories) {
             const existingCat = await prisma.category.findUnique({
@@ -210,7 +210,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        // 8. Criar Setores Financeiros Padrão
+        // 8. Criar Setores Financeiros Padrï¿½o
         const defaultSectors = [
             { name: 'Vendas e Receitas', type: 'in' },
             { name: 'Fornecedores e Mercadorias', type: 'out' },
@@ -231,7 +231,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        console.log(`[Onboarding] ? Onboarding dinâmico concluído com sucesso para o banco!`)
+        console.log(`[Onboarding] ? Onboarding dinï¿½mico concluï¿½do com sucesso para o banco!`)
     } finally {
         await prisma.$disconnect()
     }

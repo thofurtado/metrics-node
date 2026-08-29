@@ -30,32 +30,32 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
     const body = provisionBodySchema.parse(request.body)
     const { dbName } = body
 
-    // Segurança básica: só o master pode pedir isso (verificação de chave)
+    // Seguranï¿½a bï¿½sica: sï¿½ o master pode pedir isso (verificaï¿½ï¿½o de chave)
     const apiKey = request.headers['x-api-key']
     if (apiKey !== (process.env.API_KEY_PONTO || 'metrics_secret_key_2026')) {
-        return reply.status(401).send({ message: 'Acesso não autorizado para provisionamento' })
+        return reply.status(401).send({ message: 'Acesso nï¿½o autorizado para provisionamento' })
     }
 
-    // Validação básica do dbName para evitar SQL Injection
+    // Validaï¿½ï¿½o bï¿½sica do dbName para evitar SQL Injection
     if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
-        return reply.status(400).send({ message: 'Nome de banco de dados inválido. Use apenas letras, números e underscores.' })
+        return reply.status(400).send({ message: 'Nome de banco de dados invï¿½lido. Use apenas letras, nï¿½meros e underscores.' })
     }
 
     try {
-        console.log(`?? Iniciando provisionamento automático para o banco: ${dbName}`)
+        console.log(`?? Iniciando provisionamento automï¿½tico para o banco: ${dbName}`)
 
         // 1. Conectar no Postgres root (usando a URL master)
         const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
         const rootUrl = masterUrl.replace(/\/db_[^?]+/, '/postgres')
         const pool = new Pool({ connectionString: rootUrl })
 
-        // 2. Verificar se o banco já existe
+        // 2. Verificar se o banco jï¿½ existe
         const dbExists = await pool.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName])
         if (dbExists.rows.length === 0) {
             console.log(`?? Criando banco de dados ${dbName}...`)
             await pool.query(`CREATE DATABASE "${dbName}"`)
         } else {
-            console.log(`?? Banco de dados ${dbName} já existe, ignorando criação.`)
+            console.log(`?? Banco de dados ${dbName} jï¿½ existe, ignorando criaï¿½ï¿½o.`)
         }
         await pool.end()
 
@@ -63,7 +63,7 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
         const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
         const newDbUrl = `${baseUrl}/${dbName}?schema=public`
 
-        // 4. Rodar as migrações (Push) e o Seed base
+        // 4. Rodar as migraï¿½ï¿½es (Push) e o Seed base
         console.log(`??? Construindo schema do Prisma no novo banco...`)
         const migrateResult = execSync(`npx prisma migrate deploy`, { 
             env: { ...process.env, DATABASE_URL: newDbUrl },
@@ -71,13 +71,13 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
         })
         console.log(migrateResult)
 
-        console.log(`?? Populando módulos e usuário admin padrão no novo banco...`)
+        console.log(`?? Populando mï¿½dulos e usuï¿½rio admin padrï¿½o no novo banco...`)
         execSync(`npx prisma db seed`, { 
             env: { ...process.env, DATABASE_URL: newDbUrl },
             stdio: 'inherit'
         })
 
-        // 5. Executar Onboarding Dinâmico (Usuário Master, Módulos selecionados, Contas, Pagamentos)
+        // 5. Executar Onboarding Dinï¿½mico (Usuï¿½rio Master, Mï¿½dulos selecionados, Contas, Pagamentos)
         await runTenantOnboarding(newDbUrl, {
             adminPassword: body.adminPassword,
             masterUser: body.masterUser,
@@ -85,7 +85,7 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
             systemConfig: body.systemConfig
         })
 
-        // 6. Atualizar informações de schemaVersion no db_master
+        // 6. Atualizar informaï¿½ï¿½es de schemaVersion no db_master
         try {
             const currentHash = getSchemaHash()
             const pool2 = new Pool({ connectionString: masterUrl })
@@ -96,7 +96,7 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
             console.error('Erro ao atualizar metadata no db_master:', dbErr)
         }
 
-        console.log(`? Provisionamento e Onboarding do banco ${dbName} concluído com sucesso!`)
+        console.log(`? Provisionamento e Onboarding do banco ${dbName} concluï¿½do com sucesso!`)
         return reply.status(200).send({ 
             message: 'Banco de dados criado, migrado e configurado com sucesso!',
             masterUserEmail: body.masterUser?.email || 'admin@admin.com'

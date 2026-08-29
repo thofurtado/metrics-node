@@ -72,7 +72,6 @@ export async function triggerSettlement(request: FastifyRequest, reply: FastifyR
                     data: {
                         confirmed: true,
                         account_id: targetAccountId,
-                        data_vencimento: new Date(),
                         description: `${cleanDescription} (Liquidado)`
                     }
                 })
@@ -89,8 +88,7 @@ export async function triggerSettlement(request: FastifyRequest, reply: FastifyR
                 await prisma.transaction.update({
                     where: { id: tx.id },
                     data: { 
-                        confirmed: true,
-                        data_vencimento: new Date()
+                        confirmed: true
                     }
                 })
 
