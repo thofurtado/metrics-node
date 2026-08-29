@@ -8,11 +8,16 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
     }
 
     try {
-        const pendingOrders = await prisma.treatment.findMany({
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const orders = await prisma.treatment.findMany({
             where: {
-                status: 'pending',
                 request: {
-                    contains: 'DELIVERY ONLINE'
+                    contains: 'DELIVERY'
+                },
+                created_at: {
+                    gte: today
                 }
             },
             include: {
@@ -30,19 +35,22 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 }
             },
             orderBy: {
-                created_at: 'asc'
+                created_at: 'desc'
             }
         });
 
         return reply.status(200).send({
-            orders: pendingOrders.map(o => ({
+            orders: orders.map(o => ({
                 id: o.id,
-                display_id: o.display_id,
+                display_id: (o as any).display_id || 0,
+                status: o.status,
                 client_name: o.client?.name || 'Cliente',
                 client_phone: o.client?.phone || '',
-                address: o.client?.addresses?.[0] ? o.client.addresses[0].street + ', ' + o.client.addresses[0].number + ' - ' + o.client.addresses[0].neighborhood : '',
-                total_amount: o.amount,
-                observations: o.observations,
+                address: o.client?.addresses?.[0] 
+                    ? o.client.addresses[0].street + ', ' + o.client.addresses[0].number + ' - ' + o.client.addresses[0].neighborhood 
+                    : '',
+                total_amount: o.amount || 0,
+                observations: o.observations || '',
                 created_at: o.created_at,
                 items: o.items.map(i => ({
                     id: i.id,
@@ -55,7 +63,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             }))
         });
     } catch (error) {
-        console.error('Erro ao buscar pedidos online pendentes:', error);
+        console.error('Erro ao buscar pedidos online:', error);
         return reply.status(500).send({ message: 'Erro interno ao buscar pedidos.' });
     }
 }
