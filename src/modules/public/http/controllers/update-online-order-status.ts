@@ -1,3 +1,4 @@
+import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
@@ -88,6 +89,9 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
 
         // Dispara notificação SSE para todos os ouvintes do tenant
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
+        // Dispara Web Push Nativo no celular (Google FCM)
+        webPushManager.notifyOrderStatus(existingPedido.uuid, existingPedido.display_id, status)
+
         sseManager.notifyTenant(rawDomain, 'order_status_updated', {
             id: updated.uuid,
             display_id: updated.display_id,

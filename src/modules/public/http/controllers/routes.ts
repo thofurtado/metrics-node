@@ -12,6 +12,7 @@ import { getProfile } from './get-profile'
 import { createOnlineOrder } from './create-online-order'
 import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
+import { webPushManager, VAPID_PUBLIC_KEY } from '@/lib/web-push-manager'
 import { getOnlineOrderStatus } from './get-online-order-status'
 import { ordersStream } from './orders-stream'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
@@ -39,6 +40,22 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/api/pdv/orders/stream', ordersStream)
     app.get('/public/orders/:id/status', getOnlineOrderStatus)
     app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
+
+    // Web Push Notifications
+    app.get('/public/orders/vapid-public-key', async (_req, reply) => {
+        return reply.send({ publicKey: VAPID_PUBLIC_KEY })
+    })
+
+    app.post('/public/orders/:id/push-subscription', async (request, reply) => {
+        const { id } = request.params as { id: string }
+        const { subscription } = request.body as { subscription: any }
+        if (id && subscription) {
+            webPushManager.registerSubscription(id, subscription)
+            return reply.status(200).send({ message: 'Push subscription registered.' })
+        }
+        return reply.status(400).send({ message: 'Missing id or subscription.' })
+    })
+
     app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 
     // Distribuição, Vinculação e Auto-Update do Windy
