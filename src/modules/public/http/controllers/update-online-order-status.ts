@@ -3,11 +3,6 @@ import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
 
-function extractDisplayId(requestStr: string | null | undefined): number {
-    const match = (requestStr || '').match(/#(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-}
-
 export async function updateOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -15,7 +10,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     }
 
     const paramsSchema = z.object({
-        id: z.string().uuid()
+        id: z.string()
     });
 
     const bodySchema = z.object({
@@ -28,74 +23,85 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     const { status, cashier_session_id, payment_method } = bodySchema.parse(request.body);
 
     try {
-        const existingTreatment = await prisma.treatment.findUnique({
-            where: { id },
-            include: {
-                client: true,
-                items: {
-                    include: { product: true }
-                }
+        const existingPedido = await prisma.pedido.findFirst({
+            where: {
+                OR: [
+                    { uuid: id },
+                    { id: !isNaN(Number(id)) ? Number(id) : undefined }
+                ]
             }
         });
 
-        if (!existingTreatment) {
+        if (!existingPedido) {
             return reply.status(404).send({ message: 'Pedido não encontrado.' });
         }
 
-        const displayId = extractDisplayId(existingTreatment.request);
+        const deliveryStatusMap: Record<string, string> = {
+            pending: 'Pendente',
+            in_preparation: 'EmPreparo',
+            dispatched: 'SaiuEntrega',
+            delivered: 'Entregue',
+            cancelled: 'Cancelado'
+        };
 
-        const updated = await prisma.treatment.update({
-            where: { id },
+        const mainStatus = status === 'delivered' ? 'Fechado' : (status === 'cancelled' ? 'Cancelado' : 'Aberto');
+
+        const updated = await prisma.pedido.update({
+            where: { id: existingPedido.id },
             data: {
-                status: status,
-                ending_date: status === 'delivered' ? new Date() : undefined
+                status_delivery: deliveryStatusMap[status] || 'Pendente',
+                status: mainStatus,
+                data_fechamento: status === 'delivered' ? new Date() : undefined,
+                hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota
             }
         });
 
         // Se o status for 'delivered' e tiver cashier_session_id, lança automaticamente na sessão de caixa
         if (status === 'delivered' && cashier_session_id) {
             let formaPgto = payment_method || 'PIX';
-            if (!payment_method && existingTreatment.observations) {
-                if (existingTreatment.observations.includes('Dinheiro')) formaPgto = 'Dinheiro';
-                else if (existingTreatment.observations.includes('Débito')) formaPgto = 'Cartão de Débito';
-                else if (existingTreatment.observations.includes('Crédito')) formaPgto = 'Cartão de Crédito';
+            if (!payment_method && existingPedido.observacao) {
+                if (existingPedido.observacao.includes('Dinheiro')) formaPgto = 'Dinheiro';
+                else if (existingPedido.observacao.includes('Débito')) formaPgto = 'Cartão de Débito';
+                else if (existingPedido.observacao.includes('Crédito')) formaPgto = 'Cartão de Crédito';
                 else formaPgto = 'PIX';
             }
 
-            const clientName = existingTreatment.client?.name || 'Cliente Online';
+            let clientName = 'Cliente Online';
+            if (existingPedido.cliente_id) {
+                const client = await prisma.client.findUnique({ where: { id: existingPedido.cliente_id } });
+                if (client?.name) clientName = client.name;
+            }
 
             await prisma.cashierEntry.create({
                 data: {
                     cashier_session_id,
-                    amount: existingTreatment.amount || 0,
+                    amount: existingPedido.valor_final || 0,
                     payment_method: formaPgto,
                     origin: 'Delivery',
-                    identification: `Delivery #${displayId} - ${clientName}`,
+                    identification: `Delivery #${existingPedido.display_id} - ${clientName}`,
                     type: 'SALE',
-                    client_id: existingTreatment.client_id
+                    client_id: existingPedido.cliente_id
                 }
             });
-            console.log(`[Cashier] Pedido Delivery #${displayId} lançado com sucesso no caixa (${cashier_session_id})`);
+            console.log(`[Cashier] Pedido Delivery #${existingPedido.display_id} lançado com sucesso no caixa (${cashier_session_id})`);
         }
 
         // Dispara notificação SSE para todos os ouvintes do tenant
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
         sseManager.notifyTenant(rawDomain, 'order_status_updated', {
-            id: updated.id,
-            display_id: displayId,
-            status: updated.status,
-            client_name: existingTreatment.client?.name || 'Cliente',
-            client_phone: existingTreatment.client?.phone || '',
-            amount: updated.amount,
+            id: updated.uuid,
+            display_id: updated.display_id,
+            status: status,
+            amount: updated.valor_final,
             updated_at: new Date()
         });
 
         return reply.status(200).send({
             message: 'Status atualizado para ' + status,
-            treatment: updated
+            pedido: updated
         });
     } catch (error) {
-        console.error('Erro ao atualizar status do pedido online:', error);
+        console.error('Erro ao atualizar status do pedido em pedidos:', error);
         return reply.status(500).send({ message: 'Erro ao atualizar status do pedido.' });
     }
 }

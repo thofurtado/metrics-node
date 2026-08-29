@@ -2,11 +2,6 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 
-function extractDisplayId(requestStr: string | null | undefined): number {
-    const match = (requestStr || '').match(/#(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-}
-
 export async function getOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -14,32 +9,38 @@ export async function getOnlineOrderStatus(request: FastifyRequest, reply: Fasti
     }
 
     const paramsSchema = z.object({
-        id: z.string().uuid()
+        id: z.string()
     });
 
     const { id } = paramsSchema.parse(request.params);
 
     try {
-        const treatment = await prisma.treatment.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                request: true,
-                status: true,
-                created_at: true,
-                ending_date: true
+        const pedido = await prisma.pedido.findFirst({
+            where: {
+                OR: [
+                    { uuid: id },
+                    { id: !isNaN(Number(id)) ? Number(id) : undefined }
+                ]
             }
         });
 
-        if (!treatment) {
+        if (!pedido) {
             return reply.status(404).send({ message: 'Pedido não encontrado.' });
         }
 
+        const mappedStatus = (statusDelivery: string | null, status: string) => {
+            if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
+            if (statusDelivery === 'SaiuEntrega') return 'dispatched';
+            if (statusDelivery === 'EmPreparo') return 'in_preparation';
+            if (status === 'Cancelado') return 'cancelled';
+            return 'pending';
+        };
+
         return reply.status(200).send({
-            id: treatment.id,
-            display_id: extractDisplayId(treatment.request),
-            status: treatment.status,
-            created_at: treatment.created_at
+            id: pedido.uuid,
+            display_id: pedido.display_id,
+            status: mappedStatus(pedido.status_delivery, pedido.status),
+            created_at: pedido.data_abertura
         });
     } catch (error) {
         console.error('Erro ao buscar status do pedido:', error);

@@ -1,8 +1,3 @@
-
-function extractDisplayId(requestStr: string | null | undefined): number {
-    const match = (requestStr || '').match(/#(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-}
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
@@ -30,51 +25,54 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
     const prisma = requestContext.get('prisma')
     if (prisma) {
         try {
-            const pendingOrders = await prisma.treatment.findMany({
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const pendingPedidos = await prisma.pedido.findMany({
                 where: {
-                    status: 'pending',
-                    request: {
-                        contains: 'DELIVERY ONLINE'
+                    origem: 'Delivery',
+                    status: 'Aberto',
+                    data_abertura: {
+                        gte: today
                     }
                 },
                 include: {
-                    client: {
-                        include: {
-                            addresses: {
-                                where: { is_main: true }
-                            }
-                        }
-                    },
-                    items: {
-                        include: {
-                            product: true
-                        }
-                    }
+                    itens: true
                 },
                 orderBy: {
-                    created_at: 'asc'
+                    data_abertura: 'asc'
                 }
             })
 
-            for (const o of pendingOrders) {
+            const clientIds = pendingPedidos.map(p => p.cliente_id).filter(Boolean) as string[];
+            const clients = await prisma.client.findMany({
+                where: { id: { in: clientIds } },
+                include: { addresses: true }
+            });
+            const clientMap = new Map(clients.map(c => [c.id, c]));
+
+            for (const p of pendingPedidos) {
+                const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
+                const address = client?.addresses?.[0]
+                    ? `${client.addresses[0].street}, ${client.addresses[0].number} - ${client.addresses[0].neighborhood}`
+                    : '';
+
                 const orderDto = {
-                    id: o.id,
-                    display_id: extractDisplayId(o.request),
-                    client_name: o.client?.name || 'Cliente',
-                    client_phone: o.client?.phone || '',
-                    address: o.client?.addresses?.[0]
-                        ? `${o.client.addresses[0].street}, ${o.client.addresses[0].number} - ${o.client.addresses[0].neighborhood}`
-                        : '',
-                    total_amount: o.amount,
-                    observations: o.observations,
-                    created_at: o.created_at,
-                    items: o.items.map(i => ({
-                        id: i.id,
-                        product_id: i.product_id,
-                        name: i.product?.name || i.observation || 'Item',
-                        quantity: i.quantity,
-                        price: i.price,
-                        observation: i.observation
+                    id: p.uuid,
+                    display_id: p.display_id,
+                    client_name: client?.name || 'Cliente',
+                    client_phone: client?.phone || '',
+                    address: address,
+                    total_amount: p.valor_final,
+                    observations: p.observacao || '',
+                    created_at: p.data_abertura,
+                    items: p.itens.map(i => ({
+                        id: i.uuid,
+                        product_id: i.produto_id,
+                        name: i.observacao || 'Item',
+                        quantity: i.quantidade,
+                        price: i.valor_unitario,
+                        observation: i.observacao
                     }))
                 }
 

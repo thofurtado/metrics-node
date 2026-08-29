@@ -3,11 +3,6 @@ import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
 
-function extractDisplayId(requestStr: string | null | undefined): number {
-    const match = (requestStr || '').match(/#(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-}
-
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -61,6 +56,9 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                     { phone: cleanPhone },
                     { phone: body.client_phone }
                 ]
+            },
+            include: {
+                addresses: true
             }
         });
 
@@ -81,15 +79,20 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                             is_main: true
                         }
                     }
+                },
+                include: {
+                    addresses: true
                 }
             });
         }
 
+        const addressId = client.addresses?.[0]?.id || null;
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const countToday = await prisma.treatment.count({
+        const countToday = await prisma.pedido.count({
             where: {
-                created_at: { gte: today }
+                data_abertura: { gte: today }
             }
         });
         const displayId = countToday + 1;
@@ -98,23 +101,30 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name;
         
         const fullObservations = [
-            '[PEDIDO CARDÁPIO ONLINE]',
-            'Entrega: ' + enderecoFormatado,
-            'Referência: ' + (body.reference || 'N/A'),
             'Pagamento: ' + infoPagamento,
-            'Taxa de Entrega: R$ ' + body.delivery_fee.toFixed(2),
+            'Taxa: R$ ' + body.delivery_fee.toFixed(2),
+            body.reference ? 'Ref: ' + body.reference : null,
             body.notes ? 'Obs: ' + body.notes : null
-        ].filter(Boolean).join('\n');
+        ].filter(Boolean).join(' | ');
 
-        const treatment = await prisma.treatment.create({
+        const subtotal = Math.max(0, body.total_amount - body.delivery_fee);
+
+        const pedido = await prisma.pedido.create({
             data: {
-                client_id: client.id,
-                request: 'DELIVERY ONLINE #' + displayId + ' - ' + body.client_name,
-                observations: fullObservations,
-                amount: body.total_amount,
-                status: 'pending',
-                opening_date: new Date(),
-                items: {
+                display_id: displayId,
+                numero_diario: displayId,
+                origem: 'Delivery',
+                cliente_id: client.id,
+                endereco_entrega_id: addressId,
+                subtotal: subtotal,
+                valor_frete: body.delivery_fee,
+                valor_final: body.total_amount,
+                valor_troco: body.change_for || 0,
+                status: 'Aberto',
+                status_delivery: 'Pendente',
+                observacao: fullObservations,
+                sincronizado_web: true,
+                itens: {
                     create: body.items.map(item => {
                         const complementStr = item.complements && item.complements.length > 0
                             ? ' + [' + item.complements.map(c => c.quantity + 'x ' + c.name + ' (R$ ' + c.price.toFixed(2) + ')').join(', ') + ']'
@@ -123,46 +133,43 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                         const itemDescription = item.name + complementStr + (item.notes ? ' (Obs: ' + item.notes + ')' : '');
 
                         return {
-                            product_id: item.product_id,
-                            quantity: item.quantity,
-                            price: item.unit_price,
-                            observations: itemDescription
+                            produto_id: item.product_id,
+                            quantidade: item.quantity,
+                            valor_unitario: item.unit_price,
+                            valor_total: item.unit_price * item.quantity,
+                            observacao: itemDescription,
+                            complementos_json: JSON.stringify({
+                                complements: item.complements || [],
+                                fractions: item.fractions || []
+                            }),
+                            status_cozinha: 'Pendente'
                         };
                     })
                 }
             },
             include: {
-                items: {
-                    include: {
-                        product: true
-                    }
-                },
-                client: {
-                    include: {
-                        addresses: true
-                    }
-                }
+                itens: true
             }
         });
 
         // Dispara notificação SSE em tempo real para os PDVs do tenant conectado
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
         const orderDto = {
-            id: treatment.id,
-            display_id: displayId,
-            client_name: treatment.client?.name || body.client_name,
-            client_phone: treatment.client?.phone || body.client_phone,
+            id: pedido.uuid,
+            display_id: pedido.display_id,
+            client_name: client.name,
+            client_phone: client.phone || '',
             address: enderecoFormatado,
-            total_amount: treatment.amount,
-            observations: treatment.observations,
-            created_at: treatment.created_at,
-            items: treatment.items.map(i => ({
-                id: i.id,
-                product_id: i.product_id,
-                name: i.product?.name || i.observations || 'Item',
-                quantity: i.quantity,
-                price: i.salesValue || 0,
-                observation: i.observations
+            total_amount: pedido.valor_final,
+            observations: pedido.observacao,
+            created_at: pedido.data_abertura,
+            items: pedido.itens.map(i => ({
+                id: i.uuid,
+                product_id: i.produto_id,
+                name: i.observacao || 'Item',
+                quantity: i.quantidade,
+                price: i.valor_unitario,
+                observation: i.observacao
             }))
         };
 
@@ -170,14 +177,14 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         return reply.status(201).send({
             message: 'Pedido realizado com sucesso!',
-            order_id: treatment.id,
-            display_id: displayId,
+            order_id: pedido.uuid,
+            display_id: pedido.display_id,
             status: 'pending',
-            total_amount: treatment.amount,
+            total_amount: pedido.valor_final,
             estimated_time_minutes: 40
         });
     } catch (error) {
-        console.error('Erro ao criar pedido online:', error);
+        console.error('Erro ao criar pedido online em pedidos:', error);
         return reply.status(500).send({ message: 'Erro interno ao processar pedido online.' });
     }
 }

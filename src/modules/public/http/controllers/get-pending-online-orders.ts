@@ -1,11 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 
-function extractDisplayId(requestStr: string | null | undefined): number {
-    const match = (requestStr || '').match(/#(\d+)/);
-    return match ? parseInt(match[1], 10) : 1;
-}
-
 export async function getPendingOnlineOrders(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
     if (!prisma) {
@@ -16,59 +11,66 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const orders = await prisma.treatment.findMany({
+        const pedidos = await prisma.pedido.findMany({
             where: {
-                request: {
-                    contains: 'DELIVERY'
-                },
-                created_at: {
+                origem: 'Delivery',
+                data_abertura: {
                     gte: today
                 }
             },
             include: {
-                client: {
-                    include: {
-                        addresses: {
-                            where: { is_main: true }
-                        }
-                    }
-                },
-                items: {
-                    include: {
-                        product: true
-                    }
-                }
+                itens: true
             },
             orderBy: {
-                created_at: 'desc'
+                data_abertura: 'desc'
             }
         });
 
+        const clientIds = pedidos.map(p => p.cliente_id).filter(Boolean) as string[];
+        const clients = await prisma.client.findMany({
+            where: { id: { in: clientIds } },
+            include: { addresses: true }
+        });
+        const clientMap = new Map(clients.map(c => [c.id, c]));
+
+        const mappedStatus = (statusDelivery: string | null, status: string) => {
+            if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
+            if (statusDelivery === 'SaiuEntrega') return 'dispatched';
+            if (statusDelivery === 'EmPreparo') return 'in_preparation';
+            if (status === 'Cancelado') return 'cancelled';
+            return 'pending';
+        };
+
         return reply.status(200).send({
-            orders: orders.map(o => ({
-                id: o.id,
-                display_id: extractDisplayId(o.request),
-                status: o.status,
-                client_name: o.client?.name || 'Cliente',
-                client_phone: o.client?.phone || '',
-                address: o.client?.addresses?.[0] 
-                    ? o.client.addresses[0].street + ', ' + o.client.addresses[0].number + ' - ' + o.client.addresses[0].neighborhood 
-                    : '',
-                total_amount: o.amount || 0,
-                observations: o.observations || '',
-                created_at: o.created_at,
-                items: o.items.map(i => ({
-                    id: i.id,
-                    product_id: i.product_id,
-                    name: i.product?.name || i.observations || 'Item',
-                    quantity: i.quantity,
-                    price: i.salesValue || 0,
-                    observation: i.observations
-                }))
-            }))
+            orders: pedidos.map(p => {
+                const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
+                const address = client?.addresses?.[0]
+                    ? `${client.addresses[0].street}, ${client.addresses[0].number} - ${client.addresses[0].neighborhood}`
+                    : '';
+
+                return {
+                    id: p.uuid,
+                    display_id: p.display_id,
+                    status: mappedStatus(p.status_delivery, p.status),
+                    client_name: client?.name || 'Cliente',
+                    client_phone: client?.phone || '',
+                    address: address,
+                    total_amount: p.valor_final,
+                    observations: p.observacao || '',
+                    created_at: p.data_abertura,
+                    items: p.itens.map(i => ({
+                        id: i.uuid,
+                        product_id: i.produto_id,
+                        name: i.observacao || 'Item',
+                        quantity: i.quantidade,
+                        price: i.valor_unitario,
+                        observation: i.observacao
+                    }))
+                };
+            })
         });
     } catch (error) {
-        console.error('Erro ao buscar pedidos online:', error);
+        console.error('Erro ao buscar pedidos em pedidos:', error);
         return reply.status(500).send({ message: 'Erro interno ao buscar pedidos.' });
     }
 }

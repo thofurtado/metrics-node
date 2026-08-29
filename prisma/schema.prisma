@@ -945,3 +945,65 @@ model ClientGroup {
 
   @@map("client_groups")
 }
+
+
+model Pedido {
+  id                  Int          @id @default(autoincrement())
+  uuid                String       @default(uuid())
+  display_id          Int
+  numero_diario       Int?
+  origem              String       @default("Delivery")
+  atendimento_id      Int?
+  cliente_id          String?
+  endereco_entrega_id String?
+  subtotal            Float
+  desconto_total      Float        @default(0)
+  valor_frete         Float        @default(0)
+  valor_servico       Float        @default(0)
+  total_tributos      Float        @default(0)
+  valor_final         Float
+  valor_troco         Float        @default(0)
+  data_abertura       DateTime     @default(now())
+  data_fechamento     DateTime?
+  status              String       @default("Aberto")
+  motivo_cancelamento String?
+  cpf_na_nota         String?
+  status_delivery     String?      @default("Pendente")
+  entregador          String?
+  observacao          String?
+  hora_saida_rota     DateTime?
+  caixa_id            String?
+  usuario_id          String?
+  chave_nfce          String?
+  qrcode_nfce         String?
+  is_contingencia     Boolean      @default(false)
+  status_contingencia String?
+  xml_contingencia    String?
+  data_envio_contingencia DateTime?
+  sincronizado_web    Boolean      @default(false)
+
+  itens               PedidoItem[]
+
+  @@map("pedidos")
+}
+
+model PedidoItem {
+  id                  Int          @id @default(autoincrement())
+  uuid                String       @default(uuid())
+  pedido_id           Int
+  produto_id          String?
+  quantidade          Float
+  valor_unitario      Float
+  desconto            Float        @default(0)
+  valor_total         Float
+  valor_tributos      Float        @default(0)
+  cobra_servico       Boolean      @default(true)
+  observacao          String?
+  complementos_json   String?
+  status_cozinha      String       @default("Pendente")
+  hora_inicio_preparo DateTime?
+
+  pedido              Pedido       @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+
+  @@map("pedido_itens")
+}
