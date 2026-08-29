@@ -71,18 +71,34 @@ app.addHook('onRequest', async (request, reply) => {
         return;
     }
 
-    // 1. Identificar o domÃ­nio pelo qual a API foi chamada (Host header)
-    let domain = request.hostname;
+        // 1. Identificar o domínio pelo qual a API foi chamada
+    let domain = request.hostname || '';
     
-    // 2. Fallback para desenvolvimento local ou testes via header manual
+    // 2. Fallbacks em ordem de prioridade: header customizado, query param, Origin, Referer
     if (request.headers['x-tenant-domain']) {
         domain = request.headers['x-tenant-domain'] as string;
+    } else if ((request.query as any)?.tenant) {
+        domain = (request.query as any).tenant as string;
+    } else if (request.headers.origin) {
+        try {
+            const originUrl = new URL(request.headers.origin as string);
+            if (originUrl.hostname && !originUrl.hostname.startsWith('api.')) {
+                domain = originUrl.hostname;
+            }
+        } catch (e) {}
+    } else if (request.headers.referer) {
+        try {
+            const refererUrl = new URL(request.headers.referer as string);
+            if (refererUrl.hostname && !refererUrl.hostname.startsWith('api.')) {
+                domain = refererUrl.hostname;
+            }
+        } catch (e) {}
     }
 
     // Remove porta se houver (ex: localhost:3333 -> localhost)
     domain = domain.split(':')[0];
 
-    // Remove o 'www.' e 'api.' para garantir que as requisiÃ§Ãµes encontrem o cliente base
+    // Remove o 'www.' e 'api.' para garantir que as requisições encontrem o cliente base
     domain = domain.replace(/^www\./, '');
     domain = domain.replace(/^api\./, '');
 
