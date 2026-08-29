@@ -33,6 +33,12 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         });
         const clientMap = new Map(clients.map(c => [c.id, c]));
 
+        const productIds = pedidos.flatMap(p => p.itens.map(i => i.produto_id)).filter(Boolean) as string[];
+        const products = await prisma.product.findMany({
+            where: { id: { in: productIds } }
+        });
+        const productMap = new Map(products.map(pr => [pr.id, pr.name]));
+
         const mappedStatus = (statusDelivery: string | null, status: string) => {
             if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
             if (statusDelivery === 'SaiuEntrega') return 'dispatched';
@@ -58,14 +64,33 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     total_amount: p.valor_final,
                     observations: p.observacao || '',
                     created_at: p.data_abertura,
-                    items: p.itens.map(i => ({
-                        id: i.uuid,
-                        product_id: i.produto_id,
-                        name: i.observacao || 'Item',
-                        quantity: i.quantidade,
-                        price: i.valor_unitario,
-                        observation: i.observacao
-                    }))
+                    items: p.itens.map(i => {
+                        let complements: any[] = [];
+                        try {
+                            complements = i.complementos_json ? JSON.parse(i.complementos_json) : [];
+                        } catch (e) {}
+
+                        // Limpa observação para não repetir os adicionais nem o nome do produto
+                        let cleanObs = i.observacao || '';
+                        if (cleanObs.includes('(Obs: ')) {
+                            cleanObs = cleanObs.split('(Obs: ')[1]?.replace(/\)$/, '') || '';
+                        } else if (cleanObs.includes('+ [')) {
+                            cleanObs = '';
+                        }
+
+                        const prodName = (i.produto_id && productMap.get(i.produto_id))
+                            || (i.observacao ? i.observacao.split(' + [')[0]?.split(' (Obs:')[0] : 'Item');
+
+                        return {
+                            id: i.uuid,
+                            product_id: i.produto_id,
+                            name: prodName,
+                            quantity: i.quantidade,
+                            price: i.valor_unitario,
+                            complements: complements,
+                            observation: cleanObs
+                        };
+                    })
                 };
             })
         });
