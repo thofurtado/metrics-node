@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 import { execSync } from 'child_process'
 import { env } from '@/env'
 import { getSchemaHash } from './db-status'
-import { runTenantOnboarding } from '../services/tenant-onboarding'
+import { runTenantOnboarding } from '@/modules/public/services/tenant-onboarding'
 
 export async function provisionTenant(request: FastifyRequest, reply: FastifyReply) {
     const provisionBodySchema = z.object({
