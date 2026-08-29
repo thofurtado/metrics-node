@@ -1,9 +1,16 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { prisma as defaultPrisma } from '@/lib/prisma'
+import { requestContext } from '@fastify/request-context'
 import { hash } from 'bcryptjs'
 
+function getPrisma() {
+    return requestContext.get('prisma') || defaultPrisma
+}
+
 export async function createUser(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = getPrisma()
+
     const createUserBodySchema = z.object({
         name: z.string(),
         email: z.string().email(),
@@ -43,10 +50,12 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
             email,
             password_hash,
             role: dbRole,
-            userModules: {
-                create: moduleIds.map(moduleId => ({
-                    module_id: moduleId
-                }))
+            modules: {
+                create: moduleIds.map((moduleId) => ({
+                    module: {
+                        connect: { id: moduleId },
+                    },
+                })),
             }
         },
     })
@@ -55,6 +64,8 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = getPrisma()
+
     const updateUserParamsSchema = z.object({
         id: z.string().uuid(),
     })
@@ -62,8 +73,8 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
     const updateUserBodySchema = z.object({
         name: z.string().optional(),
         email: z.string().email().optional(),
-        password: z.string().min(6).optional(),
-        role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).optional(),
+        password: z.string().min(6).optional().nullable().or(z.literal('')),
+        role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER', 'admin', 'member', 'technician', 'cashier']).optional(),
         modules: z.array(z.string()).optional(),
     })
 
@@ -77,17 +88,17 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         }
     }
 
-    let password_hash
-    if (password) {
-        password_hash = await hash(password, 6)
+    let password_hash: string | undefined
+    if (password && password.trim().length >= 6) {
+        password_hash = await hash(password.trim(), 6)
     }
 
-    const updateData: any = {
-        name,
-        email,
-    }
+    const updateData: any = {}
+    if (name) updateData.name = name
+    if (email) updateData.email = email
     if (role) {
-        updateData.role = role === 'MEMBER' ? 'TECHNICIAN' : role
+        const upperRole = role.toUpperCase()
+        updateData.role = upperRole === 'MEMBER' ? 'TECHNICIAN' : upperRole
     }
     if (password_hash) {
         updateData.password_hash = password_hash
@@ -95,10 +106,12 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
 
     try {
         await prisma.$transaction(async (tx) => {
-            await tx.user.update({
-                where: { id },
-                data: updateData,
-            })
+            if (Object.keys(updateData).length > 0) {
+                await tx.user.update({
+                    where: { id },
+                    data: updateData,
+                })
+            }
 
             if (modules !== undefined) {
                 // Remove atuais
@@ -135,6 +148,8 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function deleteUser(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = getPrisma()
+
     const deleteUserParamsSchema = z.object({
         id: z.string().uuid(),
     })
