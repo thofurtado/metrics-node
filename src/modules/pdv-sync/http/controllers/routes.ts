@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync } from './pdv-sync-controller'
+import { getProductsSync, postProductsBulkSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
@@ -16,6 +16,8 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/status', getSyncStatus)
 
     app.get('/api/pdv/sync/products', getProductsSync)
+    app.post('/api/pdv/sync/products/bulk', postProductsBulkSync)
+    app.post('/api/pdv/products/bulk', postProductsBulkSync)
     app.get('/api/pdv/sync/users', getUsersSync)
     app.get('/api/pdv/sync/clients', getClientsSync)
     app.post('/api/pdv/sync/stocks', postStocksSync)

@@ -354,3 +354,122 @@ export async function getSystemConfigSync(request: FastifyRequest, reply: Fastif
         CashierDefaultOrigin: config.cashier_default_origin
     })
 }
+
+
+export async function postProductsBulkSync(request: FastifyRequest, reply: FastifyReply) {
+    const bulkSchema = z.object({
+        products: z.array(
+            z.object({
+                externalId: z.string().nullable().optional(),
+                name: z.string(),
+                price: z.number(),
+                cost: z.number().nullable().optional(),
+                barcode: z.string().nullable().optional(),
+                ncm: z.string().nullable().optional(),
+                categoryName: z.string().nullable().optional(),
+                active: z.boolean().nullable().optional(),
+                stock: z.number().nullable().optional(),
+                description: z.string().nullable().optional()
+            })
+        )
+    })
+
+    const { products } = bulkSchema.parse(request.body)
+
+    let created = 0
+    let updated = 0
+    let unchanged = 0
+
+    const maxDisplay = await prisma.product.aggregate({
+        _max: { display_id: true }
+    })
+    let currentMaxDisplayId = maxDisplay._max.display_id ?? 0
+
+    for (const p of products) {
+        if (!p.name || !p.name.trim()) continue
+
+        const name = p.name.trim()
+        const catName = p.categoryName?.trim()
+
+        // 1. Categoria (find or create)
+        let categoryId: string | null = null
+        if (catName) {
+            let category = await prisma.category.findUnique({
+                where: { name: catName }
+            })
+            if (!category) {
+                category = await prisma.category.create({
+                    data: { name: catName }
+                })
+            }
+            categoryId = category.id
+        }
+
+        // 2. Busca se o produto ja existe pelo nome ou codigo de barras
+        const existing = await prisma.product.findFirst({
+            where: {
+                OR: [
+                    { name: { equals: name, mode: 'insensitive' } },
+                    ...(p.barcode && p.barcode.trim() ? [{ barcode: p.barcode.trim() }] : [])
+                ]
+            }
+        })
+
+        if (existing) {
+            const hasChanged = 
+                existing.price !== p.price ||
+                (p.cost !== undefined && p.cost !== null && existing.cost !== p.cost) ||
+                (p.stock !== undefined && p.stock !== null && existing.stock !== p.stock) ||
+                (p.active !== undefined && p.active !== null && existing.active !== p.active) ||
+                (categoryId && existing.category_id !== categoryId) ||
+                (p.barcode && existing.barcode !== p.barcode.trim()) ||
+                (p.description && existing.description !== p.description)
+
+            if (hasChanged) {
+                await prisma.product.update({
+                    where: { id: existing.id },
+                    data: {
+                        name,
+                        price: p.price,
+                        cost: p.cost !== undefined && p.cost !== null ? p.cost : existing.cost,
+                        stock: p.stock !== undefined && p.stock !== null ? p.stock : existing.stock,
+                        barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : existing.barcode,
+                        ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : existing.ncm,
+                        category_id: categoryId ?? existing.category_id,
+                        active: p.active !== undefined && p.active !== null ? p.active : existing.active,
+                        description: p.description !== undefined && p.description !== null ? p.description : existing.description,
+                        updated_at: new Date()
+                    }
+                })
+                updated++
+            } else {
+                unchanged++
+            }
+        } else {
+            currentMaxDisplayId++
+            await prisma.product.create({
+                data: {
+                    name,
+                    price: p.price,
+                    cost: p.cost ?? 0,
+                    stock: p.stock ?? 0,
+                    min_stock: 0,
+                    barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : null,
+                    ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : null,
+                    category_id: categoryId,
+                    active: p.active !== undefined && p.active !== null ? p.active : true,
+                    description: p.description || null,
+                    display_id: currentMaxDisplayId
+                }
+            })
+            created++
+        }
+    }
+
+    return reply.status(200).send({
+        created,
+        updated,
+        unchanged,
+        message: `Sincronização de produtos realizada com sucesso! (${created} criados, ${updated} atualizados, ${unchanged} inalterados).`
+    })
+}
