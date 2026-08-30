@@ -67,6 +67,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 neighborhood: profile?.neighborhood || '',
                 city: profile?.city || '',
                 state: profile?.state || '',
+                zipcode: profile?.zipcode || '',
                 restaurant_address: restaurantAddress,
                 delivery_time_min: profile?.deliveryTimeMin || 30,
                 delivery_time_max: profile?.deliveryTimeMax || 60,
@@ -86,6 +87,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     : '';
                 const neighborhood = orderAddr?.neighborhood || '';
                 const city = orderAddr?.city || '';
+                const zipcode = orderAddr?.zipcode || '';
 
                 return {
                     id: p.uuid,
@@ -96,6 +98,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     address: address,
                     neighborhood: neighborhood,
                     city: city,
+                    zipcode: zipcode,
                     total_amount: p.valor_final,
                     delivery_fee: p.valor_frete || 0,
                     delivery_man: p.entregador || null,
