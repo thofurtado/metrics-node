@@ -49,8 +49,19 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
         const profile = await prisma.companyProfile.findFirst();
 
+        const restaurantAddress = profile?.street
+            ? `${profile.street}, ${profile.number || 'S/N'} - ${profile.neighborhood || ''}, ${profile.city || ''}`
+            : (profile?.tradeName || 'Restaurante');
+
         return reply.status(200).send({
             profile: {
+                trade_name: profile?.tradeName || 'Restaurante',
+                street: profile?.street || '',
+                number: profile?.number || '',
+                neighborhood: profile?.neighborhood || '',
+                city: profile?.city || '',
+                state: profile?.state || '',
+                restaurant_address: restaurantAddress,
                 delivery_time_min: profile?.deliveryTimeMin || 30,
                 delivery_time_max: profile?.deliveryTimeMax || 60,
                 delivery_sectors: profile?.deliverySectors ? (typeof profile.deliverySectors === 'string' ? JSON.parse(profile.deliverySectors) : profile.deliverySectors) : []
@@ -58,10 +69,12 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             orders: pedidos.map(p => {
                 const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
                 const clientAddr = client?.addresses?.[0];
+                const cityStr = clientAddr?.city ? `, ${clientAddr.city}` : '';
                 const address = clientAddr
-                    ? `${clientAddr.street}, ${clientAddr.number} - ${clientAddr.neighborhood}`
+                    ? `${clientAddr.street}, ${clientAddr.number} - ${clientAddr.neighborhood}${cityStr}`
                     : '';
                 const neighborhood = clientAddr?.neighborhood || '';
+                const city = clientAddr?.city || '';
 
                 return {
                     id: p.uuid,
@@ -71,6 +84,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     client_phone: client?.phone || '',
                     address: address,
                     neighborhood: neighborhood,
+                    city: city,
                     total_amount: p.valor_final,
                     delivery_fee: p.valor_frete || 0,
                     delivery_man: p.entregador || null,
