@@ -33,6 +33,12 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         });
         const clientMap = new Map(clients.map(c => [c.id, c]));
 
+        const addressIds = pedidos.map(p => p.endereco_entrega_id).filter(Boolean) as string[];
+        const addresses = await prisma.address.findMany({
+            where: { id: { in: addressIds } }
+        });
+        const addressMap = new Map(addresses.map(a => [a.id, a]));
+
         const productIds = pedidos.flatMap(p => p.itens.map(i => i.produto_id)).filter(Boolean) as string[];
         const products = await prisma.product.findMany({
             where: { id: { in: productIds } }
@@ -68,13 +74,18 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             },
             orders: pedidos.map(p => {
                 const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
-                const clientAddr = client?.addresses?.[0];
-                const cityStr = clientAddr?.city ? `, ${clientAddr.city}` : '';
-                const address = clientAddr
-                    ? `${clientAddr.street}, ${clientAddr.number} - ${clientAddr.neighborhood}${cityStr}`
+                
+                // Prioriza o endereço histórico salvo no pedido em endereco_entrega_id
+                const orderAddr = p.endereco_entrega_id 
+                    ? addressMap.get(p.endereco_entrega_id) 
+                    : (client?.addresses?.[0] || null);
+
+                const cityStr = orderAddr?.city ? `, ${orderAddr.city}` : '';
+                const address = orderAddr
+                    ? `${orderAddr.street}, ${orderAddr.number} - ${orderAddr.neighborhood}${cityStr}`
                     : '';
-                const neighborhood = clientAddr?.neighborhood || '';
-                const city = clientAddr?.city || '';
+                const neighborhood = orderAddr?.neighborhood || '';
+                const city = orderAddr?.city || '';
 
                 return {
                     id: p.uuid,
@@ -98,36 +109,23 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                             complements = i.complementos_json ? JSON.parse(i.complementos_json) : [];
                         } catch (e) {}
 
-                        const prodName = (i.produto_id && productMap.get(i.produto_id))
-                            || (i.observacao ? i.observacao.split(' + [')[0]?.split(' (Obs:')[0] : 'Item');
-
-                        // Limpa observação para nunca repetir os adicionais nem o nome do produto
-                        let cleanObs = i.observacao || '';
-                        if (cleanObs.includes('(Obs: ')) {
-                            cleanObs = cleanObs.split('(Obs: ')[1]?.replace(/\)$/, '') || '';
-                        } else if (cleanObs.includes('+ [')) {
-                            cleanObs = '';
-                        }
-
-                        if (cleanObs.trim().toLowerCase() === prodName.trim().toLowerCase()) {
-                            cleanObs = '';
-                        }
-
                         return {
-                            id: i.uuid,
-                            product_id: i.produto_id,
-                            name: prodName,
+                            id: i.uuid || String(i.id),
+                            name: productMap.get(i.produto_id || '') || 'Item',
                             quantity: i.quantidade,
                             price: i.valor_unitario,
-                            complements: complements,
-                            observation: cleanObs
+                            observation: i.observacao,
+                            complements: complements
                         };
                     })
                 };
             })
         });
-    } catch (error) {
-        console.error('Erro ao buscar pedidos em pedidos:', error);
-        return reply.status(500).send({ message: 'Erro interno ao buscar pedidos.' });
+    } catch (error: any) {
+        console.error('Erro ao buscar pedidos online pendentes:', error);
+        return reply.status(500).send({
+            message: 'Erro ao buscar pedidos online.',
+            error: error.message
+        });
     }
 }

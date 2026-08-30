@@ -62,6 +62,8 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         });
 
+        let targetAddressId: string | null = null;
+
         if (!client) {
             client = await prisma.client.create({
                 data: {
@@ -84,9 +86,37 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                     addresses: true
                 }
             });
-        }
+            targetAddressId = client.addresses?.[0]?.id || null;
+        } else {
+            // Verifica se o endereço já existe na lista do cliente para reaproveitar
+            const norm = (s?: string) => (s || '').trim().toLowerCase();
+            const matchingAddr = client.addresses?.find(a => 
+                norm(a.street) === norm(body.street) &&
+                norm(a.number) === norm(body.number) &&
+                norm(a.neighborhood) === norm(body.neighborhood) &&
+                norm(a.city) === norm(body.city)
+            );
 
-        const addressId = client.addresses?.[0]?.id || null;
+            if (matchingAddr) {
+                targetAddressId = matchingAddr.id;
+            } else {
+                // Cria NOVO registro de endereço para o cliente, preservando os pedidos e endereços anteriores intactos
+                const newAddr = await prisma.address.create({
+                    data: {
+                        client_id: client.id,
+                        street: body.street,
+                        number: String(body.number || 'S/N'),
+                        neighborhood: body.neighborhood,
+                        city: body.city || 'Cidade',
+                        state: body.state || 'UF',
+                        zipcode: body.zipcode ? String(body.zipcode) : undefined,
+                        complement: body.complement || undefined,
+                        is_main: false
+                    }
+                });
+                targetAddressId = newAddr.id;
+            }
+        }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -97,7 +127,6 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         });
         const displayId = countToday + 1;
 
-        const enderecoFormatado = body.street + ', ' + body.number + ' - ' + body.neighborhood + (body.complement ? ' (' + body.complement + ')' : '');
         const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name;
         
         const fullObservations = [
@@ -115,7 +144,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 numero_diario: displayId,
                 origem: 'Delivery',
                 cliente_id: client.id,
-                endereco_entrega_id: addressId,
+                endereco_entrega_id: targetAddressId,
                 subtotal: subtotal,
                 valor_frete: body.delivery_fee,
                 valor_final: body.total_amount,
@@ -126,23 +155,15 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 sincronizado_web: true,
                 itens: {
                     create: body.items.map(item => {
-                        const complementStr = item.complements && item.complements.length > 0
-                            ? ' + [' + item.complements.map(c => c.quantity + 'x ' + c.name + ' (R$ ' + c.price.toFixed(2) + ')').join(', ') + ']'
-                            : '';
-                        
-                        const itemNotes = item.notes ? item.notes.trim() : (item.observation ? item.observation.trim() : null);
+                        const itemNotes = item.notes ? item.notes.trim() : null;
                         return {
                             produto_id: item.product_id,
                             quantidade: item.quantity,
                             valor_unitario: item.unit_price,
                             valor_total: item.unit_price * item.quantity,
                             observacao: itemNotes,
-                            complementos_json: JSON.stringify({
-                                complements: item.complements || [],
-                                fractions: item.fractions || []
-                            }),
-                            status_cozinha: 'Pendente'
-                        };
+                            complementos_json: item.complements && item.complements.length > 0 ? JSON.stringify(item.complements) : null
+                        }
                     })
                 }
             },
@@ -151,39 +172,32 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         });
 
-        // Dispara notificação SSE em tempo real para os PDVs do tenant conectado
-        const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
-        const orderDto = {
-            id: pedido.uuid,
-            display_id: pedido.display_id,
-            client_name: client.name,
-            client_phone: client.phone || '',
-            address: enderecoFormatado,
-            total_amount: pedido.valor_final,
-            observations: pedido.observacao,
-            created_at: pedido.data_abertura,
-            items: pedido.itens.map(i => ({
-                id: i.uuid,
-                product_id: i.produto_id,
-                name: i.observacao || 'Item',
-                quantity: i.quantidade,
-                price: i.valor_unitario,
-                observation: i.observacao
-            }))
-        };
-
-        sseManager.notifyTenant(rawDomain, 'new_order', orderDto);
+        // Notifica via Server-Sent Events (SSE)
+        try {
+            const host = (request.headers.host || '').split(':')[0];
+            sseManager.broadcast('new_order', {
+                order_id: pedido.uuid,
+                display_id: pedido.display_id,
+                client_name: client.name,
+                total_amount: pedido.valor_final
+            }, host);
+        } catch (sseErr) {
+            console.error('Erro ao emitir evento SSE de novo pedido:', sseErr);
+        }
 
         return reply.status(201).send({
-            message: 'Pedido realizado com sucesso!',
-            order_id: pedido.uuid,
-            display_id: pedido.display_id,
-            status: 'pending',
-            total_amount: pedido.valor_final,
-            estimated_time_minutes: 40
+            order: {
+                id: pedido.uuid,
+                display_id: pedido.display_id,
+                total_amount: pedido.valor_final,
+                status: pedido.status_delivery
+            }
         });
-    } catch (error) {
-        console.error('Erro ao criar pedido online em pedidos:', error);
-        return reply.status(500).send({ message: 'Erro interno ao processar pedido online.' });
+    } catch (error: any) {
+        console.error('Erro ao criar pedido online:', error);
+        return reply.status(500).send({
+            message: 'Erro interno ao processar o pedido online.',
+            error: error.message
+        });
     }
 }
