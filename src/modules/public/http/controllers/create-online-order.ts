@@ -61,9 +61,11 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                         : companyProfile.deliverySectors;
                 }
                 const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-                const fromSectors = (Array.isArray(sectors) ? sectors : []).flatMap((s: any) => s.neighborhoods || []).map((n: string) => norm(n));
-                const fromAvailable = (companyProfile.availableNeighborhoods || []).map((n: string) => norm(n));
-                const allowedNeighborhoods = Array.from(new Set([...fromSectors, ...fromAvailable])).filter(Boolean);
+                // Exige estritamente pertencimento a um setor de entrega
+                const allowedNeighborhoods = (Array.isArray(sectors) ? sectors : [])
+                    .flatMap((s: any) => s.neighborhoods || [])
+                    .map((n: string) => norm(n))
+                    .filter(Boolean);
 
                 if (allowedNeighborhoods.length > 0) {
                     const normOrderBairro = norm(body.neighborhood);

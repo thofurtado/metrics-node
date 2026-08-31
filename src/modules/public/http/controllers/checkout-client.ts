@@ -36,9 +36,11 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
                     : companyProfile.deliverySectors;
             }
             const norm = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-            const fromSectors = (Array.isArray(sectors) ? sectors : []).flatMap((s) => s.neighborhoods || []).map((n) => norm(n));
-            const fromAvailable = (companyProfile.availableNeighborhoods || []).map((n) => norm(n));
-            const allowedNeighborhoods = Array.from(new Set([...fromSectors, ...fromAvailable])).filter(Boolean);
+            // Exige estritamente pertencimento a um setor de entrega
+            const allowedNeighborhoods = (Array.isArray(sectors) ? sectors : [])
+                .flatMap((s) => s.neighborhoods || [])
+                .map((n) => norm(n))
+                .filter(Boolean);
 
             if (allowedNeighborhoods.length > 0) {
                 const normBairro = norm(neighborhood);
