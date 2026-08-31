@@ -14,7 +14,7 @@ const CARD_PAYMENT_METHODS = [
 
 const TERM_PAYMENT_METHODS = [
     'A PRAZO', 'PERMUTA', 'a prazo', 'permuta', 'A Prazo', 'Permuta',
-    'FIADO', 'fiado', 'Fiado', 'CONTA DA CASA', 'FUNCIONARIO', 'funcionario', 'Funcionário', 'BOLETO', 'boleto', 'Boleto'
+    'FIADO', 'fiado', 'Fiado', 'CONTA DA CASA', 'FUNCIONARIO', 'funcionario', 'Funcionário'
 ]
 
 export async function listSettlements(request: FastifyRequest, reply: FastifyReply) {
@@ -41,7 +41,7 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
         whereClause.cashier_session_id = { not: null }
     } else if (type === 'term') {
         whereClause.OR = [
-            { payment_method: { in: ['A PRAZO', 'PERMUTA', 'a prazo', 'permuta', 'A Prazo', 'Permuta', 'FIADO', 'fiado', 'Fiado'] } },
+            { payment_method: { in: TERM_PAYMENT_METHODS } },
             { description: { contains: 'Acerto' } },
             { description: { contains: 'A Prazo' } },
             { description: { contains: 'Permuta' } }
@@ -126,7 +126,7 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
 export async function getPendingSettlements(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
         page: z.string().optional().default('1'),
-        limit: z.string().optional().default('50'),
+        limit: z.string().optional().default('100'),
         sortBy: z.string().optional().default('data_vencimento'),
         sortDir: z.string().optional().default('asc'),
         month: z.string().optional(),
@@ -146,20 +146,33 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
         whereClause.payment_method = { in: CARD_PAYMENT_METHODS }
     } else if (type === 'term') {
         whereClause.OR = [
-            { payment_method: { in: ['A PRAZO', 'PERMUTA', 'a prazo', 'permuta', 'A Prazo', 'Permuta', 'FIADO', 'fiado', 'Fiado'] } },
+            { payment_method: { in: TERM_PAYMENT_METHODS } },
             { description: { contains: 'A Prazo' } },
             { description: { contains: 'Permuta' } }
         ]
     }
 
+    // Filtro de mês: se passado, busca pendências emitidas no mês OU com vencimento no mês
     if (month && year) {
         const m = parseInt(month, 10)
         const y = parseInt(year, 10)
         const startOfMonth = new Date(y, m - 1, 1, 0, 0, 0, 0)
         const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999)
-        whereClause.data_vencimento = {
-            gte: startOfMonth,
-            lte: endOfMonth
+        
+        if (type === 'automatic') {
+            whereClause.OR = [
+                { data_emissao: { gte: startOfMonth, lte: endOfMonth } },
+                { data_vencimento: { gte: startOfMonth, lte: endOfMonth } }
+            ]
+        } else {
+            whereClause.AND = [
+                {
+                    OR: [
+                        { data_emissao: { gte: startOfMonth, lte: endOfMonth } },
+                        { data_vencimento: { gte: startOfMonth, lte: endOfMonth } }
+                    ]
+                }
+            ]
         }
     }
 
