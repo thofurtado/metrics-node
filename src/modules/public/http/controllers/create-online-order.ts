@@ -49,6 +49,30 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
     const body = createOnlineOrderSchema.parse(request.body)
 
     try {
+        // Validação rigorosa de Bairros Atendidos por Setor (quando Delivery)
+        const isTakeout = body.street.toLowerCase().includes('retirada') || body.neighborhood.toLowerCase().includes('balcão');
+        if (!isTakeout) {
+            const companyProfile = await prisma.companyProfile.findFirst();
+            if (companyProfile?.deliverySectors) {
+                const sectors = typeof companyProfile.deliverySectors === 'string' 
+                    ? JSON.parse(companyProfile.deliverySectors) 
+                    : companyProfile.deliverySectors;
+                
+                if (Array.isArray(sectors) && sectors.length > 0) {
+                    const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                    const allowedNeighborhoods = sectors.flatMap((s: any) => s.neighborhoods || []).map((n: string) => norm(n));
+                    if (allowedNeighborhoods.length > 0) {
+                        const normOrderBairro = norm(body.neighborhood);
+                        const isCovered = allowedNeighborhoods.some(n => n === normOrderBairro);
+                        if (!isCovered) {
+                            return reply.status(400).send({
+                                message: `Desculpe, o bairro "${body.neighborhood}" não está na área de entrega atendida pela loja.`
+                            });
+                        }
+                    }
+                }
+            }
+        }
         const cleanPhone = body.client_phone.replace(/\D/g, '');
         let client = await prisma.client.findFirst({
             where: {
