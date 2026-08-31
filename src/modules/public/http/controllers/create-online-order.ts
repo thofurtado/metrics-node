@@ -147,6 +147,35 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         }
 
+        // Trava Anti-Duplicidade (Idempotência): Se já existir um pedido recente do mesmo cliente nos últimos 3 minutos com o mesmo valor, reaproveita o existente
+        const recentDuplicateWindow = new Date(Date.now() - 3 * 60 * 1000);
+        const existingRecentOrder = await prisma.pedido.findFirst({
+            where: {
+                cliente_id: client.id,
+                origem: 'Delivery',
+                valor_final: body.total_amount,
+                data_abertura: { gte: recentDuplicateWindow }
+            },
+            include: {
+                itens: true
+            },
+            orderBy: {
+                data_abertura: 'desc'
+            }
+        });
+
+        if (existingRecentOrder) {
+            console.log('[Anti-Duplicidade] Pedido duplicado interceptado para o cliente:', client.id, 'Retornando pedido existente:', existingRecentOrder.uuid);
+            return reply.status(200).send({
+                order: {
+                    id: existingRecentOrder.uuid,
+                    display_id: existingRecentOrder.display_id,
+                    total_amount: existingRecentOrder.valor_final,
+                    status: existingRecentOrder.status_delivery
+                }
+            });
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const countToday = await prisma.pedido.count({
