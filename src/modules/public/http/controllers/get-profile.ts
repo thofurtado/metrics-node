@@ -41,10 +41,30 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       });
     } catch { }
 
+    let deliverySectors = profile.deliverySectors || [];
+    if (typeof deliverySectors === 'string') {
+      try {
+        deliverySectors = JSON.parse(deliverySectors);
+      } catch {
+        deliverySectors = [];
+      }
+    }
+    if (!Array.isArray(deliverySectors)) deliverySectors = [];
+
+    let availableNeighborhoods = profile.availableNeighborhoods || [];
+    if (typeof availableNeighborhoods === 'string') {
+      try {
+        availableNeighborhoods = JSON.parse(availableNeighborhoods);
+      } catch {
+        availableNeighborhoods = [];
+      }
+    }
+    if (!Array.isArray(availableNeighborhoods)) availableNeighborhoods = [];
+
     return reply.status(200).send({
       ...profile,
-      availableNeighborhoods: profile.availableNeighborhoods || [],
-      deliverySectors: profile.deliverySectors || [],
+      availableNeighborhoods,
+      deliverySectors,
       paymentMethods: publicPayments,
     })
   } catch (error) {

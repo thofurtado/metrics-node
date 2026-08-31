@@ -24,6 +24,34 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
     const { name, phone, street, number, neighborhood, city, state, zipcode, complement, isNewAddress } = checkoutClientBodySchema.parse(request.body)
     const cleanPhone = phone.replace(/\D/g, '')
 
+    // Validação de Bairros Atendidos por Setor (quando Delivery)
+    const isTakeout = street.toLowerCase().includes('retirada') || neighborhood.toLowerCase().includes('balcão');
+    if (!isTakeout) {
+        const companyProfile = await prisma.companyProfile.findFirst();
+        if (companyProfile) {
+            let sectors = [];
+            if (companyProfile.deliverySectors) {
+                sectors = typeof companyProfile.deliverySectors === 'string'
+                    ? JSON.parse(companyProfile.deliverySectors)
+                    : companyProfile.deliverySectors;
+            }
+            const norm = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            const fromSectors = (Array.isArray(sectors) ? sectors : []).flatMap((s) => s.neighborhoods || []).map((n) => norm(n));
+            const fromAvailable = (companyProfile.availableNeighborhoods || []).map((n) => norm(n));
+            const allowedNeighborhoods = Array.from(new Set([...fromSectors, ...fromAvailable])).filter(Boolean);
+
+            if (allowedNeighborhoods.length > 0) {
+                const normBairro = norm(neighborhood);
+                const isCovered = allowedNeighborhoods.some((n) => n === normBairro);
+                if (!isCovered) {
+                    return reply.status(400).send({
+                        message: `Desculpe, o bairro "${neighborhood}" não está na área de entrega atendida pela loja.`
+                    });
+                }
+            }
+        }
+    }
+
     let client = await prisma.client.findFirst({
         where: {
             OR: [
