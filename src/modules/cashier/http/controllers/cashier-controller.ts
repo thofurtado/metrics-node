@@ -392,6 +392,16 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         })
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
+        // Localiza contas financeiras ativas com antecedência para vincular despesas e receitas
+        const accounts = await prisma.account.findMany()
+        const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
+        const centralAccount = accounts.find(a => 
+            normalizeString(a.name).includes('caixa central') || 
+            normalizeString(a.name) === 'central' ||
+            normalizeString(a.name).includes('cofre')
+        ) || defaultAccount
+        let totalDespesasDinheiro = 0
+
         const vendasPorBanco = new Map<string, number>()
         const vendasAPrazo = new Map<string, number>()
         const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
@@ -455,9 +465,26 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                             }
                         })
                     }
+
+                    // Gera a transação financeira de despesa vinculada ao Caixa Central
+                    await prisma.transaction.create({
+                        data: {
+                            operation: 'expense',
+                            amount,
+                            totalValue: amount,
+                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted} - Vale: ${entry.identification || 'Funcionário'}`,
+                            cashier_session_id: session.id,
+                            confirmed: true,
+                            payment_method: 'DINHEIRO',
+                            account_id: centralAccount?.id || null,
+                            data_vencimento: session.opened_at,
+                            data_emissao: session.opened_at,
+                        }
+                    })
+                    totalDespesasDinheiro += amount
                 } else if (isRecolhimentoDonoOuCofre) {
-                    // Recolhimento do Dono (Samir) / Retirada de Troco / Depósito em Cofre:
-                    // NÃO gera despesa (expense)! O dinheiro físico continua sendo da empresa e passa para a custódia do Dono/Caixa Central.
+                    // Recolhimento do Dono / Retirada de Troco / Depósito em Cofre:
+                    // Adiantamento do Caixa Central. Não gera nova despesa contábil pois todo o dinheiro de vendas entra no Caixa Central.
                     continue
                 } else {
                     // Despesa operacional real da empresa (músico, fornecedor, mercado, compras com setor)
@@ -470,11 +497,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                             cashier_session_id: session.id,
                             confirmed: true,
                             payment_method: 'DINHEIRO',
+                            account_id: centralAccount?.id || null,
                             data_vencimento: session.opened_at,
                             data_emissao: session.opened_at,
                             sector_id: entry.sector_id || null,
                         }
                     })
+                    totalDespesasDinheiro += amount
                 }
                 continue
             }
@@ -544,10 +573,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             }
         }
 
-        // Busca todas as maquininhas e contas financeiras ativas para vincular o account_id correto
+        // Busca todas as maquininhas para vincular o account_id e taxas corretas
         const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } })
-        const accounts = await prisma.account.findMany()
-        const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
 
         // Acumula e cria a transação consolidada de Vendas em Dinheiro Físico (Reconhece o faturamento oficial)
         let totalVendasDinheiro = 0
@@ -561,12 +588,6 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         }
 
         if (totalVendasDinheiro > 0) {
-            const centralAccount = accounts.find(a => 
-                normalizeString(a.name).includes('caixa central') || 
-                normalizeString(a.name) === 'central' ||
-                normalizeString(a.name).includes('cofre')
-            ) || defaultAccount
-
             await prisma.transaction.create({
                 data: {
                     operation: 'income',
@@ -580,6 +601,15 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     data_vencimento: session.opened_at,
                     data_emissao: session.opened_at,
                 }
+            })
+        }
+
+        // Atualiza saldo contábil da conta Caixa Central com o saldo líquido em espécie
+        const saldoLiquidoDinheiro = totalVendasDinheiro - totalDespesasDinheiro
+        if (centralAccount && saldoLiquidoDinheiro !== 0) {
+            await prisma.account.update({
+                where: { id: centralAccount.id },
+                data: { balance: { increment: saldoLiquidoDinheiro } }
             })
         }
 
@@ -870,6 +900,7 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             }
         }
 
+        // Saldo total apurado fisicamente na gaveta antes do recolhimento ao Caixa Central
         const saldoFisicoFinal = abertura + vendasDinheiro + suprimentos - sangrias
 
         return {
@@ -885,13 +916,16 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             saldoFisicoFinal,
             proximaAbertura: null as number | null,
             hasNextSession: false,
+            variacaoTroco: 0,
             divergencia: 0,
-            statusComparacao: 'OK',
+            recolhidoCentral: 0,
+            statusComparacao: 'BATENDO',
+            statusMensagem: 'Troco Mantido',
             resolutionDetails: null as any
         }
     })
 
-    // Validação comparativa com a Abertura do Próximo Caixa
+    // Validação comparativa do Troco com o Próximo Caixa
     for (let i = 0; i < auditItems.length - 1; i++) {
         const current = auditItems[i]
         const next = auditItems[i + 1]
@@ -900,9 +934,16 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
 
         current.proximaAbertura = next.abertura
         current.hasNextSession = true
-        current.divergencia = next.abertura - current.saldoFisicoFinal
-        
-        // Verifica se a entrada de resolução existe e se a transação financeira não foi deletada
+
+        // Variação do fundo de troco entre esta abertura e a próxima
+        current.variacaoTroco = Number((next.abertura - current.abertura).toFixed(2))
+        current.divergencia = current.variacaoTroco
+
+        // Valor recolhido e transferido ao Caixa Central ao fechar o caixa
+        current.recolhidoCentral = current.status === 'CHECKED'
+            ? Math.max(0, Number((current.saldoFisicoFinal - next.abertura).toFixed(2)))
+            : 0
+
         let isActuallyResolved = !!resolutionEntry
         if (resolutionEntry && resolutionEntry.type === 'SANGRIA_DESTINO') {
             const destTx = transactions.find(t => t.cashier_session_id === current.id && t.description?.startsWith('Destino de Caixa'))
@@ -927,6 +968,7 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             }
 
             current.statusComparacao = 'RESOLVIDO'
+            current.statusMensagem = 'Resolvido'
             current.resolutionDetails = {
                 type: resolutionEntry.type,
                 reason: reason,
@@ -934,10 +976,18 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
                 bank: resolutionEntry.bank,
                 transaction_id: transactionId
             }
-        } else if (Math.abs(current.divergencia) > 0.05) {
-            current.statusComparacao = 'DIVERGENTE'
         } else {
-            current.statusComparacao = 'BATENDO'
+            // Compara a evolução do fundo de troco
+            if (Math.abs(current.variacaoTroco) <= 0.05) {
+                current.statusComparacao = 'BATENDO'
+                current.statusMensagem = 'Troco Mantido'
+            } else if (current.variacaoTroco > 0) {
+                current.statusComparacao = 'SUPRIMENTO'
+                current.statusMensagem = `Suprimento (+R$ ${current.variacaoTroco.toFixed(2)})`
+            } else {
+                current.statusComparacao = 'SANGRIA_TROCO'
+                current.statusMensagem = `Redução (-R$ ${Math.abs(current.variacaoTroco).toFixed(2)})`
+            }
         }
     }
 
