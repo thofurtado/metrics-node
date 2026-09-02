@@ -26,6 +26,7 @@ export async function getMany(request: FastifyRequest, reply: FastifyReply) {
         products: products.map(product => ({
             ...product,
             type: 'PRODUCT', // Consistent with frontend types
+            show_on_menu: (product as any).show_on_menu ?? true,
             product: {
                 display_id: product.display_id,
                 price: product.price,
@@ -35,7 +36,8 @@ export async function getMany(request: FastifyRequest, reply: FastifyReply) {
                 ncm: product.ncm,
                 is_composite: product.is_composite,
                 compositions: (product as any).compositions, // Cast to fix lint if type missing
-                cost: (product as any).cost // Include cost (calculated or from db)
+                cost: (product as any).cost, // Include cost (calculated or from db)
+                show_on_menu: (product as any).show_on_menu ?? true
             }
         })),
         meta: {

@@ -36,6 +36,7 @@ interface UpdateItemUseCaseRequest {
     display_id?: number | null
     ncm?: string | null
     stock?: number | null
+    show_on_menu?: boolean
     is_composite?: boolean
     compositions?: {
         supply_id: string
@@ -64,7 +65,8 @@ export class UpdateItemUseCase {
                 stock: data.stock,
                 barcode: data.barcode,
                 ncm: data.ncm,
-                display_id: data.display_id
+                display_id: data.display_id,
+                show_on_menu: data.show_on_menu
             }
 
             // Logic for Composable Product
@@ -99,6 +101,7 @@ export class UpdateItemUseCase {
                 price: data.price,
                 estimated_time: data.estimated_time,
                 display_id: data.display_id,
+                show_on_menu: data.show_on_menu,
                 // Service Composition Logic (Newly Added)
                 compositions: data.compositions ? {
                     deleteMany: {},

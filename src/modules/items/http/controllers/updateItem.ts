@@ -21,6 +21,7 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
         unit: z.string().nullable().optional(),
         display_id: z.preprocess((val) => (val === '' || val == null) ? undefined : Number(val), z.number().optional()),
         ncm: z.string().nullable().optional(),
+        show_on_menu: z.boolean().optional(),
         is_composite: z.boolean().optional(),
         compositions: z.array(z.object({
             supply_id: z.string(),
@@ -46,6 +47,7 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
             unit: data.unit ?? undefined,
             display_id: data.display_id ?? undefined,
             ncm: data.ncm ?? undefined,
+            show_on_menu: data.show_on_menu,
             cost: data.cost ?? undefined,
             price: data.price ?? undefined,
         })

@@ -138,6 +138,7 @@ model Product {
   description      String?
   is_composite     Boolean                  @default(false)
   is_priority      Boolean                  @default(false)
+  show_on_menu     Boolean                  @default(true)
   name             String
   updated_at       DateTime                 @default(now()) @updatedAt
   cost             Float?                   @default(0)

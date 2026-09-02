@@ -13,6 +13,7 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
             prisma.product.findMany({
                 where: {
                     active: true,
+                    show_on_menu: true,
                 },
                 select: {
                     id: true,
