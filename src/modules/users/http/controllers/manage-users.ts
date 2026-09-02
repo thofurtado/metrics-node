@@ -50,7 +50,7 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
             email,
             password_hash,
             role: dbRole,
-            modules: {
+            userModules: {
                 create: moduleIds.map((moduleId) => ({
                     module: {
                         connect: { id: moduleId },
