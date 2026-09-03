@@ -11,13 +11,40 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        const { cashier_session_id } = (request.query as { cashier_session_id?: string }) || {};
+
+        let whereClause: any = {
+            origem: 'Delivery'
+        };
+
+        if (cashier_session_id) {
+            const targetSession = await prisma.cashierSession.findUnique({
+                where: { id: cashier_session_id }
+            });
+
+            if (targetSession) {
+                const sessionOpenTime = targetSession.opened_at ? new Date(targetSession.opened_at) : today;
+                whereClause = {
+                    origem: 'Delivery',
+                    OR: [
+                        // 1. Pedidos expressamente vinculados a esta sessão de caixa
+                        { caixa_id: cashier_session_id },
+                        // 2. Se a sessão for ABERTA, inclui pedidos sem caixa criados a partir do momento em que este caixa abriu
+                        ...(targetSession.status === 'OPEN' ? [{
+                            caixa_id: null,
+                            data_abertura: { gte: sessionOpenTime }
+                        }] : [])
+                    ]
+                };
+            } else {
+                whereClause.caixa_id = cashier_session_id;
+            }
+        } else {
+            whereClause.data_abertura = { gte: today };
+        }
+
         const pedidos = await prisma.pedido.findMany({
-            where: {
-                origem: 'Delivery',
-                data_abertura: {
-                    gte: today
-                }
-            },
+            where: whereClause,
             include: {
                 itens: true
             },

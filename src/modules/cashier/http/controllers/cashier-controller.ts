@@ -30,21 +30,23 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         }
     })
 
-    // Vincula automaticamente todos os pedidos de delivery órfãos criados hoje antes da abertura do caixa
+    // Vincula apenas pedidos órfãos criados a partir da data de abertura desta sessão
     try {
-        const todayStart = new Date()
-        todayStart.setHours(0, 0, 0, 0)
+        const sessionDate = session.opened_at ? new Date(session.opened_at) : new Date()
+        const dayStart = new Date(sessionDate)
+        dayStart.setHours(0, 0, 0, 0)
+
+        // Só anexa pedidos sem caixa (órfãos) do mesmo dia desta sessão que não tenham caixa vinculado
         await prisma.pedido.updateMany({
             where: {
                 origem: 'Delivery',
                 caixa_id: null,
-                data_abertura: { gte: todayStart }
+                data_abertura: { gte: dayStart, lte: sessionDate }
             },
             data: {
                 caixa_id: session.id
             }
         })
-        console.log(`[Cashier] Pedidos órfãos vinculados automaticamente ao novo caixa (${session.id})`)
     } catch (e) {
         console.error('[Cashier] Erro ao vincular pedidos órfãos na abertura do caixa:', e)
     }
