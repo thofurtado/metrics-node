@@ -50,10 +50,20 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         const mainStatus = status === 'delivered' ? 'Fechado' : (status === 'cancelled' ? 'Cancelado' : 'Aberto');
 
         let updatedObs = existingPedido.observacao || '';
+        const isCard = payment_method && (
+            payment_method.toLowerCase().includes('cartão') ||
+            payment_method.toLowerCase().includes('cartao') ||
+            payment_method.toLowerCase().includes('débito') ||
+            payment_method.toLowerCase().includes('debito') ||
+            payment_method.toLowerCase().includes('crédito') ||
+            payment_method.toLowerCase().includes('credito')
+        );
+        const machineStr = isCard && card_machine ? ` (${card_machine})` : '';
+
         if (status === 'delivered' && payment_method) {
-            const pgtoStr = `Forma de Pagamento: ${payment_method}${card_machine ? ` (${card_machine})` : ''}`;
-            if (updatedObs.includes('Forma de Pagamento:')) {
-                updatedObs = updatedObs.replace(/Forma de Pagamento:[^|]+(\|?)/i, `${pgtoStr} $1`);
+            const pgtoStr = `Forma de Pagamento: ${payment_method}${machineStr}`;
+            if (/(Forma de )?Pagamento:[^|]+/i.test(updatedObs)) {
+                updatedObs = updatedObs.replace(/(Forma de )?Pagamento:[^|]+(\|?)/i, `${pgtoStr} $2`);
             } else {
                 updatedObs = updatedObs ? `${pgtoStr} | ${updatedObs}` : pgtoStr;
             }
@@ -112,8 +122,16 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             const companyProfile = await prisma.companyProfile.findFirst();
             if (companyProfile) {
                 storeTradeName = companyProfile.tradeName || storeTradeName;
-                if (companyProfile.deliverySectors && typeof companyProfile.deliverySectors === 'object') {
-                    googleReviewUrl = (companyProfile.deliverySectors as any).googleReviewUrl || null;
+                if (companyProfile.deliverySectors) {
+                    const sec = typeof companyProfile.deliverySectors === 'string' 
+                        ? JSON.parse(companyProfile.deliverySectors) 
+                        : companyProfile.deliverySectors;
+                    if (Array.isArray(sec)) {
+                        const reviewItem = sec.find((s: any) => s?._type === 'google_review_config');
+                        if (reviewItem?.url) googleReviewUrl = reviewItem.url;
+                    } else if (typeof sec === 'object') {
+                        googleReviewUrl = sec.googleReviewUrl || null;
+                    }
                 }
             }
         } catch (e) {}

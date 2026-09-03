@@ -51,6 +51,10 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
     }
     if (!Array.isArray(deliverySectors)) deliverySectors = [];
 
+    const googleReviewConfig = deliverySectors.find((s: any) => s?._type === 'google_review_config');
+    const googleReviewUrl = googleReviewConfig?.url || '';
+    deliverySectors = deliverySectors.filter((s: any) => s?._type !== 'google_review_config');
+
     let availableNeighborhoods = profile.availableNeighborhoods || [];
     if (typeof availableNeighborhoods === 'string') {
       try {
@@ -65,6 +69,7 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       ...profile,
       availableNeighborhoods,
       deliverySectors,
+      googleReviewUrl,
       paymentMethods: publicPayments,
     })
   } catch (error) {

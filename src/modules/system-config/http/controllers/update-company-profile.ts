@@ -35,6 +35,7 @@ const updateProfileBodySchema = z.object({
   ifoodMerchantId: z.string().nullable().optional(),
   anotaAiApiKey: z.string().nullable().optional(),
   pixKey: z.string().nullable().optional(),
+  googleReviewUrl: z.string().nullable().optional(),
   businessHours: z.array(businessHourSchema).optional(),
 })
 
@@ -50,14 +51,28 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
 
     let profile = await prisma.companyProfile.findFirst()
 
+    // Processa deliverySectors e anexa googleReviewUrl de forma segura em JSON sem precisar de migration
+    let finalSectors: any[] = Array.isArray(rawDbData.deliverySectors) 
+      ? rawDbData.deliverySectors.filter((s: any) => s?._type !== 'google_review_config') 
+      : [];
+    if (rawDbData.googleReviewUrl !== undefined) {
+      finalSectors.push({
+        _type: 'google_review_config',
+        url: (rawDbData.googleReviewUrl || '').trim()
+      });
+    }
+
+    const dataToSave = {
+      ...rawDbData,
+      availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
+      deliverySectors: finalSectors,
+    };
+    delete (dataToSave as any).googleReviewUrl;
+
     if (profile) {
       profile = await prisma.companyProfile.update({
         where: { id: profile.id },
-        data: {
-          ...rawDbData,
-          availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
-          deliverySectors: rawDbData.deliverySectors ?? [],
-        },
+        data: dataToSave,
       })
     } else {
       profile = await prisma.companyProfile.create({
@@ -70,9 +85,7 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
           banner_url: rawDbData.banner_url ?? null,
           isOpenManual: rawDbData.isOpenManual ?? true,
           whatsappNumber: rawDbData.whatsappNumber ?? '',
-          ...rawDbData,
-          availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
-          deliverySectors: rawDbData.deliverySectors ?? [],
+          ...dataToSave,
         },
       })
     }
