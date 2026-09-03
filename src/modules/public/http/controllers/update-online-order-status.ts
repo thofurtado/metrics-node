@@ -55,7 +55,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 status: mainStatus,
                 data_fechamento: status === 'delivered' ? new Date() : undefined,
                 hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota,
-                entregador: delivery_man !== undefined ? delivery_man : existingPedido.entregador
+                entregador: delivery_man !== undefined ? delivery_man : existingPedido.entregador,
+                caixa_id: cashier_session_id || existingPedido.caixa_id
             }
         });
 
@@ -80,8 +81,9 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                     cashier_session_id,
                     amount: existingPedido.valor_final || 0,
                     payment_method: formaPgto,
+                    bank: card_machine || null,
                     origin: 'Delivery',
-                    identification: `Delivery #${existingPedido.display_id} - ${clientName}`,
+                    identification: `Delivery #${existingPedido.display_id} - ${clientName}${card_machine ? ` (${card_machine})` : ''}`,
                     type: 'SALE',
                     client_id: existingPedido.cliente_id
                 }

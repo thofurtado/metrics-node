@@ -12,6 +12,7 @@ import { getProfile } from './get-profile'
 import { createOnlineOrder } from './create-online-order'
 import { getPendingOnlineOrders } from './get-pending-online-orders'
 import { updateOnlineOrderStatus } from './update-online-order-status'
+import { associateOrphanOrders } from './associate-orphan-orders'
 import { webPushManager, VAPID_PUBLIC_KEY } from '@/lib/web-push-manager'
 import { getOnlineOrderStatus } from './get-online-order-status'
 import { ordersStream } from './orders-stream'
@@ -40,6 +41,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/api/pdv/orders/stream', ordersStream)
     app.get('/public/orders/:id/status', getOnlineOrderStatus)
     app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
+    app.post('/public/orders/associate-orphans', associateOrphanOrders)
 
     // Web Push Notifications
     app.get('/public/orders/vapid-public-key', async (_req, reply) => {
