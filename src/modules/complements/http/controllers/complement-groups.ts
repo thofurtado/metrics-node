@@ -16,30 +16,45 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
         linked_supply_id: z.string().nullable().optional(),
       })
     ).optional(),
+    product_ids: z.array(z.string()).optional(),
   })
 
   const data = createBodySchema.parse(request.body)
 
-  const group = await prisma.complementGroup.create({
-    data: {
-      name: data.name,
-      min_quantity: data.min_quantity,
-      max_quantity: data.max_quantity,
-      free_quantity: data.free_quantity,
-      options: data.options?.length
-        ? {
-            create: data.options.map((opt) => ({
-              name: opt.name,
-              price: opt.price,
-              linked_product_id: opt.linked_product_id || null,
-              linked_supply_id: opt.linked_supply_id || null,
-            })),
-          }
-        : undefined,
-    },
-    include: {
-      options: true,
-    },
+  const group = await prisma.$transaction(async (tx) => {
+    const createdGroup = await tx.complementGroup.create({
+      data: {
+        name: data.name,
+        min_quantity: data.min_quantity,
+        max_quantity: data.max_quantity,
+        free_quantity: data.free_quantity,
+        options: data.options?.length
+          ? {
+              create: data.options.map((opt) => ({
+                name: opt.name,
+                price: opt.price,
+                linked_product_id: opt.linked_product_id || null,
+                linked_supply_id: opt.linked_supply_id || null,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        options: true,
+      },
+    })
+
+    if (data.product_ids && data.product_ids.length > 0) {
+      await tx.productComplementGroup.createMany({
+        data: data.product_ids.map((pId, idx) => ({
+          group_id: createdGroup.id,
+          product_id: pId,
+          order: idx,
+        })),
+      })
+    }
+
+    return createdGroup
   })
 
   return reply.status(201).send({ group })
@@ -88,7 +103,7 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
         linked_supply_id: z.string().nullable().optional(),
       })
     ).optional(),
-    product_ids: z.array(z.string().uuid()).optional(),
+    product_ids: z.array(z.string()).optional(),
   })
 
   const { id } = paramsSchema.parse(request.params)
