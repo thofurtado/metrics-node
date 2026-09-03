@@ -1,7 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { prisma } from '@/lib/prisma'
+import { requestContext } from '@fastify/request-context'
 
 export async function associateOrphanOrders(request: FastifyRequest, reply: FastifyReply) {
+    const prisma = requestContext.get('prisma')
+    if (!prisma) {
+        return reply.status(500).send({ message: 'Internal server error: Prisma context missing.' })
+    }
+
     try {
         const { cashier_session_id } = request.body as { cashier_session_id: string }
         if (!cashier_session_id) {

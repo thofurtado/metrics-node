@@ -104,6 +104,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     delivery_man: p.entregador || null,
                     departed_at: p.hora_saida_rota || null,
                     observations: p.observacao || '',
+                    caixa_id: p.caixa_id || null,
                     change_for: p.valor_troco ? Number(p.valor_troco) : undefined,
                     created_at: p.data_abertura,
                     items: p.itens.map(i => {

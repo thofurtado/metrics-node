@@ -18,11 +18,12 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         status: z.enum(['pending', 'in_preparation', 'dispatched', 'delivered', 'cancelled']),
         cashier_session_id: z.string().uuid().optional(),
         payment_method: z.string().optional(),
+        card_machine: z.string().optional(),
         delivery_man: z.string().optional()
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method, delivery_man } = bodySchema.parse(request.body);
+    const { status, cashier_session_id, payment_method, card_machine, delivery_man } = bodySchema.parse(request.body);
 
     try {
         const existingPedido = await prisma.pedido.findFirst({
