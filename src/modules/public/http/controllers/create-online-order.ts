@@ -196,11 +196,18 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         const subtotal = Math.max(0, body.total_amount - body.delivery_fee);
 
+        // Busca a última sessão de caixa aberta para vincular automaticamente todo pedido novo
+        const activeCashier = await prisma.cashierSession.findFirst({
+            where: { status: 'OPEN' },
+            orderBy: { opened_at: 'desc' }
+        });
+
         const pedido = await prisma.pedido.create({
             data: {
                 display_id: displayId,
                 numero_diario: displayId,
                 origem: 'Delivery',
+                caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,
                 subtotal: subtotal,

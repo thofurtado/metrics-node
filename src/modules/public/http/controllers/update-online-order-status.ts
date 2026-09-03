@@ -137,14 +137,15 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         } catch (e) {}
 
         // Dispara Web Push Nativo no celular (Google FCM)
-        if (status === 'delivered' && googleReviewUrl) {
+        if (status === 'delivered') {
+            const finalReviewUrl = googleReviewUrl || `https://www.google.com/search?q=${encodeURIComponent((storeTradeName || 'Restaurante') + ' avaliações')}`;
             webPushManager.notifyOrderStatus(
                 existingPedido.uuid,
                 existingPedido.display_id,
                 status,
-                googleReviewUrl,
-                `⭐ Avalie o ${storeTradeName} no Google!`,
-                'Seu pedido foi entregue! Toque aqui para deixar sua nota no Google ⭐⭐⭐⭐⭐'
+                finalReviewUrl,
+                '⭐ Gostou do nosso atendimento?',
+                `Faça uma avaliação e nos ajude a crescer! Toque aqui para avaliar o ${storeTradeName}.`
             );
         } else {
             webPushManager.notifyOrderStatus(existingPedido.uuid, existingPedido.display_id, status);

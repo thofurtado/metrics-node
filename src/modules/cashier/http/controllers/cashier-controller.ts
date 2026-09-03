@@ -29,6 +29,26 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
             opened_at: data.opened_at ? new Date(data.opened_at) : undefined,
         }
     })
+
+    // Vincula automaticamente todos os pedidos de delivery órfãos criados hoje antes da abertura do caixa
+    try {
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        await prisma.pedido.updateMany({
+            where: {
+                origem: 'Delivery',
+                caixa_id: null,
+                data_abertura: { gte: todayStart }
+            },
+            data: {
+                caixa_id: session.id
+            }
+        })
+        console.log(`[Cashier] Pedidos órfãos vinculados automaticamente ao novo caixa (${session.id})`)
+    } catch (e) {
+        console.error('[Cashier] Erro ao vincular pedidos órfãos na abertura do caixa:', e)
+    }
+
     return reply.status(201).send(session)
 }
 

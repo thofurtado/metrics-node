@@ -69,8 +69,8 @@ class WebPushManager {
                 title = `🛵 Pedido #${displayId} a Caminho!`
                 body = 'O motoboy acabou de sair com o seu pedido. Prepare-se para receber!'
             } else if (status === 'delivered') {
-                title = `🎉 Pedido #${displayId} Entregue!`
-                body = 'Seu pedido foi entregue. Tenha um excelente apetite!'
+                title = '⭐ Gostou do nosso atendimento?'
+                body = 'Faça uma avaliação e nos ajude a crescer! Toque aqui para deixar sua nota.'
             } else if (status === 'cancelled') {
                 title = `❌ Pedido #${displayId} Cancelado`
                 body = 'O pedido foi cancelado pelo restaurante.'
