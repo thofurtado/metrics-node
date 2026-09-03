@@ -48,6 +48,16 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
 
         const mainStatus = status === 'delivered' ? 'Fechado' : (status === 'cancelled' ? 'Cancelado' : 'Aberto');
 
+        let updatedObs = existingPedido.observacao || '';
+        if (status === 'delivered' && payment_method) {
+            const pgtoStr = `Forma de Pagamento: ${payment_method}${card_machine ? ` (${card_machine})` : ''}`;
+            if (updatedObs.includes('Forma de Pagamento:')) {
+                updatedObs = updatedObs.replace(/Forma de Pagamento:[^|]+(\|?)/i, `${pgtoStr} $1`);
+            } else {
+                updatedObs = updatedObs ? `${pgtoStr} | ${updatedObs}` : pgtoStr;
+            }
+        }
+
         const updated = await prisma.pedido.update({
             where: { id: existingPedido.id },
             data: {
@@ -56,7 +66,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 data_fechamento: status === 'delivered' ? new Date() : undefined,
                 hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota,
                 entregador: delivery_man !== undefined ? delivery_man : existingPedido.entregador,
-                caixa_id: cashier_session_id || existingPedido.caixa_id
+                caixa_id: cashier_session_id || existingPedido.caixa_id,
+                observacao: updatedObs
             }
         });
 
@@ -93,8 +104,32 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
 
         // Dispara notificação SSE para todos os ouvintes do tenant
         const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
+        // Busca link do Google Reviews configurado no restaurante
+        let googleReviewUrl = null;
+        let storeTradeName = 'Restaurante';
+        try {
+            const companyProfile = await prisma.companyProfile.findFirst();
+            if (companyProfile) {
+                storeTradeName = companyProfile.tradeName || storeTradeName;
+                if (companyProfile.deliverySectors && typeof companyProfile.deliverySectors === 'object') {
+                    googleReviewUrl = (companyProfile.deliverySectors as any).googleReviewUrl || null;
+                }
+            }
+        } catch (e) {}
+
         // Dispara Web Push Nativo no celular (Google FCM)
-        webPushManager.notifyOrderStatus(existingPedido.uuid, existingPedido.display_id, status)
+        if (status === 'delivered' && googleReviewUrl) {
+            webPushManager.notifyOrderStatus(
+                existingPedido.uuid,
+                existingPedido.display_id,
+                status,
+                googleReviewUrl,
+                `⭐ Avalie o ${storeTradeName} no Google!`,
+                'Seu pedido foi entregue! Toque aqui para deixar sua nota no Google ⭐⭐⭐⭐⭐'
+            );
+        } else {
+            webPushManager.notifyOrderStatus(existingPedido.uuid, existingPedido.display_id, status);
+        }
 
         sseManager.notifyTenant(rawDomain, 'order_status_updated', {
             id: updated.uuid,
