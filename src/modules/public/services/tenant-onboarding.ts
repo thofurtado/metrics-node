@@ -30,9 +30,9 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
     })
 
     try {
-        console.log(`[Onboarding] Iniciando configura��o estruturada para o tenant...`)
+        console.log(`[Onboarding] Iniciando configuração estruturada para o tenant...`)
 
-        // 1. Garantir que o usu�rio Suporte (admin@admin.com) possui acesso a TODOS os m�dulos existentes
+        // 1. Garantir que o usuário Suporte (admin@admin.com) possui acesso a TODOS os módulos existentes
         const allModules = await prisma.module.findMany()
         const supportAdmin = await prisma.user.findUnique({
             where: { email: 'admin@admin.com' }
@@ -54,10 +54,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     }
                 })
             }
-            console.log(`[Onboarding] Permiss�es globais do Suporte (admin@admin.com) vinculadas.`)
+            console.log(`[Onboarding] Permissões globais do Suporte (admin@admin.com) vinculadas.`)
         }
 
-        // 2. Se foi enviado um usu�rio Master da empresa (dono/gerente)
+        // 2. Se foi enviado um usuário Master da empresa (dono/gerente)
         if (data.masterUser && data.masterUser.email) {
             const masterPass = data.masterUser.password || '123456'
             const password_hash = await hash(masterPass, 6)
@@ -76,7 +76,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                 }
             })
 
-            // Vincular aos m�dulos habilitados (ou todos se n�o especificado)
+            // Vincular aos módulos habilitados (ou todos se não especificado)
             const targetModules = data.enabledModules && data.enabledModules.length > 0
                 ? allModules.filter(m => data.enabledModules!.includes(m.slug))
                 : allModules
@@ -96,10 +96,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     }
                 })
             }
-            console.log(`[Onboarding] Usu�rio Master (${clientUser.email}) criado com ${targetModules.length} m�dulos.`)
+            console.log(`[Onboarding] Usuário Master (${clientUser.email}) criado com ${targetModules.length} módulos.`)
         }
 
-        // 3. Atualizar SystemConfig com flags de m�dulos e par�metros operacionais
+        // 3. Atualizar SystemConfig com flags de módulos e parâmetros operacionais
         const existingConfig = await prisma.systemConfig.findFirst()
         const isCashierEnabled = data.systemConfig?.cashier_module ?? true
         const isFinanceEnabled = data.systemConfig?.financial_module ?? true
@@ -120,10 +120,10 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                     blind_cashier_closure: data.systemConfig?.blind_cashier_closure ?? false
                 }
             })
-            console.log(`[Onboarding] SystemConfig atualizado com os m�dulos contratados.`)
+            console.log(`[Onboarding] SystemConfig atualizado com os módulos contratados.`)
         }
 
-        // 4. Criar Caixa Central se n�o existir
+        // 4. Criar Caixa Central e Conta de Liquidação (Cartões) se não existirem
         let caixaCentral = await prisma.account.findFirst({
             where: { name: 'Caixa Central' }
         })
@@ -132,7 +132,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             caixaCentral = await prisma.account.create({
                 data: {
                     name: 'Caixa Central',
-                    description: 'Conta principal para movimenta��es em dinheiro e gaveta do PDV',
+                    description: 'Conta principal para movimentações em dinheiro e gaveta do PDV',
                     balance: 0,
                     is_transit: false
                 }
@@ -140,18 +140,50 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             console.log(`[Onboarding] Conta Caixa Central criada.`)
         }
 
-        // 5. Criar Formas de Pagamento Padr�o e Identificadores
+        let contaTransit = await prisma.account.findFirst({
+            where: { is_transit: true }
+        })
+
+        if (!contaTransit) {
+            contaTransit = await prisma.account.create({
+                data: {
+                    name: 'Conta de Liquidação (Cartões)',
+                    description: 'Conta transitória para valores aguardando compensação das maquininhas',
+                    balance: 0,
+                    is_transit: true
+                }
+            })
+            console.log(`[Onboarding] Conta de Liquidação (Cartões) criada.`)
+        }
+
+        // 5. Criar Formas de Pagamento Padrão (Exatamente as 7 oficiais do padrão Katatau)
         const defaultPayments = [
-            { name: 'Dinheiro', in_sight: true, installment_limit: 1, account_id: caixaCentral.id, sefaz_tPag: '01' },
-            { name: 'PIX', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '17' },
-            { name: 'Cart�o de D�bito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04' },
-            { name: 'Cart�o de Cr�dito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03' },
+            { name: 'Dinheiro', in_sight: true, installment_limit: 1, account_id: caixaCentral.id, sefaz_tPag: '01', active_for_in: true, active_for_out: true },
+            { name: 'Pix', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '17', active_for_in: true, active_for_out: true },
+            { name: 'Cartão de Crédito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03', active_for_in: true, active_for_out: false },
+            { name: 'Cartão de Débito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04', active_for_in: true, active_for_out: false },
+            { name: 'Boleto Bancário', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '15', active_for_in: true, active_for_out: true },
+            { name: 'A Prazo (Correntista)', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '99', active_for_in: true, active_for_out: false },
+            { name: 'Operacional (Evasão de Estoque)', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '90', active_for_in: true, active_for_out: false },
         ]
 
+        const createdPaymentMap = new Map<string, string>()
+
         for (const p of defaultPayments) {
+            // Busca normalizada para não duplicar de forma alguma
             let payment = await prisma.payment.findFirst({
-                where: { name: p.name }
+                where: {
+                    name: { equals: p.name, mode: 'insensitive' }
+                }
             })
+
+            // Se for Pix, também checa se existe "PIX" em caixa alta
+            if (!payment && p.name === 'Pix') {
+                payment = await prisma.payment.findFirst({
+                    where: { name: { in: ['PIX', 'pix', 'Pix'] } }
+                })
+            }
+
             if (!payment) {
                 payment = await prisma.payment.create({
                     data: {
@@ -161,30 +193,110 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                         account_id: p.account_id,
                         sefaz_tPag: p.sefaz_tPag,
                         active: true,
-                        active_for_in: true,
-                        active_for_out: true
+                        active_for_in: p.active_for_in,
+                        active_for_out: p.active_for_out
                     }
                 })
-            }
-
-            const identifier = await prisma.paymentIdentifier.findFirst({
-                where: { name: p.name }
-            })
-            if (!identifier) {
-                await prisma.paymentIdentifier.create({
+            } else {
+                // Atualiza em conformidade para o nome canônico UTF-8 e parâmetros oficiais
+                payment = await prisma.payment.update({
+                    where: { id: payment.id },
                     data: {
                         name: p.name,
-                        payment_method_id: payment.id,
+                        in_sight: p.in_sight,
+                        installment_limit: p.installment_limit,
+                        account_id: payment.account_id || p.account_id,
+                        sefaz_tPag: payment.sefaz_tPag || p.sefaz_tPag,
                         active: true,
-                        is_correntista_debt: false,
-                        is_stock_evasion: false
+                        active_for_in: p.active_for_in,
+                        active_for_out: p.active_for_out
                     }
                 })
             }
-        }
-        console.log(`[Onboarding] Formas de Pagamento e Identificadores criados.`)
 
-        // 6. Criar Departamentos de Impress�o Padr�o
+            createdPaymentMap.set(p.name, payment.id)
+        }
+        console.log(`[Onboarding] 7 Formas de Pagamento padrão criadas/atualizadas com sucesso.`)
+
+        // 6. Criar Identificadores de Caixa & Estoque (Operações oficiais Katatau)
+        const defaultIdentifiers = [
+            {
+                name: 'Cortesia',
+                parentPaymentName: 'Operacional (Evasão de Estoque)',
+                is_stock_evasion: true,
+                is_correntista_debt: false
+            },
+            {
+                name: 'Pró-labore',
+                parentPaymentName: 'Operacional (Evasão de Estoque)',
+                is_stock_evasion: true,
+                is_correntista_debt: false
+            },
+            {
+                name: 'Funcionário',
+                parentPaymentName: 'A Prazo (Correntista)',
+                is_stock_evasion: false,
+                is_correntista_debt: true
+            },
+            {
+                name: 'Permuta',
+                parentPaymentName: 'A Prazo (Correntista)',
+                is_stock_evasion: false,
+                is_correntista_debt: true
+            }
+        ]
+
+        for (const idDef of defaultIdentifiers) {
+            const parentId = createdPaymentMap.get(idDef.parentPaymentName) || null
+
+            await prisma.paymentIdentifier.upsert({
+                where: { name: idDef.name },
+                update: {
+                    payment_method_id: parentId,
+                    is_stock_evasion: idDef.is_stock_evasion,
+                    is_correntista_debt: idDef.is_correntista_debt,
+                    active: true
+                },
+                create: {
+                    name: idDef.name,
+                    payment_method_id: parentId,
+                    is_stock_evasion: idDef.is_stock_evasion,
+                    is_correntista_debt: idDef.is_correntista_debt,
+                    active: true
+                }
+            })
+        }
+
+        // Remove identificadores duplicados antigos que tinham o mesmo nome da forma de pagamento
+        try {
+            await prisma.paymentIdentifier.deleteMany({
+                where: {
+                    name: { in: ['Dinheiro', 'Pix', 'PIX', 'Cartão de Débito', 'Cartão de Crédito'] },
+                    is_stock_evasion: false,
+                    is_correntista_debt: false
+                }
+            })
+        } catch (e) {}
+
+        console.log(`[Onboarding] 4 Identificadores Operacionais de Caixa & Estoque vinculados.`)
+
+        // 7. Criar Condições de Pagamento Padrão (À Vista, Parcelado 2x, Parcelado 3x)
+        const defaultConditions = [
+            { name: 'À Vista', installments: 1 },
+            { name: 'Parcelado 2x', installments: 2 },
+            { name: 'Parcelado 3x', installments: 3 },
+        ]
+
+        for (const cond of defaultConditions) {
+            await prisma.paymentCondition.upsert({
+                where: { name: cond.name },
+                update: { installments: cond.installments, active: true },
+                create: { name: cond.name, installments: cond.installments, active: true }
+            })
+        }
+        console.log(`[Onboarding] Condições de Pagamento padrão criadas.`)
+
+        // 8. Criar Departamentos de Impressão Padrão
         const defaultPrintDepartments = ['Caixa', 'Cozinha', 'Bar']
         for (const depName of defaultPrintDepartments) {
             const existingDep = await prisma.printDepartment.findUnique({
@@ -197,7 +309,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        // 7. Criar Categorias de Produto Padr�o
+        // 9. Criar Categorias de Produto Padrão
         const defaultCategories = ['Geral', 'Bebidas', 'Alimentos', 'Sobremesas']
         for (const catName of defaultCategories) {
             const existingCat = await prisma.category.findUnique({
@@ -210,16 +322,24 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        // 8. Criar Setores Financeiros Padr�o
+        // 10. Criar Setores Financeiros Padrão (Entradas e Saídas Oficiais)
         const defaultSectors = [
+            { name: 'Caixa', type: 'in' },
+            { name: 'Correntista', type: 'in' },
             { name: 'Vendas e Receitas', type: 'in' },
-            { name: 'Fornecedores e Mercadorias', type: 'out' },
             { name: 'Despesas Operacionais', type: 'out' },
-            { name: 'Folha de Pagamento', type: 'out' }
+            { name: 'Fornecedores e Mercadorias', type: 'out' },
+            { name: 'Folha de Pagamento', type: 'out' },
+            { name: 'Insumos', type: 'out' },
+            { name: 'Impostos', type: 'out' },
+            { name: 'Fixas', type: 'out' },
+            { name: 'Limpeza e Higiene', type: 'out' },
+            { name: 'Embalagens', type: 'out' }
         ]
+
         for (const sec of defaultSectors) {
             const existingSec = await prisma.sector.findFirst({
-                where: { name: sec.name }
+                where: { name: { equals: sec.name, mode: 'insensitive' } }
             })
             if (!existingSec) {
                 await prisma.sector.create({
@@ -231,7 +351,8 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             }
         }
 
-        console.log(`[Onboarding] ? Onboarding din�mico conclu�do com sucesso para o banco!`)
+        console.log(`[Onboarding] Setores financeiros padrão criados.`)
+        console.log(`[Onboarding] ✅ Onboarding dinâmico concluído com sucesso para o banco!`)
     } finally {
         await prisma.$disconnect()
     }
