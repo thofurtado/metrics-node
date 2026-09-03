@@ -80,17 +80,28 @@ export class HeadscaleService {
     }
 
     try {
-      // No Headscale gRPC protobuf v1, o campo 'user' é uint64 (ID numérico do usuário)
+      // No Headscale gRPC protobuf v1, o campo 'user' é uint64 (ID numérico do usuário) ou string
       let userId = await this.getUserId(cleanUser)
       if (userId === null) {
-        // Fallback para 1 ou tenta novamente
-        userId = 1
+        // Tenta criar explicitamente o usuário se não encontrado
+        const postRes = await axios.post(
+          `${this.baseUrl}/api/v1/user`,
+          { name: cleanUser },
+          { headers: this.getHeaders(), timeout: 5000 }
+        ).catch(() => null)
+
+        if (postRes?.data?.user?.id !== undefined) {
+          userId = Number(postRes.data.user.id)
+        }
       }
+
+      // Utiliza o ID numérico obtido ou o nome do usuário limpo (sem fallback perigoso para userId = 1)
+      const userParam = userId !== null ? userId : cleanUser
 
       const response = await axios.post(
         `${this.baseUrl}/api/v1/preauthkey`,
         {
-          user: userId,
+          user: userParam,
           reusable,
           ephemeral: false,
           expiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
@@ -98,13 +109,17 @@ export class HeadscaleService {
         { headers: this.getHeaders(), timeout: 5000 }
       )
 
-      const key = response.data?.preAuthKey?.key || response.data?.key || `hskey-metrics-${cleanUser}-preauth`
+      const key = response.data?.preAuthKey?.key || response.data?.key
+      if (!key) {
+        throw new Error('Chave não retornada pelo servidor Headscale.')
+      }
+
       HeadscaleService.lastError = null
       return key
     } catch (error: any) {
       const errMsg = error.response ? `HTTP ${error.response.status}: ${JSON.stringify(error.response.data)}` : error.message;
       HeadscaleService.lastError = errMsg;
-      console.warn(`[HeadscaleService] Falha ao gerar chave via API: ${errMsg}. Usando fallback.`);
+      console.warn(`[HeadscaleService] Falha ao gerar chave para ${cleanUser}: ${errMsg}. Usando fallback.`);
       return `hskey-metrics-${cleanUser}-preauth`
     }
   }
