@@ -27,7 +27,7 @@ export class GetTransactionsUseCase {
         private transactionsRepository: TransactionsRepository
     ) { }
     async execute({ pageIndex = 1, perPage = 6, description, value, sector_id, account_id, month, status, toDate, fromDate, supplier_id, type, sortBy, sortDirection, checked }: Partial<GetTreatmentsUseCaseRequest> = {}): Promise<GetTransactionsDTO | null> {
-        console.log('USE CASE ACCOUNT' + account_id)
+        // console.log('USE CASE ACCOUNT' + account_id)
         if (!perPage)
             perPage = 6
 
