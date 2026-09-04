@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { getProductsSync, postProductsBulkSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
+import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
+import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync } from './cashier-sync-controller'
 
 export async function pdvSyncRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
@@ -23,6 +25,16 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/sync/stocks', postStocksSync)
     app.post('/api/pdv/sync/clients', postClientsSync)
     app.post('/api/pdv/sync/sales', postSalesSync)
+    app.post('/api/pdv/sync/tables', postTablesSync)
+    app.post('/api/pdv/tables', postTablesSync)
+    app.get('/api/pdv/sync/tables', getTablesTelemetry)
+    app.get('/api/pdv/tables', getTablesTelemetry)
+    app.post('/api/pdv/sync/cashier/open', postCashierOpenSync)
+    app.post('/api/pdv/cashier/open', postCashierOpenSync)
+    app.post('/api/pdv/sync/cashier/movements', postCashierMovementsSync)
+    app.post('/api/pdv/cashier/movements', postCashierMovementsSync)
+    app.post('/api/pdv/sync/cashier/close', postCashierCloseSync)
+    app.post('/api/pdv/cashier/close', postCashierCloseSync)
     
     app.get('/api/pdv/sync/payments', getPaymentsSync)
     app.get('/api/pdv/sync/payment-identifiers', getPaymentIdentifiersSync)

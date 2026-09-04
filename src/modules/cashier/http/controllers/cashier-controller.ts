@@ -122,10 +122,15 @@ export async function getSessions(request: FastifyRequest, reply: FastifyReply) 
     })
     const userMap = new Map(users.map(u => [u.id, u.name]))
 
-    const sessionsWithUser = sessions.map(s => ({
-        ...s,
-        operator_name: userMap.get(s.user_id) || 'Operador'
-    }))
+    const sessionsWithUser = sessions.map(s => {
+        const isFromPdv = s.entries.some(e => (e.origin || '').toLowerCase().includes('pdv')) || s.sales.length > 0
+        return {
+            ...s,
+            operator_name: userMap.get(s.user_id) || 'Operador',
+            is_pdv_integrated: isFromPdv,
+            integration_channel: isFromPdv ? 'PDV Edge' : 'Retaguarda Web'
+        }
+    })
 
     return reply.status(200).send(sessionsWithUser)
 }
@@ -151,7 +156,13 @@ export async function getSessionDetails(request: FastifyRequest, reply: FastifyR
     if (!session) {
         return reply.status(404).send({ message: 'Caixa não encontrado.' })
     }
-    return reply.status(200).send({ session, entries: session.entries, summary: {}, transactions: session.transactions })
+    const isFromPdv = session.entries.some(e => (e.origin || '').toLowerCase().includes('pdv')) || session.sales.length > 0
+    const enrichedSession = {
+        ...session,
+        is_pdv_integrated: isFromPdv,
+        integration_channel: isFromPdv ? 'PDV Edge' : 'Retaguarda Web'
+    }
+    return reply.status(200).send({ session: enrichedSession, entries: session.entries, summary: {}, transactions: session.transactions })
 }
 
 export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
@@ -163,7 +174,6 @@ export async function deleteSession(request: FastifyRequest, reply: FastifyReply
     
     // Deleta os vales e consumos de funcionários gerados no RH por essa sessão de caixa
     await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${id}` } } })
-    
     // Deleta os lançamentos e a sessão do caixa
     await prisma.cashierEntry.deleteMany({ where: { cashier_session_id: id } })
     await prisma.cashierSession.delete({ where: { id } })
@@ -413,7 +423,6 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             } 
         })
         await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
-
         // Localiza contas financeiras ativas com antecedência para vincular despesas e receitas
         const accounts = await prisma.account.findMany()
         const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
@@ -426,7 +435,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
         const vendasPorBanco = new Map<string, number>()
         const vendasAPrazo = new Map<string, number>()
-        const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo']
+        const padraoCasa = ['funcionário', 'funcionario', 'pró-labore', 'pro-labore', 'cortesia', 'permuta', 'a prazo', 'correntista', 'fiado', 'convenio']
 
         for (const entry of session.entries) {
             const amount = Number(entry.amount || 0)
@@ -563,11 +572,11 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 continue
             }
 
-            // Lançamento de Pendência no Contas a Receber para Cliente (Permuta, A Prazo)
-            const isClientePrazo = Boolean(entry.client_id) || normMethod.includes('a prazo') || normMethod.includes('permuta')
+            // Lançamento de Pendência no Contas a Receber para Cliente (Qualquer forma a prazo / identificador exceto funcionário)
+            const isClientePrazo = Boolean(entry.client_id) || Boolean(entry.client) || normMethod.includes('a prazo') || normMethod.includes('permuta') || normMethod.includes('correntista') || (!normMethod.includes('funcionario') && !normIdent.includes('funcionario') && Boolean(entry.identification) && !['dinheiro', 'pix', 'debito', 'credito', 'voucher'].some(m => normMethod.includes(m)))
             if (isClientePrazo) {
-                const clientName = entry.identification || 'Cliente Não Identificado'
-                const methodType = normMethod.includes('permuta') ? 'PERMUTA' : 'A PRAZO'
+                const clientName = entry.client?.name || entry.identification || 'Cliente'
+                const methodType = method.toUpperCase().trim() || 'A PRAZO'
                 const key = `${methodType}|${clientName}`
                 const currentTotal = vendasAPrazo.get(key) || 0
                 vendasAPrazo.set(key, currentTotal + amount)
