@@ -35,6 +35,7 @@ export async function publicRoutes(app: FastifyInstance) {
 
     // Pipeline do Cardápio Online & PDV
     app.post('/public/orders', createOnlineOrder)
+    app.post('/api/pdv/orders', createOnlineOrder)
     app.get('/public/orders/pending', getPendingOnlineOrders)
     app.get('/api/pdv/orders/pending', getPendingOnlineOrders)
     app.get('/public/orders/stream', ordersStream)

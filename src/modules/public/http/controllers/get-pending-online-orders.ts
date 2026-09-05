@@ -120,6 +120,8 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     id: p.uuid,
                     display_id: p.display_id,
                     status: mappedStatus(p.status_delivery, p.status),
+                    status_delivery: p.status_delivery || 'Pendente',
+                    raw_status: p.status || 'Aberto',
                     client_name: client?.name || 'Cliente',
                     client_phone: client?.phone || '',
                     address: address,

@@ -10,6 +10,11 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
     }
 
     const createOnlineOrderSchema = z.object({
+        uuid: z.string().uuid().optional(),
+        display_id: z.number().optional(),
+        origin: z.string().optional().default('Delivery'),
+        status_delivery: z.string().optional(),
+        status: z.string().optional(),
         client_name: z.string(),
         client_phone: z.string(),
         street: z.string(),
@@ -27,7 +32,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         total_amount: z.number(),
         notes: z.string().optional(),
         items: z.array(z.object({
-            product_id: z.string(),
+            product_id: z.string().optional(),
             name: z.string(),
             quantity: z.number(),
             unit_price: z.number(),
@@ -50,7 +55,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
     try {
         // Validação rigorosa de Bairros Atendidos por Setor e Lista de Bairros (quando Delivery)
-        const isTakeout = body.street.toLowerCase().includes('retirada') || body.neighborhood.toLowerCase().includes('balcão');
+        const isTakeout = (body.origin === 'PDV') || body.street.toLowerCase().includes('retirada') || body.neighborhood.toLowerCase().includes('balcão');
         if (!isTakeout) {
             const companyProfile = await prisma.companyProfile.findFirst();
             if (companyProfile) {
@@ -147,6 +152,24 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         }
 
+        if (body.uuid) {
+            const existingByUuid = await prisma.pedido.findFirst({
+                where: { uuid: body.uuid },
+                include: { itens: true }
+            });
+            if (existingByUuid) {
+                console.log('[PDV Sync] Pedido existente por UUID reaproveitado:', existingByUuid.uuid);
+                return reply.status(200).send({
+                    order: {
+                        id: existingByUuid.uuid,
+                        display_id: existingByUuid.display_id,
+                        total_amount: existingByUuid.valor_final,
+                        status: existingByUuid.status_delivery
+                    }
+                });
+            }
+        }
+
         // Trava Anti-Duplicidade (Idempotência): Se já existir um pedido recente do mesmo cliente nos últimos 3 minutos com o mesmo valor, reaproveita o existente
         const recentDuplicateWindow = new Date(Date.now() - 3 * 60 * 1000);
         const existingRecentOrder = await prisma.pedido.findFirst({
@@ -204,9 +227,10 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         const pedido = await prisma.pedido.create({
             data: {
-                display_id: displayId,
-                numero_diario: displayId,
-                origem: 'Delivery',
+                uuid: body.uuid || undefined,
+                display_id: body.display_id || displayId,
+                numero_diario: body.display_id || displayId,
+                origem: body.origin || 'Delivery',
                 caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,
@@ -214,15 +238,15 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 valor_frete: body.delivery_fee,
                 valor_final: body.total_amount,
                 valor_troco: body.change_for || 0,
-                status: 'Aberto',
-                status_delivery: 'Pendente',
+                status: body.status || 'Aberto',
+                status_delivery: body.status_delivery || 'Pendente',
                 observacao: fullObservations,
                 sincronizado_web: true,
                 itens: {
                     create: body.items.map(item => {
                         const itemNotes = item.notes ? item.notes.trim() : null;
                         return {
-                            produto_id: item.product_id,
+                            produto_id: (item.product_id && item.product_id.length > 10) ? item.product_id : undefined,
                             quantidade: item.quantity,
                             valor_unitario: item.unit_price,
                             valor_total: item.unit_price * item.quantity,
