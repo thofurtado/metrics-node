@@ -34,6 +34,7 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
                 where: {
                     origem: 'Delivery',
                     status: 'Aberto',
+                    status_delivery: 'Pendente',
                     data_abertura: {
                         gte: today
                     }
