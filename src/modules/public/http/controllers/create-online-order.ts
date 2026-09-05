@@ -239,13 +239,42 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         // Notifica via Server-Sent Events (SSE)
         try {
-            const host = (request.headers.host || '').split(':')[0];
-            sseManager.broadcast('new_order', {
+            const queryTenant = (request.query as { tenant?: string })?.tenant;
+            const headerTenant = request.headers['x-tenant-domain'] as string;
+            const originHost = request.headers.origin ? request.headers.origin.replace(/^https?:\/\//, '').split(':')[0] : '';
+            const host = queryTenant || headerTenant || originHost || (request.headers.host || '').split(':')[0] || request.hostname;
+            
+            const targetAddress = client.addresses?.find(a => a.id === targetAddressId) || client.addresses?.[0];
+            const addressStr = targetAddress
+                ? `${targetAddress.street}, ${targetAddress.number} - ${targetAddress.neighborhood}`
+                : `${body.street}, ${body.number} - ${body.neighborhood}`;
+
+            const fullOrderDto = {
+                id: pedido.uuid,
                 order_id: pedido.uuid,
                 display_id: pedido.display_id,
                 client_name: client.name,
-                total_amount: pedido.valor_final
-            }, host);
+                client_phone: client.phone,
+                address: addressStr,
+                neighborhood: targetAddress?.neighborhood || body.neighborhood,
+                city: targetAddress?.city || body.city,
+                zipcode: targetAddress?.zipcode || body.zipcode,
+                total_amount: pedido.valor_final,
+                delivery_fee: pedido.valor_frete,
+                observations: pedido.observacao || '',
+                created_at: pedido.data_abertura,
+                items: (pedido.itens || []).map(i => ({
+                    id: i.uuid,
+                    name: i.observacao || 'Item',
+                    quantity: i.quantidade,
+                    price: i.valor_unitario,
+                    observation: i.observacao,
+                    complements: i.complementos_json ? JSON.parse(i.complementos_json) : []
+                }))
+            };
+
+            sseManager.notifyTenant(host, 'new_order', fullOrderDto);
+            sseManager.broadcast('new_order', fullOrderDto, host);
         } catch (sseErr) {
             console.error('Erro ao emitir evento SSE de novo pedido:', sseErr);
         }

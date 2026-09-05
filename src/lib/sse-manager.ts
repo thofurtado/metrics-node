@@ -15,8 +15,18 @@ class SseManager {
     }
 
     private normalizeDomain(domain: string): string {
-        return domain
+        if (!domain) return ''
+        let clean = domain.trim().toLowerCase()
+        if (clean.includes('://')) {
+            try {
+                clean = new URL(clean).hostname
+            } catch {
+                clean = clean.split('://')[1].split('/')[0]
+            }
+        }
+        return clean
             .split(':')[0]
+            .split('/')[0]
             .replace(/^www\./, '')
             .replace(/^api\./, '')
             .toLowerCase()
@@ -54,10 +64,19 @@ class SseManager {
 
     public notifyTenant(tenantDomain: string, eventName: string, data: any): boolean {
         const key = this.normalizeDomain(tenantDomain)
-        const connections = this.tenantConnections.get(key)
+        let connections = this.tenantConnections.get(key)
 
         if (!connections || connections.size === 0) {
-            console.log(`[SSE] Nenhum PDV conectado no momento para o tenant: ${key}`)
+            for (const [tKey, tSet] of this.tenantConnections.entries()) {
+                if (tKey && key && (tKey.includes(key) || key.includes(tKey))) {
+                    connections = tSet
+                    break
+                }
+            }
+        }
+
+        if (!connections || connections.size === 0) {
+            console.log(`[SSE] Nenhum PDV/Gestor conectado no momento para o tenant: ${key}`)
             return false
         }
 
@@ -69,12 +88,23 @@ class SseManager {
                 conn.reply.raw.write(payload)
                 sentCount++
             } catch (err) {
-                console.error(`[SSE] Erro ao enviar evento para PDV do tenant ${key}:`, err)
+                console.error(`[SSE] Erro ao enviar evento para conexão do tenant ${key}:`, err)
             }
         }
 
-        console.log(`[SSE] Evento '${eventName}' enviado com sucesso para ${sentCount} PDV(s) do tenant ${key}`)
+        console.log(`[SSE] Evento '${eventName}' enviado com sucesso para ${sentCount} conexão(ões) do tenant ${key}`)
         return sentCount > 0
+    }
+
+    public broadcast(eventName: string, data: any, tenantDomain?: string): boolean {
+        if (tenantDomain) {
+            return this.notifyTenant(tenantDomain, eventName, data)
+        }
+        let totalSent = 0
+        for (const key of this.tenantConnections.keys()) {
+            if (this.notifyTenant(key, eventName, data)) totalSent++
+        }
+        return totalSent > 0
     }
 
     private startHeartbeat(): void {
