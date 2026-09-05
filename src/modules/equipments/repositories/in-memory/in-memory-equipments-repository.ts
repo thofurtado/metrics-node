@@ -54,4 +54,27 @@ export class InMemoryEquipmentsRepository implements EquipmentsRepository {
         this.items.push(equipment)
         return equipment
     }
+
+    async update(id: string, data: Prisma.EquipmentUpdateInput): Promise<Equipment> {
+        const index = this.items.findIndex(item => item.id === id)
+        if (index === -1) throw new Error('Equipment not found')
+        const current = this.items[index]
+        const updated: any = {
+            ...current,
+            type: (data.type as string) || current.type,
+            brand: data.brand !== undefined ? (data.brand as string | null) : current.brand,
+            identification: data.identification !== undefined ? (data.identification as string | null) : current.identification,
+            details: data.details !== undefined ? (data.details as string | null) : current.details,
+            client_id: data.client !== undefined ? (data.client as any)?.connect?.id || null : current.client_id,
+        }
+        this.items[index] = updated
+        return this.items[index]
+    }
+
+    async delete(id: string): Promise<void> {
+        const index = this.items.findIndex(item => item.id === id)
+        if (index !== -1) {
+            this.items.splice(index, 1)
+        }
+    }
 }

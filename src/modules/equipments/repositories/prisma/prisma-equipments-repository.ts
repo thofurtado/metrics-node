@@ -59,4 +59,14 @@ export class PrismaEquipmentsRepository implements EquipmentsRepository {
         })
         return equipment
     }
+
+    async delete(id: string): Promise<void> {
+        await prisma.treatment.updateMany({
+            where: { equipment_id: id },
+            data: { equipment_id: null }
+        })
+        await prisma.equipment.delete({
+            where: { id }
+        })
+    }
 }

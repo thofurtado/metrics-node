@@ -1,3 +1,6 @@
+import { updateEquipment } from './update-equipment'
+import { deleteEquipment } from './delete-equipment'
+import { createEquipment } from './create-equipment'
 ﻿import { sendCommand } from './send-command'
 import { connectionManager } from '../../ws/connection-manager'
 import { FastifyInstance } from 'fastify'
@@ -8,6 +11,9 @@ import { getOrphans } from './get-orphans'
 import { getPrismaForDomain } from '@/lib/tenant-manager'
 
 export async function adminEquipmentsRoutes(app: FastifyInstance) {
+  app.post('/equipments', createEquipment)
+  app.put('/equipments/:id', updateEquipment)
+  app.delete('/equipments/:id', deleteEquipment)
   app.put('/equipments/:id/link-client', linkEquipmentClient)
   app.get('/equipments/orphans', getOrphans)
   app.post('/equipments/:id/command', sendCommand)
