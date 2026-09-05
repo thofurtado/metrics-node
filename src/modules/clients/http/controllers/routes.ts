@@ -17,7 +17,6 @@ export async function clientsRoutes(app: FastifyInstance) {
 
     app.post('/client', createClient)
     app.post('/equipment', createEquipment)
-    app.post('/equipments', createEquipment)
     app.post('/address', createAddress)
     app.get('/clients', getClient)
 
