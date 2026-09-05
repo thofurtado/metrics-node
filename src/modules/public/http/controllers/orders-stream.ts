@@ -3,7 +3,9 @@ import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
 
 export async function ordersStream(request: FastifyRequest, reply: FastifyReply) {
-    const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname
+    const queryTenant = (request.query as { tenant?: string })?.tenant;
+    const headerTenant = request.headers['x-tenant-domain'] as string;
+    const rawDomain = queryTenant || headerTenant || request.hostname;
     const domain = rawDomain.split(':')[0].replace(/^www\./, '').replace(/^api\./, '').toLowerCase().trim()
 
     // Configura cabeçalhos HTTP para Streaming SSE
