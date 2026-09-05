@@ -15,7 +15,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     });
 
     const bodySchema = z.object({
-        status: z.enum(['pending', 'in_preparation', 'dispatched', 'delivered', 'cancelled']),
+        status: z.enum(['pending', 'in_preparation', 'dispatched', 'delivered', 'cancelled', 'conferencia']),
         cashier_session_id: z.string().uuid().optional(),
         payment_method: z.string().optional(),
         card_machine: z.string().optional(),
@@ -42,6 +42,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         const deliveryStatusMap: Record<string, string> = {
             pending: 'Pendente',
             in_preparation: 'EmPreparo',
+            conferencia: 'Conferencia',
             dispatched: 'SaiuEntrega',
             delivered: 'Entregue',
             cancelled: 'Cancelado'
@@ -154,7 +155,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         sseManager.notifyTenant(rawDomain, 'order_status_updated', {
             id: updated.uuid,
             display_id: updated.display_id,
-            status: status,
+            status: status === 'conferencia' ? 'in_preparation' : status,
+            status_delivery: updated.status_delivery,
             amount: updated.valor_final,
             updated_at: new Date()
         });

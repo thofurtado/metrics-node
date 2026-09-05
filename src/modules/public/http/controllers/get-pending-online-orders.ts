@@ -75,7 +75,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const mappedStatus = (statusDelivery: string | null, status: string) => {
             if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
             if (statusDelivery === 'SaiuEntrega') return 'dispatched';
-            if (statusDelivery === 'EmPreparo') return 'in_preparation';
+            if (statusDelivery === 'EmPreparo' || statusDelivery === 'Conferencia') return 'in_preparation';
             if (status === 'Cancelado') return 'cancelled';
             return 'pending';
         };
