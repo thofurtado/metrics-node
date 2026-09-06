@@ -5,7 +5,7 @@ import { z } from 'zod'
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
         initial_balance: z.number().default(0),
-        period: z.string().default("Almoço"),
+        period: z.string().optional(), // Ignorado, será auto-gerado
         user_id: z.string().uuid().optional(),
         opened_at: z.string().optional(),
     })
@@ -20,36 +20,32 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         }
     }
 
+    // Auto-gerar sequence_number para o dia
+    const openedAt = data.opened_at ? new Date(data.opened_at) : new Date()
+    const dayStart = new Date(openedAt)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayEnd.getDate() + 1)
+
+    const countToday = await prisma.cashierSession.count({
+        where: {
+            opened_at: { gte: dayStart, lt: dayEnd }
+        }
+    })
+
+    const sequenceNumber = countToday + 1
+    const periodLabel = `Caixa ${String(sequenceNumber).padStart(2, '0')}`
+
     const session = await prisma.cashierSession.create({
         data: {
             user_id: targetUserId,
             initial_balance: data.initial_balance,
-            period: data.period,
+            period: periodLabel,
+            sequence_number: sequenceNumber,
             status: 'OPEN',
-            opened_at: data.opened_at ? new Date(data.opened_at) : undefined,
+            opened_at: openedAt,
         }
     })
-
-    // Vincula apenas pedidos órfãos criados a partir da data de abertura desta sessão
-    try {
-        const sessionDate = session.opened_at ? new Date(session.opened_at) : new Date()
-        const dayStart = new Date(sessionDate)
-        dayStart.setHours(0, 0, 0, 0)
-
-        // Só anexa pedidos sem caixa (órfãos) do mesmo dia desta sessão que não tenham caixa vinculado
-        await prisma.pedido.updateMany({
-            where: {
-                origem: 'Delivery',
-                caixa_id: null,
-                data_abertura: { gte: dayStart, lte: sessionDate }
-            },
-            data: {
-                caixa_id: session.id
-            }
-        })
-    } catch (e) {
-        console.error('[Cashier] Erro ao vincular pedidos órfãos na abertura do caixa:', e)
-    }
 
     return reply.status(201).send(session)
 }
@@ -86,14 +82,6 @@ export async function getSessions(request: FastifyRequest, reply: FastifyReply) 
         include: { entries: true, sales: { include: { items: true } } }
     })
 
-    const periodPriority: Record<string, number> = {
-        'manhã': 1,
-        'almoço': 2,
-        'tarde': 3,
-        'jantar': 4,
-        'noite': 5
-    }
-
     sessions.sort((a, b) => {
         const dateA = new Date(a.opened_at.getFullYear(), a.opened_at.getMonth(), a.opened_at.getDate()).getTime()
         const dateB = new Date(b.opened_at.getFullYear(), b.opened_at.getMonth(), b.opened_at.getDate()).getTime()
@@ -102,17 +90,14 @@ export async function getSessions(request: FastifyRequest, reply: FastifyReply) 
             return dateB - dateA // Descending date
         }
 
-        const pA = (a.period || '').toLowerCase()
-        const pB = (b.period || '').toLowerCase()
-        
-        const prioA = periodPriority[pA] || 0
-        const prioB = periodPriority[pB] || 0
-
-        if (prioA !== prioB) {
-            return prioB - prioA // Descending priority
+        // Ordenar por sequence_number descendente dentro do mesmo dia
+        const seqA = (a as any).sequence_number || 0
+        const seqB = (b as any).sequence_number || 0
+        if (seqA !== seqB) {
+            return seqB - seqA
         }
 
-        return b.opened_at.getTime() - a.opened_at.getTime() // Descending exact time
+        return b.opened_at.getTime() - a.opened_at.getTime()
     })
 
     const userIds = Array.from(new Set(sessions.map(s => s.user_id)))
@@ -198,6 +183,7 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
         is_checked: z.boolean().default(false),
         type: z.string().optional(),
         identification: z.string().optional(),
+        source: z.string().default('WEB'),
         client_id: z.string().uuid().nullable().optional(),
         employee_id: z.string().uuid().nullable().optional(),
         sector_id: z.string().uuid().nullable().optional(),
@@ -223,6 +209,7 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
             is_checked: data.is_checked || false,
             type: entryType,
             identification: data.identification,
+            source: data.source,
             client_id: data.client_id || null,
             employee_id: data.employee_id || null,
             sector_id: data.sector_id || null,

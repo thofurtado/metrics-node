@@ -41,9 +41,20 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
     await prisma.$transaction(async (tx) => {
         for (const sale of sales) {
-            // 1. Descobrir ou vincular a sessão de caixa ativa se não veio explicitamente
+            // 1. Descobrir ou vincular a sessão de caixa ativa se não veio explicitamente ou se o caixa anterior foi fechado
             let targetSessionId = sale.CashierSessionId
-            if (!targetSessionId) {
+            if (targetSessionId) {
+                const session = await tx.cashierSession.findUnique({
+                    where: { id: targetSessionId }
+                })
+                if (!session || session.status !== 'OPEN') {
+                    const activeSession = await tx.cashierSession.findFirst({
+                        where: { status: 'OPEN' },
+                        orderBy: { opened_at: 'desc' }
+                    })
+                    targetSessionId = activeSession ? activeSession.id : targetSessionId
+                }
+            } else {
                 const activeSession = await tx.cashierSession.findFirst({
                     where: { status: 'OPEN' },
                     orderBy: { opened_at: 'desc' }
@@ -96,6 +107,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                 amount: pay.Amount,
                                 type: 'SALE',
                                 identification: `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`,
+                                source: 'PDV',
                                 created_at: saleCreatedAt
                             }
                         })

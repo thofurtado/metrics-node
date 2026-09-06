@@ -56,12 +56,28 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
         return reply.status(400).send({ message: 'Nenhum usuário disponível para vincular ao caixa.' })
     }
 
+    // Auto-gerar sequence_number para o dia
+    const dayStart = new Date(openedAt)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayEnd.getDate() + 1)
+
+    const countToday = await prisma.cashierSession.count({
+        where: {
+            opened_at: { gte: dayStart, lt: dayEnd }
+        }
+    })
+
+    const sequenceNumber = countToday + 1
+    const periodLabel = data.period || `Caixa ${String(sequenceNumber).padStart(2, '0')}`
+
     const session = await prisma.cashierSession.upsert({
         where: { id: data.uuid },
         update: {
             initial_balance: data.initial_balance,
             status: 'OPEN',
-            period: period,
+            period: periodLabel,
+            sequence_number: sequenceNumber,
             opened_at: openedAt,
         },
         create: {
@@ -69,29 +85,11 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
             user_id: targetUserId,
             initial_balance: data.initial_balance,
             status: 'OPEN',
-            period: period,
+            period: periodLabel,
+            sequence_number: sequenceNumber,
             opened_at: openedAt,
         }
     })
-
-    // Vincula pedidos órfãos delivery criados a partir da data de abertura
-    try {
-        const dayStart = new Date(openedAt)
-        dayStart.setHours(0, 0, 0, 0)
-
-        await prisma.pedido.updateMany({
-            where: {
-                origem: 'Delivery',
-                caixa_id: null,
-                data_abertura: { gte: dayStart, lte: openedAt }
-            },
-            data: {
-                caixa_id: session.id
-            }
-        })
-    } catch (e) {
-        console.error('[CashierSync] Erro ao vincular pedidos órfãos:', e)
-    }
 
     return reply.status(200).send({
         message: 'Caixa sincronizado com sucesso',
