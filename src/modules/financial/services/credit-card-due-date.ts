@@ -64,22 +64,35 @@ export function calculateCreditCardDueDate(
   const purchaseMonth = purchaseDate.getMonth(); // 0-indexed
   const purchaseYear = purchaseDate.getFullYear();
 
-  // Determinar o mês da fatura:
-  // - Compra ANTES do fechamento → fatura do próximo mês (+1)
-  // - Compra NO ou APÓS o fechamento → fatura de dois meses à frente (+2)
-  const monthOffset = purchaseDay < card.closing_day ? 1 : 2;
+  // 1. Determina o ano e mês em que a fatura fecha
+  let closingMonth = purchaseMonth;
+  let closingYear = purchaseYear;
 
-  const billingMonth = purchaseMonth + monthOffset;
-  const billingYear = purchaseYear + Math.floor(billingMonth / 12);
-  const billingMonthNormalized = billingMonth % 12; // 0-indexed, garantindo rollover de ano
+  if (purchaseDay >= card.closing_day) {
+    closingMonth += 1;
+    if (closingMonth > 11) {
+      closingMonth = 0;
+      closingYear += 1;
+    }
+  }
 
-  // Calcular a data base de vencimento. O JS corrige automaticamente datas
-  // inválidas (ex: 31 de fevereiro vira 3 de março), mas queremos o último
-  // dia do mês se o due_day for maior que os dias disponíveis no mês.
-  const daysInMonth = new Date(billingYear, billingMonthNormalized + 1, 0).getDate();
+  // 2. Determina o ano e mês em que a fatura vence
+  let billingMonth = closingMonth;
+  let billingYear = closingYear;
+
+  if (card.due_day <= card.closing_day) {
+    billingMonth += 1;
+    if (billingMonth > 11) {
+      billingMonth = 0;
+      billingYear += 1;
+    }
+  }
+
+  // Garante que o due_day não exceda os dias disponíveis no mês de vencimento
+  const daysInMonth = new Date(billingYear, billingMonth + 1, 0).getDate();
   const effectiveDueDay = Math.min(card.due_day, daysInMonth);
 
-  const baseDueDate = new Date(billingYear, billingMonthNormalized, effectiveDueDay, 12, 0, 0, 0);
+  const baseDueDate = new Date(billingYear, billingMonth, effectiveDueDay, 12, 0, 0, 0);
 
   // Ajustar para o próximo dia útil caso o vencimento caia em feriado/fim de semana
   const finalDueDate = nextBusinessDay(baseDueDate, holidays);

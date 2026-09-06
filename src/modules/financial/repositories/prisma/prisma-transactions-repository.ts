@@ -928,22 +928,30 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const creditCardSwipes = await prisma.transaction.findMany({
             where: {
                 credit_card_id: { not: null },
-                data_vencimento: dateFilter
+                data_vencimento: dateFilter,
+                ...(confirmedFilter !== undefined ? { confirmed: confirmedFilter } : {})
             },
             include: {
                 creditCard: {
                     include: { account: true }
                 }
-            }
+            },
+            orderBy: { data_vencimento: 'asc' }
         })
 
-        const aggregatedByCard = new Map<string, any>()
+        const aggregatedByCardMonth = new Map<string, any>()
         for (const swipe of creditCardSwipes) {
             if (!swipe.credit_card_id || !swipe.creditCard) continue
+
+            const vencDate = new Date(swipe.data_vencimento)
+            const year = vencDate.getFullYear()
+            const month = String(vencDate.getMonth() + 1).padStart(2, '0')
+            const monthKey = `${year}-${month}`
+            const invoiceKey = `${swipe.credit_card_id}-${monthKey}`
             
-            if (!aggregatedByCard.has(swipe.credit_card_id)) {
-                aggregatedByCard.set(swipe.credit_card_id, {
-                    id: `virtual-card-${swipe.credit_card_id}`,
+            if (!aggregatedByCardMonth.has(invoiceKey)) {
+                aggregatedByCardMonth.set(invoiceKey, {
+                    id: `virtual-card-${swipe.credit_card_id}-${monthKey}`,
                     operation: 'expense',
                     data_vencimento: swipe.data_vencimento,
                     data_emissao: swipe.data_emissao,
@@ -963,7 +971,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 })
             }
             
-            const grouped = aggregatedByCard.get(swipe.credit_card_id)
+            const grouped = aggregatedByCardMonth.get(invoiceKey)
             grouped.amount += swipe.amount
             if (swipe.totalValue) {
                 grouped.totalValue += swipe.totalValue
@@ -976,7 +984,16 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             grouped.swipes.push(swipe)
         }
 
-        const virtualRows = Array.from(aggregatedByCard.values())
+        let virtualRows = Array.from(aggregatedByCardMonth.values())
+
+        if (confirmedFilter !== undefined) {
+            virtualRows = virtualRows.filter(v => v.confirmed === confirmedFilter)
+        }
+
+        if (operation && operation !== 'expense') {
+            virtualRows = []
+        }
+
         const combinedTransactions = [...transactions, ...virtualRows]
 
         const isDescending = sortDirection === 'desc' || (!sortDirection && sortBy === 'created_at');
