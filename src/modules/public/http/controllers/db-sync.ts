@@ -32,6 +32,13 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
 
     let result = ''
 
+    // Limpa registros de migrações incompletas/falhas anteriores para não bloquear o prisma migrate deploy (P3009)
+    try {
+      const cleanupPool = new Pool({ connectionString: dbUrl })
+      await cleanupPool.query('DELETE FROM "_prisma_migrations" WHERE "finished_at" IS NULL')
+      await cleanupPool.end()
+    } catch (_) {}
+
     if (forcePush) {
       console.log(`⚙️ Executando db push direto no banco ${dbName}...`)
       result = execSync(`npx prisma db push --accept-data-loss`, { 
