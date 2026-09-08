@@ -366,7 +366,17 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 cost: z.number().nullable().optional(),
                 barcode: z.string().nullable().optional(),
                 ncm: z.string().nullable().optional(),
+                cest: z.string().nullable().optional(),
+                cfop: z.string().nullable().optional(),
+                csosn: z.string().nullable().optional(),
+                cstIcms: z.string().nullable().optional(),
+                origem: z.number().nullable().optional(),
+                cstPis: z.string().nullable().optional(),
+                aliquotaPis: z.number().nullable().optional(),
+                cstCofins: z.string().nullable().optional(),
+                aliquotaCofins: z.number().nullable().optional(),
                 categoryName: z.string().nullable().optional(),
+                subcategoryName: z.string().nullable().optional(),
                 active: z.boolean().nullable().optional(),
                 stock: z.number().nullable().optional(),
                 description: z.string().nullable().optional()
@@ -391,8 +401,9 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         const name = p.name.trim()
         const catName = p.categoryName?.trim()
 
-        // 1. Categoria (find or create)
+        // 1. Categoria e Subcategoria (find or create)
         let categoryId: string | null = null
+        let subcategoryId: string | null = null
         if (catName) {
             let category = await prisma.category.findUnique({
                 where: { name: catName }
@@ -403,6 +414,22 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 })
             }
             categoryId = category.id
+
+            if (p.subcategoryName?.trim()) {
+                const subName = p.subcategoryName.trim()
+                let subcategory = await prisma.subcategory.findFirst({
+                    where: { name: subName, category_id: categoryId }
+                })
+                if (!subcategory) {
+                    subcategory = await prisma.subcategory.create({
+                        data: {
+                            name: subName,
+                            category_id: categoryId
+                        }
+                    })
+                }
+                subcategoryId = subcategory.id
+            }
         }
 
         // 2. Busca se o produto ja existe pelo nome ou codigo de barras
@@ -435,7 +462,17 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                         stock: p.stock !== undefined && p.stock !== null ? p.stock : existing.stock,
                         barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : existing.barcode,
                         ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : existing.ncm,
+                        cest: p.cest && p.cest.trim() ? p.cest.trim() : existing.cest,
+                        cfop: p.cfop && p.cfop.trim() ? p.cfop.trim() : existing.cfop,
+                        csosn: p.csosn && p.csosn.trim() ? p.csosn.trim() : existing.csosn,
+                        cst_icms: p.cstIcms && p.cstIcms.trim() ? p.cstIcms.trim() : existing.cst_icms,
+                        origem: p.origem !== undefined && p.origem !== null ? p.origem : existing.origem,
+                        cst_pis: p.cstPis && p.cstPis.trim() ? p.cstPis.trim() : existing.cst_pis,
+                        aliquota_pis: p.aliquotaPis !== undefined && p.aliquotaPis !== null ? p.aliquotaPis : existing.aliquota_pis,
+                        cst_cofins: p.cstCofins && p.cstCofins.trim() ? p.cstCofins.trim() : existing.cst_cofins,
+                        aliquota_cofins: p.aliquotaCofins !== undefined && p.aliquotaCofins !== null ? p.aliquotaCofins : existing.aliquota_cofins,
                         category_id: categoryId ?? existing.category_id,
+                        subcategory_id: subcategoryId ?? existing.subcategory_id,
                         active: p.active !== undefined && p.active !== null ? p.active : existing.active,
                         description: p.description !== undefined && p.description !== null ? p.description : existing.description,
                         updated_at: new Date()
@@ -456,7 +493,17 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                     min_stock: 0,
                     barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : null,
                     ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : null,
+                    cest: p.cest && p.cest.trim() ? p.cest.trim() : null,
+                    cfop: p.cfop && p.cfop.trim() ? p.cfop.trim() : null,
+                    csosn: p.csosn && p.csosn.trim() ? p.csosn.trim() : null,
+                    cst_icms: p.cstIcms && p.cstIcms.trim() ? p.cstIcms.trim() : null,
+                    origem: p.origem ?? 0,
+                    cst_pis: p.cstPis && p.cstPis.trim() ? p.cstPis.trim() : null,
+                    aliquota_pis: p.aliquotaPis ?? 0,
+                    cst_cofins: p.cstCofins && p.cstCofins.trim() ? p.cstCofins.trim() : null,
+                    aliquota_cofins: p.aliquotaCofins ?? 0,
                     category_id: categoryId,
+                    subcategory_id: subcategoryId,
                     active: p.active !== undefined && p.active !== null ? p.active : true,
                     description: p.description || null,
                     display_id: currentMaxDisplayId

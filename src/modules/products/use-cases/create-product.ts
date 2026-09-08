@@ -12,6 +12,18 @@ interface CreateProductUseCaseRequest {
     min_stock?: number | null
     barcode?: string | null
     ncm?: string | null
+    cest?: string | null
+    cfop?: string | null
+    csosn?: string | null
+    cst_icms?: string | null
+    origem?: number | null
+    cst_pis?: string | null
+    aliquota_pis?: number | null
+    cst_cofins?: string | null
+    aliquota_cofins?: number | null
+    subcategory_id?: string | null
+    show_on_menu?: boolean | null
+    is_priority?: boolean | null
     is_composite?: boolean
     display_id?: number | null
     category?: string | null
@@ -42,6 +54,18 @@ export class CreateProductUseCase {
         min_stock,
         barcode,
         ncm,
+        cest,
+        cfop,
+        csosn,
+        cst_icms,
+        origem,
+        cst_pis,
+        aliquota_pis,
+        cst_cofins,
+        aliquota_cofins,
+        subcategory_id,
+        show_on_menu,
+        is_priority,
         is_composite,
         display_id,
         category,
@@ -94,6 +118,18 @@ export class CreateProductUseCase {
             min_stock: min_stock ?? 0,
             barcode,
             ncm,
+            cest: cest ?? null,
+            cfop: cfop ?? null,
+            csosn: csosn ?? null,
+            cst_icms: cst_icms ?? null,
+            origem: origem ?? 0,
+            cst_pis: cst_pis ?? null,
+            aliquota_pis: aliquota_pis ?? 0,
+            cst_cofins: cst_cofins ?? null,
+            aliquota_cofins: aliquota_cofins ?? 0,
+            subcategory_id: subcategory_id ?? null,
+            show_on_menu: show_on_menu ?? true,
+            is_priority: is_priority ?? false,
             is_composite: is_composite ?? false,
             display_id: finalDisplayId,
             category: category ? { connect: { id: category } } : undefined,

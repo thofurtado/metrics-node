@@ -35,6 +35,17 @@ interface UpdateItemUseCaseRequest {
     unit?: string | null
     display_id?: number | null
     ncm?: string | null
+    cest?: string | null
+    cfop?: string | null
+    csosn?: string | null
+    cst_icms?: string | null
+    origem?: number | null
+    cst_pis?: string | null
+    aliquota_pis?: number | null
+    cst_cofins?: string | null
+    aliquota_cofins?: number | null
+    subcategory_id?: string | null
+    is_priority?: boolean
     stock?: number | null
     show_on_menu?: boolean
     is_composite?: boolean
@@ -65,6 +76,17 @@ export class UpdateItemUseCase {
                 stock: data.stock,
                 barcode: data.barcode,
                 ncm: data.ncm,
+                cest: data.cest,
+                cfop: data.cfop,
+                csosn: data.csosn,
+                cst_icms: data.cst_icms,
+                origem: data.origem,
+                cst_pis: data.cst_pis,
+                aliquota_pis: data.aliquota_pis,
+                cst_cofins: data.cst_cofins,
+                aliquota_cofins: data.aliquota_cofins,
+                subcategory_id: data.subcategory_id,
+                is_priority: data.is_priority,
                 display_id: data.display_id,
                 show_on_menu: data.show_on_menu
             }

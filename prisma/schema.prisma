@@ -133,6 +133,15 @@ model Product {
   min_stock        Float?                   @default(0)
   barcode          String?
   ncm              String?
+  cest             String?
+  cfop             String?
+  csosn            String?
+  cst_icms         String?
+  origem           Int?                     @default(0)
+  cst_pis          String?
+  aliquota_pis     Float?
+  cst_cofins       String?
+  aliquota_cofins  Float?
   active           Boolean?                 @default(true)
   created_at       DateTime                 @default(now())
   description      String?
