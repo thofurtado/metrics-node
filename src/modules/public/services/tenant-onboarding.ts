@@ -163,7 +163,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             { name: 'Cartão de Crédito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03', active_for_in: true, active_for_out: false },
             { name: 'Cartão de Débito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04', active_for_in: true, active_for_out: false },
             { name: 'Boleto Bancário', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '15', active_for_in: true, active_for_out: true },
-            { name: 'A Prazo (Correntista)', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '99', active_for_in: true, active_for_out: false },
+            { name: 'A Prazo', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '99', active_for_in: true, active_for_out: false },
             { name: 'Operacional (Evasão de Estoque)', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '90', active_for_in: true, active_for_out: false },
         ]
 
@@ -233,14 +233,20 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
                 is_correntista_debt: false
             },
             {
+                name: 'Correntista',
+                parentPaymentName: 'A Prazo',
+                is_stock_evasion: false,
+                is_correntista_debt: true
+            },
+            {
                 name: 'Funcionário',
-                parentPaymentName: 'A Prazo (Correntista)',
+                parentPaymentName: 'A Prazo',
                 is_stock_evasion: false,
                 is_correntista_debt: true
             },
             {
                 name: 'Permuta',
-                parentPaymentName: 'A Prazo (Correntista)',
+                parentPaymentName: 'A Prazo',
                 is_stock_evasion: false,
                 is_correntista_debt: true
             }
@@ -296,20 +302,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
         }
         console.log(`[Onboarding] Condições de Pagamento padrão criadas.`)
 
-        // 8. Criar Departamentos de Impressão Padrão
-        const defaultPrintDepartments = ['Caixa', 'Cozinha', 'Bar']
-        for (const depName of defaultPrintDepartments) {
-            const existingDep = await prisma.printDepartment.findUnique({
-                where: { name: depName }
-            })
-            if (!existingDep) {
-                await prisma.printDepartment.create({
-                    data: { name: depName }
-                })
-            }
-        }
-
-        // 9. Criar Categorias de Produto Padrão
+        // 8. Criar Categorias de Produto Padrão
         const defaultCategories = ['Geral', 'Bebidas', 'Alimentos', 'Sobremesas']
         for (const catName of defaultCategories) {
             const existingCat = await prisma.category.findUnique({
