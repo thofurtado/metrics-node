@@ -4,7 +4,7 @@ import { env } from '@/env';
 
 // Pool for querying the Master Database
 const pool = new Pool({
-  connectionString: process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public",
+  connectionString: process.env.MASTER_DATABASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432/db_master?schema=public",
 });
 
 // Cache for PrismaClient instances to avoid memory leaks

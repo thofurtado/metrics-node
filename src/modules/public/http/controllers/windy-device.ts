@@ -5,7 +5,7 @@ import { getEurecaPrisma, getPrismaForDomain } from '@/lib/tenant-manager'
 import { PrismaClient } from '@prisma/client'
 import { Pool } from 'pg'
 
-const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
+const masterUrl = process.env.MASTER_DATABASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432/db_master?schema=public"
 
 async function getWindyDb(tenantDomain?: string): Promise<PrismaClient> {
   if (tenantDomain) {
@@ -276,5 +276,36 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
   } catch (error: any) {
     console.error('[Windy] Erro ao vincular dispositivo:', error)
     return reply.status(500).send({ message: 'Erro ao vincular empresa.', error: error.message })
+  }
+}
+
+
+export async function getTenantByCode(request: FastifyRequest, reply: FastifyReply) {
+  const codeParam = (request.params as any)?.code
+  const codeQuery = (request.query as any)?.code
+  const code = (codeParam || codeQuery || '').trim().toUpperCase()
+
+  let pool: Pool | null = null
+  try {
+    pool = new Pool({ connectionString: masterUrl })
+
+    if (!code) {
+      const res = await pool.query('SELECT "id", "name", "domain", "code" FROM "Tenant" WHERE status = $1 ORDER BY name ASC', ['active'])
+      await pool.end()
+      return reply.status(200).send(res.rows)
+    }
+
+    const res = await pool.query('SELECT "id", "name", "domain", "code" FROM "Tenant" WHERE UPPER(code) = $1 AND status = $2 LIMIT 1', [code, 'active'])
+    await pool.end()
+
+    if (res.rows.length === 0) {
+      return reply.status(404).send({ error: 'Empresa não encontrada' })
+    }
+
+    return reply.status(200).send(res.rows[0])
+  } catch (err: any) {
+    if (pool) await pool.end().catch(() => {})
+    console.error('[Windy] Erro ao consultar Tenant por código:', err)
+    return reply.status(500).send({ error: 'Erro ao consultar código.', details: err.message })
   }
 }

@@ -18,7 +18,7 @@ import { getOnlineOrderStatus } from './get-online-order-status'
 import { ordersStream } from './orders-stream'
 import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from './windy-downloads'
 import { getLatestPdvVersion, downloadLatestPdv, uploadPdvRelease } from './pdv-downloads'
-import { getClientsSummaryForWindy, bindDeviceFromWindy } from './windy-device'
+import { getClientsSummaryForWindy, bindDeviceFromWindy, getTenantByCode } from './windy-device'
 import { getEquipmentHistory } from './get-equipment-history'
 
 export async function publicRoutes(app: FastifyInstance) {
@@ -67,6 +67,9 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/api/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/windy/clients-summary', getClientsSummaryForWindy)
     app.post('/api/public/windy/bind-device', bindDeviceFromWindy)
+    app.get('/api/public/windy/tenant-by-code/:code', getTenantByCode)
+    app.get('/api/public/windy/tenant-by-code', getTenantByCode)
+    app.get('/api/tenants', getTenantByCode)
     app.get('/api/public/windy/latest', getLatestWindyVersion)
     app.get('/public/windy/latest', getLatestWindyVersion)
     app.get('/api/public/windy/download', downloadLatestWindy)
