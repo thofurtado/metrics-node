@@ -1,19 +1,34 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '../../../../lib/prisma'
 import { HeadscaleService } from '@/modules/vpn/services/headscale-service'
+import { getEurecaPrisma, getPrismaForDomain } from '@/lib/tenant-manager'
+import { PrismaClient } from '@prisma/client'
 import { Pool } from 'pg'
 
 const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
 
+async function getWindyDb(tenantDomain?: string): Promise<PrismaClient> {
+  if (tenantDomain) {
+    try {
+      const client = await getPrismaForDomain(tenantDomain)
+      if (client) return client
+    } catch {
+      // fallback
+    }
+  }
+  return getEurecaPrisma()
+}
+
 export async function getClientsSummaryForWindy(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // 1. Tentar buscar clientes locais no prisma com grupo vinculado
-    const clients = await prisma.client.findMany({
+    const db = await getWindyDb()
+
+    // 1. Tentar buscar clientes locais no prisma com grupo vinculado em db_eureca
+    const clients = await db.client.findMany({
       select: {
         id: true,
         name: true,
-        document: true,
+        identification: true,
         group_id: true,
         group: {
           select: {
@@ -31,7 +46,7 @@ export async function getClientsSummaryForWindy(request: FastifyRequest, reply: 
       const formatted = clients.map((c) => ({
         id: c.id,
         name: c.name,
-        identification: c.document || '',
+        identification: c.identification || '',
         groupId: c.group_id || '',
         groupName: c.group ? `Grupo: ${c.group.name}` : 'Isolado (Sem Grupo)',
       }))
@@ -80,11 +95,14 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
   let resolvedClientName = clientName || ''
   let resolvedClientId = clientId || ''
   let resolvedClient: any = null
+  let resolvedEquipmentId = equipmentId || ''
 
   try {
+    const db = await getWindyDb(tenantDomain)
+
     // 1. Se veio clientId explícito, buscar dados do cliente com o grupo
     if (resolvedClientId) {
-      resolvedClient = await prisma.client.findUnique({
+      resolvedClient = await db.client.findUnique({
         where: { id: resolvedClientId },
         include: { group: true },
       })
@@ -93,13 +111,27 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
       }
     }
 
-    // 2. Se não encontrou e tem tenantDomain, buscar pelo domínio/identificação
+    // 2. Se não encontrou por ID e veio clientName explícito, buscar pelo nome
+    if (!resolvedClient && clientName) {
+      resolvedClient = await db.client.findFirst({
+        where: {
+          name: { equals: clientName.trim(), mode: 'insensitive' },
+        },
+        include: { group: true },
+      })
+      if (resolvedClient) {
+        resolvedClientId = resolvedClient.id
+        resolvedClientName = resolvedClient.name
+      }
+    }
+
+    // 3. Se não encontrou e tem tenantDomain, buscar pelo domínio/identificação ou nome
     if (!resolvedClient && tenantDomain) {
-      resolvedClient = await prisma.client.findFirst({
+      resolvedClient = await db.client.findFirst({
         where: {
           OR: [
-            { identification: { equals: tenantDomain, mode: 'insensitive' } },
-            { name: { equals: tenantDomain, mode: 'insensitive' } },
+            { identification: { equals: tenantDomain.trim(), mode: 'insensitive' } },
+            { name: { equals: tenantDomain.trim(), mode: 'insensitive' } },
           ],
         },
         include: { group: true },
@@ -110,12 +142,12 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
       }
     }
 
-    // 3. Se não encontrou por clientId/tenantDomain, buscar pelo equipamento cadastrado no banco
+    // 4. Se não encontrou por clientId/clientName/tenantDomain, buscar pelo equipamento cadastrado no banco
     if (!resolvedClient) {
       const searchTerms = [equipmentId, identification, hostname, macAddress].filter(Boolean) as string[]
       if (searchTerms.length > 0) {
         for (const term of searchTerms) {
-          const eq = await prisma.equipment.findFirst({
+          const eq = await db.equipment.findFirst({
             where: {
               OR: [
                 { id: term },
@@ -135,13 +167,14 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
             resolvedClient = eq.client
             resolvedClientId = eq.client.id
             resolvedClientName = eq.client.name
+            resolvedEquipmentId = eq.id
             break
           }
         }
       }
     }
 
-    // 4. Determinação Dinâmica da Rede Headscale (Grupo vs Cliente Isolado)
+    // 5. Determinação Dinâmica da Rede Headscale (Grupo vs Cliente Isolado)
     let headscaleUser: string
     let groupName: string
 
@@ -166,19 +199,60 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
       groupName = `Rede Isolada (${cleanMachine})`
     }
 
-    // 5. Garantir usuário e chave no Headscale para o namespace determinado
+    // 6. Garantir usuário e chave no Headscale para o namespace determinado
     await HeadscaleService.createOrGetUser(headscaleUser)
     const vpnAuthKey = await HeadscaleService.createPreAuthKey(headscaleUser, true)
 
     // Se for grupo e ainda não tinha chave ou user salvo, persistir
     if (resolvedClient?.group && (!resolvedClient.group.headscale_user || !resolvedClient.group.vpn_preauth_key)) {
-      await prisma.clientGroup.update({
+      await db.clientGroup.update({
         where: { id: resolvedClient.group.id },
         data: {
           headscale_user: headscaleUser,
           vpn_preauth_key: vpnAuthKey,
         },
       }).catch((err) => console.warn('[Windy] Aviso ao salvar chave no grupo:', err.message))
+    }
+
+    // 7. Vincular/Atualizar o equipamento em db_eureca
+    if (resolvedClientId) {
+      try {
+        const machineIdent = identification || hostname || 'Terminal'
+        const existingEq = await db.equipment.findFirst({
+          where: {
+            OR: [
+              ...(resolvedEquipmentId ? [{ id: resolvedEquipmentId }] : []),
+              { identification: { equals: machineIdent, mode: 'insensitive' } },
+            ],
+          },
+        })
+
+        if (existingEq) {
+          resolvedEquipmentId = existingEq.id
+          await db.equipment.update({
+            where: { id: existingEq.id },
+            data: {
+              client_id: resolvedClientId,
+              identification: machineIdent,
+              is_online: true,
+              last_seen_at: new Date(),
+            },
+          })
+        } else {
+          const newEq = await db.equipment.create({
+            data: {
+              client_id: resolvedClientId,
+              type: 'Desktop',
+              identification: machineIdent,
+              is_online: true,
+              last_seen_at: new Date(),
+            },
+          })
+          resolvedEquipmentId = newEq.id
+        }
+      } catch (eqErr: any) {
+        console.warn('[Windy] Aviso ao registrar equipamento no banco:', eqErr.message)
+      }
     }
 
     return reply.status(200).send({
@@ -189,6 +263,7 @@ export async function bindDeviceFromWindy(request: FastifyRequest, reply: Fastif
       groupName,
       headscaleUser,
       vpnAuthKey,
+      equipmentId: resolvedEquipmentId || null,
       loginServer: 'https://vpn.metrics.dev.br',
       debug: {
         hasApiKey: Boolean(process.env.HEADSCALE_API_KEY),

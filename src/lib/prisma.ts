@@ -16,7 +16,17 @@ export const prisma = new Proxy({} as unknown as PrismaClient, {
       // Em ambiente de teste ou CLI, usa instância direta do PrismaClient
       if (process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.DATABASE_URL || !process.env.NODE_ENV) {
         if (!defaultPrisma) {
-          defaultPrisma = new PrismaClient()
+          let url = process.env.DATABASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432/db_eureca";
+          if (url.endsWith(':5432') || url.endsWith(':5432/') || url.includes('/postgres')) {
+            url = url.replace(/\/postgres(\?.*)?$/, '/db_eureca$1').replace(/:5432\/?(\?.*)?$/, ':5432/db_eureca$1');
+          }
+          defaultPrisma = new PrismaClient({
+            datasources: {
+              db: {
+                url,
+              },
+            },
+          })
         }
         return (defaultPrisma as any)[prop]
       }

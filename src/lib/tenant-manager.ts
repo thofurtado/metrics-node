@@ -50,3 +50,34 @@ export async function getPrismaForDomain(domain: string): Promise<PrismaClient |
 
   return tenantPrisma;
 }
+export async function getPrismaForDb(dbName: string): Promise<PrismaClient> {
+  const cacheKey = `db:${dbName}`;
+  if (prismaClients.has(cacheKey)) {
+    return prismaClients.get(cacheKey)!;
+  }
+
+  const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432";
+  const tenantUrl = `${baseUrl}/${dbName}?schema=public`;
+
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: tenantUrl,
+      },
+    },
+    log: env.NODE_ENV === 'dev' ? ['query'] : [],
+  });
+
+  prismaClients.set(cacheKey, client);
+  return client;
+}
+
+export async function getEurecaPrisma(): Promise<PrismaClient> {
+  try {
+    const fromDomain = await getPrismaForDomain('eureca.metrics.dev.br');
+    if (fromDomain) return fromDomain;
+  } catch (e: any) {
+    console.warn('[TenantManager] Fallback para conexão direta db_eureca:', e.message);
+  }
+  return getPrismaForDb('db_eureca');
+}
