@@ -127,7 +127,11 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                 aliquota_cofins: product.aliquota_cofins,
                 description: product.description,
                 measureUnit: product.measureUnit,
-                imageUrl: product.image_url,
+                imageUrl: product.image_url
+                    ? (product.image_url.startsWith('http')
+                        ? product.image_url
+                        : `${process.env.API_BASE_URL || 'https://api.metrics.dev.br'}${product.image_url.startsWith('/') ? '' : '/'}${product.image_url}`)
+                    : null,
                 is_priority: product.is_priority,
                 category: product.category?.name || 'Geral',
                 subcategory: product.subcategory ? {

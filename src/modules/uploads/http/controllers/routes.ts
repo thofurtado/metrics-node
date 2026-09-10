@@ -2,7 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { verifyJwt } from '@/http/middlewares/verify-jwt';
 import { 
     uploadTransactionReceipt, 
-    uploadProductImage, 
+    uploadProductImage,
+    deleteProductImage, 
     uploadEmployeePhoto, 
     deleteTransactionReceipt,
     uploadStandaloneReceipt,
@@ -16,6 +17,8 @@ export async function uploadsRoutes(app: FastifyInstance) {
 
     app.post('/uploads/transaction/:id', uploadTransactionReceipt);
     app.post('/uploads/product/:id', uploadProductImage);
+    app.put('/uploads/product/:id', uploadProductImage);
+    app.delete('/uploads/product/:id', deleteProductImage);
     app.post('/uploads/employee/:id', uploadEmployeePhoto);
     
     app.delete('/uploads/transaction/:id', deleteTransactionReceipt);

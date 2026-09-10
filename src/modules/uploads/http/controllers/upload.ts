@@ -93,6 +93,34 @@ export async function uploadProductImage(request: FastifyRequest, reply: Fastify
     });
 }
   
+
+export async function deleteProductImage(request: FastifyRequest, reply: FastifyReply) {
+    const uploadParamsSchema = z.object({
+      id: z.string().uuid(),
+    });
+  
+    const { id } = uploadParamsSchema.parse(request.params);
+  
+    const product = await getPrisma().product.findUnique({
+      where: { id }
+    });
+  
+    if (!product) {
+      return reply.status(404).send({ message: 'Produto não encontrado' });
+    }
+  
+    if (product.image_url) {
+      await storage.delete(product.image_url).catch(console.error);
+    }
+  
+    await getPrisma().product.update({
+      where: { id },
+      data: { image_url: null }
+    });
+  
+    return reply.status(204).send();
+}
+
 export async function uploadEmployeePhoto(request: FastifyRequest, reply: FastifyReply) {
     const uploadParamsSchema = z.object({
         id: z.string().uuid(),
