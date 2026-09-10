@@ -127,7 +127,7 @@ export class CreateProductUseCase {
             aliquota_pis: aliquota_pis ?? 0,
             cst_cofins: cst_cofins ?? null,
             aliquota_cofins: aliquota_cofins ?? 0,
-            subcategory_id: subcategory_id ?? null,
+            subcategory: subcategory_id ? { connect: { id: subcategory_id } } : undefined,
             show_on_menu: show_on_menu ?? true,
             is_priority: is_priority ?? false,
             is_composite: is_composite ?? false,

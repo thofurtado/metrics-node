@@ -45,6 +45,8 @@ interface UpdateItemUseCaseRequest {
     cst_cofins?: string | null
     aliquota_cofins?: number | null
     subcategory_id?: string | null
+    measureUnit?: 'UNITARY' | 'FRACTIONAL'
+    image_url?: string | null
     is_priority?: boolean
     stock?: number | null
     show_on_menu?: boolean
@@ -70,11 +72,19 @@ export class UpdateItemUseCase {
                 name: data.name,
                 description: data.description,
                 category: data.category !== undefined ? (data.category ? resolveCategoryClause(data.category) : { disconnect: true }) : undefined,
-                active: data.active,
+                subcategory: data.subcategory_id !== undefined
+                    ? (data.subcategory_id && data.subcategory_id.trim() !== ''
+                        ? { connect: { id: data.subcategory_id } }
+                        : { disconnect: true })
+                    : undefined,
+                cost: data.cost,
                 price: data.price,
                 min_stock: data.min_stock,
                 stock: data.stock,
                 barcode: data.barcode,
+                measureUnit: data.measureUnit,
+                image_url: data.image_url,
+                active: data.active,
                 ncm: data.ncm,
                 cest: data.cest,
                 cfop: data.cfop,
@@ -85,7 +95,6 @@ export class UpdateItemUseCase {
                 aliquota_pis: data.aliquota_pis,
                 cst_cofins: data.cst_cofins,
                 aliquota_cofins: data.aliquota_cofins,
-                subcategory_id: data.subcategory_id,
                 is_priority: data.is_priority,
                 display_id: data.display_id,
                 show_on_menu: data.show_on_menu
