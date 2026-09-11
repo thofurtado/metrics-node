@@ -925,9 +925,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 sectors: true,
                 supplier: true
             }
-        })
-
-        // 🔥 Calculate and inject virtual invoices for any credit card purchases in this period
+        })        // 🔥 Calculate and inject virtual invoices for any credit card purchases in this period
         let virtualRows: any[] = []
         if (!operation || operation === 'expense') {
             const creditCardSwipes = await prisma.transaction.findMany({
@@ -945,21 +943,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                 include: {
                     creditCard: {
                         include: { account: true }
-                    }
+                    },
+                    sectors: true,
+                    supplier: true
                 },
-                orderBy: { data_vencimento: 'asc' }
-            })
-
-            // Buscar pagamentos realizados para faturas no mesmo período
-            const invoicePayments = await prisma.transaction.findMany({
-                where: {
-                    credit_card_id: { not: null },
-                    payment_method: { not: 'CREDIT_CARD' },
-                    operation: 'expense',
-                    confirmed: true,
-                    data_vencimento: dateFilter
-                },
-                include: { accounts: true }
+                orderBy: [
+                    { data_vencimento: 'asc' },
+                    { created_at: 'asc' }
+                ]
             })
 
             const aggregatedByCardMonth = new Map<string, any>()
@@ -993,43 +984,35 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                         account_id: swipe.creditCard.account_id,
                         credit_card_id: swipe.credit_card_id,
                         isVirtual: true,
-                        swipes: [],
-                        payments: []
+                        swipes: []
                     })
                 }
                 
                 const grouped = aggregatedByCardMonth.get(invoiceKey)
                 const swipeVal = swipe.totalValue ?? swipe.amount
-                grouped.totalValue += swipeVal
+                grouped.totalValue = Number((grouped.totalValue + swipeVal).toFixed(2))
                 grouped.swipes.push(swipe)
             }
 
-            // Associar pagamentos parciais/totais já realizados e calcular saldos
-            for (const [key, grouped] of aggregatedByCardMonth.entries()) {
-                const [cardId, monthKey] = key.split('-').length === 3 
-                    ? [`${key.split('-')[0]}`, `${key.split('-')[1]}-${key.split('-')[2]}`] 
-                    : [grouped.credit_card_id, key.substring(grouped.credit_card_id.length + 1)]
-
-                const matchingPayments = invoicePayments.filter(p => {
-                    if (p.credit_card_id !== grouped.credit_card_id) return false
-                    const pDate = new Date(p.data_vencimento)
-                    const pMonthKey = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}`
-                    return pMonthKey === monthKey || (p.description && p.description.includes(`(${monthKey})`))
-                })
-
-                grouped.payments = matchingPayments
-                const alreadyPaid = matchingPayments.reduce((acc, p) => acc + (p.totalValue ?? p.amount), 0)
-                grouped.paidAmount = Number(alreadyPaid.toFixed(2))
+            // Na Opção B: o saldo pago e o saldo pendente são derivados diretamente das compras do ciclo!
+            for (const grouped of aggregatedByCardMonth.values()) {
+                const confirmedSwipesSum = grouped.swipes
+                    .filter((s: any) => s.confirmed)
+                    .reduce((sum: number, s: any) => sum + (s.totalValue ?? s.amount), 0)
                 
-                const remaining = Number(Math.max(0, grouped.totalValue - alreadyPaid).toFixed(2))
-                grouped.amount = remaining
-                grouped.remainingAmount = remaining
+                const pendingSwipesSum = grouped.swipes
+                    .filter((s: any) => !s.confirmed)
+                    .reduce((sum: number, s: any) => sum + (s.totalValue ?? s.amount), 0)
+
+                grouped.paidAmount = Number(confirmedSwipesSum.toFixed(2))
+                grouped.amount = Number(pendingSwipesSum.toFixed(2))
+                grouped.remainingAmount = grouped.amount
 
                 const allSwipesConfirmed = grouped.swipes.every((s: any) => s.confirmed)
-                if (remaining <= 0.01 || allSwipesConfirmed) {
+                if (allSwipesConfirmed || grouped.amount <= 0.01) {
                     grouped.confirmed = true
                     grouped.isPartial = false
-                } else if (alreadyPaid > 0.01) {
+                } else if (grouped.paidAmount > 0.01) {
                     grouped.confirmed = false
                     grouped.isPartial = true
                 } else {

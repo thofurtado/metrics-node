@@ -97,7 +97,7 @@ export function calculateCreditCardDueDate(
   // Ajustar para o próximo dia útil caso o vencimento caia em feriado/fim de semana
   const finalDueDate = nextBusinessDay(baseDueDate, holidays);
 
-  const billingMonthStr = `${billingYear}-${String(billingMonthNormalized + 1).padStart(2, '0')}`;
+  const billingMonthStr = `${billingYear}-${String(billingMonth + 1).padStart(2, '0')}`;
 
   return {
     due_date: finalDueDate,

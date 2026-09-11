@@ -226,7 +226,9 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             date: data.data_vencimento ? new Date(data.data_vencimento as any) : ((data as any).date ? new Date((data as any).date) : new Date()),
             created_at: new Date(),
             supplier_id: (data as any).supplier_id as string || null,
-            parent_transaction_id: (data as any).parent_transaction_id as string || null
+            parent_transaction_id: (data as any).parent_transaction_id as string || null,
+            credit_card_id: (data as any).credit_card_id as string || null,
+            payment_method: (data as any).payment_method as string || 'BOLETO'
         }
         this.items.push(transaction)
         return transaction

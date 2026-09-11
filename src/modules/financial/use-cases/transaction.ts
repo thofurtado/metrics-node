@@ -177,6 +177,9 @@ export class TransactionUseCase {
                             description: currentDescription,
                             confirmed: isConfirmed,
                             parent_transaction_id: parentId,
+                            supplier_id: supplier_id || null,
+                            payment_method: payment_method || "BOLETO",
+                            credit_card_id: credit_card_id || null,
                         })
                         if (isFirst) {
                             firstTransaction = created
@@ -217,6 +220,9 @@ export class TransactionUseCase {
                         sector_id: sector_id || null,
                         description: baseDescription,
                         confirmed: isConfirmed,
+                        supplier_id: supplier_id || null,
+                        payment_method: payment_method || "BOLETO",
+                        credit_card_id: credit_card_id || null,
                     })
                 }
             }

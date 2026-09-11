@@ -18,7 +18,7 @@ interface ChangeTransactionUseCaseRequest {
 
 // Função auxiliar para padronizar e limpar a descrição de parcelas restantes,
 // adicionando um indicador numérico para rastrear o nível de parcelamento (PR (1), PR (2), etc.)
-function getCleanRemainingDescription(originalTransaction: Transaction): string {
+export function getCleanRemainingDescription(originalTransaction: Transaction): string {
     // Garante que description é uma string, usando '' se for null
     const originalDescription = originalTransaction.description || '';
     let baseDescription = originalDescription.trim();

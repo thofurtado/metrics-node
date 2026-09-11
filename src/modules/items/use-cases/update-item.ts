@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 const isUuid = (val: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
 
-function resolveCategoryClause(category?: string | null) {
+export function resolveCategoryClause(category?: string | null) {
     if (!category || category.trim() === '') return undefined
     const clean = category.trim()
     if (isUuid(clean)) {

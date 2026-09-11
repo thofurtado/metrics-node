@@ -293,4 +293,71 @@ describe('Transaction Use Case', () => {
         expect(third?.parent_transaction_id).toBe(first.id)
         expect(first.parent_transaction_id).toBeNull() // First one is the parent
     })
+
+    // --- CREDIT CARD PURCHASE (ENTRADA) TESTS ---
+
+    it('should create credit card purchase as unconfirmed without debiting account balance', async () => {
+        const account = await accountsRepository.create({ name: 'Conta Corrente', balance: 1000 })
+
+        const { transaction } = await transactionUseCase.execute({
+            operation: 'expense',
+            amount: 250,
+            account_id: account.id,
+            credit_card_id: 'card-123',
+            payment_method: 'CREDIT_CARD',
+            sector_id: 'sector-alimentacao',
+            description: 'Jantar Restaurante',
+            confirmed: false,
+            date: new Date('2026-09-05')
+        })
+
+        // A compra é criada pendente
+        expect(transaction.confirmed).toBe(false)
+        expect(transaction.amount).toBe(250)
+
+        // O saldo da conta bancária NÃO deve ter sido debitado na entrada da compra no cartão
+        const acc = await accountsRepository.findById(account.id)
+        expect(acc?.balance).toBe(1000)
+
+        // No repositório, gravou os metadados do cartão e setor
+        const saved = transactionsRepository.items.find(t => t.id === transaction.id)
+        expect(saved?.credit_card_id).toBe('card-123')
+        expect(saved?.payment_method).toBe('CREDIT_CARD')
+        expect(saved?.sector_id).toBe('sector-alimentacao')
+    })
+
+    it('should create credit card installment purchase without debiting account balance across all installments', async () => {
+        const account = await accountsRepository.create({ name: 'Conta Corrente', balance: 1000 })
+
+        const { transaction: first } = await transactionUseCase.execute({
+            operation: 'expense',
+            amount: 300,
+            account_id: account.id,
+            credit_card_id: 'card-123',
+            payment_method: 'CREDIT_CARD',
+            sector_id: 'sector-equipamentos',
+            description: 'Computador Novo',
+            confirmed: false,
+            installments_count: 3,
+            interval_frequency: 'MONTHLY',
+            date: new Date('2026-09-05')
+        })
+
+        // Três parcelas geradas
+        const allTransactions = transactionsRepository.items
+        expect(allTransactions).toHaveLength(3)
+
+        // Todas as parcelas devem estar pendentes e vinculadas ao cartão e setor
+        for (const inst of allTransactions) {
+            expect(inst.confirmed).toBe(false)
+            expect(inst.amount).toBe(100)
+            expect(inst.credit_card_id).toBe('card-123')
+            expect(inst.payment_method).toBe('CREDIT_CARD')
+            expect(inst.sector_id).toBe('sector-equipamentos')
+        }
+
+        // O saldo da conta bancária continua 1000 (nenhuma parcela debitou da conta)
+        const acc = await accountsRepository.findById(account.id)
+        expect(acc?.balance).toBe(1000)
+    })
 })
