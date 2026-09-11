@@ -14,6 +14,7 @@ model User {
   role          Role          @default(TECHNICIAN)
   email         String        @unique
   password_hash String
+  pin_hash      String?
   introduction  String?
   created_at    DateTime      @default(now())
   updated_at    DateTime      @default(now()) @updatedAt

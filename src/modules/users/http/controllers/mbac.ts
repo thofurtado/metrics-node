@@ -32,6 +32,7 @@ export async function fetchUsersWithModules(request: FastifyRequest, reply: Fast
             name: true,
             email: true,
             role: true,
+            pin_hash: true,
             userModules: {
                 select: {
                     module: {
@@ -51,6 +52,7 @@ export async function fetchUsersWithModules(request: FastifyRequest, reply: Fast
         name: user.name,
         email: user.email,
         role: user.role,
+        has_pin: !!user.pin_hash,
         modules: user.userModules.map(um => um.module.slug)
     }))
 

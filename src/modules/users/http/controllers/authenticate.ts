@@ -5,17 +5,25 @@ import { makeAuthenticateUseCase } from '@/modules/users/use-cases/factories/mak
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
     const authenticateBodySchema = z.object({
-        userId: z.string().uuid(),
-        password: z.string().min(1),
+        userId: z.string().uuid().optional(),
+        email: z.string().email().optional(),
+        password: z.string().optional(),
+        pin: z.string().optional(),
+    }).refine((data) => data.userId || data.email, {
+        message: 'Informe o usuário ou e-mail.'
+    }).refine((data) => (data.password && data.password.trim().length > 0) || (data.pin && data.pin.trim().length > 0), {
+        message: 'Informe a senha ou PIN de acesso.'
     })
 
-    const { userId, password } = authenticateBodySchema.parse(request.body)
+    const { userId, email, password, pin } = authenticateBodySchema.parse(request.body)
 
     try {
         const authenticateUseCase = makeAuthenticateUseCase()
         const { user } = await authenticateUseCase.execute({
             userId,
-            password
+            email,
+            password,
+            pin,
         })
         // Fetch the user modules from the database
         const prisma = await import('@/lib/prisma').then(m => m.prisma)

@@ -15,11 +15,12 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
         name: z.string(),
         email: z.string().email(),
         password: z.string().min(6),
+        pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable(),
         role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).default('MEMBER'),
         modules: z.array(z.string()).default([]),
     })
 
-    const { name, email, password, role, modules } = createUserBodySchema.parse(request.body)
+    const { name, email, password, pin, role, modules } = createUserBodySchema.parse(request.body)
 
     const userWithSameEmail = await prisma.user.findUnique({
         where: { email },
@@ -30,6 +31,10 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
     }
 
     const password_hash = await hash(password, 6)
+    let pin_hash: string | undefined
+    if (pin && pin.trim().length >= 4) {
+        pin_hash = await hash(pin.trim(), 6)
+    }
 
     // Converte MEMBER -> TECHNICIAN se necessário
     const dbRole = (role === 'MEMBER' ? 'TECHNICIAN' : role) as 'ADMIN' | 'TECHNICIAN' | 'CASHIER'
@@ -49,6 +54,7 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
             name,
             email,
             password_hash,
+            pin_hash,
             role: dbRole,
             userModules: {
                 create: moduleIds.map((moduleId) => ({
@@ -74,12 +80,13 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         name: z.string().optional(),
         email: z.string().email().optional(),
         password: z.string().min(6).optional().nullable().or(z.literal('')),
+        pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable().or(z.literal('')),
         role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER', 'admin', 'member', 'technician', 'cashier']).optional(),
         modules: z.array(z.string()).optional(),
     })
 
     const { id } = updateUserParamsSchema.parse(request.params)
-    const { name, email, password, role, modules } = updateUserBodySchema.parse(request.body)
+    const { name, email, password, pin, role, modules } = updateUserBodySchema.parse(request.body)
 
     if (email) {
         const userWithSameEmail = await prisma.user.findUnique({ where: { email } })
@@ -93,6 +100,15 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         password_hash = await hash(password.trim(), 6)
     }
 
+    let pin_hash: string | null | undefined
+    if (pin !== undefined) {
+        if (pin === null || pin === '') {
+            pin_hash = null
+        } else if (pin.trim().length >= 4) {
+            pin_hash = await hash(pin.trim(), 6)
+        }
+    }
+
     const updateData: any = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
@@ -102,6 +118,9 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
     }
     if (password_hash) {
         updateData.password_hash = password_hash
+    }
+    if (pin_hash !== undefined) {
+        updateData.pin_hash = pin_hash
     }
 
     try {

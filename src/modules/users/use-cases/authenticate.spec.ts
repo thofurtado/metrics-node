@@ -48,4 +48,36 @@ describe('Autenticathe Use Case', () => {
             password: '123457'
         })).rejects.toBeInstanceOf(InvalidCredentialsError)
     })
+
+    it('should be able to authenticate with PIN', async () => {
+        await usersRepository.create({
+            name: 'Operador Caixa',
+            email: 'caixa@exemplo.com',
+            password_hash: await hash('senha123', 6),
+            pin_hash: await hash('4321', 6),
+        })
+
+        const { user } = await sut.execute({
+            email: 'caixa@exemplo.com',
+            pin: '4321'
+        })
+
+        expect(user.id).toEqual(expect.any(String))
+    })
+
+    it('should be able to authenticate if user inputs PIN into password field as fallback', async () => {
+        await usersRepository.create({
+            name: 'Garçom Salão',
+            email: 'garcom@exemplo.com',
+            password_hash: await hash('senhaGeral', 6),
+            pin_hash: await hash('1234', 6),
+        })
+
+        const { user } = await sut.execute({
+            email: 'garcom@exemplo.com',
+            password: '1234'
+        })
+
+        expect(user.id).toEqual(expect.any(String))
+    })
 })

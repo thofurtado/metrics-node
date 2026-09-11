@@ -6,7 +6,8 @@ import { User } from '@prisma/client'
 interface AuthenticateUseCaseRequest {
     userId?: string;
     email?: string;
-    password: string;
+    password?: string;
+    pin?: string;
 }
 
 interface AuthenticateUseCaseResponse {
@@ -18,7 +19,7 @@ export class AuthenticateUseCase {
         private usersRepository: UsersRepository
     ) { }
 
-    async execute({userId, email, password}: AuthenticateUseCaseRequest): Promise<AuthenticateUseCaseResponse> {
+    async execute({userId, email, password, pin}: AuthenticateUseCaseRequest): Promise<AuthenticateUseCaseResponse> {
         let user = null
         if (userId) {
             user = await this.usersRepository.findById(userId)
@@ -30,9 +31,20 @@ export class AuthenticateUseCase {
             throw new InvalidCredentialsError()
         }
 
-        const doesPasswordMatches = await compare(password, user.password_hash)
+        let isCredentialsValid = false
 
-        if(!doesPasswordMatches) {
+        if (pin) {
+            if (user.pin_hash) {
+                isCredentialsValid = await compare(pin, user.pin_hash)
+            }
+        } else if (password) {
+            isCredentialsValid = await compare(password, user.password_hash)
+            if (!isCredentialsValid && user.pin_hash) {
+                isCredentialsValid = await compare(password, user.pin_hash)
+            }
+        }
+
+        if(!isCredentialsValid) {
             throw new InvalidCredentialsError()
         }
 

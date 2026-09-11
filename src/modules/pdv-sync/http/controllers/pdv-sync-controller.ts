@@ -58,6 +58,7 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
             name: true,
             email: true,
             password_hash: true,
+            pin_hash: true,
             role: true,
             created_at: true
         }
@@ -68,6 +69,7 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
         Name: u.name,
         Email: u.email,
         PasswordHash: u.password_hash,
+        PinHash: u.pin_hash,
         Role: u.role,
         Active: true, // Backend C# pode precisar
         CreatedAt: u.created_at
