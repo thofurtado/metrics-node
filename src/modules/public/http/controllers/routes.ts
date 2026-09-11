@@ -7,7 +7,7 @@ import { provisionTenant } from './provision'
 import { deprovisionTenant } from './deprovision'
 import { getTenantInfo } from './get-tenant-info'
 import { getDbStatus } from './db-status'
-import { syncTenantDb } from './db-sync'
+import { syncTenantDb, syncAllTenantsDb } from './db-sync'
 import { getProfile } from './get-profile'
 import { createOnlineOrder } from './create-online-order'
 import { getPendingOnlineOrders } from './get-pending-online-orders'
@@ -31,6 +31,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/tenant-info', getTenantInfo)
     app.get('/public/db-status', getDbStatus)
     app.post('/public/db-sync', syncTenantDb)
+    app.post('/public/db-sync-all', syncAllTenantsDb)
     app.get('/public/profile', getProfile)
 
     // Pipeline do Cardápio Online & PDV
