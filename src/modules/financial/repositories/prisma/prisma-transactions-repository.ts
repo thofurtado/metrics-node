@@ -835,7 +835,10 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
                     data_vencimento: dateFilter // Use dynamic date filter
                 },
                 {
-                    credit_card_id: null
+                    OR: [
+                        { credit_card_id: null },
+                        { payment_method: { not: 'CREDIT_CARD' } }
+                    ]
                 },
                 {
                     OR: [
@@ -913,8 +916,8 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         if (sortBy !== 'created_at') finalOrderBy.push({ created_at: 'desc' });
         finalOrderBy.push({ id: 'asc' });
 
+        // Fetch transactions matching whereConditions (without skip/take yet so virtual rows are properly paginated)
         const transactions = await prisma.transaction.findMany({
-            skip, take,
             where: whereConditions,
             orderBy: finalOrderBy,
             include: {
@@ -925,73 +928,121 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         })
 
         // 🔥 Calculate and inject virtual invoices for any credit card purchases in this period
-        const creditCardSwipes = await prisma.transaction.findMany({
-            where: {
-                credit_card_id: { not: null },
-                data_vencimento: dateFilter,
-                ...(confirmedFilter !== undefined ? { confirmed: confirmedFilter } : {})
-            },
-            include: {
-                creditCard: {
-                    include: { account: true }
-                }
-            },
-            orderBy: { data_vencimento: 'asc' }
-        })
-
-        const aggregatedByCardMonth = new Map<string, any>()
-        for (const swipe of creditCardSwipes) {
-            if (!swipe.credit_card_id || !swipe.creditCard) continue
-
-            const vencDate = new Date(swipe.data_vencimento)
-            const year = vencDate.getFullYear()
-            const month = String(vencDate.getMonth() + 1).padStart(2, '0')
-            const monthKey = `${year}-${month}`
-            const invoiceKey = `${swipe.credit_card_id}-${monthKey}`
-            
-            if (!aggregatedByCardMonth.has(invoiceKey)) {
-                aggregatedByCardMonth.set(invoiceKey, {
-                    id: `virtual-card-${swipe.credit_card_id}-${monthKey}`,
-                    operation: 'expense',
-                    data_vencimento: swipe.data_vencimento,
-                    data_emissao: swipe.data_emissao,
-                    amount: 0,
-                    interest: 0,
-                    discount: 0,
-                    totalValue: 0,
-                    confirmed: true,
-                    description: `Fatura Cartão: ${swipe.creditCard.name}`,
+        let virtualRows: any[] = []
+        if (!operation || operation === 'expense') {
+            const creditCardSwipes = await prisma.transaction.findMany({
+                where: {
+                    credit_card_id: { not: null },
                     payment_method: 'CREDIT_CARD',
-                    created_at: swipe.created_at,
-                    accounts: swipe.creditCard.account,
-                    account_id: swipe.creditCard.account_id,
-                    credit_card_id: swipe.credit_card_id,
-                    isVirtual: true,
-                    swipes: []
+                    data_vencimento: dateFilter,
+                    ...(account !== undefined ? [{
+                        creditCard: {
+                            account_id: Array.isArray(account) ? { in: account } : { equals: account }
+                        }
+                    }] : []),
+                    ...(sector !== undefined ? [{ sector_id: { equals: sector } }] : [])
+                },
+                include: {
+                    creditCard: {
+                        include: { account: true }
+                    }
+                },
+                orderBy: { data_vencimento: 'asc' }
+            })
+
+            // Buscar pagamentos realizados para faturas no mesmo período
+            const invoicePayments = await prisma.transaction.findMany({
+                where: {
+                    credit_card_id: { not: null },
+                    payment_method: { not: 'CREDIT_CARD' },
+                    operation: 'expense',
+                    confirmed: true,
+                    data_vencimento: dateFilter
+                },
+                include: { accounts: true }
+            })
+
+            const aggregatedByCardMonth = new Map<string, any>()
+            for (const swipe of creditCardSwipes) {
+                if (!swipe.credit_card_id || !swipe.creditCard) continue
+
+                const vencDate = new Date(swipe.data_vencimento)
+                const year = vencDate.getFullYear()
+                const month = String(vencDate.getMonth() + 1).padStart(2, '0')
+                const monthKey = `${year}-${month}`
+                const invoiceKey = `${swipe.credit_card_id}-${monthKey}`
+                
+                if (!aggregatedByCardMonth.has(invoiceKey)) {
+                    aggregatedByCardMonth.set(invoiceKey, {
+                        id: `virtual-card-${swipe.credit_card_id}-${monthKey}`,
+                        operation: 'expense',
+                        data_vencimento: swipe.data_vencimento,
+                        data_emissao: swipe.data_emissao,
+                        amount: 0,
+                        interest: 0,
+                        discount: 0,
+                        totalValue: 0,
+                        paidAmount: 0,
+                        remainingAmount: 0,
+                        confirmed: false,
+                        isPartial: false,
+                        description: `Fatura Cartão: ${swipe.creditCard.name}`,
+                        payment_method: 'CREDIT_CARD',
+                        created_at: swipe.created_at,
+                        accounts: swipe.creditCard.account,
+                        account_id: swipe.creditCard.account_id,
+                        credit_card_id: swipe.credit_card_id,
+                        isVirtual: true,
+                        swipes: [],
+                        payments: []
+                    })
+                }
+                
+                const grouped = aggregatedByCardMonth.get(invoiceKey)
+                const swipeVal = swipe.totalValue ?? swipe.amount
+                grouped.totalValue += swipeVal
+                grouped.swipes.push(swipe)
+            }
+
+            // Associar pagamentos parciais/totais já realizados e calcular saldos
+            for (const [key, grouped] of aggregatedByCardMonth.entries()) {
+                const [cardId, monthKey] = key.split('-').length === 3 
+                    ? [`${key.split('-')[0]}`, `${key.split('-')[1]}-${key.split('-')[2]}`] 
+                    : [grouped.credit_card_id, key.substring(grouped.credit_card_id.length + 1)]
+
+                const matchingPayments = invoicePayments.filter(p => {
+                    if (p.credit_card_id !== grouped.credit_card_id) return false
+                    const pDate = new Date(p.data_vencimento)
+                    const pMonthKey = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}`
+                    return pMonthKey === monthKey || (p.description && p.description.includes(`(${monthKey})`))
                 })
-            }
-            
-            const grouped = aggregatedByCardMonth.get(invoiceKey)
-            grouped.amount += swipe.amount
-            if (swipe.totalValue) {
-                grouped.totalValue += swipe.totalValue
-            } else {
-                grouped.totalValue += swipe.amount
-            }
-            if (!swipe.confirmed) {
-                grouped.confirmed = false
-            }
-            grouped.swipes.push(swipe)
-        }
 
-        let virtualRows = Array.from(aggregatedByCardMonth.values())
+                grouped.payments = matchingPayments
+                const alreadyPaid = matchingPayments.reduce((acc, p) => acc + (p.totalValue ?? p.amount), 0)
+                grouped.paidAmount = Number(alreadyPaid.toFixed(2))
+                
+                const remaining = Number(Math.max(0, grouped.totalValue - alreadyPaid).toFixed(2))
+                grouped.amount = remaining
+                grouped.remainingAmount = remaining
 
-        if (confirmedFilter !== undefined) {
-            virtualRows = virtualRows.filter(v => v.confirmed === confirmedFilter)
-        }
+                const allSwipesConfirmed = grouped.swipes.every((s: any) => s.confirmed)
+                if (remaining <= 0.01 || allSwipesConfirmed) {
+                    grouped.confirmed = true
+                    grouped.isPartial = false
+                } else if (alreadyPaid > 0.01) {
+                    grouped.confirmed = false
+                    grouped.isPartial = true
+                } else {
+                    grouped.confirmed = false
+                    grouped.isPartial = false
+                }
+            }
 
-        if (operation && operation !== 'expense') {
-            virtualRows = []
+            virtualRows = Array.from(aggregatedByCardMonth.values())
+
+            if (confirmedFilter !== undefined) {
+                virtualRows = virtualRows.filter(v => v.confirmed === confirmedFilter)
+            }
         }
 
         const combinedTransactions = [...transactions, ...virtualRows]
@@ -1012,9 +1063,12 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             return isDescending ? idB.localeCompare(idA) : idA.localeCompare(idB)
         })
 
+        const totalCombined = combinedTransactions.length
+        const paginatedTransactions = combinedTransactions.slice(skip, skip + take)
+
         return {
-            transactions: combinedTransactions,
-            totalCount: totalCount + virtualRows.length,
+            transactions: paginatedTransactions,
+            totalCount: totalCombined,
             perPage: take,
             pageIndex: pageIndex || 1
         }
