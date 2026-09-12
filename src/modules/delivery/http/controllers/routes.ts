@@ -1,6 +1,12 @@
 import { FastifyInstance } from 'fastify'
 import { webhook99FoodController } from './webhook-99food'
-import { ifoodUserCodeController, deliveryStatusController, deliveryOrdersController, pollIfoodNowController, syncCatalogController } from './ifood-controllers'
+import {
+  ifoodUserCodeController,
+  deliveryStatusController,
+  deliveryOrdersController,
+  pollIfoodNowController,
+  syncCatalogController,
+} from './ifood-controllers'
 
 export async function deliveryRoutes(app: FastifyInstance) {
   // Webhooks de terceiros (Recebem chamadas automáticas da 99Food e iFood)
@@ -20,14 +26,14 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.get('/api/delivery/orders', deliveryOrdersController)
 
   // Polling manual do iFood (diagnóstico e testes)
-  app.post('/delivery/ifood/poll-now', pollIfoodNowController, syncCatalogController)
-  app.post('/api/delivery/ifood/poll-now', pollIfoodNowController, syncCatalogController)
-  app.get('/delivery/ifood/poll-now', pollIfoodNowController, syncCatalogController)
-  app.get('/api/delivery/ifood/poll-now', pollIfoodNowController, syncCatalogController)
-}
+  app.post('/delivery/ifood/poll-now', pollIfoodNowController)
+  app.post('/api/delivery/ifood/poll-now', pollIfoodNowController)
+  app.get('/delivery/ifood/poll-now', pollIfoodNowController)
+  app.get('/api/delivery/ifood/poll-now', pollIfoodNowController)
 
   // Sincronização centralizada de cardápio com marketplaces
   app.post('/delivery/catalog/sync', syncCatalogController)
   app.post('/api/delivery/catalog/sync', syncCatalogController)
   app.get('/delivery/catalog/sync', syncCatalogController)
   app.get('/api/delivery/catalog/sync', syncCatalogController)
+}
