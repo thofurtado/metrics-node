@@ -35,7 +35,7 @@ export class CatalogSyncService {
 
     const food99Items = products.map((p: any) => ({
       app_item_id: p.uuid || String(p.id),
-      app_category_id: p.categoria?.uuid || String(p.categoria_id || 'CAT_GERAL'),
+      app_category_id: p.categoria_uuid || String(p.categoria_id || 'CAT_GERAL'),
       name: p.nome,
       price: Math.round(Number(p.preco || p.preco_venda || 0) * 100), // Em centavos na 99Food
       description: p.descricao || '',
