@@ -44,3 +44,44 @@ export async function deliveryStatusController(request: FastifyRequest, reply: F
     timestamp: new Date().toISOString(),
   })
 }
+
+import { getPrismaForDb } from '@/lib/tenant-manager'
+
+/**
+ * Consulta últimos pedidos de delivery salvos em db_restaurante
+ */
+export async function deliveryOrdersController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const prisma = await getPrismaForDb('db_restaurante')
+    const orders = await (prisma as any).pedido.findMany({
+      where: { origem: 'Delivery' },
+      orderBy: { data_abertura: 'desc' },
+      take: 10,
+      include: {
+        itens: true,
+        cliente: true,
+      },
+    })
+    return reply.status(200).send({
+      tenant: 'db_restaurante',
+      total: orders.length,
+      orders: orders.map((o: any) => ({
+        uuid: o.uuid,
+        display_id: o.display_id,
+        origem: o.origem,
+        status_delivery: o.status_delivery,
+        valor_final: o.valor_final,
+        observacao: o.observacao,
+        data_abertura: o.data_abertura,
+        cliente: o.cliente?.name,
+        itens: (o.itens || []).map((it: any) => ({
+          name: it.observacao,
+          quantidade: it.quantidade,
+          valor_total: it.valor_total,
+        })),
+      })),
+    })
+  } catch (err: any) {
+    return reply.status(500).send({ error: err.message })
+  }
+}

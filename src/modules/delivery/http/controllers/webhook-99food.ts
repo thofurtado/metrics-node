@@ -44,6 +44,8 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
   try {
     // 1. Extrair ID da loja da 99Food
     const storeId = String(
+      payload?.data?.order_info?.shop?.shop_id ||
+      payload?.data?.order_info?.shop?.app_shop_id ||
       payload?.store_id ||
       payload?.storeId ||
       payload?.shop_id ||
@@ -63,33 +65,35 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
     const isOrderEvent =
       eventType.toLowerCase().includes('order') ||
       eventType.toLowerCase().includes('pedido') ||
-      Boolean(payload?.order_id || payload?.data?.order_id || payload?.data?.orderId || payload?.data?.order)
+      Boolean(payload?.data?.order_info || payload?.order_id || payload?.data?.order_id || payload?.data?.orderId || payload?.data?.order)
 
     if (isOrderEvent) {
       console.log(`[99Food Webhook] Processando criação/recebimento de pedido 99Food para o banco ${dbName}...`)
-      const orderData = payload?.data?.order || payload?.data || payload
+      const orderInfo = payload?.data?.order_info || payload?.data?.order || payload?.data || payload
       const rawOrderId = String(
-        orderData?.order_id ||
-        orderData?.orderId ||
-        orderData?.id ||
+        orderInfo?.order_id ||
+        payload?.data?.order_id ||
+        orderInfo?.orderId ||
+        orderInfo?.id ||
         payload?.order_id ||
         Date.now()
       )
 
       // Identificar ou criar cliente
+      const recvAddr = orderInfo?.receive_address || {}
       const clientName = String(
-        orderData?.customer_name ||
-        orderData?.receiver_name ||
-        orderData?.user_name ||
-        orderData?.client_name ||
+        recvAddr?.name ||
+        orderInfo?.customer_name ||
+        orderInfo?.receiver_name ||
+        orderInfo?.user_name ||
         'Cliente 99Food'
       )
       const clientPhone = String(
-        orderData?.customer_phone ||
-        orderData?.receiver_phone ||
-        orderData?.phone ||
+        recvAddr?.phone ||
+        orderInfo?.customer_phone ||
+        orderInfo?.receiver_phone ||
         '11999999999'
-      )
+      ) || '11999999999'
 
       let client = await (prisma as any).client.findFirst({
         where: { phone: clientPhone },
@@ -109,13 +113,18 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       // Endereço de entrega
       let targetAddressId = client.addresses?.[0]?.id || null
       if (!targetAddressId) {
+        const streetStr = recvAddr?.street_name || recvAddr?.poi_address || orderInfo?.delivery_address?.street || 'Av. Principal'
+        const numberStr = String(recvAddr?.house_number || recvAddr?.street_number || orderInfo?.delivery_address?.number || '100')
+        const neighborhoodStr = recvAddr?.district || orderInfo?.delivery_address?.neighborhood || 'Centro'
+        const cityStr = recvAddr?.city || orderInfo?.delivery_address?.city || 'Caraguatatuba'
+
         const addr = await (prisma as any).address.create({
           data: {
             client_id: client.id,
-            street: orderData?.delivery_address?.street || orderData?.address?.street || 'Rua de Entrega 99Food',
-            number: String(orderData?.delivery_address?.number || orderData?.address?.number || 'S/N'),
-            neighborhood: orderData?.delivery_address?.neighborhood || orderData?.address?.neighborhood || 'Centro',
-            city: orderData?.delivery_address?.city || orderData?.address?.city || 'Caraguatatuba',
+            street: streetStr,
+            number: numberStr,
+            neighborhood: neighborhoodStr,
+            city: cityStr,
             state: 'SP',
             is_main: true
           }
@@ -138,21 +147,29 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       })
 
       // Cálculo de valores e itens
-      const totalAmount = orderData?.total_price
-        ? (orderData.total_price / 100)
-        : (orderData?.shop_paid_money
-          ? (orderData.shop_paid_money / 100)
-          : (Number(orderData?.total) || 25.0))
-      const deliveryFee = orderData?.delivery_fee ? (orderData.delivery_fee / 100) : 0
+      const totalAmount = orderInfo?.price?.order_price
+        ? (orderInfo.price.order_price / 100)
+        : (orderInfo?.price?.real_price
+          ? (orderInfo.price.real_price / 100)
+          : (orderInfo?.total_price
+            ? (orderInfo.total_price / 100)
+            : 25.0))
+      const deliveryFee = orderInfo?.delivery_fee ? (orderInfo.delivery_fee / 100) : 0
       const subtotal = Math.max(0, totalAmount - deliveryFee)
 
-      const rawItems = orderData?.items || orderData?.dishes || []
-      const itemsToCreate = rawItems.length > 0 ? rawItems.map((it: any) => ({
-        quantidade: Number(it.quantity || it.count || 1),
-        valor_unitario: it.price ? (it.price / 100) : 25.0,
-        valor_total: (it.price ? (it.price / 100) : 25.0) * Number(it.quantity || it.count || 1),
-        observacao: it.name || it.item_name || 'X-Burguer Artesanal'
-      })) : [{
+      const rawItems = orderInfo?.order_items || orderInfo?.items || orderInfo?.dishes || []
+      const itemsToCreate = rawItems.length > 0 ? rawItems.map((it: any) => {
+        const itemQty = Number(it.amount || it.quantity || it.count || 1)
+        const itemPrice = it.sku_price
+          ? (it.sku_price / 100)
+          : (it.total_price ? (it.total_price / 100) : (it.price ? (it.price / 100) : 25.0))
+        return {
+          quantidade: itemQty,
+          valor_unitario: itemPrice,
+          valor_total: itemPrice * itemQty,
+          observacao: it.name || it.item_name || 'X-Burguer Artesanal'
+        }
+      }) : [{
         quantidade: 1,
         valor_unitario: 25.0,
         valor_total: 25.0,
