@@ -1,3 +1,4 @@
+import { handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
 import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
@@ -82,6 +83,13 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 observacao: updatedObs
             }
         });
+        // Notifica o ciclo de vida para o iFood e 99Food
+        if (existingPedido.origem === 'Delivery') {
+            handleDeliveryOrderStatusChange(existingPedido, status).catch(e => 
+                console.error('[Delivery Lifecycle Hook Error]:', e)
+            );
+        }
+
 
         // Se o status for 'delivered' e tiver cashier_session_id, lança automaticamente na sessão de caixa
         if (status === 'delivered' && cashier_session_id) {

@@ -106,3 +106,24 @@ export async function pollIfoodNowController(request: FastifyRequest, reply: Fas
     })
   }
 }
+
+
+import { catalogSyncService } from '../../services/catalog-sync.service'
+
+/**
+ * Sincroniza cardápio completo com iFood e 99Food
+ */
+export async function syncCatalogController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const result = await catalogSyncService.syncCatalog('db_restaurante')
+    return reply.status(200).send({
+      message: 'Cardápio sincronizado com sucesso!',
+      ...result,
+    })
+  } catch (err: any) {
+    return reply.status(500).send({
+      error: 'Falha ao sincronizar cardápio com marketplaces',
+      details: err.message,
+    })
+  }
+}

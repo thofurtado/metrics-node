@@ -10,7 +10,7 @@ interface TokenStore {
 }
 
 // Token inicial obtido via autorização oficial do lojista
-let tokenState: TokenStore = {
+export let tokenState: TokenStore = {
   accessToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJqdGkiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDY6YmIwYzQxOGQtMWNmZS00YWQxLWE1YzQtM2JkY2IyNmRjM2MxIiwibWVyY2hhbnRfc2NvcGVkIjp0cnVlLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJ0dmVyIjoidjIiLCJzY29wZSI6WyJpdGVtIiwiY2F0YWxvZyIsIm1lcmNoYW50IiwibG9naXN0aWNzIiwicGlja2luZyIsImNvbmNpbGlhdG9yIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJpc3MiOiJpRm9vZCIsImFwcF9uYW1lIjoidGhvbWFzLWZ1cnRhZG8tdGVzdGUtZCIsIm93bmVyX25hbWUiOiJldXJlY2F0ZWNoIiwiYXVkIjpbIml0ZW0iLCJjYXRhbG9nIiwiZmluYW5jaWFsIiwibWVyY2hhbnQiLCJsb2dpc3RpY3MiLCJwaWNraW5nIiwib2F1dGgtc2VydmVyIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJleHAiOjE3ODkyMjMwNTYsImlhdCI6MTc4OTIwMTQ1NiwibWVyY2hhbnRfc2NvcGUiOlsiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm9yZGVyIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmNhdGFsb2ciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6Y29uY2lsaWF0b3IiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cmV2aWV3IiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmxvZ2lzdGljcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDphbmFseXRpY3MiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6c2hpcHBpbmciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6aXRlbSIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpwaWNraW5nIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmdyb2NlcmllcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpldmVudHMiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cHJvbW90aW9uIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm1lcmNoYW50Il19.Aei6aBDQLvd_EG-tqUIyCZrW68d0r18I9HJGOayxx1Y3KoxuOQQQfoYH1UG39QvMKjZrluVzc9s70NTWQQyvOVMp5d7Rl10JIHJmLbqr1BneTGbw9HvaFPpNiOb_KtB33itRgYrIpKvRPKK79otyNcTCGRBQRonqNHduxUYm5dc',
   refreshToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJpc3MiOiJpRm9vZCIsImV4cCI6MTc4OTgwNjI1NiwiaWF0IjoxNzg5MjAxNDU2fQ.EOMYb0qwsVN-WEX05P_hpAkmUV3TOzQrXTEz-PYtdF5duHLHZUyBDGmzm96s9kYBGbfV6VUv7rVyI_GwARt12KUGmpX7cqRys5S50jG6ho38kcvv8qtMDapQnTgoCynt8iii1ZI_QQ6ghhieIfatiOk4s6UdTsqaAQaywkHlaFA',
   expiresAt: Date.now() + 21600 * 1000,
@@ -138,6 +138,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
                 city: delAddr.city || 'Caraguatatuba',
                 state: delAddr.state || 'SP',
                 zipcode: delAddr.postalCode || undefined,
+                complement: delAddr.complement || undefined,
                 is_main: true,
               },
             })
@@ -164,17 +165,56 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           const subtotal = Math.max(0, totalAmount - deliveryFee)
 
           const rawItems = order.items || []
-          const itemsToCreate = rawItems.length > 0 ? rawItems.map((it: any) => ({
-            quantidade: Number(it.quantity || 1),
-            valor_unitario: Number(it.unitPrice || it.price || 25.0),
-            valor_total: Number(it.totalPrice || (it.unitPrice || 25.0) * (it.quantity || 1)),
-            observacao: it.name || 'Item iFood',
-          })) : [{
-            quantidade: 1,
-            valor_unitario: totalAmount,
-            valor_total: totalAmount,
-            observacao: 'Pedido iFood',
-          }]
+          const itemsToCreate = []
+          for (const it of rawItems) {
+            const itemName = it.name || 'Item iFood'
+            const extCode = it.externalCode || it.id
+
+            let matchedProduct = null
+            if (extCode) {
+              matchedProduct = await (prisma as any).produto.findFirst({
+                where: {
+                  OR: [
+                    { uuid: extCode },
+                    { id: extCode },
+                  ],
+                },
+              })
+            }
+            if (!matchedProduct && itemName) {
+              matchedProduct = await (prisma as any).produto.findFirst({
+                where: {
+                  nome: { equals: itemName, mode: 'insensitive' },
+                },
+              })
+            }
+
+            let obs = itemName
+            if (Array.isArray(it.options) && it.options.length > 0) {
+              const optsStr = it.options.map((o: any) => `${o.name || o.title || 'Opção'} (x${o.quantity || 1})`).join(', ')
+              obs += ` [Adicionais: ${optsStr}]`
+            }
+            if (it.observations) {
+              obs += ` (Obs: ${it.observations})`
+            }
+
+            itemsToCreate.push({
+              produto_id: matchedProduct ? matchedProduct.id : undefined,
+              quantidade: Number(it.quantity || 1),
+              valor_unitario: Number(it.unitPrice || it.price || 25.0),
+              valor_total: Number(it.totalPrice || (it.unitPrice || 25.0) * (it.quantity || 1)),
+              observacao: obs,
+            })
+          }
+
+          if (itemsToCreate.length === 0) {
+            itemsToCreate.push({
+              quantidade: 1,
+              valor_unitario: totalAmount,
+              valor_total: totalAmount,
+              observacao: 'Pedido iFood',
+            })
+          }
 
           // 7. Criar Pedido Canônico em db_restaurante
           const pedido = await (prisma as any).pedido.create({
@@ -191,7 +231,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
               valor_troco: 0,
               status: 'Aberto',
               status_delivery: 'Pendente',
-              observacao: `[iFood] Pedido #${order.displayId || event.orderId} | Pagamento via iFood`,
+              observacao: `[iFood:${event.orderId}] Pedido #${order.displayId || event.orderId} | Pagamento via iFood`,
               sincronizado_web: true,
               itens: {
                 create: itemsToCreate,
