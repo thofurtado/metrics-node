@@ -77,6 +77,33 @@ export class IFoodApiService {
   }
 
   /**
+   * Renova o access token usando o refresh token
+   */
+  async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+    const params = new URLSearchParams()
+    params.append('grantType', 'refresh_token')
+    params.append('clientId', this.getClientId())
+    params.append('clientSecret', this.getClientSecret())
+    params.append('refreshToken', refreshToken)
+
+    const response = await fetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Erro ao renovar token iFood (${response.status}): ${errText}`)
+    }
+
+    return response.json()
+  }
+
+
+  /**
    * Busca a fila de eventos do iFood (Polling)
    */
   async getEvents(accessToken: string) {

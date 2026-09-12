@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { webhook99FoodController } from './webhook-99food'
-import { ifoodUserCodeController, deliveryStatusController, deliveryOrdersController } from './ifood-controllers'
+import { ifoodUserCodeController, deliveryStatusController, deliveryOrdersController, pollIfoodNowController } from './ifood-controllers'
 
 export async function deliveryRoutes(app: FastifyInstance) {
   // Webhooks de terceiros (Recebem chamadas automáticas da 99Food e iFood)
@@ -18,4 +18,10 @@ export async function deliveryRoutes(app: FastifyInstance) {
   // Consulta de pedidos de delivery salvos em db_restaurante
   app.get('/delivery/orders', deliveryOrdersController)
   app.get('/api/delivery/orders', deliveryOrdersController)
+
+  // Polling manual do iFood (diagnóstico e testes)
+  app.post('/delivery/ifood/poll-now', pollIfoodNowController)
+  app.post('/api/delivery/ifood/poll-now', pollIfoodNowController)
+  app.get('/delivery/ifood/poll-now', pollIfoodNowController)
+  app.get('/api/delivery/ifood/poll-now', pollIfoodNowController)
 }

@@ -85,3 +85,25 @@ export async function deliveryOrdersController(request: FastifyRequest, reply: F
     return reply.status(500).send({ error: err.message })
   }
 }
+
+
+import { pollIfoodEvents, getIfoodTokenState } from '../../services/ifood-poller'
+
+/**
+ * Força uma checagem imediata de eventos no iFood
+ */
+export async function pollIfoodNowController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const result = await pollIfoodEvents()
+    return reply.status(200).send({
+      message: 'Polling iFood executado com sucesso',
+      ...result,
+      tokenState: getIfoodTokenState(),
+    })
+  } catch (err: any) {
+    return reply.status(500).send({
+      error: 'Falha ao executar polling iFood',
+      details: err.message,
+    })
+  }
+}

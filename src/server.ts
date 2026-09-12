@@ -1,3 +1,4 @@
+import { startIfoodPollingLoop } from '@/modules/delivery/services/ifood-poller'
 import { app } from '@/app'
 import {env} from '@/env'
 
@@ -7,4 +8,5 @@ app.listen({
     port: env.PORT
 }).then(() => {
     console.log('Servidor HTTP Rodando 💈!')
+    startIfoodPollingLoop()
 })
