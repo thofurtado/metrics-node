@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { ifoodApi } from '../../services/ifood-api.service'
 import { env } from '@/env'
+import { recentDeliveryEvents } from './webhook-99food'
 
 /**
  * Gera um novo UserCode para o lojista autorizar o Metrics no iFood
@@ -38,6 +39,8 @@ export async function deliveryStatusController(request: FastifyRequest, reply: F
         webhookUrl: 'https://api.metrics.dev.br/webhooks/99food',
       },
     },
+    recentEventsCount: recentDeliveryEvents.length,
+    recentEvents: recentDeliveryEvents.slice(0, 10),
     timestamp: new Date().toISOString(),
   })
 }

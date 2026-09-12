@@ -3,8 +3,12 @@ import { PrismaClient } from '@prisma/client'
 
 // Mapeamento em memória para lojas de teste ou cache rápido
 const sandboxMerchantMap: Record<string, string> = {
-  // Merchant ID de teste iFood/99Food -> Nome do banco de dados do tenant
-  default: 'db_marujo',
+  // 99Food Loja de teste: Bella Gourmet
+  '5764617543416810779': 'db_restaurante',
+  // iFood Loja de teste: Teste - THOMAS FURTADO
+  '4107174': 'db_restaurante',
+  '0157299d-4790-4389-9703-47d56b5fe140': 'db_restaurante',
+  default: 'db_restaurante',
 }
 
 /**
