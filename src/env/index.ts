@@ -39,6 +39,11 @@ const envSchema = z.object({
     PORT: z.coerce.number().default(3333),
     // Chave de integração para sistemas externos (conferência de caixa, etc.)
     INTEGRATION_API_KEY: z.string().default('marujo-metrics-integration-2026'),
+    // Delivery APIs (iFood & 99Food)
+    IFOOD_CLIENT_ID: z.string().optional(),
+    IFOOD_CLIENT_SECRET: z.string().optional(),
+    FOOD99_APP_ID: z.string().optional(),
+    FOOD99_SECRET: z.string().optional(),
 })
 
 const _env = envSchema.safeParse(process.env)

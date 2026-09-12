@@ -40,6 +40,7 @@ import { salesRoutes } from '@/modules/sales/http/controllers/routes'
 import { pdvSyncRoutes } from '@/modules/pdv-sync/http/controllers/routes'
 import { printDepartmentsRoutes } from '@/modules/print-departments/http/controllers/routes'
 import { cashierRoutes } from '@/modules/cashier/http/controllers/routes'
+import { deliveryRoutes } from '@/modules/delivery/http/controllers/routes'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { truncate } from 'node:fs'
@@ -66,7 +67,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url === '/' ||
         request.url.startsWith('/public/windy') || request.url.startsWith('/api/public/windy') || request.url.startsWith('/api/tenants') || request.url.startsWith('/api/admin/downloads/windy') ||
         request.url.startsWith('/public/pdv') || request.url.startsWith('/api/public/pdv') || request.url.startsWith('/api/admin/downloads/pdv') ||
-        request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/'))
+        request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/')) || request.url.startsWith('/webhooks/') || request.url.startsWith('/api/webhooks/') || request.url.startsWith('/delivery/') || request.url.startsWith('/api/delivery/')
     ) {
         return;
     }
@@ -173,6 +174,7 @@ app.register(salesRoutes)
 app.register(pdvSyncRoutes)
 app.register(printDepartmentsRoutes)
 app.register(cashierRoutes)
+app.register(deliveryRoutes)
 // Quiosque (Electron / metrics-ponto) - autenticado via x-api-key
 app.register(async (instance) => {
     instance.addHook('preHandler', async (request, reply) => {
