@@ -1,5 +1,5 @@
 import { ifoodApi } from './ifood-api.service'
-import { getIfoodTokenState } from './ifood-poller'
+import { getValidAccessToken } from './ifood-poller'
 
 /**
  * Notifica plataformas externas (iFood / 99Food) quando o operador muda o status do pedido no PDV
@@ -14,11 +14,7 @@ export async function handleDeliveryOrderStatusChange(
   const ifoodMatch = obs.match(/\[iFood:([a-zA-Z0-9\-]+)\]/) || (obs.includes('[iFood]') ? obs.match(/Pedido #([a-zA-Z0-9\-]+)/) : null)
   if (ifoodMatch) {
     const externalOrderId = ifoodMatch[1]
-    const tokenState = getIfoodTokenState()
-    
-    // Obter access token ativo
-    const { tokenState: currentTokens } = await import('./ifood-poller')
-    const token = currentTokens.accessToken
+    const token = await getValidAccessToken()
 
     if (token) {
       try {
@@ -46,6 +42,5 @@ export async function handleDeliveryOrderStatusChange(
   if (food99Match) {
     const externalOrderId = food99Match[1]
     console.log(`[99Food Lifecycle] Status do pedido #${pedido.display_id} (${externalOrderId}) atualizado para ${newStatus}`)
-    // Na 99Food, operações de status podem ser auditadas e disparadas conforme API
   }
 }

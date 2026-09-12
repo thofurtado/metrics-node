@@ -13,7 +13,7 @@ interface TokenStore {
 export let tokenState: TokenStore = {
   accessToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJqdGkiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDY6YmIwYzQxOGQtMWNmZS00YWQxLWE1YzQtM2JkY2IyNmRjM2MxIiwibWVyY2hhbnRfc2NvcGVkIjp0cnVlLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJ0dmVyIjoidjIiLCJzY29wZSI6WyJpdGVtIiwiY2F0YWxvZyIsIm1lcmNoYW50IiwibG9naXN0aWNzIiwicGlja2luZyIsImNvbmNpbGlhdG9yIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJpc3MiOiJpRm9vZCIsImFwcF9uYW1lIjoidGhvbWFzLWZ1cnRhZG8tdGVzdGUtZCIsIm93bmVyX25hbWUiOiJldXJlY2F0ZWNoIiwiYXVkIjpbIml0ZW0iLCJjYXRhbG9nIiwiZmluYW5jaWFsIiwibWVyY2hhbnQiLCJsb2dpc3RpY3MiLCJwaWNraW5nIiwib2F1dGgtc2VydmVyIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJleHAiOjE3ODkyMjMwNTYsImlhdCI6MTc4OTIwMTQ1NiwibWVyY2hhbnRfc2NvcGUiOlsiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm9yZGVyIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmNhdGFsb2ciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6Y29uY2lsaWF0b3IiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cmV2aWV3IiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmxvZ2lzdGljcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDphbmFseXRpY3MiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6c2hpcHBpbmciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6aXRlbSIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpwaWNraW5nIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmdyb2NlcmllcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpldmVudHMiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cHJvbW90aW9uIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm1lcmNoYW50Il19.Aei6aBDQLvd_EG-tqUIyCZrW68d0r18I9HJGOayxx1Y3KoxuOQQQfoYH1UG39QvMKjZrluVzc9s70NTWQQyvOVMp5d7Rl10JIHJmLbqr1BneTGbw9HvaFPpNiOb_KtB33itRgYrIpKvRPKK79otyNcTCGRBQRonqNHduxUYm5dc',
   refreshToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJpc3MiOiJpRm9vZCIsImV4cCI6MTc4OTgwNjI1NiwiaWF0IjoxNzg5MjAxNDU2fQ.EOMYb0qwsVN-WEX05P_hpAkmUV3TOzQrXTEz-PYtdF5duHLHZUyBDGmzm96s9kYBGbfV6VUv7rVyI_GwARt12KUGmpX7cqRys5S50jG6ho38kcvv8qtMDapQnTgoCynt8iii1ZI_QQ6ghhieIfatiOk4s6UdTsqaAQaywkHlaFA',
-  expiresAt: Date.now() + 21600 * 1000,
+  expiresAt: 0, // Inicia expirado para forçar refresh na primeira chamada
 }
 
 let isPolling = false
@@ -36,7 +36,7 @@ export function getIfoodTokenState() {
   }
 }
 
-async function getValidAccessToken(): Promise<string> {
+export async function getValidAccessToken(): Promise<string> {
   if (Date.now() < tokenState.expiresAt - 60000 && tokenState.accessToken) {
     return tokenState.accessToken
   }
@@ -65,12 +65,25 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
   let ordersCreated = 0
 
   try {
-    const token = await getValidAccessToken()
+    let token = await getValidAccessToken()
     if (!token) {
       return { polled: false, eventsProcessed: 0, ordersCreated: 0 }
     }
 
-    const events = await ifoodApi.getEvents(token)
+    let events: any[] = []
+    try {
+      events = await ifoodApi.getEvents(token)
+    } catch (err: any) {
+      if (err.message?.includes('token expired') || err.message?.includes('401')) {
+        console.log('[iFood Polling] Access token expirado no iFood. Renovando token via refresh_token...')
+        const refreshed = await ifoodApi.refreshAccessToken(tokenState.refreshToken)
+        setIfoodTokens(refreshed)
+        token = refreshed.accessToken
+        events = await ifoodApi.getEvents(token)
+      } else {
+        throw err
+      }
+    }
     if (!Array.isArray(events) || events.length === 0) {
       return { polled: true, eventsProcessed: 0, ordersCreated: 0 }
     }
@@ -100,7 +113,20 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
       if (event.code === 'PLC' && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando novo pedido PLC (${event.orderId})...`)
-          const order = await ifoodApi.getOrderDetails(token, event.orderId)
+          let order: any = null
+          try {
+            order = await ifoodApi.getOrderDetails(token, event.orderId)
+          } catch (err: any) {
+            if (err.message?.includes('token expired') || err.message?.includes('401')) {
+              console.log('[iFood Polling] Token expirado ao buscar detalhes. Renovando...')
+              const refreshed = await ifoodApi.refreshAccessToken(tokenState.refreshToken)
+              setIfoodTokens(refreshed)
+              token = refreshed.accessToken
+              order = await ifoodApi.getOrderDetails(token, event.orderId)
+            } else {
+              throw err
+            }
+          }
 
           // 1. Resolver o tenant (Mapeia 4107174 e UUID para db_restaurante)
           const merchantId = String(event.merchantId || order.merchant?.id || '4107174')
@@ -170,21 +196,21 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             const itemName = it.name || 'Item iFood'
             const extCode = it.externalCode || it.id
 
-            let matchedProduct = null
+            let matchedProduct: any = null
             if (extCode) {
-              matchedProduct = await (prisma as any).produto.findFirst({
+              matchedProduct = await (prisma as any).product.findFirst({
                 where: {
                   OR: [
-                    { uuid: extCode },
                     { id: extCode },
+                    { barcode: extCode },
                   ],
                 },
               })
             }
             if (!matchedProduct && itemName) {
-              matchedProduct = await (prisma as any).produto.findFirst({
+              matchedProduct = await (prisma as any).product.findFirst({
                 where: {
-                  nome: { equals: itemName, mode: 'insensitive' },
+                  name: { equals: itemName, mode: 'insensitive' },
                 },
               })
             }
