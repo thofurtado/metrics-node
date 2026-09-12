@@ -303,6 +303,116 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           console.error(`[iFood Polling Order Error] Falha ao processar pedido ${event.orderId}:`, orderErr)
         }
       }
+
+      // Evento CAN = Cancelled (Pedido cancelado pelo iFood / Consumidor)
+      if ((event.code === 'CAN' || event.code === 'CANCELLED') && event.orderId) {
+        try {
+          console.log(`[iFood Polling] Processando evento CAN/CANCELLED (${event.orderId})...`)
+          const merchantId = String(event.merchantId || '4107174')
+          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+
+          const order = await (prisma as any).pedido.findFirst({
+            where: { observacao: { contains: event.orderId } }
+          })
+
+          if (order) {
+            await (prisma as any).pedido.update({
+              where: { id: order.id },
+              data: {
+                status: 'Cancelado',
+                status_delivery: 'Cancelado',
+                data_fechamento: new Date(),
+              }
+            })
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${dbName}!`)
+
+            const cancelDto = {
+              order_id: order.uuid,
+              display_id: order.display_id,
+              status: 'Cancelado',
+              status_delivery: 'Cancelado',
+            }
+            sseManager.broadcast('order_status_change', cancelDto)
+            sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
+          }
+        } catch (canErr) {
+          console.error(`[iFood Polling CAN Error] Falha ao processar cancelamento ${event.orderId}:`, canErr)
+        }
+      }
+
+      // Evento CCR = Cancellation Requested (Consumidor ou iFood solicitou cancelamento)
+      if (event.code === 'CCR' && event.orderId) {
+        try {
+          console.log(`[iFood Polling] Processando evento CCR (Cancellation Requested) (${event.orderId})... Aceitando cancelamento no iFood...`)
+          await ifoodApi.acceptCancellation(token, event.orderId)
+
+          const merchantId = String(event.merchantId || '4107174')
+          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+
+          const order = await (prisma as any).pedido.findFirst({
+            where: { observacao: { contains: event.orderId } }
+          })
+
+          if (order) {
+            await (prisma as any).pedido.update({
+              where: { id: order.id },
+              data: {
+                status: 'Cancelado',
+                status_delivery: 'Cancelado',
+                data_fechamento: new Date(),
+              }
+            })
+            console.log(`[iFood Polling] Pedido CCR #${order.display_id} (${event.orderId}) aceito e cancelado em ${dbName}!`)
+
+            const cancelDto = {
+              order_id: order.uuid,
+              display_id: order.display_id,
+              status: 'Cancelado',
+              status_delivery: 'Cancelado',
+            }
+            sseManager.broadcast('order_status_change', cancelDto)
+            sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
+          }
+        } catch (ccrErr) {
+          console.error(`[iFood Polling CCR Error] Falha ao aceitar cancelamento ${event.orderId}:`, ccrErr)
+        }
+      }
+
+      // Evento CON = Concluded (Pedido entregue / concluído)
+      if ((event.code === 'CON' || event.code === 'CONCLUDED') && event.orderId) {
+        try {
+          console.log(`[iFood Polling] Processando evento CON/CONCLUDED (${event.orderId})...`)
+          const merchantId = String(event.merchantId || '4107174')
+          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+
+          const order = await (prisma as any).pedido.findFirst({
+            where: { observacao: { contains: event.orderId } }
+          })
+
+          if (order) {
+            await (prisma as any).pedido.update({
+              where: { id: order.id },
+              data: {
+                status: 'Fechado',
+                status_delivery: 'Entregue',
+                data_fechamento: new Date(),
+              }
+            })
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Entregue em ${dbName}!`)
+
+            const conDto = {
+              order_id: order.uuid,
+              display_id: order.display_id,
+              status: 'Fechado',
+              status_delivery: 'Entregue',
+            }
+            sseManager.broadcast('order_status_change', conDto)
+            sseManager.notifyTenant(dbName, 'order_status_change', conDto)
+          }
+        } catch (conErr) {
+          console.error(`[iFood Polling CON Error] Falha ao concluir pedido ${event.orderId}:`, conErr)
+        }
+      }
     }
 
     // Confirma recebimento dos eventos para limpar a fila do iFood

@@ -197,6 +197,26 @@ export class IFoodApiService {
   /**
    * Solicita o cancelamento do pedido no iFood
    */
+  /**
+   * Aceita a solicitação de cancelamento de um pedido iniciada pelo iFood/Consumidor
+   */
+  async acceptCancellation(accessToken: string, orderId: string) {
+    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/acceptCancellation`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const err = await response.text()
+      console.error(`[iFood Accept Cancellation Error] (${response.status}): ${err}`)
+    }
+
+    return response.ok
+  }
+
   async requestCancellation(accessToken: string, orderId: string, reason: string = 'Indisponibilidade de itens ou alta demanda no restaurante', cancellationCode: string = '501') {
     const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
       method: 'POST',
