@@ -59,7 +59,6 @@ export async function deliveryOrdersController(request: FastifyRequest, reply: F
       take: 10,
       include: {
         itens: true,
-        cliente: true,
       },
     })
     return reply.status(200).send({
