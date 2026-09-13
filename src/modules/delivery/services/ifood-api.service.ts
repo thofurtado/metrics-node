@@ -267,7 +267,58 @@ export class IFoodApiService {
   }
 
   /**
+   * Aceita cancelamento solicitado pelo consumidor / iFood (Handshake accept-cancellation)
+   * Endpoint: /order/v1.0/orders/{orderId}/statuses/cancellation/accept-cancellation
+   */
+  async acceptCancellation(
+    accessToken: string,
+    orderId: string,
+    reason: string = 'Cancelamento aceito pelo restaurante',
+    cancellationCode: string = '501'
+  ): Promise<boolean> {
+    try {
+      const payload = {
+        reason: String(reason || 'Cancelamento aceito pelo restaurante'),
+        cancellationCode: String(cancellationCode || '501'),
+        code: String(cancellationCode || '501'),
+      }
+
+      // 1. Tenta endpoint da plataforma de negociação (Handshake accept-cancellation)
+      try {
+        const respAccept = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/accept-cancellation`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(6000),
+        })
+
+        if (respAccept.ok) {
+          console.log(`[iFood Accept Cancellation Success] (${respAccept.status}) via statuses/cancellation/accept-cancellation para pedido ${orderId}`)
+          return true
+        } else {
+          const errAccept = await respAccept.text()
+          console.log(`[iFood Accept Cancellation Info] (${respAccept.status}): ${errAccept}`)
+        }
+      } catch (accEx: any) {
+        console.log('[iFood Accept Cancellation Exception]:', accEx.message)
+      }
+
+      // 2. Fallback para requestCancellation (tenta statuses/cancellation/request-cancellation e requestCancellation legado)
+      return await this.requestCancellation(accessToken, orderId, reason, cancellationCode)
+    } catch (e: any) {
+      console.error('[iFood Accept Cancellation General Error]:', e.message)
+      return await this.requestCancellation(accessToken, orderId, reason, cancellationCode)
+    }
+  }
+
+  /**
    * Solicita / Confirma cancelamento do pedido no iFood com os parâmetros exigidos (cancellationCode obrigatório)
+   * Tenta:
+   * 1. /order/v1.0/orders/{orderId}/statuses/cancellation/request-cancellation (Exigido pelo Toqan)
+   * 2. /order/v1.0/orders/{orderId}/requestCancellation (Endpoint legado v1.0)
    */
   async requestCancellation(
     accessToken: string,
@@ -279,8 +330,33 @@ export class IFoodApiService {
       const payload = {
         reason: String(reason || cancellationCode || '501'),
         cancellationCode: String(cancellationCode || '501'),
+        code: String(cancellationCode || '501'),
       }
 
+      // Tentativa 1: Endpoint moderno de statuses/cancellation (citado nominalmente pelo Toqan)
+      try {
+        const respModern = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/request-cancellation`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(6000),
+        })
+
+        if (respModern.ok) {
+          console.log(`[iFood Cancel Order Success] (${respModern.status}) via statuses/cancellation/request-cancellation para pedido ${orderId}`)
+          return true
+        } else {
+          const errModern = await respModern.text()
+          console.log(`[iFood Modern Cancel Info] (${respModern.status}): ${errModern}`)
+        }
+      } catch (modErr: any) {
+        console.log('[iFood Modern Cancel Warning]:', modErr.message)
+      }
+
+      // Tentativa 2: Endpoint clássico v1.0
       const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
         method: 'POST',
         headers: {
@@ -288,6 +364,7 @@ export class IFoodApiService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
       })
 
       if (!response.ok) {
@@ -301,23 +378,6 @@ export class IFoodApiService {
     } catch (e: any) {
       console.error('[iFood Cancel Order Exception]:', e.message)
       return false
-    }
-  }
-
-  /**
-   * Aceita a solicitação de cancelamento de um pedido iniciada pelo iFood/Consumidor
-   * Consulta os motivos cadastrados e invoca requestCancellation com cancellationCode obrigatório
-   */
-  async acceptCancellation(accessToken: string, orderId: string, cancellationCode: string = '501'): Promise<boolean> {
-    try {
-      const reasons = await this.getCancellationReasons(accessToken, orderId)
-      const code = Array.isArray(reasons) && reasons.length > 0 ? String(reasons[0].cancelCodeId || reasons[0].code || cancellationCode) : cancellationCode
-      const reason = Array.isArray(reasons) && reasons.length > 0 ? String(reasons[0].description || reasons[0].name || code) : code
-
-      return await this.requestCancellation(accessToken, orderId, reason, code)
-    } catch (e: any) {
-      console.error('[iFood Accept Cancellation Fallback Exception]:', e.message)
-      return await this.requestCancellation(accessToken, orderId, '501', cancellationCode)
     }
   }
 }

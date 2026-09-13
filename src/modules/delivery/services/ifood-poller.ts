@@ -90,6 +90,16 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
 
     console.log(`[iFood Polling] ${events.length} evento(s) recebido(s) da fila do iFood!`)
 
+    // SLA DE HOMOLOGAÇÃO TOQAN: Envio imediato do Acknowledgment (< 2s)
+    const allEventIds: string[] = events.map((e: any) => e.id).filter(Boolean)
+    if (allEventIds.length > 0) {
+      ifoodApi.acknowledgeEvents(token, allEventIds).then(() => {
+        console.log(`[iFood Polling] ACK imediato de ${allEventIds.length} evento(s) enviado com sucesso!`)
+      }).catch((ackErr: any) => {
+        console.error(`[iFood Polling] Falha no ACK imediato:`, ackErr.message)
+      })
+    }
+
     const ackIds: string[] = []
 
     for (const event of events) {
@@ -354,12 +364,12 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             console.log(`[iFood Polling] Aviso ao consultar cancellationReasons (${event.orderId}):`, rErr.message)
           }
 
-          // C. Envia confirmação de cancelamento via requestCancellation com cancellationCode obrigatório
+          // C. Envia confirmação / aceitação de cancelamento via Handshake acceptCancellation / request-cancellation
           try {
-            const ok = await ifoodApi.requestCancellation(token, event.orderId, cancelReason, cancelCode)
-            console.log(`[iFood Polling] requestCancellation enviado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
+            const ok = await ifoodApi.acceptCancellation(token, event.orderId, cancelReason, cancelCode)
+            console.log(`[iFood Polling] Confirmação de cancelamento enviada para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
           } catch (accErr: any) {
-            console.log(`[iFood Polling] Aviso requestCancellation (${event.orderId}):`, accErr.message)
+            console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
           }
 
           // D. Atualiza pedido no banco de dados local para Cancelado
@@ -521,5 +531,5 @@ export function startIfoodPollingLoop() {
 
   pollIntervalTimer = setInterval(() => {
     pollIfoodEvents().catch((e) => console.error('[iFood Interval Poll Error]:', e))
-  }, 15000)
+  }, 3000)
 }
