@@ -287,9 +287,10 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 delivery_fee: pedido.valor_frete,
                 observations: pedido.observacao || '',
                 created_at: pedido.data_abertura,
-                items: (pedido.itens || []).map(i => ({
+                items: (pedido.itens || []).map((i, idx) => ({
                     id: i.uuid,
-                    name: i.observacao || 'Item',
+                    product_id: i.produto_id || body.items[idx]?.product_id || '',
+                    name: body.items[idx]?.name || i.observacao || 'Item',
                     quantity: i.quantidade,
                     price: i.valor_unitario,
                     observation: i.observacao,
