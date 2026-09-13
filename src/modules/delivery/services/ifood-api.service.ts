@@ -195,6 +195,26 @@ export class IFoodApiService {
   }
 
   /**
+   * Marca o pedido como pronto para entrega / retirada (RTP - Ready To Deliver)
+   */
+  async readyToDeliver(accessToken: string, orderId: string) {
+    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/readyToDeliver`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const err = await response.text()
+      console.error(`[iFood Ready To Deliver Error] (${response.status}): ${err}`)
+    }
+
+    return response.ok
+  }
+
+  /**
    * Solicita o cancelamento do pedido no iFood
    */
   /**

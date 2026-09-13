@@ -26,9 +26,16 @@ export async function handleDeliveryOrderStatusChange(
           console.log(`[iFood Lifecycle] Despachando pedido #${pedido.display_id} (${externalOrderId}) no iFood...`)
           await ifoodApi.dispatchOrder(token, externalOrderId)
           console.log(`[iFood Lifecycle] Pedido ${externalOrderId} despachado para entrega com sucesso!`)
+        } else if (newStatus === 'conferencia') {
+          console.log(`[iFood Lifecycle] Marcando pedido #${pedido.display_id} (${externalOrderId}) como Pronto no iFood (readyToDeliver)...`)
+          await ifoodApi.readyToDeliver(token, externalOrderId)
         } else if (newStatus === 'cancelled') {
           console.log(`[iFood Lifecycle] Cancelando pedido #${pedido.display_id} (${externalOrderId}) no iFood...`)
-          await ifoodApi.requestCancellation(token, externalOrderId, 'Cancelado pelo operador no PDV')
+          const ok = await ifoodApi.requestCancellation(token, externalOrderId, 'Cancelado pelo operador no PDV', '501')
+          if (!ok) {
+            console.log(`[iFood Lifecycle] requestCancellation não retornou 200, tentando acceptCancellation para o pedido ${externalOrderId}...`)
+            await ifoodApi.acceptCancellation(token, externalOrderId)
+          }
           console.log(`[iFood Lifecycle] Pedido ${externalOrderId} cancelado com sucesso no iFood!`)
         }
       } catch (err: any) {
