@@ -29,7 +29,12 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     OR: [
                         // 1. Pedidos expressamente vinculados a esta sessão de caixa
                         { caixa_id: cashier_session_id },
-                        // 2. Se a sessão for ABERTA, inclui pedidos sem caixa criados a partir do momento em que este caixa abriu
+                        // 2. Pedidos em andamento (pendentes, produção, rota)
+                        {
+                            status: { notIn: ['Fechado', 'Cancelado'] },
+                            status_delivery: { notIn: ['Entregue', 'Cancelado', 'Finalizado'] }
+                        },
+                        // 3. Se a sessão for ABERTA, inclui pedidos sem caixa criados a partir do momento em que este caixa abriu
                         ...(targetSession.status === 'OPEN' ? [{
                             caixa_id: null,
                             data_abertura: { gte: sessionOpenTime }
@@ -40,7 +45,20 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 whereClause.caixa_id = cashier_session_id;
             }
         } else {
-            whereClause.data_abertura = { gte: today };
+            whereClause = {
+                origem: 'Delivery',
+                OR: [
+                    // 1. Pedidos ainda em andamento / pendentes (independente da data de abertura)
+                    {
+                        status: { notIn: ['Fechado', 'Cancelado'] },
+                        status_delivery: { notIn: ['Entregue', 'Cancelado', 'Finalizado'] }
+                    },
+                    // 2. Pedidos de hoje
+                    {
+                        data_abertura: { gte: today }
+                    }
+                ]
+            };
         }
 
         const pedidos = await prisma.pedido.findMany({

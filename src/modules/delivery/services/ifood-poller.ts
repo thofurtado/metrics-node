@@ -304,9 +304,14 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
         }
       }
 
-      // 1. Verificação Ampla de Eventos de Cancelamento Solicitado (cancellationRequested / CCR / CAR / CPR)
+      // 1. Verificação Ampla de Eventos de Cancelamento Solicitado (cancellationRequested / CCR / CAR / CPR / HANDSHAKE_DISPUTE / HSD)
       const codeStr = String(event.code || '').toUpperCase()
       const fullCodeStr = String(event.fullCode || '').toUpperCase()
+      const isDispute =
+        codeStr === 'HSD' ||
+        fullCodeStr === 'HANDSHAKE_DISPUTE' ||
+        Boolean(event.metadata?.disputeId || event.disputeId)
+
       const isCancellationRequested =
         codeStr === 'CCR' ||
         codeStr === 'CAR' ||
@@ -316,19 +321,48 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
         fullCodeStr === 'CANCELLATIONREQUESTED' ||
         fullCodeStr === 'CONSUMER_CANCELLATION_REQUESTED' ||
         (codeStr.includes('CANCEL') && codeStr.includes('REQUEST')) ||
-        (fullCodeStr.includes('CANCEL') && fullCodeStr.includes('REQUEST'))
+        (fullCodeStr.includes('CANCEL') && fullCodeStr.includes('REQUEST')) ||
+        isDispute
 
       if (isCancellationRequested && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando evento de cancelamento solicitado (${event.code}/${event.fullCode}) para pedido ${event.orderId}...`)
-          // Aceita cancelamento imediatamente no iFood (Recomendação Toqan/Homologação)
-          try {
-            await ifoodApi.acceptCancellation(token, event.orderId)
-            console.log(`[iFood Polling] acceptCancellation enviado com sucesso para ${event.orderId}!`)
-          } catch (accErr: any) {
-            console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
+
+          // A. Se for disputa de cancelamento iniciada pelo consumidor/iFood, aceita a disputa
+          const disputeId = String(event.metadata?.disputeId || event.disputeId || '')
+          if (disputeId) {
+            try {
+              await ifoodApi.acceptDispute(token, disputeId)
+              console.log(`[iFood Polling] Disputa ${disputeId} aceita com sucesso no iFood!`)
+            } catch (dErr: any) {
+              console.log('[iFood Polling] Aviso acceptDispute:', dErr.message)
+            }
           }
 
+          // B. Consulta motivos de cancelamento (exigência estrita do guia de homologação iFood)
+          let cancelCode = String(event.metadata?.cancellationCode || event.metadata?.reason_code || event.metadata?.CANCEL_CODE || '501')
+          let cancelReason = String(event.metadata?.reason || event.metadata?.details || event.metadata?.CANCEL_REASON || 'Cancelamento confirmado pelo restaurante')
+
+          try {
+            const reasons = await ifoodApi.getCancellationReasons(token, event.orderId)
+            if (Array.isArray(reasons) && reasons.length > 0) {
+              const matchedReason = reasons.find((r: any) => String(r.cancelCodeId || r.code) === cancelCode) || reasons[0]
+              cancelCode = String(matchedReason.cancelCodeId || matchedReason.code || cancelCode)
+              cancelReason = String(matchedReason.description || matchedReason.name || cancelReason)
+            }
+          } catch (rErr: any) {
+            console.log(`[iFood Polling] Aviso ao consultar cancellationReasons (${event.orderId}):`, rErr.message)
+          }
+
+          // C. Envia confirmação de cancelamento via requestCancellation com cancellationCode obrigatório
+          try {
+            const ok = await ifoodApi.requestCancellation(token, event.orderId, cancelReason, cancelCode)
+            console.log(`[iFood Polling] requestCancellation enviado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
+          } catch (accErr: any) {
+            console.log(`[iFood Polling] Aviso requestCancellation (${event.orderId}):`, accErr.message)
+          }
+
+          // D. Atualiza pedido no banco de dados local para Cancelado
           const merchantId = String(event.merchantId || '4107174')
           const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
@@ -357,7 +391,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
           }
 
-          // Acknowledgment imediato do evento de cancelamento solicitado
+          // E. Acknowledgment imediato do evento de cancelamento solicitado
           try {
             await ifoodApi.acknowledgeEvents(token, [event.id])
             console.log(`[iFood Polling] Acknowledgment IMEDIATO enviado para evento ${event.id} (${event.code}) com sucesso!`)
