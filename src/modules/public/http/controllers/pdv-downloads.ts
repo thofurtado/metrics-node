@@ -1,3 +1,4 @@
+import { sseManager } from '@/lib/sse-manager'
 ﻿import { FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
 import path from 'path'
@@ -96,6 +97,19 @@ export async function uploadPdvRelease(request: FastifyRequest, reply: FastifyRe
         }
 
         fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 2), 'utf8')
+
+        // Dispara comando de atualização remota via Broadcast SSE para todos os PDVs conectados
+        try {
+            sseManager.broadcast('remote_update', {
+                version: versionData.version,
+                downloadUrl: 'https://api.metrics.dev.br/api/public/pdv/download',
+                mandatory: true,
+                updatedAt: versionData.updatedAt
+            })
+            console.log(`[PDV Release] Broadcast remote_update enviado para todos os clientes online (v${versionData.version})!`)
+        } catch (sseErr: any) {
+            console.error('[PDV Release SSE Broadcast Error]:', sseErr.message)
+        }
 
         return reply.status(200).send({
             message: 'Release do Metrics PDV atualizada com sucesso!',
