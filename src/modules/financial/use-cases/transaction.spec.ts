@@ -360,4 +360,63 @@ describe('Transaction Use Case', () => {
         const acc = await accountsRepository.findById(account.id)
         expect(acc?.balance).toBe(1000)
     })
-})
+
+    // --- TRANSFER TESTS ---
+
+    it('should throw error if transfer does not provide destination_account_id', async () => {
+        const origin = await accountsRepository.create({ name: 'Origem', balance: 500 })
+
+        await expect(() =>
+            transactionUseCase.execute({
+                operation: 'transfer',
+                amount: 100,
+                account_id: origin.id,
+                destination_account_id: '',
+                confirmed: true
+            })
+        ).rejects.toThrow('Conta de destino é obrigatória para transferências.')
+    })
+
+    it('should throw error if transfer destination is same as origin', async () => {
+        const origin = await accountsRepository.create({ name: 'Mesma Conta', balance: 500 })
+
+        await expect(() =>
+            transactionUseCase.execute({
+                operation: 'transfer',
+                amount: 100,
+                account_id: origin.id,
+                destination_account_id: origin.id,
+                confirmed: true
+            })
+        ).rejects.toThrow('A conta de destino deve ser diferente da conta de origem.')
+    })
+
+    it('should successfully transfer between accounts debiting origin and crediting destination', async () => {
+        const origin = await accountsRepository.create({ name: 'Caixa Central', balance: 1000 })
+        const destination = await accountsRepository.create({ name: 'Reserva', balance: 200 })
+
+        const { transaction } = await transactionUseCase.execute({
+            operation: 'transfer',
+            amount: 300,
+            account_id: origin.id,
+            destination_account_id: destination.id,
+            description: 'Transferência para Reserva',
+            confirmed: true
+        })
+
+        expect(transaction.confirmed).toBe(true)
+        expect(transaction.amount).toBe(300)
+
+        const updatedOrigin = await accountsRepository.findById(origin.id)
+        const updatedDest = await accountsRepository.findById(destination.id)
+
+        expect(updatedOrigin?.balance).toBe(700)
+        expect(updatedDest?.balance).toBe(500)
+
+        const destTransaction = transactionsRepository.items.find(
+            t => t.account_id === destination.id && t.amount === 300
+        )
+        expect(destTransaction).toBeDefined()
+        expect(destTransaction?.operation).toBe('income')
+    })
+});

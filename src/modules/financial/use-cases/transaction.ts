@@ -72,6 +72,19 @@ export class TransactionUseCase {
         const account = await this.accountsRepository.findById(account_id)
         if (!account) throw new ResourceNotFoundError()
 
+        if (operation === 'transfer') {
+            if (!destination_account_id) {
+                throw new Error('Conta de destino é obrigatória para transferências.')
+            }
+            if (destination_account_id === account_id) {
+                throw new Error('A conta de destino deve ser diferente da conta de origem.')
+            }
+            const destinationAccount = await this.accountsRepository.findById(destination_account_id)
+            if (!destinationAccount) {
+                throw new ResourceNotFoundError()
+            }
+        }
+
         const isIncome = operation === 'income' ? true : false
 
         let installmentsPlan: { data_vencimento: Date, data_emissao: Date, amount: number, number: number }[] = []
@@ -235,13 +248,18 @@ export class TransactionUseCase {
             }
 
             if (destination_account_id && operation === 'transfer' && firstTransaction.confirmed) {
+                const originAccount = await this.accountsRepository.findById(firstTransaction.account_id)
+                const originName = originAccount?.name || 'Origem'
+                const destDescription = `Transferência de ${originName}`
+
+                let destTx: any
                 if (!isInMemory && tx?.transaction) {
-                    await tx.transaction.create({
+                    destTx = await tx.transaction.create({
                         data: {
                             operation: 'income',
                             amount,
                             account_id: destination_account_id,
-                            description: `Transferência de ${firstTransaction.account_id}`,
+                            description: destDescription,
                             confirmed: true,
                             data_vencimento: effectiveVencimento,
                             data_emissao: effectiveEmissao,
@@ -249,17 +267,31 @@ export class TransactionUseCase {
                         } as any
                     })
                 } else {
-                    await this.transactionsRepository.create({
+                    destTx = await this.transactionsRepository.create({
                         operation: 'income',
                         amount,
                         account_id: destination_account_id,
-                        description: `Transferência de ${firstTransaction.account_id}`,
+                        description: destDescription,
                         confirmed: true,
                         data_vencimento: effectiveVencimento,
                         data_emissao: effectiveEmissao,
+                        payment_method: "TRANSFERENCIA",
                     })
                 }
                 await this.accountsRepository.changeBalance(destination_account_id, amount, true, tx)
+
+                if (!isInMemory && tx?.transferTransaction && destTx?.id) {
+                    const destAccount = await this.accountsRepository.findById(destination_account_id)
+                    const destName = destAccount?.name || 'Destino'
+                    await tx.transferTransaction.create({
+                        data: {
+                            source_transaction_id: firstTransaction.id,
+                            dest_transaction_id: destTx.id,
+                            description: `Transferência: ${originName} -> ${destName}`,
+                            is_automated: true
+                        }
+                    })
+                }
             }
 
             return {

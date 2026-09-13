@@ -18,6 +18,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         description: z.string().nullish(),
         confirmed: z.boolean().nullish(),
         destination_account_id: z.string().nullish(),
+        destination_account: z.string().nullish(),
         supplier_id: z.string().nullish(),
         payment_method: z.string().nullish(),
         installments_count: z.number().nullish(),
@@ -46,6 +47,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         description,
         confirmed,
         destination_account_id,
+        destination_account,
         supplier_id,
         payment_method,
         installments_count,
@@ -57,6 +59,17 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         totalValue,
         credit_card_id,
     } = registerBodySchema.parse(request.body)
+
+    const effectiveDestinationAccountId = destination_account_id || (destination_account as string) || null
+
+    if (operation === 'transfer') {
+        if (!effectiveDestinationAccountId) {
+            return reply.status(400).send({ message: 'Conta de destino é obrigatória para transferências.' })
+        }
+        if (effectiveDestinationAccountId === account_id) {
+            return reply.status(400).send({ message: 'A conta de destino deve ser diferente da conta de origem.' })
+        }
+    }
 
     let transaction
     try {
@@ -72,7 +85,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             data_emissao: data_emissao || null,
             sector_id: sector_id || null,
             description: description || null,
-            destination_account_id: destination_account_id || null,
+            destination_account_id: effectiveDestinationAccountId,
             supplier_id: supplier_id || null,
             payment_method: payment_method || null,
             installments_count: installments_count || undefined,
