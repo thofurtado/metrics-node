@@ -679,8 +679,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 }
             }
 
-            if (!targetAccountId && defaultAccount) {
-                targetAccountId = defaultAccount.id
+            if (!targetAccountId) {
+                targetAccountId = centralAccount?.id || defaultAccount?.id
             }
 
             const paymentDisplay = paymentMethodRaw ? paymentMethodRaw.charAt(0).toUpperCase() + paymentMethodRaw.slice(1) : ''
