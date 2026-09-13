@@ -211,6 +211,28 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
     })
 
     if (!session) {
+        // Se a sessão não existia na nuvem (ex: aberta em modo offline), cria com status PENDING
+        const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } })
+        const targetUserId = adminUser?.id || (await prisma.user.findFirst({ select: { id: true } }))?.id
+
+        if (targetUserId) {
+            const newSession = await prisma.cashierSession.create({
+                data: {
+                    id: data.uuid,
+                    user_id: targetUserId,
+                    status: data.status || 'PENDING',
+                    opened_at: closedAt,
+                    closed_at: closedAt,
+                    initial_balance: 0,
+                    period: 'Caixa PDV',
+                    sequence_number: 1
+                }
+            })
+            return reply.status(200).send({
+                message: 'Fechamento de caixa registrado e enviado para conferência com sucesso',
+                session: newSession
+            })
+        }
         return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
     }
 
@@ -223,7 +245,7 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
     })
 
     return reply.status(200).send({
-        message: 'Fechamento de caixa sincronizado com sucesso',
+        message: 'Fechamento de caixa sincronizado e enviado para conferência com sucesso',
         session: updated
     })
 }
