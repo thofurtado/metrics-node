@@ -18,19 +18,19 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         })).optional().default([]),
         Items: z.array(z.object({
             Uuid: z.string().uuid(),
-            ProductId: z.string().uuid().optional().nullable(),
+            ProductId: z.string().optional().nullable(),
             Quantity: z.number().positive(),
             UnitPrice: z.number().min(0),
             UnitCost: z.number().optional().default(0),
             Discount: z.number().optional().default(0),
             Observation: z.string().optional().nullable(),
             Fractions: z.array(z.object({
-                ProductId: z.string().uuid(),
+                ProductId: z.string(),
                 Fraction: z.number().positive().max(1),
             })).optional(),
             Complements: z.array(z.object({
-                OptionId: z.string().uuid().optional(),
-                LinkedSupplyId: z.string().uuid().optional().nullable(),
+                OptionId: z.string().optional().nullable(),
+                LinkedSupplyId: z.string().optional().nullable(),
                 Price: z.number().min(0).optional().default(0),
                 Name: z.string().optional(),
             })).optional(),
@@ -86,7 +86,17 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             })
 
             // 3. Registrar Entradas de Caixa (CashierEntry) para conferência
-            if (targetSessionId && sale.Payments && sale.Payments.length > 0) {
+            if (sale.Status === 'CANCELLED') {
+                // Cancelamento: remove qualquer entrada de caixa que essa venda tenha gerado (venda cancelada não entra no caixa)
+                if (targetSessionId) {
+                    await tx.cashierEntry.deleteMany({
+                        where: {
+                            cashier_session_id: targetSessionId,
+                            identification: { contains: sale.Uuid.slice(0, 8) }
+                        }
+                    })
+                }
+            } else if (targetSessionId && sale.Payments && sale.Payments.length > 0) {
                 for (const pay of sale.Payments) {
                     if (pay.Amount <= 0) continue
 
@@ -121,12 +131,24 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     where: { id: item.Uuid }
                 })
 
+                // Valida se o produto existe no banco da nuvem para não violar FK sale_items_product_id_fkey
+                let validProductId: string | null = null
+                if (item.ProductId) {
+                    const prodExists = await tx.product.findUnique({
+                        where: { id: item.ProductId },
+                        select: { id: true }
+                    })
+                    if (prodExists) {
+                        validProductId = prodExists.id
+                    }
+                }
+
                 if (!existingItem) {
                     await tx.saleItem.create({
                         data: {
                             id: item.Uuid,
                             sale_id: sale.Uuid,
-                            product_id: item.ProductId || null,
+                            product_id: validProductId,
                             quantity: item.Quantity,
                             unit_price: item.UnitPrice,
                             discount: item.Discount,
