@@ -475,31 +475,39 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-            // Endpoint verificado pela homologação TOQAN para o cancelamento iniciado no PDV.
-      try {
-        const responseToqan = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(6000),
-        })
+            // Tenta primeiro o caminho exatamente informado pela homologação TOQAN.
+            const cancellationEndpoints = [
+              `/order/${orderId}/statuses/cancellationRequested`,
+              `/order/v1.0/orders/${orderId}/statuses/cancellationRequested`,
+            ]
 
-        if (responseToqan.ok) {
-          console.log(`[iFood Cancel Order Success] (${responseToqan.status}) via PATCH statuses/cancellationRequested para pedido ${orderId}`)
-          return true
-        }
+            for (const endpoint of cancellationEndpoints) {
+              try {
+                console.log(`[iFood Cancel Order] Executando PATCH ${endpoint}`)
+                const responseToqan = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
+                  method: 'PATCH',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(payload),
+                  signal: AbortSignal.timeout(6000),
+                })
 
-        const errorToqan = await responseToqan.text()
-        console.log(`[iFood TOQAN Cancel Info] (${responseToqan.status}): ${errorToqan}`)
-      } catch (toqanErr: any) {
-        console.log('[iFood TOQAN Cancel Warning]:', toqanErr.message)
-      }
+                if (responseToqan.ok) {
+                  console.log(`[iFood Cancel Order Success] (${responseToqan.status}) via PATCH ${endpoint} para pedido ${orderId}`)
+                  return true
+                }
 
+                const errorToqan = await responseToqan.text()
+                console.log(`[iFood TOQAN Cancel Info] PATCH ${endpoint} (${responseToqan.status}): ${errorToqan}`)
+              } catch (toqanErr: any) {
+                console.log(`[iFood TOQAN Cancel Warning] PATCH ${endpoint}:`, toqanErr.message)
+              }
+            }
 
-      // Tentativa 2: Endpoint clássico v1.0
+            // Fallback final: endpoint clássico v1.0.
+
       const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
         method: 'POST',
         headers: {
