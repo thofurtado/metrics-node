@@ -50,7 +50,24 @@ import { getPrismaForDb } from '@/lib/tenant-manager'
 /**
  * Consulta últimos pedidos de delivery salvos em db_restaurante
  */
+export async function ifoodApiLogsController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const query = request.query as { orderId?: string; take?: string }
+    const take = Math.min(Math.max(Number(query.take) || 50, 1), 200)
+    const prisma = await getPrismaForDb('db_restaurante')
+    const logs = await (prisma as any).ifoodApiLog.findMany({
+      where: query.orderId ? { order_id: query.orderId } : undefined,
+      orderBy: { created_at: 'desc' },
+      take,
+    })
+    return reply.status(200).send({ tenant: 'db_restaurante', total: logs.length, logs })
+  } catch (err: any) {
+    return reply.status(500).send({ error: err.message })
+  }
+}
+
 export async function deliveryOrdersController(request: FastifyRequest, reply: FastifyReply) {
+
   try {
     const prisma = await getPrismaForDb('db_restaurante')
     const orders = await (prisma as any).pedido.findMany({

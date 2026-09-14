@@ -1,4 +1,44 @@
 import { env } from '@/env'
+import { getPrismaForDb } from '@/lib/tenant-manager'
+
+const MAX_AUDIT_BODY_LENGTH = 10000
+
+function redactAuditBody(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+
+  const text = value.slice(0, MAX_AUDIT_BODY_LENGTH)
+  try {
+    return redactAuditBody(JSON.parse(text))
+  } catch {
+    if (text.includes('=')) {
+      const params = new URLSearchParams(text)
+      for (const key of ['clientSecret', 'refreshToken', 'accessToken', 'password', 'token']) {
+        if (params.has(key)) params.set(key, '[REDACTED]')
+      }
+      return params.toString()
+    }
+    return text
+  }
+}
+
+function redactAuditValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactAuditValue)
+  if (!value || typeof value !== 'object') return value
+
+  const sensitiveKeys = new Set(['authorization', 'accessToken', 'refreshToken', 'clientSecret', 'client_secret', 'password', 'token'])
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key,
+    sensitiveKeys.has(key) ? '[REDACTED]' : redactAuditValue(item),
+  ]))
+}
+
+function auditBody(value: unknown): any {
+  const redacted = redactAuditValue(redactAuditBody(value))
+  if (typeof redacted === 'string') return redacted.slice(0, MAX_AUDIT_BODY_LENGTH)
+  return redacted
+}
+
+
 
 interface UserCodeResponse {
   userCode: string
@@ -18,6 +58,43 @@ interface TokenResponse {
 export class IFoodApiService {
   private baseUrl = 'https://merchant-api.ifood.com.br'
 
+  private async auditedFetch(url: string, init: RequestInit = {}) {
+    const startedAt = Date.now()
+    const method = init.method || 'GET'
+    const orderId = url.match(/orders\/([^/]+)/)?.[1]
+    let response: Response | undefined
+    let errorMessage: string | undefined
+
+    try {
+      response = await fetch(url, init)
+      return response
+    } catch (error: any) {
+      errorMessage = error?.message || String(error)
+      throw error
+    } finally {
+      const responseBody = response ? await response.clone().text().catch(() => '') : undefined
+      try {
+        const prisma = await getPrismaForDb('db_restaurante')
+        await (prisma as any).ifoodApiLog.create({
+          data: {
+            method,
+            endpoint: url.replace(this.baseUrl, ''),
+            order_id: orderId,
+            request_body: init.body ? auditBody(init.body) : undefined,
+            response_status: response?.status,
+            response_body: responseBody ? auditBody(responseBody) : undefined,
+            duration_ms: Date.now() - startedAt,
+            success: Boolean(response?.ok),
+            error_message: errorMessage,
+          },
+        })
+      } catch (auditError: any) {
+        console.error('[iFood Audit Log Error]:', auditError?.message || auditError)
+      }
+    }
+  }
+
+
   private getClientId(): string {
     return env.IFOOD_CLIENT_ID || 'bb0c418d-1cfe-4ad1-a5c4-3bdcb26dc3c1'
   }
@@ -33,7 +110,7 @@ export class IFoodApiService {
     const params = new URLSearchParams()
     params.append('clientId', this.getClientId())
 
-    const response = await fetch(`${this.baseUrl}/authentication/v1.0/oauth/userCode`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/authentication/v1.0/oauth/userCode`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -60,7 +137,7 @@ export class IFoodApiService {
     params.append('authorizationCode', authorizationCode)
     params.append('authorizationCodeVerifier', authorizationCodeVerifier)
 
-    const response = await fetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -86,7 +163,7 @@ export class IFoodApiService {
     params.append('clientSecret', this.getClientSecret())
     params.append('refreshToken', refreshToken)
 
-    const response = await fetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -107,7 +184,7 @@ export class IFoodApiService {
    * Busca a fila de eventos do iFood (Polling)
    */
   async getEvents(accessToken: string) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/events:polling`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/events:polling`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -132,7 +209,7 @@ export class IFoodApiService {
    * Envia ACK para confirmar o recebimento dos eventos e limpar da fila
    */
   async acknowledgeEvents(accessToken: string, eventIds: string[]) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/events/acknowledgment`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/events/acknowledgment`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -148,7 +225,7 @@ export class IFoodApiService {
    * Busca os detalhes completos de um pedido
    */
   async getOrderDetails(accessToken: string, orderId: string) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -168,7 +245,7 @@ export class IFoodApiService {
    * Confirma o pedido
    */
   async confirmOrder(accessToken: string, orderId: string) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/confirm`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/confirm`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -183,7 +260,7 @@ export class IFoodApiService {
    * Despacha o pedido para entrega
    */
   async dispatchOrder(accessToken: string, orderId: string) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/dispatch`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/dispatch`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -198,7 +275,7 @@ export class IFoodApiService {
    * Marca o pedido como pronto para entrega / retirada (RTP - Ready To Deliver)
    */
   async readyToDeliver(accessToken: string, orderId: string) {
-    const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/readyToDeliver`, {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/readyToDeliver`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -219,7 +296,7 @@ export class IFoodApiService {
    */
   async getCancellationReasons(accessToken: string, orderId: string): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/cancellationReasons`, {
+      const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/cancellationReasons`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -245,7 +322,7 @@ export class IFoodApiService {
    */
   async acceptDispute(accessToken: string, disputeId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/order/v1.0/disputes/${disputeId}/accept`, {
+      const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/disputes/${disputeId}/accept`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -286,7 +363,7 @@ export class IFoodApiService {
             // 1. Endpoint exigido pela homologação Toqan para confirmar o cancelamento solicitado.
       // O Toqan informa explicitamente PATCH /order/{orderId}/statuses/cancellationRequested.
       try {
-        const respToqan = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
+        const respToqan = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -313,7 +390,7 @@ export class IFoodApiService {
 
       // 2. Mantém os endpoints legados como fallback compatível com ambientes anteriores.
       try {
-        const respAccept = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/accept-cancellation`, {
+        const respAccept = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/accept-cancellation`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -363,7 +440,7 @@ export class IFoodApiService {
 
             // Endpoint verificado pela homologação TOQAN para o cancelamento iniciado no PDV.
       try {
-        const responseToqan = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
+        const responseToqan = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -386,7 +463,7 @@ export class IFoodApiService {
 
 
       // Tentativa 2: Endpoint clássico v1.0
-      const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
+      const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

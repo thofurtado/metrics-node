@@ -960,7 +960,27 @@ model ClientGroup {
 }
 
 
+model IfoodApiLog {
+  id             String   @id @default(uuid())
+  method         String
+  endpoint       String
+  order_id       String?
+  local_order_id  Int?
+  request_body   Json?
+  response_status Int?
+  response_body  Json?
+  duration_ms    Int
+  success        Boolean
+  error_message  String?
+  created_at     DateTime @default(now())
+
+  @@index([order_id, created_at])
+  @@index([created_at])
+  @@map("ifood_api_logs")
+}
+
 model Pedido {
+
   id                  Int          @id @default(autoincrement())
   uuid                String       @default(uuid())
   display_id          Int

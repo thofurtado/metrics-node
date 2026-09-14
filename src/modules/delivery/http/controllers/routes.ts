@@ -1,10 +1,14 @@
 import { FastifyInstance } from 'fastify'
 import { webhook99FoodController } from './webhook-99food'
+import { verifyJwt } from '@/http/middlewares/verify-jwt'
+
 import {
   ifoodUserCodeController,
-  deliveryStatusController,
+    deliveryStatusController,
   deliveryOrdersController,
+  ifoodApiLogsController,
   pollIfoodNowController,
+
   syncCatalogController,
 } from './ifood-controllers'
 
@@ -21,7 +25,14 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.get('/delivery/status', deliveryStatusController)
   app.get('/api/delivery/status', deliveryStatusController)
 
-  // Consulta de pedidos de delivery salvos em db_restaurante
+    // Auditoria persistente das chamadas iFood (JWT ou x-api-key obrigatório)
+    app.get('/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
+    app.get('/api/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
+
+    // Consulta de pedidos de delivery salvos em db_restaurante
+
+
+
   app.get('/delivery/orders', deliveryOrdersController)
   app.get('/api/delivery/orders', deliveryOrdersController)
 
