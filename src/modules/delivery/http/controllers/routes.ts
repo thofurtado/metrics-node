@@ -7,6 +7,7 @@ import {
     deliveryStatusController,
   deliveryOrdersController,
   ifoodApiLogsController,
+  ifoodTestCancellationPatchController,
   pollIfoodNowController,
 
   syncCatalogController,
@@ -28,6 +29,9 @@ export async function deliveryRoutes(app: FastifyInstance) {
     // Auditoria persistente das chamadas iFood (JWT ou x-api-key obrigatório)
     app.get('/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
     app.get('/api/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
+
+    app.post('/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)
+    app.post('/api/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)
 
     // Consulta de pedidos de delivery salvos em db_restaurante
 

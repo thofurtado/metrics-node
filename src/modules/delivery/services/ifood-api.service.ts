@@ -425,12 +425,49 @@ export class IFoodApiService {
    * 1. /order/v1.0/orders/{orderId}/statuses/cancellation/request-cancellation (Exigido pelo Toqan)
    * 2. /order/v1.0/orders/{orderId}/requestCancellation (Endpoint legado v1.0)
    */
+    async testCancellationPatch(
+    accessToken: string,
+    orderId: string,
+    reason: string = 'Cancelado pelo operador no PDV',
+    cancellationCode: string = '501'
+  ) {
+    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+    const payload = {
+      reason: String(reason || 'Cancelado pelo operador no PDV'),
+      cancellationCode: String(cancellationCode || '501'),
+      code: String(cancellationCode || '501'),
+    }
+
+    console.log(`[iFood Diagnostic] Executando PATCH ${endpoint}`)
+    const response = await this.auditedFetch(endpoint, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
+    })
+    const responseText = await response.text()
+    console.log(`[iFood Diagnostic] PATCH ${response.status} para pedido ${orderId}`)
+
+    return {
+      method: 'PATCH',
+      endpoint: endpoint.replace(this.baseUrl, ''),
+      status: response.status,
+      ok: response.ok,
+      response: auditBody(responseText),
+      payload,
+    }
+  }
+
   async requestCancellation(
     accessToken: string,
     orderId: string,
     reason: string = '501',
     cancellationCode: string = '501'
   ): Promise<boolean> {
+
     try {
       const payload = {
         reason: String(reason || cancellationCode || '501'),

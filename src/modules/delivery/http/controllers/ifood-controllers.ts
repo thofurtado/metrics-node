@@ -2,6 +2,8 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { ifoodApi } from '../../services/ifood-api.service'
 import { env } from '@/env'
 import { recentDeliveryEvents } from './webhook-99food'
+import { getValidAccessToken } from '../../services/ifood-poller'
+
 
 /**
  * Gera um novo UserCode para o lojista autorizar o Metrics no iFood
@@ -50,6 +52,30 @@ import { getPrismaForDb } from '@/lib/tenant-manager'
 /**
  * Consulta últimos pedidos de delivery salvos em db_restaurante
  */
+export async function ifoodTestCancellationPatchController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const body = request.body as { orderId?: string; reason?: string; cancellationCode?: string }
+    if (!body?.orderId) {
+      return reply.status(400).send({ error: 'orderId é obrigatório' })
+    }
+
+    const token = await getValidAccessToken()
+    if (!token) {
+      return reply.status(503).send({ error: 'Token iFood indisponível' })
+    }
+
+    const result = await ifoodApi.testCancellationPatch(
+      token,
+      body.orderId,
+      body.reason,
+      body.cancellationCode,
+    )
+    return reply.status(200).send(result)
+  } catch (err: any) {
+    return reply.status(502).send({ error: 'Falha ao executar PATCH iFood', details: err.message })
+  }
+}
+
 export async function ifoodApiLogsController(request: FastifyRequest, reply: FastifyReply) {
   try {
     const query = request.query as { orderId?: string; take?: string }
