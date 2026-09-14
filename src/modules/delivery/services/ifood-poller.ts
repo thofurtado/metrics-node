@@ -342,22 +342,13 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             }
           }
 
-          // B. Consulta motivos de cancelamento (exigência estrita do guia de homologação iFood)
-          let cancelCode = String(event.metadata?.cancellationCode || event.metadata?.reason_code || event.metadata?.CANCEL_CODE || '501')
-          let cancelReason = String(event.metadata?.reason || event.metadata?.details || event.metadata?.CANCEL_REASON || 'Cancelamento confirmado pelo restaurante')
-
-          try {
-            const reasons = await ifoodApi.getCancellationReasons(token, event.orderId)
-            if (Array.isArray(reasons) && reasons.length > 0) {
-              const matchedReason = reasons.find((r: any) => String(r.cancelCodeId || r.code) === cancelCode) || reasons[0]
-              cancelCode = String(matchedReason.cancelCodeId || matchedReason.code || cancelCode)
-              cancelReason = String(matchedReason.description || matchedReason.name || cancelReason)
-            }
-          } catch (rErr: any) {
-            console.log(`[iFood Polling] Aviso ao consultar cancellationReasons (${event.orderId}):`, rErr.message)
-          }
+                    // B. Usa somente os dados do evento. A consulta cancellationReasons retorna 400
+          // para este fluxo e provocava retries infinitos sem contribuir para a confirmação.
+          const cancelCode = String(event.metadata?.cancellationCode || event.metadata?.reason_code || event.metadata?.CANCEL_CODE || '501')
+          const cancelReason = String(event.metadata?.reason || event.metadata?.details || event.metadata?.CANCEL_REASON || 'Cancelamento confirmado pelo restaurante')
 
           // C. Envia confirmação / aceitação de cancelamento via Handshake acceptCancellation / request-cancellation
+
                     try {
             const ok = await ifoodApi.acceptCancellation(token, event.orderId, cancelReason, cancelCode)
             if (!ok) {
