@@ -4,6 +4,22 @@ import { Pool } from 'pg'
 import { execSync } from 'child_process'
 import { getSchemaHash } from './db-status'
 
+async function ensureMasterSchema(pool: Pool) {
+  // O botão de sincronização sempre operou apenas nos tenants. Esta tabela, porém,
+  // pertence ao banco master usado pelo Admin SaaS e precisa ser criada aqui também.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "SaaSIntegrationConfig" (
+      "id" TEXT NOT NULL,
+      "provider" TEXT NOT NULL,
+      "clientId" TEXT NOT NULL,
+      "clientSecret" TEXT NOT NULL,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "SaaSIntegrationConfig_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "SaaSIntegrationConfig_provider_key" UNIQUE ("provider")
+    )
+  `)
+}
+
 export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply) {
   // Check API Key
   const apiKey = request.headers['x-api-key']
@@ -67,6 +83,7 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
     const currentHash = getSchemaHash()
     const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
     const pool = new Pool({ connectionString: masterUrl })
+    await ensureMasterSchema(pool)
     await pool.query('UPDATE "Tenant" SET "schemaVersion" = $1, "dbSyncedAt" = NOW() WHERE "dbName" = $2', [currentHash, dbName])
     await pool.end()
 
@@ -97,6 +114,7 @@ export async function syncAllTenantsDb(request: FastifyRequest, reply: FastifyRe
   let pool: Pool | null = null
   try {
     pool = new Pool({ connectionString: masterUrl })
+    await ensureMasterSchema(pool)
     const result = await pool.query('SELECT "dbName", domain FROM "Tenant" WHERE status = $1 ORDER BY name ASC', ['active'])
     const tenants = result.rows
 
