@@ -86,7 +86,9 @@ export class FinishTreatmentUseCase {
             // A. Stock Update (Decrement) - ONLY for Products and Supplies (skip Services)
             if ((treatment as any).items && (treatment as any).items.length > 0) {
                 for (const tItem of (treatment as any).items) {
-                    const prodId = tItem.product_id || (tItem.product ? tItem.product.id : null)
+                    // `item_id` is kept as a legacy alias used by older local/in-memory
+                    // callers; persisted treatment_items use product_id/service_id/supply_id.
+                    const prodId = tItem.product_id || tItem.item_id || (tItem.product ? tItem.product.id : null)
                     const supplyId = tItem.supply_id || (tItem.supply ? tItem.supply.id : null)
 
                     if (prodId) {
