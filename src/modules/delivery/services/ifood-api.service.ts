@@ -375,7 +375,7 @@ export class IFoodApiService {
 
       // O fluxo homologado usa somente este endpoint. Não fazer fallback para
       // endpoints legados, pois isso gera chamadas POST incompatíveis e retries.
-      const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+      const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/requestCancellation`
       const response = await this.auditedFetch(endpoint, {
         method: 'PATCH',
         headers: {
@@ -389,7 +389,7 @@ export class IFoodApiService {
       if (!response.ok) {
         console.log(`[iFood Cancellation Info] PATCH ${response.status}: ${await response.text()}`)
       } else {
-        console.log(`[iFood Accept Cancellation Success] (${response.status}) via PATCH /order/${orderId}/statuses/cancellationRequested`)
+        console.log(`[iFood Accept Cancellation Success] (${response.status}) via PATCH /order/${orderId}/statuses/requestCancellation`)
       }
       return response.ok
     } catch (e: any) {
@@ -407,7 +407,7 @@ export class IFoodApiService {
     reason: string = 'Cancelado pelo operador no PDV',
     cancellationCode: string = '501'
   ) {
-    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/requestCancellation`
     const payload = {
       reason: String(reason || 'Cancelado pelo operador no PDV'),
       cancellationCode: String(cancellationCode || '501'),
@@ -451,7 +451,7 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-      const endpoint = `/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+      const endpoint = `/order/v1.0/orders/${orderId}/statuses/requestCancellation`
       console.log(`[iFood Cancel Order] Executando PATCH ${endpoint}`)
       const response = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
         method: 'PATCH',
