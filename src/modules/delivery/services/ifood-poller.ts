@@ -1,6 +1,7 @@
 import { ifoodApi } from './ifood-api.service'
 import { resolveTenantForMerchant } from './delivery-tenant-resolver'
 import { sseManager } from '@/lib/sse-manager'
+import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
 
 interface TokenStore {
@@ -9,53 +10,126 @@ interface TokenStore {
   expiresAt: number
 }
 
-// Token inicial obtido via autorização oficial do lojista
+// Tokens são carregados somente após a autorização OAuth do lojista.
+// Nunca mantenha tokens reais versionados no código-fonte.
 export let tokenState: TokenStore = {
-  accessToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJqdGkiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDY6YmIwYzQxOGQtMWNmZS00YWQxLWE1YzQtM2JkY2IyNmRjM2MxIiwibWVyY2hhbnRfc2NvcGVkIjp0cnVlLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJ0dmVyIjoidjIiLCJzY29wZSI6WyJpdGVtIiwiY2F0YWxvZyIsIm1lcmNoYW50IiwibG9naXN0aWNzIiwicGlja2luZyIsImNvbmNpbGlhdG9yIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJpc3MiOiJpRm9vZCIsImFwcF9uYW1lIjoidGhvbWFzLWZ1cnRhZG8tdGVzdGUtZCIsIm93bmVyX25hbWUiOiJldXJlY2F0ZWNoIiwiYXVkIjpbIml0ZW0iLCJjYXRhbG9nIiwiZmluYW5jaWFsIiwibWVyY2hhbnQiLCJsb2dpc3RpY3MiLCJwaWNraW5nIiwib2F1dGgtc2VydmVyIiwiYW5hbHl0aWNzIiwic2hpcHBpbmciLCJyZXZpZXciLCJncm9jZXJpZXMiLCJldmVudHMiLCJvcmRlciIsInByb21vdGlvbiJdLCJleHAiOjE3ODkyMjMwNTYsImlhdCI6MTc4OTIwMTQ1NiwibWVyY2hhbnRfc2NvcGUiOlsiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm9yZGVyIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmNhdGFsb2ciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6Y29uY2lsaWF0b3IiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cmV2aWV3IiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmxvZ2lzdGljcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDphbmFseXRpY3MiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6c2hpcHBpbmciLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6aXRlbSIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpwaWNraW5nIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOmdyb2NlcmllcyIsIjAxNTcyOTlkLTQ3OTAtNDM4OS05NzAzLTQ3ZDU2YjVmZTE0MDpldmVudHMiLCIwMTU3Mjk5ZC00NzkwLTQzODktOTcwMy00N2Q1NmI1ZmUxNDA6cHJvbW90aW9uIiwiMDE1NzI5OWQtNDc5MC00Mzg5LTk3MDMtNDdkNTZiNWZlMTQwOm1lcmNoYW50Il19.Aei6aBDQLvd_EG-tqUIyCZrW68d0r18I9HJGOayxx1Y3KoxuOQQQfoYH1UG39QvMKjZrluVzc9s70NTWQQyvOVMp5d7Rl10JIHJmLbqr1BneTGbw9HvaFPpNiOb_KtB33itRgYrIpKvRPKK79otyNcTCGRBQRonqNHduxUYm5dc',
-  refreshToken: 'eyJraWQiOiJlZGI4NWY2Mi00ZWY5LTExZTktODY0Ny1kNjYzYmQ4NzNkOTMiLCJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmNzdhYWYxYy0yYzBiLTRmYzgtYWJhYS1hMTc0ZWNkYzNlNDYiLCJjbGllbnRfaWQiOiJiYjBjNDE4ZC0xY2ZlLTRhZDEtYTVjNC0zYmRjYjI2ZGMzYzEiLCJpc3MiOiJpRm9vZCIsImV4cCI6MTc4OTgwNjI1NiwiaWF0IjoxNzg5MjAxNDU2fQ.EOMYb0qwsVN-WEX05P_hpAkmUV3TOzQrXTEz-PYtdF5duHLHZUyBDGmzm96s9kYBGbfV6VUv7rVyI_GwARt12KUGmpX7cqRys5S50jG6ho38kcvv8qtMDapQnTgoCynt8iii1ZI_QQ6ghhieIfatiOk4s6UdTsqaAQaywkHlaFA',
-  expiresAt: 0, // Inicia expirado para forçar refresh na primeira chamada
+  accessToken: '',
+  refreshToken: '',
+  expiresAt: 0,
+}
+
+const tokenStates = new Map<string, TokenStore>()
+const DEFAULT_TENANT = 'db_restaurante'
+
+function getTokenStore(dbName: string = DEFAULT_TENANT): TokenStore {
+  if (!tokenStates.has(dbName)) {
+    tokenStates.set(dbName, { accessToken: '', refreshToken: '', expiresAt: 0 })
+  }
+  return tokenStates.get(dbName)!
+}
+
+async function loadIfoodTokens(dbName: string = DEFAULT_TENANT): Promise<TokenStore> {
+  const current = getTokenStore(dbName)
+  if (current.accessToken || current.refreshToken) return current
+
+  try {
+    const prisma = await getPrismaForDb(dbName)
+    const profile = await (prisma as any).companyProfile.findFirst({
+      select: { ifoodAccessToken: true, ifoodRefreshToken: true, ifoodTokenExpiresAt: true },
+    })
+    if (profile?.ifoodAccessToken || profile?.ifoodRefreshToken) {
+      const loaded = {
+        accessToken: profile.ifoodAccessToken || '',
+        refreshToken: profile.ifoodRefreshToken || '',
+        expiresAt: profile.ifoodTokenExpiresAt ? new Date(profile.ifoodTokenExpiresAt).getTime() : 0,
+      }
+      tokenStates.set(dbName, loaded)
+      if (dbName === DEFAULT_TENANT) tokenState = loaded
+      return loaded
+    }
+  } catch (error: any) {
+    console.error(`[iFood Token Load Error] Tenant ${dbName}:`, error?.message || error)
+  }
+  return current
+}
+
+async function persistIfoodTokens(dbName: string, tokens: TokenStore) {
+  try {
+    const prisma = await getPrismaForDb(dbName)
+    const profile = await (prisma as any).companyProfile.findFirst()
+    if (profile) {
+      await (prisma as any).companyProfile.update({
+        where: { id: profile.id },
+        data: {
+          ifoodAccessToken: tokens.accessToken,
+          ifoodRefreshToken: tokens.refreshToken,
+          ifoodTokenExpiresAt: new Date(tokens.expiresAt),
+        },
+      })
+    }
+  } catch (error: any) {
+    console.error(`[iFood Token Persist Error] Tenant ${dbName}:`, error?.message || error)
+  }
 }
 
 let isPolling = false
 let pollIntervalTimer: NodeJS.Timeout | null = null
 
-export function setIfoodTokens(tokens: { accessToken: string; refreshToken: string; expiresIn?: number }) {
-  tokenState = {
+async function pollAllIfoodTenants() {
+  const tenantNames = await getActiveTenantDbNames().catch((error: any) => {
+    console.error('[iFood Poller] Falha ao listar tenants ativos:', error?.message || error)
+    return [DEFAULT_TENANT]
+  })
+
+  for (const tenantName of tenantNames.length > 0 ? tenantNames : [DEFAULT_TENANT]) {
+    await pollIfoodEvents(tenantName)
+  }
+}
+
+export function setIfoodTokens(tokens: { accessToken: string; refreshToken: string; expiresIn?: number }, dbName = DEFAULT_TENANT) {
+  const updated = {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     expiresAt: Date.now() + (tokens.expiresIn || 21600) * 1000,
   }
+  tokenStates.set(dbName, updated)
+  if (dbName === DEFAULT_TENANT) tokenState = updated
+  void persistIfoodTokens(dbName, updated)
 }
 
-export function getIfoodTokenState() {
+export function getIfoodTokenState(dbName = DEFAULT_TENANT) {
+  const current = getTokenStore(dbName)
   return {
-    hasToken: Boolean(tokenState.accessToken),
-    expiresAt: new Date(tokenState.expiresAt).toISOString(),
-    isExpired: Date.now() >= tokenState.expiresAt,
+    hasToken: Boolean(current.accessToken),
+    expiresAt: new Date(current.expiresAt).toISOString(),
+    isExpired: Date.now() >= current.expiresAt,
     isPollingRunning: Boolean(pollIntervalTimer),
+    tenant: dbName,
   }
 }
 
-export async function getValidAccessToken(): Promise<string> {
-  if (Date.now() < tokenState.expiresAt - 60000 && tokenState.accessToken) {
-    return tokenState.accessToken
+export async function getValidAccessToken(dbName = DEFAULT_TENANT): Promise<string> {
+  const current = await loadIfoodTokens(dbName)
+  if (Date.now() < current.expiresAt - 60000 && current.accessToken) {
+    return current.accessToken
   }
 
-  // Se estiver próximo do vencimento, renova com refreshToken
+  if (!current.refreshToken) return ''
+
   try {
-    const refreshed = await ifoodApi.refreshAccessToken(tokenState.refreshToken)
-    setIfoodTokens(refreshed)
-    return tokenState.accessToken
+    const refreshed = await ifoodApi.refreshAccessToken(current.refreshToken)
+    setIfoodTokens(refreshed, dbName)
+    return refreshed.accessToken
   } catch (err) {
-    console.error('[iFood Token Refresh Error]:', err)
-    return tokenState.accessToken
+    console.error(`[iFood Token Refresh Error] Tenant ${dbName}:`, err)
+    return current.accessToken
   }
 }
 
 /**
  * Executa uma rodada única de polling de eventos no iFood
  */
-export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProcessed: number; ordersCreated: number }> {
+export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled: boolean; eventsProcessed: number; ordersCreated: number }> {
   if (isPolling) {
     return { polled: false, eventsProcessed: 0, ordersCreated: 0 }
   }
@@ -65,7 +139,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
   let ordersCreated = 0
 
   try {
-    let token = await getValidAccessToken()
+    let token = await getValidAccessToken(dbName)
     if (!token) {
       return { polled: false, eventsProcessed: 0, ordersCreated: 0 }
     }
@@ -76,8 +150,8 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
     } catch (err: any) {
       if (err.message?.includes('token expired') || err.message?.includes('401')) {
         console.log('[iFood Polling] Access token expirado no iFood. Renovando token via refresh_token...')
-        const refreshed = await ifoodApi.refreshAccessToken(tokenState.refreshToken)
-        setIfoodTokens(refreshed)
+        const refreshed = await ifoodApi.refreshAccessToken(getTokenStore(dbName).refreshToken)
+        setIfoodTokens(refreshed, dbName)
         token = refreshed.accessToken
         events = await ifoodApi.getEvents(token)
       } else {
@@ -121,8 +195,8 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           } catch (err: any) {
             if (err.message?.includes('token expired') || err.message?.includes('401')) {
               console.log('[iFood Polling] Token expirado ao buscar detalhes. Renovando...')
-              const refreshed = await ifoodApi.refreshAccessToken(tokenState.refreshToken)
-              setIfoodTokens(refreshed)
+              const refreshed = await ifoodApi.refreshAccessToken(getTokenStore(dbName).refreshToken)
+              setIfoodTokens(refreshed, dbName)
               token = refreshed.accessToken
               order = await ifoodApi.getOrderDetails(token, event.orderId)
             } else {
@@ -132,7 +206,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
 
           // 1. Resolver o tenant (Mapeia 4107174 e UUID para db_restaurante)
           const merchantId = String(event.merchantId || order.merchant?.id || '4107174')
-          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
           // 2. Extrair ou criar cliente
           const clientName = String(order.customer?.name || 'Cliente iFood')
@@ -269,7 +343,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           })
 
           ordersCreated++
-          console.log(`[iFood Polling] Pedido #${pedido.display_id} gravado em ${dbName}! UUID: ${pedido.uuid}`)
+          console.log(`[iFood Polling] Pedido #${pedido.display_id} gravado em ${tenantDbName}! UUID: ${pedido.uuid}`)
 
           // 8. Transmissão SSE para os PDVs
           try {
@@ -297,7 +371,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
 
             sseManager.broadcast('new_order', fullOrderDto)
             sseManager.notifyTenant('db_restaurante', 'new_order', fullOrderDto)
-            sseManager.notifyTenant(dbName, 'new_order', fullOrderDto)
+            sseManager.notifyTenant(tenantDbName, 'new_order', fullOrderDto)
           } catch (sseErr) {
             console.error('[iFood SSE Error]:', sseErr)
           }
@@ -364,7 +438,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
 
           // D. Atualiza pedido no banco de dados local para Cancelado
           const merchantId = String(event.merchantId || '4107174')
-          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
           const order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
@@ -380,7 +454,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
                 data_fechamento: new Date(),
               }
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${dbName}!`)
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${tenantDbName}!`)
 
 
             const cancelDto = {
@@ -390,7 +464,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
               status_delivery: 'Cancelado',
             }
             sseManager.broadcast('order_status_change', cancelDto)
-            sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
+            sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
           }
 
                     // O ACK será enviado após o processamento completo da iteração.
@@ -415,7 +489,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
         try {
           console.log(`[iFood Polling] Processando evento CAN/CANCELLED (${event.code}/${event.fullCode}) para ${event.orderId}...`)
           const merchantId = String(event.merchantId || '4107174')
-          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
           const order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
@@ -430,7 +504,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
                 data_fechamento: new Date(),
               }
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${dbName}!`)
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${tenantDbName}!`)
 
             const cancelDto = {
               order_id: order.uuid,
@@ -439,7 +513,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
               status_delivery: 'Cancelado',
             }
             sseManager.broadcast('order_status_change', cancelDto)
-            sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
+            sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
           }
 
                     // O ACK será enviado após o processamento completo da iteração.
@@ -456,7 +530,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
         try {
           console.log(`[iFood Polling] Processando evento CON/CONCLUDED (${event.orderId})...`)
           const merchantId = String(event.merchantId || '4107174')
-          const { dbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
           const order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
@@ -471,7 +545,7 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
                 data_fechamento: new Date(),
               }
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Entregue em ${dbName}!`)
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Entregue em ${tenantDbName}!`)
 
             const conDto = {
               order_id: order.uuid,
@@ -519,9 +593,9 @@ export function startIfoodPollingLoop() {
 
   console.log('🚀 [iFood Poller] Iniciando worker de eventos iFood em tempo real (intervalo: 15s)...')
   // Executa uma checagem imediata
-  pollIfoodEvents().catch((e) => console.error('[iFood Initial Poll Error]:', e))
+    pollAllIfoodTenants().catch((e) => console.error('[iFood Initial Poll Error]:', e))
 
   pollIntervalTimer = setInterval(() => {
-    pollIfoodEvents().catch((e) => console.error('[iFood Interval Poll Error]:', e))
+    pollAllIfoodTenants().catch((e) => console.error('[iFood Interval Poll Error]:', e))
   }, 3000)
 }

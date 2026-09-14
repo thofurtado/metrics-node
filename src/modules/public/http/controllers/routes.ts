@@ -20,6 +20,7 @@ import { getLatestWindyVersion, downloadLatestWindy, uploadWindyRelease } from '
 import { getLatestPdvVersion, downloadLatestPdv, uploadPdvRelease } from './pdv-downloads'
 import { getClientsSummaryForWindy, bindDeviceFromWindy, getTenantByCode } from './windy-device'
 import { getEquipmentHistory } from './get-equipment-history'
+import { saveIfoodCredentialsController } from './saas-ifood-credentials'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -27,6 +28,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.post('/public/checkout/client', checkoutClient)
     app.get('/public/transactions/:id/receipt', getReceipt)
     app.post('/public/provision', provisionTenant)
+    app.put('/public/saas/ifood-credentials', saveIfoodCredentialsController)
     app.delete('/public/provision/:dbName', deprovisionTenant)
     app.get('/public/tenant-info', getTenantInfo)
     app.get('/public/db-status', getDbStatus)

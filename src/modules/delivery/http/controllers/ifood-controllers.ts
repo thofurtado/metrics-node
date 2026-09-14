@@ -2,7 +2,10 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { ifoodApi } from '../../services/ifood-api.service'
 import { env } from '@/env'
 import { recentDeliveryEvents } from './webhook-99food'
-import { getValidAccessToken } from '../../services/ifood-poller'
+import { getValidAccessToken, setIfoodTokens } from '../../services/ifood-poller'
+import { z } from 'zod'
+import { getDbNameForDomain, getPrismaForDb } from '@/lib/tenant-manager'
+import { requestContext } from '@fastify/request-context'
 
 
 /**
@@ -20,6 +23,48 @@ export async function ifoodUserCodeController(request: FastifyRequest, reply: Fa
       error: 'Falha ao conectar com a API do iFood',
       details: err.message,
     })
+  }
+}
+
+/**
+ * Finaliza a autorização OAuth2 do lojista e inicializa o polling com os tokens recebidos.
+ */
+export async function ifoodExchangeTokenController(request: FastifyRequest, reply: FastifyReply) {
+  const schema = z.object({
+    authorizationCode: z.string().min(1),
+    authorizationCodeVerifier: z.string().min(1),
+  })
+
+  try {
+    const { authorizationCode, authorizationCodeVerifier } = schema.parse(request.body)
+    const tenantDbName = await resolveIfoodTenantDb(request)
+    const tokens = await ifoodApi.exchangeCodeForToken(authorizationCode, authorizationCodeVerifier)
+    setIfoodTokens(tokens, tenantDbName)
+
+    const prisma = await getPrismaForDb(tenantDbName)
+    const profile = await (prisma as any).companyProfile.findFirst()
+    if (profile) {
+      await (prisma as any).companyProfile.update({
+        where: { id: profile.id },
+        data: {
+          ifoodAccessToken: tokens.accessToken,
+          ifoodRefreshToken: tokens.refreshToken,
+          ifoodTokenExpiresAt: new Date(Date.now() + (tokens.expiresIn || 21600) * 1000),
+        },
+      })
+    }
+
+    return reply.status(200).send({
+      message: 'iFood autorizado com sucesso.',
+      expiresIn: tokens.expiresIn,
+      tokenType: tokens.type,
+      tenant: tenantDbName,
+    })
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return reply.status(400).send({ error: 'authorizationCode e authorizationCodeVerifier são obrigatórios' })
+    }
+    return reply.status(502).send({ error: 'Falha ao concluir autorização iFood', details: err.message })
   }
 }
 
@@ -47,7 +92,19 @@ export async function deliveryStatusController(request: FastifyRequest, reply: F
   })
 }
 
-import { getPrismaForDb } from '@/lib/tenant-manager'
+async function resolveIfoodTenantDb(request: FastifyRequest): Promise<string> {
+  const contextTenant = requestContext.get('tenant')
+  if (contextTenant) return String(contextTenant)
+
+  const rawDomain = request.headers['x-tenant-domain']
+  if (typeof rawDomain === 'string' && rawDomain.trim()) {
+    const dbName = await getDbNameForDomain(rawDomain.trim().split(':')[0])
+    if (dbName) return dbName
+  }
+
+  // Compatibilidade temporária com a loja de teste já existente.
+  return 'db_restaurante'
+}
 
 /**
  * Consulta últimos pedidos de delivery salvos em db_restaurante

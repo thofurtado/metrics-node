@@ -857,8 +857,11 @@ model CompanyProfile {
   deliverySectors        Json?    @default("[]")
 
   // Credenciais de Integração Marketplace e Pagamentos
-  ifoodMerchantId String?
-  anotaAiApiKey   String?
+  ifoodMerchantId     String?
+  ifoodAccessToken    String?
+  ifoodRefreshToken   String?
+  ifoodTokenExpiresAt DateTime?
+  anotaAiApiKey       String?
   pixKey          String?
   
   created_at      DateTime @default(now())

@@ -1,5 +1,5 @@
 import { env } from '@/env'
-import { getPrismaForDb } from '@/lib/tenant-manager'
+import { getPrismaForDb, getIfoodCredentials } from '@/lib/tenant-manager'
 
 const MAX_AUDIT_BODY_LENGTH = 10000
 
@@ -95,20 +95,22 @@ export class IFoodApiService {
   }
 
 
-  private getClientId(): string {
-    return env.IFOOD_CLIENT_ID || 'bb0c418d-1cfe-4ad1-a5c4-3bdcb26dc3c1'
-  }
-
-  private getClientSecret(): string {
-    return env.IFOOD_CLIENT_SECRET || 'jj2ux14gk12cefyb4i6ydpxt1jnrzw2p7swjd078ghhhvaa5ew3d62vbedowxhrcwgo6o0stsycs0atc0me6ep2suk7n27c3v22'
+  private async getCredentials() {
+    const configured = await getIfoodCredentials()
+    if (configured) return configured
+    if (env.IFOOD_CLIENT_ID && env.IFOOD_CLIENT_SECRET) {
+      return { clientId: env.IFOOD_CLIENT_ID, clientSecret: env.IFOOD_CLIENT_SECRET }
+    }
+    throw new Error('Credenciais globais do iFood não configuradas no Admin SaaS')
   }
 
   /**
    * Gera o userCode para autorização OAuth2 Distribuída do lojista
    */
   async generateUserCode(): Promise<UserCodeResponse> {
+        const credentials = await this.getCredentials()
     const params = new URLSearchParams()
-    params.append('clientId', this.getClientId())
+    params.append('clientId', credentials.clientId)
 
     const response = await this.auditedFetch(`${this.baseUrl}/authentication/v1.0/oauth/userCode`, {
       method: 'POST',
@@ -130,10 +132,11 @@ export class IFoodApiService {
    * Troca o authorizationCode obtido após aprovação do lojista por tokens de acesso
    */
   async exchangeCodeForToken(authorizationCode: string, authorizationCodeVerifier: string): Promise<TokenResponse> {
+        const credentials = await this.getCredentials()
     const params = new URLSearchParams()
     params.append('grantType', 'authorization_code')
-    params.append('clientId', this.getClientId())
-    params.append('clientSecret', this.getClientSecret())
+    params.append('clientId', credentials.clientId)
+    params.append('clientSecret', credentials.clientSecret)
     params.append('authorizationCode', authorizationCode)
     params.append('authorizationCodeVerifier', authorizationCodeVerifier)
 
@@ -157,10 +160,11 @@ export class IFoodApiService {
    * Renova o access token usando o refresh token
    */
   async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+        const credentials = await this.getCredentials()
     const params = new URLSearchParams()
     params.append('grantType', 'refresh_token')
-    params.append('clientId', this.getClientId())
-    params.append('clientSecret', this.getClientSecret())
+    params.append('clientId', credentials.clientId)
+    params.append('clientSecret', credentials.clientSecret)
     params.append('refreshToken', refreshToken)
 
     const response = await this.auditedFetch(`${this.baseUrl}/authentication/v1.0/oauth/token`, {

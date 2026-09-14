@@ -50,6 +50,35 @@ export async function getPrismaForDomain(domain: string): Promise<PrismaClient |
 
   return tenantPrisma;
 }
+export async function getMasterPool() {
+  return pool
+}
+
+export async function getActiveTenantDbNames(): Promise<string[]> {
+  const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE "status" = $1 ORDER BY "dbName"', ['active'])
+  return result.rows.map((row) => String(row.dbName)).filter(Boolean)
+}
+
+export async function getIfoodCredentials(): Promise<{ clientId: string; clientSecret: string } | null> {
+  const result = await pool.query(
+    'SELECT "clientId", "clientSecret" FROM "SaaSIntegrationConfig" WHERE "provider" = $1 LIMIT 1',
+    ['IFOOD'],
+  )
+  const row = result.rows[0]
+  return row?.clientId && row?.clientSecret
+    ? { clientId: row.clientId, clientSecret: row.clientSecret }
+    : null
+}
+
+export async function saveIfoodCredentials(clientId: string, clientSecret: string) {
+  await pool.query(
+    `INSERT INTO "SaaSIntegrationConfig" ("id", "provider", "clientId", "clientSecret", "updatedAt")
+     VALUES (gen_random_uuid(), $1, $2, $3, NOW())
+     ON CONFLICT ("provider") DO UPDATE SET "clientId" = EXCLUDED."clientId", "clientSecret" = EXCLUDED."clientSecret", "updatedAt" = NOW()`
+    , ['IFOOD', clientId, clientSecret],
+  )
+}
+
 export async function getPrismaForDb(dbName: string): Promise<PrismaClient> {
   const cacheKey = `db:${dbName}`;
   if (prismaClients.has(cacheKey)) {
