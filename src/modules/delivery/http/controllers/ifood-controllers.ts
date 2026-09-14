@@ -72,11 +72,17 @@ export async function ifoodExchangeTokenController(request: FastifyRequest, repl
  * Diagnóstico geral do módulo de delivery
  */
 export async function deliveryStatusController(request: FastifyRequest, reply: FastifyReply) {
+  let configured = false
+  try {
+    const { getIfoodCredentials } = await import('@/lib/tenant-manager')
+    configured = Boolean(await getIfoodCredentials()) || Boolean(env.IFOOD_CLIENT_ID && env.IFOOD_CLIENT_SECRET)
+  } catch {}
+
   return reply.status(200).send({
     status: 'ONLINE',
     platforms: {
       ifood: {
-        configured: !!(env.IFOOD_CLIENT_ID && env.IFOOD_CLIENT_SECRET),
+        configured,
         clientIdMasked: env.IFOOD_CLIENT_ID ? `${env.IFOOD_CLIENT_ID.slice(0, 8)}...` : 'NÃO CONFIGURADO',
         mode: 'Distribuído (OAuth2)',
       },
@@ -231,11 +237,13 @@ import { pollIfoodEvents, getIfoodTokenState } from '../../services/ifood-poller
  */
 export async function pollIfoodNowController(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const result = await pollIfoodEvents()
+    const tenantDbName = await resolveIfoodTenantDb(request)
+    const result = await pollIfoodEvents(tenantDbName)
     return reply.status(200).send({
       message: 'Polling iFood executado com sucesso',
       ...result,
-      tokenState: getIfoodTokenState(),
+      tenant: tenantDbName,
+      tokenState: getIfoodTokenState(tenantDbName),
     })
   } catch (err: any) {
     return reply.status(500).send({
@@ -253,7 +261,8 @@ import { catalogSyncService } from '../../services/catalog-sync.service'
  */
 export async function syncCatalogController(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const result = await catalogSyncService.syncCatalog('db_restaurante')
+    const tenantDbName = await resolveIfoodTenantDb(request)
+    const result = await catalogSyncService.syncCatalog(tenantDbName)
     return reply.status(200).send({
       message: 'Cardápio sincronizado com sucesso!',
       ...result,

@@ -56,7 +56,11 @@ interface TokenResponse {
 }
 
 export class IFoodApiService {
-  private baseUrl = 'https://merchant-api.ifood.com.br'
+  // Produção por padrão. Para homologação, configure IFOOD_API_URL no deploy
+  // com a URL oficial de sandbox informada pelo iFood Developer.
+  private get baseUrl() {
+    return (process.env.IFOOD_API_URL || 'https://merchant-api.ifood.com.br').replace(/\/$/, '')
+  }
 
   private async auditedFetch(url: string, init: RequestInit = {}) {
     const startedAt = Date.now()
@@ -74,7 +78,8 @@ export class IFoodApiService {
     } finally {
       const responseBody = response ? await response.clone().text().catch(() => '') : undefined
       try {
-        const prisma = await getPrismaForDb('db_restaurante')
+        const auditDbName = process.env.IFOOD_AUDIT_DB || 'db_restaurante'
+        const prisma = await getPrismaForDb(auditDbName)
         await (prisma as any).ifoodApiLog.create({
           data: {
             method,
@@ -187,6 +192,10 @@ export class IFoodApiService {
   /**
    * Busca a fila de eventos do iFood (Polling)
    */
+  getApiBaseUrl() {
+    return this.baseUrl
+  }
+
   async getEvents(accessToken: string) {
     const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/events:polling`, {
       method: 'GET',
