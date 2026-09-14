@@ -61,7 +61,7 @@ export class IFoodApiService {
   private async auditedFetch(url: string, init: RequestInit = {}) {
     const startedAt = Date.now()
     const method = init.method || 'GET'
-    const orderId = url.match(/orders\/([^/]+)/)?.[1]
+    const orderId = url.match(/\/order\/(?:v\d+\.\d+\/orders\/)?([^/]+)(?:\/|$)/)?.[1]
     let response: Response | undefined
     let errorMessage: string | undefined
 
@@ -344,8 +344,8 @@ export class IFoodApiService {
   }
 
   /**
-   * Aceita cancelamento solicitado pelo consumidor / iFood (Handshake accept-cancellation)
-   * Endpoint: /order/v1.0/orders/{orderId}/statuses/cancellation/accept-cancellation
+   * Confirma cancelamento recebido no fluxo de eventos do iFood.
+   * Usa o mesmo endpoint exigido para o cancelamento iniciado no PDV.
    */
   async acceptCancellation(
     accessToken: string,
@@ -360,78 +360,41 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-            // 1. Endpoint exigido pela homologação Toqan para confirmar o cancelamento solicitado.
-      // O Toqan informa explicitamente PATCH /order/{orderId}/statuses/cancellationRequested.
-      try {
-        const respToqan = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            reason: String(reason || 'Cancelamento aceito pelo restaurante'),
-            cancellationCode: String(cancellationCode || '501'),
-            code: String(cancellationCode || '501'),
-          }),
-          signal: AbortSignal.timeout(6000),
-        })
+      // O fluxo homologado usa somente este endpoint. Não fazer fallback para
+      // endpoints legados, pois isso gera chamadas POST incompatíveis e retries.
+      const endpoint = `${this.baseUrl}/order/${orderId}/statuses/cancellationRequested`
+      const response = await this.auditedFetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      })
 
-        if (respToqan.ok) {
-          console.log(`[iFood Accept Cancellation Success] (${respToqan.status}) via PATCH statuses/cancellationRequested para pedido ${orderId}`)
-          return true
-        } else {
-          const errToqan = await respToqan.text()
-          console.log(`[iFood Toqan Cancellation Info] (${respToqan.status}): ${errToqan}`)
-        }
-      } catch (toqanEx: any) {
-        console.log('[iFood Toqan Cancellation Exception]:', toqanEx.message)
+      if (!response.ok) {
+        console.log(`[iFood Cancellation Info] PATCH ${response.status}: ${await response.text()}`)
+      } else {
+        console.log(`[iFood Accept Cancellation Success] (${response.status}) via PATCH /order/${orderId}/statuses/cancellationRequested`)
       }
-
-      // 2. Mantém os endpoints legados como fallback compatível com ambientes anteriores.
-      try {
-        const respAccept = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/accept-cancellation`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(6000),
-        })
-
-        if (respAccept.ok) {
-          console.log(`[iFood Accept Cancellation Success] (${respAccept.status}) via statuses/cancellation/accept-cancellation para pedido ${orderId}`)
-          return true
-        } else {
-          const errAccept = await respAccept.text()
-          console.log(`[iFood Accept Cancellation Info] (${respAccept.status}): ${errAccept}`)
-        }
-      } catch (accEx: any) {
-        console.log('[iFood Accept Cancellation Exception]:', accEx.message)
-      }
-
-      // 3. Fallback final para requestCancellation.
-      return await this.requestCancellation(accessToken, orderId, reason, cancellationCode)
+      return response.ok
     } catch (e: any) {
       console.error('[iFood Accept Cancellation General Error]:', e.message)
-      return await this.requestCancellation(accessToken, orderId, reason, cancellationCode)
+      return false
     }
   }
 
   /**
-   * Solicita / Confirma cancelamento do pedido no iFood com os parâmetros exigidos (cancellationCode obrigatório)
-   * Tenta:
-   * 1. /order/v1.0/orders/{orderId}/statuses/cancellation/request-cancellation (Exigido pelo Toqan)
-   * 2. /order/v1.0/orders/{orderId}/requestCancellation (Endpoint legado v1.0)
+   * Diagnóstico manual. O fluxo normal do PDV não usa este método.
    */
-    async testCancellationPatch(
+  async testCancellationPatch(
     accessToken: string,
     orderId: string,
     reason: string = 'Cancelado pelo operador no PDV',
     cancellationCode: string = '501'
   ) {
-    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+    const endpoint = `${this.baseUrl}/order/${orderId}/statuses/cancellationRequested`
     const payload = {
       reason: String(reason || 'Cancelado pelo operador no PDV'),
       cancellationCode: String(cancellationCode || '501'),
@@ -475,41 +438,10 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-            // Tenta primeiro o caminho exatamente informado pela homologação TOQAN.
-            const cancellationEndpoints = [
-              `/order/${orderId}/statuses/cancellationRequested`,
-              `/order/v1.0/orders/${orderId}/statuses/cancellationRequested`,
-            ]
-
-            for (const endpoint of cancellationEndpoints) {
-              try {
-                console.log(`[iFood Cancel Order] Executando PATCH ${endpoint}`)
-                const responseToqan = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
-                  method: 'PATCH',
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify(payload),
-                  signal: AbortSignal.timeout(6000),
-                })
-
-                if (responseToqan.ok) {
-                  console.log(`[iFood Cancel Order Success] (${responseToqan.status}) via PATCH ${endpoint} para pedido ${orderId}`)
-                  return true
-                }
-
-                const errorToqan = await responseToqan.text()
-                console.log(`[iFood TOQAN Cancel Info] PATCH ${endpoint} (${responseToqan.status}): ${errorToqan}`)
-              } catch (toqanErr: any) {
-                console.log(`[iFood TOQAN Cancel Warning] PATCH ${endpoint}:`, toqanErr.message)
-              }
-            }
-
-            // Fallback final: endpoint clássico v1.0.
-
-      const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
-        method: 'POST',
+      const endpoint = `/order/${orderId}/statuses/cancellationRequested`
+      console.log(`[iFood Cancel Order] Executando PATCH ${endpoint}`)
+      const response = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
+        method: 'PATCH',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -519,10 +451,9 @@ export class IFoodApiService {
       })
 
       if (!response.ok) {
-        const err = await response.text()
-        console.error(`[iFood Cancel Order Error] (${response.status}): ${err}`)
+        console.error(`[iFood Cancel Order Error] PATCH ${response.status}: ${await response.text()}`)
       } else {
-        console.log(`[iFood Cancel Order Success] (${response.status}) para pedido ${orderId} com código ${payload.cancellationCode}`)
+        console.log(`[iFood Cancel Order Success] (${response.status}) via PATCH ${endpoint} para pedido ${orderId}`)
       }
 
       return response.ok
