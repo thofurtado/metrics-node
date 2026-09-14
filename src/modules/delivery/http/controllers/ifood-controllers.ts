@@ -7,6 +7,14 @@ import { z } from 'zod'
 import { getDbNameForDomain, getPrismaForDb } from '@/lib/tenant-manager'
 import { requestContext } from '@fastify/request-context'
 
+interface PendingIfoodAuthorization {
+  authorizationCodeVerifier: string
+  expiresAt: number
+}
+
+// O verifier fica no backend durante a autorização. Assim, uma atualização da tela
+// não invalida o fluxo nem exige que o navegador transporte esse segredo.
+const pendingIfoodAuthorizations = new Map<string, PendingIfoodAuthorization>()
 
 /**
  * Gera um novo UserCode para o lojista autorizar o Metrics no iFood
@@ -14,9 +22,18 @@ import { requestContext } from '@fastify/request-context'
 export async function ifoodUserCodeController(request: FastifyRequest, reply: FastifyReply) {
   try {
     const data = await ifoodApi.generateUserCode()
+    const tenantDbName = await resolveIfoodTenantDb(request)
+    pendingIfoodAuthorizations.set(tenantDbName, {
+      authorizationCodeVerifier: data.authorizationCodeVerifier,
+      expiresAt: Date.now() + (Number(data.expiresIn) || 600) * 1000,
+    })
+
     return reply.status(200).send({
       message: 'Código de autorização iFood gerado com sucesso.',
-      ...data,
+      userCode: data.userCode,
+      verificationUrl: data.verificationUrl,
+      verificationUrlComplete: data.verificationUrlComplete,
+      expiresIn: data.expiresIn,
     })
   } catch (err: any) {
     return reply.status(500).send({
@@ -32,13 +49,20 @@ export async function ifoodUserCodeController(request: FastifyRequest, reply: Fa
 export async function ifoodExchangeTokenController(request: FastifyRequest, reply: FastifyReply) {
   const schema = z.object({
     authorizationCode: z.string().min(1),
-    authorizationCodeVerifier: z.string().min(1),
+    authorizationCodeVerifier: z.string().min(1).optional(),
   })
 
   try {
-    const { authorizationCode, authorizationCodeVerifier } = schema.parse(request.body)
+    const { authorizationCode, authorizationCodeVerifier: suppliedVerifier } = schema.parse(request.body)
     const tenantDbName = await resolveIfoodTenantDb(request)
+    const pending = pendingIfoodAuthorizations.get(tenantDbName)
+    const authorizationCodeVerifier = suppliedVerifier || pending?.authorizationCodeVerifier
+    if (!authorizationCodeVerifier || (pending && pending.expiresAt < Date.now())) {
+      pendingIfoodAuthorizations.delete(tenantDbName)
+      return reply.status(400).send({ error: 'A autorização iFood expirou. Solicite um novo código.' })
+    }
     const tokens = await ifoodApi.exchangeCodeForToken(authorizationCode, authorizationCodeVerifier)
+    pendingIfoodAuthorizations.delete(tenantDbName)
     setIfoodTokens(tokens, tenantDbName)
 
     const prisma = await getPrismaForDb(tenantDbName)
@@ -62,7 +86,7 @@ export async function ifoodExchangeTokenController(request: FastifyRequest, repl
     })
   } catch (err: any) {
     if (err instanceof z.ZodError) {
-      return reply.status(400).send({ error: 'authorizationCode e authorizationCodeVerifier são obrigatórios' })
+      return reply.status(400).send({ error: 'authorizationCode é obrigatório' })
     }
     return reply.status(502).send({ error: 'Falha ao concluir autorização iFood', details: err.message })
   }
@@ -71,6 +95,12 @@ export async function ifoodExchangeTokenController(request: FastifyRequest, repl
 /**
  * Diagnóstico geral do módulo de delivery
  */
+export async function ifoodAuthorizationStatusController(request: FastifyRequest, reply: FastifyReply) {
+  const tenantDbName = await resolveIfoodTenantDb(request)
+  const { getIfoodTokenState } = await import('../../services/ifood-poller')
+  return reply.status(200).send(getIfoodTokenState(tenantDbName))
+}
+
 export async function deliveryStatusController(request: FastifyRequest, reply: FastifyReply) {
   let configured = false
   try {

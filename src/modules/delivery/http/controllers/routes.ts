@@ -5,6 +5,7 @@ import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import {
     ifoodUserCodeController,
   ifoodExchangeTokenController,
+  ifoodAuthorizationStatusController,
   deliveryStatusController,
   deliveryOrdersController,
   ifoodApiLogsController,
@@ -25,6 +26,8 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.get('/api/delivery/ifood/usercode', ifoodUserCodeController)
   app.post('/delivery/ifood/token', { preHandler: verifyJwt }, ifoodExchangeTokenController)
   app.post('/api/delivery/ifood/token', { preHandler: verifyJwt }, ifoodExchangeTokenController)
+  app.get('/delivery/ifood/authorization-status', ifoodAuthorizationStatusController)
+  app.get('/api/delivery/ifood/authorization-status', ifoodAuthorizationStatusController)
 
   // Status e diagnóstico geral das integrações de delivery
   app.get('/delivery/status', deliveryStatusController)
