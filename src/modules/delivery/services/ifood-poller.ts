@@ -90,21 +90,13 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
 
     console.log(`[iFood Polling] ${events.length} evento(s) recebido(s) da fila do iFood!`)
 
-    // SLA DE HOMOLOGAÇÃO TOQAN: Envio imediato do Acknowledgment (< 2s)
-    const allEventIds: string[] = events.map((e: any) => e.id).filter(Boolean)
-    if (allEventIds.length > 0) {
-      ifoodApi.acknowledgeEvents(token, allEventIds).then(() => {
-        console.log(`[iFood Polling] ACK imediato de ${allEventIds.length} evento(s) enviado com sucesso!`)
-      }).catch((ackErr: any) => {
-        console.error(`[iFood Polling] Falha no ACK imediato:`, ackErr.message)
-      })
-    }
-
+        // O ACK só é enviado depois do processamento bem-sucedido. Enviar ACK antes
+    // remove o evento da fila e impede o retry quando a confirmação falha.
     const ackIds: string[] = []
 
-    for (const event of events) {
+        for (const event of events) {
       eventsProcessed++
-      ackIds.push(event.id)
+      let eventProcessed = true
 
       // Registra evento no histórico recente em memória
       recentDeliveryEvents.unshift({
@@ -309,9 +301,10 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           } catch (sseErr) {
             console.error('[iFood SSE Error]:', sseErr)
           }
-        } catch (orderErr) {
-          console.error(`[iFood Polling Order Error] Falha ao processar pedido ${event.orderId}:`, orderErr)
-        }
+                } catch (orderErr) {
+                  eventProcessed = false
+                  console.error(`[iFood Polling Order Error] Falha ao processar pedido ${event.orderId}:`, orderErr)
+                }
       }
 
       // 1. Verificação Ampla de Eventos de Cancelamento Solicitado (cancellationRequested / CCR / CAR / CPR / HANDSHAKE_DISPUTE / HSD)
@@ -365,12 +358,18 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
           }
 
           // C. Envia confirmação / aceitação de cancelamento via Handshake acceptCancellation / request-cancellation
-          try {
+                    try {
             const ok = await ifoodApi.acceptCancellation(token, event.orderId, cancelReason, cancelCode)
+            if (!ok) {
+              eventProcessed = false
+              throw new Error('iFood não confirmou o cancelamento')
+            }
             console.log(`[iFood Polling] Confirmação de cancelamento enviada para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
           } catch (accErr: any) {
+            eventProcessed = false
             console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
           }
+
 
           // D. Atualiza pedido no banco de dados local para Cancelado
           const merchantId = String(event.merchantId || '4107174')
@@ -384,12 +383,14 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             await (prisma as any).pedido.update({
               where: { id: order.id },
               data: {
-                status: 'Cancelado',
+                                status: 'Cancelado',
                 status_delivery: 'Cancelado',
+                motivo_cancelamento: cancelReason,
                 data_fechamento: new Date(),
               }
             })
             console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${dbName}!`)
+
 
             const cancelDto = {
               order_id: order.uuid,
@@ -401,17 +402,14 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
           }
 
-          // E. Acknowledgment imediato do evento de cancelamento solicitado
-          try {
-            await ifoodApi.acknowledgeEvents(token, [event.id])
-            console.log(`[iFood Polling] Acknowledgment IMEDIATO enviado para evento ${event.id} (${event.code}) com sucesso!`)
-          } catch (ackErr) {
-            console.error(`[iFood Polling] Falha ao enviar ACK imediato para ${event.id}:`, ackErr)
-          }
-        } catch (crErr) {
+                    // O ACK será enviado após o processamento completo da iteração.
+
+                } catch (crErr) {
+          eventProcessed = false
           console.error(`[iFood Polling CancellationRequested Error] Falha ao processar ${event.orderId}:`, crErr)
         }
       }
+
 
       // 2. Evento CAN = Cancelled (Pedido definitivamente cancelado pelo iFood / Consumidor / Loja)
       const isCancelled =
@@ -453,19 +451,16 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             sseManager.notifyTenant(dbName, 'order_status_change', cancelDto)
           }
 
-          // Acknowledgment imediato do evento CAN
-          try {
-            await ifoodApi.acknowledgeEvents(token, [event.id])
-            console.log(`[iFood Polling] Acknowledgment IMEDIATO enviado para evento CAN ${event.id} com sucesso!`)
-          } catch (ackErr) {
-            console.error(`[iFood Polling] Falha ao enviar ACK imediato para ${event.id}:`, ackErr)
-          }
-        } catch (canErr) {
+                    // O ACK será enviado após o processamento completo da iteração.
+
+                } catch (canErr) {
+          eventProcessed = false
           console.error(`[iFood Polling CAN Error] Falha ao processar cancelamento ${event.orderId}:`, canErr)
         }
       }
 
       // Evento CON = Concluded (Pedido entregue / concluído)
+
       if ((event.code === 'CON' || event.code === 'CONCLUDED') && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando evento CON/CONCLUDED (${event.orderId})...`)
@@ -496,13 +491,19 @@ export async function pollIfoodEvents(): Promise<{ polled: boolean; eventsProces
             sseManager.broadcast('order_status_change', conDto)
             sseManager.notifyTenant(dbName, 'order_status_change', conDto)
           }
-        } catch (conErr) {
+                } catch (conErr) {
+          eventProcessed = false
           console.error(`[iFood Polling CON Error] Falha ao concluir pedido ${event.orderId}:`, conErr)
         }
       }
+
+      if (eventProcessed && event.id) {
+        ackIds.push(event.id)
+      }
     }
 
-    // Confirma recebimento dos eventos para limpar a fila do iFood
+    // Confirma somente os eventos processados sem erro; os demais permanecem para retry.
+
     if (ackIds.length > 0) {
       await ifoodApi.acknowledgeEvents(token, ackIds)
       console.log(`[iFood Polling] ${ackIds.length} evento(s) confirmados (ACK) no iFood com sucesso.`)

@@ -283,7 +283,35 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-      // 1. Tenta endpoint da plataforma de negociação (Handshake accept-cancellation)
+            // 1. Endpoint exigido pela homologação Toqan para confirmar o cancelamento solicitado.
+      // O Toqan informa explicitamente PATCH /order/{orderId}/statuses/cancellationRequested.
+      try {
+        const respToqan = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reason: String(reason || 'Cancelamento aceito pelo restaurante'),
+            cancellationCode: String(cancellationCode || '501'),
+            code: String(cancellationCode || '501'),
+          }),
+          signal: AbortSignal.timeout(6000),
+        })
+
+        if (respToqan.ok) {
+          console.log(`[iFood Accept Cancellation Success] (${respToqan.status}) via PATCH statuses/cancellationRequested para pedido ${orderId}`)
+          return true
+        } else {
+          const errToqan = await respToqan.text()
+          console.log(`[iFood Toqan Cancellation Info] (${respToqan.status}): ${errToqan}`)
+        }
+      } catch (toqanEx: any) {
+        console.log('[iFood Toqan Cancellation Exception]:', toqanEx.message)
+      }
+
+      // 2. Mantém os endpoints legados como fallback compatível com ambientes anteriores.
       try {
         const respAccept = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/accept-cancellation`, {
           method: 'POST',
@@ -306,7 +334,7 @@ export class IFoodApiService {
         console.log('[iFood Accept Cancellation Exception]:', accEx.message)
       }
 
-      // 2. Fallback para requestCancellation (tenta statuses/cancellation/request-cancellation e requestCancellation legado)
+      // 3. Fallback final para requestCancellation.
       return await this.requestCancellation(accessToken, orderId, reason, cancellationCode)
     } catch (e: any) {
       console.error('[iFood Accept Cancellation General Error]:', e.message)
@@ -333,10 +361,10 @@ export class IFoodApiService {
         code: String(cancellationCode || '501'),
       }
 
-      // Tentativa 1: Endpoint moderno de statuses/cancellation (citado nominalmente pelo Toqan)
+            // Endpoint verificado pela homologação TOQAN para o cancelamento iniciado no PDV.
       try {
-        const respModern = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation/request-cancellation`, {
-          method: 'POST',
+        const responseToqan = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, {
+          method: 'PATCH',
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -345,16 +373,17 @@ export class IFoodApiService {
           signal: AbortSignal.timeout(6000),
         })
 
-        if (respModern.ok) {
-          console.log(`[iFood Cancel Order Success] (${respModern.status}) via statuses/cancellation/request-cancellation para pedido ${orderId}`)
+        if (responseToqan.ok) {
+          console.log(`[iFood Cancel Order Success] (${responseToqan.status}) via PATCH statuses/cancellationRequested para pedido ${orderId}`)
           return true
-        } else {
-          const errModern = await respModern.text()
-          console.log(`[iFood Modern Cancel Info] (${respModern.status}): ${errModern}`)
         }
-      } catch (modErr: any) {
-        console.log('[iFood Modern Cancel Warning]:', modErr.message)
+
+        const errorToqan = await responseToqan.text()
+        console.log(`[iFood TOQAN Cancel Info] (${responseToqan.status}): ${errorToqan}`)
+      } catch (toqanErr: any) {
+        console.log('[iFood TOQAN Cancel Warning]:', toqanErr.message)
       }
+
 
       // Tentativa 2: Endpoint clássico v1.0
       const response = await fetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, {
