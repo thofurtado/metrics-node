@@ -121,6 +121,42 @@ export async function deleteProductImage(request: FastifyRequest, reply: Fastify
     return reply.status(204).send();
 }
 
+export async function uploadCompanyProfileFile(request: FastifyRequest, reply: FastifyReply) {
+  const paramsSchema = z.object({
+    field: z.enum(['logo_url', 'banner_url']),
+  });
+  const { field } = paramsSchema.parse(request.params);
+  const profile = await getPrisma().companyProfile.findFirst();
+
+  if (!profile) {
+    return reply.status(404).send({ message: 'Perfil da empresa não encontrado' });
+  }
+
+  const data = await request.file();
+  if (!data) {
+    return reply.status(400).send({ message: 'Nenhum arquivo enviado' });
+  }
+  if (!data.mimetype.startsWith('image/')) {
+    return reply.status(400).send({ message: 'O arquivo deve ser uma imagem' });
+  }
+
+  const fileBuffer = await data.toBuffer();
+  const ext = path.extname(data.filename).toLowerCase() || '.jpg';
+  const relativeUrl = await storage.save(fileBuffer, 'company-profile', ext);
+  const previousUrl = profile[field];
+
+  if (previousUrl && previousUrl.startsWith('/uploads/')) {
+    await storage.delete(previousUrl).catch(console.error);
+  }
+
+  const updatedProfile = await getPrisma().companyProfile.update({
+    where: { id: profile.id },
+    data: { [field]: relativeUrl },
+  });
+
+  return reply.status(200).send({ [field]: updatedProfile[field] });
+}
+
 export async function uploadEmployeePhoto(request: FastifyRequest, reply: FastifyReply) {
     const uploadParamsSchema = z.object({
         id: z.string().uuid(),
