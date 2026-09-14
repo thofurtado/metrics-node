@@ -401,9 +401,11 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         (fullCodeStr.includes('CANCEL') && fullCodeStr.includes('REQUEST')) ||
         isDispute
 
-      if (isCancellationRequested && event.orderId) {
+            if (isCancellationRequested && event.orderId) {
+        let cancellationConfirmed = false
         try {
           console.log(`[iFood Polling] Processando evento de cancelamento solicitado (${event.code}/${event.fullCode}) para pedido ${event.orderId}...`)
+
 
           // A. Se for disputa de cancelamento iniciada pelo consumidor/iFood, aceita a disputa
           const disputeId = String(event.metadata?.disputeId || event.disputeId || '')
@@ -429,14 +431,21 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               eventProcessed = false
               throw new Error('iFood não confirmou o cancelamento')
             }
+                        cancellationConfirmed = true
             console.log(`[iFood Polling] Confirmação de cancelamento enviada para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
           } catch (accErr: any) {
             eventProcessed = false
             console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
           }
 
+          // Sem confirmação do iFood, não altera o pedido local e não envia ACK.
+          // O evento permanece na fila para retry automático no próximo ciclo.
+          if (!cancellationConfirmed) {
+            continue
+          }
 
           // D. Atualiza pedido no banco de dados local para Cancelado
+
           const merchantId = String(event.merchantId || '4107174')
           const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
