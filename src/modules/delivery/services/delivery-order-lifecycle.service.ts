@@ -7,7 +7,7 @@ import { getValidAccessToken } from './ifood-poller'
 export async function handleDeliveryOrderStatusChange(
   pedido: { id: number; uuid: string; observacao?: string | null; display_id: number },
   newStatus: string
-) {
+): Promise<boolean> {
   const obs = pedido.observacao || ''
 
   // 1. IFOOD
@@ -35,10 +35,15 @@ export async function handleDeliveryOrderStatusChange(
           const cancelReason = 'Cancelado pelo operador no PDV'
           const ok = await ifoodApi.requestCancellation(token, externalOrderId, cancelReason, cancelCode)
           console.log(`[iFood Lifecycle] Pedido ${externalOrderId} cancelado no iFood! Status ok: ${ok}`)
+          if (!ok) return false
         }
       } catch (err: any) {
         console.error(`[iFood Lifecycle Error] Falha ao atualizar status ${newStatus} no iFood:`, err.message)
+        return false
       }
+    } else if (newStatus === 'cancelled') {
+      console.error(`[iFood Lifecycle] Token iFood indisponível para cancelar o pedido ${externalOrderId}`)
+      return false
     }
   }
 
@@ -48,4 +53,6 @@ export async function handleDeliveryOrderStatusChange(
     const externalOrderId = food99Match[1]
     console.log(`[99Food Lifecycle] Status do pedido #${pedido.display_id} (${externalOrderId}) atualizado para ${newStatus}`)
   }
+
+  return true
 }

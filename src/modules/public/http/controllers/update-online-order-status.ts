@@ -71,6 +71,14 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             }
         }
 
+        // Cancelamento no iFood precisa ser confirmado externamente antes de alterar o PDV.
+        if (status === 'cancelled' && existingPedido.origem === 'Delivery') {
+            const cancellationAccepted = await handleDeliveryOrderStatusChange(existingPedido, status)
+            if (!cancellationAccepted) {
+                return reply.status(502).send({ message: 'O iFood não confirmou o cancelamento do pedido.' })
+            }
+        }
+
         const updated = await prisma.pedido.update({
             where: { id: existingPedido.id },
             data: {
@@ -84,8 +92,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             }
         });
         // Notifica o ciclo de vida para o iFood e 99Food
-        if (existingPedido.origem === 'Delivery') {
-            handleDeliveryOrderStatusChange(existingPedido, status).catch(e => 
+                if (existingPedido.origem === 'Delivery' && status !== 'cancelled') {
+            handleDeliveryOrderStatusChange(existingPedido, status).catch(e =>
                 console.error('[Delivery Lifecycle Hook Error]:', e)
             );
         }
