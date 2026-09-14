@@ -13,7 +13,8 @@ const CARD_PAYMENT_METHODS = [
 ]
 
 const TERM_PAYMENT_METHODS = [
-    'A PRAZO', 'PERMUTA', 'a prazo', 'permuta', 'A Prazo', 'Permuta',
+    'A PRAZO', 'PERMUTA', 'CORRENTISTA',
+    'a prazo', 'permuta', 'A Prazo', 'Permuta', 'Correntista', 'correntista',
     'FIADO', 'fiado', 'Fiado', 'CONTA DA CASA', 'FUNCIONARIO', 'funcionario', 'Funcionário'
 ]
 
