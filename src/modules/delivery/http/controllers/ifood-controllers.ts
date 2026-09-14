@@ -76,6 +76,44 @@ export async function ifoodTestCancellationPatchController(request: FastifyReque
   }
 }
 
+export async function ifoodCancellationStatusController(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const { orderId } = request.params as { orderId?: string }
+    if (!orderId || !/^[a-zA-Z0-9-]+$/.test(orderId)) {
+      return reply.status(400).send({ error: 'orderId inválido' })
+    }
+
+    const prisma = await getPrismaForDb('db_restaurante')
+    const logs = await (prisma as any).ifoodApiLog.findMany({
+      where: { order_id: orderId },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+      select: {
+        method: true,
+        endpoint: true,
+        response_status: true,
+        duration_ms: true,
+        success: true,
+        created_at: true,
+      },
+    })
+
+    return reply.status(200).send({
+      orderId,
+      logs: logs.map((log: any) => ({
+        method: log.method,
+        endpoint: log.endpoint,
+        responseStatus: log.response_status,
+        durationMs: log.duration_ms,
+        success: log.success,
+        createdAt: log.created_at,
+      })),
+    })
+  } catch (err: any) {
+    return reply.status(500).send({ error: err.message })
+  }
+}
+
 export async function ifoodApiLogsController(request: FastifyRequest, reply: FastifyReply) {
   try {
     const query = request.query as { orderId?: string; take?: string }

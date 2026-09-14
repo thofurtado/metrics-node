@@ -7,6 +7,7 @@ import {
     deliveryStatusController,
   deliveryOrdersController,
   ifoodApiLogsController,
+  ifoodCancellationStatusController,
   ifoodTestCancellationPatchController,
   pollIfoodNowController,
 
@@ -29,6 +30,10 @@ export async function deliveryRoutes(app: FastifyInstance) {
     // Auditoria persistente das chamadas iFood (JWT ou x-api-key obrigatório)
     app.get('/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
     app.get('/api/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
+
+    // Diagnóstico sanitizado: não expõe corpo, payload ou credenciais.
+    app.get('/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
+    app.get('/api/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
 
     app.post('/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)
     app.post('/api/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)
