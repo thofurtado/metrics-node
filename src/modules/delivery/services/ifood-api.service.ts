@@ -284,11 +284,11 @@ export class IFoodApiService {
     return response.ok
   }
 
-  /**
-   * Marca o pedido como pronto para entrega / retirada (RTP - Ready To Deliver)
+    /**
+   * Marca o pedido como pronto para retirada (RTP - Ready To Pickup)
    */
-  async readyToDeliver(accessToken: string, orderId: string) {
-    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/readyToDeliver`, {
+  async readyToPickup(accessToken: string, orderId: string) {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/readyToPickup`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -298,7 +298,7 @@ export class IFoodApiService {
 
     if (!response.ok) {
       const err = await response.text()
-      console.error(`[iFood Ready To Deliver Error] (${response.status}): ${err}`)
+      console.error(`[iFood Ready To Pickup Error] (${response.status}): ${err}`)
     }
 
     return response.ok

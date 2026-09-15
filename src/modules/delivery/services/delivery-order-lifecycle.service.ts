@@ -27,8 +27,9 @@ export async function handleDeliveryOrderStatusChange(
           await ifoodApi.dispatchOrder(token, externalOrderId)
           console.log(`[iFood Lifecycle] Pedido ${externalOrderId} despachado para entrega com sucesso!`)
         } else if (newStatus === 'conferencia') {
-          console.log(`[iFood Lifecycle] Marcando pedido #${pedido.display_id} (${externalOrderId}) como Pronto no iFood (readyToDeliver)...`)
-          await ifoodApi.readyToDeliver(token, externalOrderId)
+          console.log(`[iFood Lifecycle] Marcando pedido #${pedido.display_id} (${externalOrderId}) como pronto para retirada no iFood (readyToPickup)...`)
+          const ready = await ifoodApi.readyToPickup(token, externalOrderId)
+          if (!ready) return false
         } else if (newStatus === 'cancelled') {
           console.log(`[iFood Lifecycle] Cancelando pedido #${pedido.display_id} (${externalOrderId}) no iFood...`)
           const cancelCode = '501'
