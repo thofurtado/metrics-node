@@ -386,11 +386,18 @@ export class IFoodApiService {
       })
 
       if (!response.ok) {
-        console.log(`[iFood Cancellation Info] POST ${response.status}: ${await response.text()}`)
-      } else {
-        console.log(`[iFood Accept Cancellation Success] (${response.status}) via POST /order/${orderId}/requestCancellation`)
+        const responseText = await response.text()
+        const alreadyCancelled = response.status === 400 && /already cancelled/i.test(responseText)
+        if (alreadyCancelled) {
+          console.log(`[iFood Accept Cancellation] Pedido ${orderId} já estava cancelado; tratando como sucesso idempotente.`)
+        } else {
+          console.log(`[iFood Cancellation Info] POST ${response.status}: ${responseText}`)
+        }
+        return alreadyCancelled
       }
-      return response.ok
+
+      console.log(`[iFood Accept Cancellation Success] (${response.status}) via POST /order/${orderId}/requestCancellation`)
+      return true
     } catch (e: any) {
       console.error('[iFood Accept Cancellation General Error]:', e.message)
       return false
@@ -461,12 +468,18 @@ export class IFoodApiService {
       })
 
       if (!response.ok) {
-        console.error(`[iFood Cancel Order Error] POST ${response.status}: ${await response.text()}`)
-      } else {
-        console.log(`[iFood Cancel Order Success] (${response.status}) via POST ${endpoint} para pedido ${orderId}`)
+        const responseText = await response.text()
+        const alreadyCancelled = response.status === 400 && /already cancelled/i.test(responseText)
+        if (alreadyCancelled) {
+          console.log(`[iFood Cancel Order] Pedido ${orderId} já estava cancelado; tratando como sucesso idempotente.`)
+        } else {
+          console.error(`[iFood Cancel Order Error] POST ${response.status}: ${responseText}`)
+        }
+        return alreadyCancelled
       }
 
-      return response.ok
+      console.log(`[iFood Cancel Order Success] (${response.status}) via POST ${endpoint} para pedido ${orderId}`)
+      return true
     } catch (e: any) {
       console.error('[iFood Cancel Order Exception]:', e.message)
       return false
