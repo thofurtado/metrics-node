@@ -427,7 +427,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           // pela homologação. requestCancellation() é reservado ao fluxo do PDV.
 
                     try {
-            const ok = await ifoodApi.acknowledgeCancellationRequested(token, event.orderId)
+            const ok = await ifoodApi.acknowledgeCancellationRequested(token, event.orderId, cancelReason, cancelCode)
             if (!ok) {
               eventProcessed = false
               throw new Error('iFood não confirmou o cancelamento')
