@@ -504,12 +504,20 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             where: { observacao: { contains: event.orderId } }
           })
 
-          if (order) {
+                    if (order) {
+            const cancelledReason = String(
+              event.metadata?.reason ||
+              event.metadata?.details ||
+              event.metadata?.cancellationReason ||
+              event.metadata?.CANCEL_REASON ||
+              '',
+            ).trim()
             await (prisma as any).pedido.update({
               where: { id: order.id },
               data: {
                 status: 'Cancelado',
                 status_delivery: 'Cancelado',
+                ...(cancelledReason ? { motivo_cancelamento: cancelledReason } : {}),
                 data_fechamento: new Date(),
               }
             })
@@ -563,7 +571,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               status_delivery: 'Entregue',
             }
             sseManager.broadcast('order_status_change', conDto)
-            sseManager.notifyTenant(dbName, 'order_status_change', conDto)
+            sseManager.notifyTenant(tenantDbName, 'order_status_change', conDto)
           }
                 } catch (conErr) {
           eventProcessed = false

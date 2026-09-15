@@ -65,7 +65,8 @@ export class IFoodApiService {
   private async auditedFetch(url: string, init: RequestInit = {}) {
     const startedAt = Date.now()
     const method = init.method || 'GET'
-    const orderId = url.match(/\/order\/(?:v\d+\.\d+\/orders\/)?([^/]+)(?:\/|$)/)?.[1]
+    // Extrai somente o UUID após /orders/. A regex anterior capturava "v1.0".
+    const orderId = url.match(/\/order\/v\d+\.\d+\/orders\/([^/?#]+)/)?.[1]
     let response: Response | undefined
     let errorMessage: string | undefined
 
