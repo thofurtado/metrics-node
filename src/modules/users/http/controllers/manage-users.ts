@@ -15,7 +15,7 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
         name: z.string(),
         email: z.string().email(),
         password: z.string().min(6),
-        pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable(),
+        pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable().or(z.literal('')),
         role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).default('MEMBER'),
         modules: z.array(z.string()).default([]),
     })
