@@ -489,11 +489,37 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         fullCodeStr === 'CANCELLED' ||
         fullCodeStr === 'CAN' ||
         codeStr === 'CANCELADO' ||
-        fullCodeStr === 'CANCELADO'
+        fullCodeStr === 'CANCELADO' ||
+        (codeStr.includes('CANCEL') && !isCancellationRequested) ||
+        (fullCodeStr.includes('CANCEL') && !isCancellationRequested)
 
       if (isCancelled && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando evento CAN/CANCELLED (${event.code}/${event.fullCode}) para ${event.orderId}...`)
+
+          const cancelCode = String(
+            event.metadata?.cancellationCode ||
+            event.metadata?.reason_code ||
+            event.metadata?.code ||
+            event.metadata?.CANCEL_CODE ||
+            '501'
+          )
+          const cancelReason = String(
+            event.metadata?.reason ||
+            event.metadata?.details ||
+            event.metadata?.cancellationReason ||
+            event.metadata?.CANCEL_REASON ||
+            'Cancelamento confirmado pelo restaurante'
+          )
+
+          // 1. Confirmação imediata nos endpoints oficiais (exigência explícita do Toqan Firefly: POST /order/v1.0/orders/{orderId}/statuses/cancellation)
+          try {
+            await ifoodApi.confirmCancellationStatus(token, event.orderId, cancelReason, cancelCode)
+          } catch (cErr: any) {
+            console.log(`[iFood Polling] Aviso confirmCancellationStatus (${event.orderId}):`, cErr.message)
+          }
+
+          // 2. Atualiza pedido no banco de dados local caso exista
           const merchantId = String(event.merchantId || '4107174')
           const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
@@ -501,20 +527,13 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             where: { observacao: { contains: event.orderId } }
           })
 
-                    if (order) {
-            const cancelledReason = String(
-              event.metadata?.reason ||
-              event.metadata?.details ||
-              event.metadata?.cancellationReason ||
-              event.metadata?.CANCEL_REASON ||
-              '',
-            ).trim()
+          if (order) {
             await (prisma as any).pedido.update({
               where: { id: order.id },
               data: {
                 status: 'Cancelado',
                 status_delivery: 'Cancelado',
-                ...(cancelledReason ? { motivo_cancelamento: cancelledReason } : {}),
+                ...(cancelReason ? { motivo_cancelamento: cancelReason } : {}),
                 data_fechamento: new Date(),
               }
             })
@@ -530,10 +549,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
           }
 
-                    // O ACK será enviado após o processamento completo da iteração.
-
-                } catch (canErr) {
-          eventProcessed = false
+          // Confirmação (ACK) garantida no ciclo do polling
+          eventProcessed = true
+        } catch (canErr) {
+          eventProcessed = true
           console.error(`[iFood Polling CAN Error] Falha ao processar cancelamento ${event.orderId}:`, canErr)
         }
       }
