@@ -555,9 +555,15 @@ export class IFoodApiService {
   ): Promise<boolean> {
 
     try {
+      // O contrato oficial do iFood no endpoint /requestCancellation exige que o campo
+      // "reason" seja o CÓDIGO numérico do cancelamento (ex: "501", "503"), e não texto livre.
+      const code = /^\d+$/.test(String(cancellationCode))
+        ? String(cancellationCode)
+        : (/^\d+$/.test(String(reason)) ? String(reason) : '501')
+
       const payload = {
-        reason: String(reason || cancellationCode || '501'),
-        cancellationCode: String(cancellationCode || '501'),
+        reason: code,
+        cancellationCode: code,
       }
 
       const endpoint = `/order/v1.0/orders/${orderId}/requestCancellation`

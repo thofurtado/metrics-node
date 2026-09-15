@@ -31,10 +31,9 @@ export async function handleDeliveryOrderStatusChange(
           const ready = await ifoodApi.readyToPickup(token, externalOrderId)
           if (!ready) return false
         } else if (newStatus === 'cancelled') {
-          console.log(`[iFood Lifecycle] Cancelando pedido #${pedido.display_id} (${externalOrderId}) no iFood...`)
+          console.log(`[iFood Lifecycle] Cancelando pedido #${pedido.display_id} (${externalOrderId}) no iFood via PDV...`)
           const cancelCode = '501'
-          const cancelReason = 'Cancelado pelo operador no PDV'
-          const ok = await ifoodApi.requestCancellation(token, externalOrderId, cancelReason, cancelCode)
+          const ok = await ifoodApi.requestCancellation(token, externalOrderId, cancelCode, cancelCode)
           console.log(`[iFood Lifecycle] Pedido ${externalOrderId} cancelado no iFood! Status ok: ${ok}`)
           if (!ok) return false
         }
