@@ -370,14 +370,13 @@ export class IFoodApiService {
       const payload = {
         reason: String(reason || 'Cancelamento aceito pelo restaurante'),
         cancellationCode: String(cancellationCode || '501'),
-        code: String(cancellationCode || '501'),
       }
 
-      // O fluxo homologado usa somente este endpoint. Não fazer fallback para
-      // endpoints legados, pois isso gera chamadas POST incompatíveis e retries.
-      const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/requestCancellation`
+      // Contrato oficial de solicitação/aceite de cancelamento:
+      // POST /order/v1.0/orders/{id}/requestCancellation
+      const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`
       const response = await this.auditedFetch(endpoint, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -387,9 +386,9 @@ export class IFoodApiService {
       })
 
       if (!response.ok) {
-        console.log(`[iFood Cancellation Info] PATCH ${response.status}: ${await response.text()}`)
+        console.log(`[iFood Cancellation Info] POST ${response.status}: ${await response.text()}`)
       } else {
-        console.log(`[iFood Accept Cancellation Success] (${response.status}) via PATCH /order/${orderId}/statuses/requestCancellation`)
+        console.log(`[iFood Accept Cancellation Success] (${response.status}) via POST /order/${orderId}/requestCancellation`)
       }
       return response.ok
     } catch (e: any) {
@@ -407,16 +406,15 @@ export class IFoodApiService {
     reason: string = 'Cancelado pelo operador no PDV',
     cancellationCode: string = '501'
   ) {
-    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/requestCancellation`
+    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`
     const payload = {
       reason: String(reason || 'Cancelado pelo operador no PDV'),
       cancellationCode: String(cancellationCode || '501'),
-      code: String(cancellationCode || '501'),
     }
 
-    console.log(`[iFood Diagnostic] Executando PATCH ${endpoint}`)
+    console.log(`[iFood Diagnostic] Executando POST ${endpoint}`)
     const response = await this.auditedFetch(endpoint, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -425,10 +423,10 @@ export class IFoodApiService {
       signal: AbortSignal.timeout(10000),
     })
     const responseText = await response.text()
-    console.log(`[iFood Diagnostic] PATCH ${response.status} para pedido ${orderId}`)
+    console.log(`[iFood Diagnostic] POST ${response.status} para pedido ${orderId}`)
 
     return {
-      method: 'PATCH',
+      method: 'POST',
       endpoint: endpoint.replace(this.baseUrl, ''),
       status: response.status,
       ok: response.ok,
@@ -448,13 +446,12 @@ export class IFoodApiService {
       const payload = {
         reason: String(reason || cancellationCode || '501'),
         cancellationCode: String(cancellationCode || '501'),
-        code: String(cancellationCode || '501'),
       }
 
-      const endpoint = `/order/v1.0/orders/${orderId}/statuses/requestCancellation`
-      console.log(`[iFood Cancel Order] Executando PATCH ${endpoint}`)
+      const endpoint = `/order/v1.0/orders/${orderId}/requestCancellation`
+      console.log(`[iFood Cancel Order] Executando POST ${endpoint}`)
       const response = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -464,9 +461,9 @@ export class IFoodApiService {
       })
 
       if (!response.ok) {
-        console.error(`[iFood Cancel Order Error] PATCH ${response.status}: ${await response.text()}`)
+        console.error(`[iFood Cancel Order Error] POST ${response.status}: ${await response.text()}`)
       } else {
-        console.log(`[iFood Cancel Order Success] (${response.status}) via PATCH ${endpoint} para pedido ${orderId}`)
+        console.log(`[iFood Cancel Order Success] (${response.status}) via POST ${endpoint} para pedido ${orderId}`)
       }
 
       return response.ok
