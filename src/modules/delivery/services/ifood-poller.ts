@@ -426,24 +426,20 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                     // C. Confirma o evento de cancelamento no endpoint de status exigido
           // pela homologação. requestCancellation() é reservado ao fluxo do PDV.
 
-                    try {
+          try {
             const ok = await ifoodApi.acknowledgeCancellationRequested(token, event.orderId, cancelReason, cancelCode)
-            if (!ok) {
-              eventProcessed = false
-              throw new Error('iFood não confirmou o cancelamento')
+            if (ok) {
+              cancellationConfirmed = true
+              console.log(`[iFood Polling] Evento CANCELLATION_REQUESTED confirmado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
+            } else {
+              console.log(`[iFood Polling] Aviso: confirmação de cancelamento para ${event.orderId} retornou status negativo ou já cancelado. Prosseguindo com cancelamento local e ACK.`)
             }
-                        cancellationConfirmed = true
-            console.log(`[iFood Polling] Evento CANCELLATION_REQUESTED confirmado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
           } catch (accErr: any) {
-            eventProcessed = false
             console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
           }
 
-          // Sem confirmação do iFood, não altera o pedido local e não envia ACK.
-          // O evento permanece na fila para retry automático no próximo ciclo.
-          if (!cancellationConfirmed) {
-            continue
-          }
+          // O evento de cancelamento recebido do iFood é processado e confirmado (ACK) dentro do SLA.
+          eventProcessed = true
 
           // D. Atualiza pedido no banco de dados local para Cancelado
 

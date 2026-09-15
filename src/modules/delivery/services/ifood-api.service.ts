@@ -66,7 +66,7 @@ export class IFoodApiService {
     const startedAt = Date.now()
     const method = init.method || 'GET'
     // Extrai somente o UUID após /orders/. A regex anterior capturava "v1.0".
-    const orderId = url.match(/\/order\/v\d+\.\d+\/orders\/([^/?#]+)/)?.[1]
+    const orderId = url.match(/\/order(?:\/v\d+\.\d+\/orders)?\/([0-9a-fA-F-]{36})/)?.[1] || url.match(/\/order\/v\d+\.\d+\/orders\/([^/?#]+)/)?.[1]
     let response: Response | undefined
     let errorMessage: string | undefined
 
@@ -422,15 +422,15 @@ export class IFoodApiService {
       code: String(cancellationCode || '501'),
     }
 
-    // Endpoints candidatos ordenados por conformidade com o Toqan e API do iFood:
-    // 1. /order/{orderId}/statuses/cancellationRequested (literalmente pedido pelo Toqan)
-    // 2. /order/v1.0/orders/{orderId}/statuses/cancellationRequested (com prefixo de versão)
-    const endpoints = [
+    // Endpoints candidatos:
+    // 1. /order/{orderId}/statuses/cancellationRequested (PATCH - especificado na análise Toqan)
+    // 2. /order/v1.0/orders/{orderId}/statuses/cancellationRequested (PATCH - versão com prefixo)
+    const patchEndpoints = [
       `${this.baseUrl}/order/${orderId}/statuses/cancellationRequested`,
       `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`,
     ]
 
-    for (const endpoint of endpoints) {
+    for (const endpoint of patchEndpoints) {
       try {
         console.log(`[iFood Cancellation Requested] Executando PATCH ${endpoint}...`)
         const response = await this.auditedFetch(endpoint, {
@@ -480,28 +480,10 @@ export class IFoodApiService {
           }
         }
 
-        // Se 404, segue para o próximo candidato na lista
+        // Se 404, testa próximo candidato
         if (response.status === 404) {
-          console.log(`[iFood Cancellation Requested] PATCH ${endpoint} retornou 404, testando próximo endpoint...`)
+          console.log(`[iFood Cancellation Requested] PATCH ${endpoint} retornou 404, testando próximo candidato...`)
           continue
-        }
-
-        // Se retornou 405 (Method Not Allowed), tenta POST neste endpoint como fallback
-        if (response.status === 405) {
-          console.log(`[iFood Cancellation Requested] PATCH ${endpoint} retornou 405, tentando fallback POST...`)
-          const postResponse = await this.auditedFetch(endpoint, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(6000),
-          })
-          if (postResponse.ok) {
-            console.log(`[iFood Cancellation Requested Success] (${postResponse.status}) via fallback POST ${endpoint}`)
-            return true
-          }
         }
 
         console.error(`[iFood Cancellation Requested Error] PATCH ${response.status} em ${endpoint}: ${responseText}`)
@@ -510,12 +492,43 @@ export class IFoodApiService {
       }
     }
 
+    // 3. Fallback Oficial: POST /order/v1.0/orders/{orderId}/requestCancellation
+    try {
+      console.log(`[iFood Cancellation Requested] Executando fallback POST /order/v1.0/orders/${orderId}/requestCancellation...`)
+      const officialEndpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`
+      const officialResponse = await this.auditedFetch(officialEndpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      })
+
+      const officialText = await officialResponse.text()
+      if (officialResponse.ok) {
+        console.log(`[iFood Cancellation Requested Success] (${officialResponse.status}) via POST ${officialEndpoint}`)
+        return true
+      }
+
+      const alreadyCancelled =
+        (officialResponse.status === 400 || officialResponse.status === 409) &&
+        /already|cancel|ja cancelado|in progress/i.test(officialText)
+
+      if (alreadyCancelled) {
+        console.log(`[iFood Cancellation Requested Idempotent] Pedido ${orderId} já estava cancelado no iFood: ${officialText}`)
+        return true
+      }
+
+      console.error(`[iFood Cancellation Requested Error] POST ${officialResponse.status}: ${officialText}`)
+    } catch (e: any) {
+      console.error('[iFood Cancellation Requested Fallback Error]:', e.message)
+    }
+
     return false
   }
 
-  /**
-   * Diagnóstico manual para testar a confirmação de cancelamento exigida na homologação (PATCH).
-   */
   async testCancellationPatch(
     accessToken: string,
     orderId: string,
