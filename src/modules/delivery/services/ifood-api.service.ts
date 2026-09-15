@@ -406,6 +406,38 @@ export class IFoodApiService {
   }
 
   /**
+   * Confirma o evento CANCELLATION_REQUESTED no fluxo de homologação.
+   * Este endpoint é diferente de requestCancellation(), que inicia o
+   * cancelamento pelo PDV.
+   */
+  async acknowledgeCancellationRequested(accessToken: string, orderId: string): Promise<boolean> {
+    const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`
+
+    try {
+      const response = await this.auditedFetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(6000),
+      })
+
+      if (!response.ok) {
+        const responseText = await response.text()
+        console.error(`[iFood Cancellation Requested Error] POST ${response.status}: ${responseText}`)
+        return false
+      }
+
+      console.log(`[iFood Cancellation Requested Success] (${response.status}) via POST ${endpoint}`)
+      return true
+    } catch (error: any) {
+      console.error('[iFood Cancellation Requested Exception]:', error?.message || error)
+      return false
+    }
+  }
+
+  /**
    * Diagnóstico manual. O fluxo normal do PDV não usa este método.
    */
   async testCancellationPatch(

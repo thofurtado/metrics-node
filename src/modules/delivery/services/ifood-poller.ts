@@ -423,16 +423,17 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           const cancelCode = String(event.metadata?.cancellationCode || event.metadata?.reason_code || event.metadata?.CANCEL_CODE || '501')
           const cancelReason = String(event.metadata?.reason || event.metadata?.details || event.metadata?.CANCEL_REASON || 'Cancelamento confirmado pelo restaurante')
 
-          // C. Envia confirmação / aceitação de cancelamento via Handshake acceptCancellation / request-cancellation
+                    // C. Confirma o evento de cancelamento no endpoint de status exigido
+          // pela homologação. requestCancellation() é reservado ao fluxo do PDV.
 
                     try {
-            const ok = await ifoodApi.acceptCancellation(token, event.orderId, cancelReason, cancelCode)
+            const ok = await ifoodApi.acknowledgeCancellationRequested(token, event.orderId)
             if (!ok) {
               eventProcessed = false
               throw new Error('iFood não confirmou o cancelamento')
             }
                         cancellationConfirmed = true
-            console.log(`[iFood Polling] Confirmação de cancelamento enviada para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
+            console.log(`[iFood Polling] Evento CANCELLATION_REQUESTED confirmado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
           } catch (accErr: any) {
             eventProcessed = false
             console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
