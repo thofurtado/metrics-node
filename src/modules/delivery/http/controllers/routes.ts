@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { webhook99FoodController } from './webhook-99food'
+import { webhookIfoodController } from './webhook-ifood'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 import {
@@ -20,6 +21,14 @@ export async function deliveryRoutes(app: FastifyInstance) {
   // Webhooks de terceiros (Recebem chamadas automáticas da 99Food e iFood)
   app.post('/webhooks/99food', webhook99FoodController)
   app.post('/api/webhooks/99food', webhook99FoodController)
+
+  // Webhooks Oficiais iFood (homologacao Toqan e producao)
+  app.post('/webhooks/ifood', webhookIfoodController)
+  app.post('/api/webhooks/ifood', webhookIfoodController)
+  app.post('/delivery/ifood/webhook', webhookIfoodController)
+  app.post('/api/delivery/ifood/webhook', webhookIfoodController)
+  app.post('/webhooks/cancellation', webhookIfoodController)
+  app.post('/api/webhooks/cancellation', webhookIfoodController)
 
   // Endpoints do iFood para autorização e status
   app.get('/delivery/ifood/usercode', ifoodUserCodeController)

@@ -465,7 +465,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                     // O ACK será enviado após o processamento completo da iteração.
 
                 } catch (crErr) {
-          eventProcessed = false
+          // O ACK para cancelamentos NUNCA deve ser bloqueado por falha de banco local
+          eventProcessed = true
           console.error(`[iFood Polling CancellationRequested Error] Falha ao processar ${event.orderId}:`, crErr)
         }
       }
@@ -475,7 +476,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
       const isCancelled =
         codeStr === 'CAN' ||
         codeStr === 'CANCELLED' ||
+        codeStr === 'CANCELLATION' ||
         fullCodeStr === 'CANCELLED' ||
+        fullCodeStr === 'CANCELLATION' ||
         fullCodeStr === 'CAN' ||
         codeStr === 'CANCELADO' ||
         fullCodeStr === 'CANCELADO' ||

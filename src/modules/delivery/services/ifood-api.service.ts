@@ -345,7 +345,10 @@ export class IFoodApiService {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          reason: 'CUSTOMER_SATISFACTION',
+          detailReason: 'Cancelamento e reembolso aceitos pelo restaurante',
+        }),
       })
 
       if (!response.ok) {
