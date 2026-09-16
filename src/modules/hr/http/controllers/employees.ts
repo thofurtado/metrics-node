@@ -66,30 +66,54 @@ export async function createEmployee(request: FastifyRequest, reply: FastifyRepl
 
     // Check PIN uniqueness
     const pinExists = await prisma.employee.findFirst({
-        where: { pin: data.pin }
+        where: { pin: data.pin },
+        select: { id: true }
     })
 
     if (pinExists) {
         return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
     }
 
-    const employee = await prisma.employee.create({
-        data: {
-            name: data.name,
-            role: data.role,
-            registrationType: data.registrationType,
-            isRegistered: data.isRegistered,
-            admissionDate: data.admissionDate,
-            pin: data.pin,
-            salary: data.salary ? Number(data.salary) : null,
-            dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
-            points: Number(data.points),
-            transportAllowance: Number(data.transportAllowance),
-            hasCestaBasica: data.hasCestaBasica,
-            allow_term_sales: Boolean(data.allow_term_sales),
-            term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
+    let employee
+    try {
+        employee = await prisma.employee.create({
+            data: {
+                name: data.name,
+                role: data.role,
+                registrationType: data.registrationType,
+                isRegistered: data.isRegistered,
+                admissionDate: data.admissionDate,
+                pin: data.pin,
+                salary: data.salary ? Number(data.salary) : null,
+                dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                points: Number(data.points),
+                transportAllowance: Number(data.transportAllowance),
+                hasCestaBasica: data.hasCestaBasica,
+                allow_term_sales: Boolean(data.allow_term_sales),
+                term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
+            }
+        })
+    } catch (err: any) {
+        if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+            employee = await prisma.employee.create({
+                data: {
+                    name: data.name,
+                    role: data.role,
+                    registrationType: data.registrationType,
+                    isRegistered: data.isRegistered,
+                    admissionDate: data.admissionDate,
+                    pin: data.pin,
+                    salary: data.salary ? Number(data.salary) : null,
+                    dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                    points: Number(data.points),
+                    transportAllowance: Number(data.transportAllowance),
+                    hasCestaBasica: data.hasCestaBasica,
+                }
+            })
+        } else {
+            throw err
         }
-    })
+    }
 
     return reply.status(201).send(employee)
 }
@@ -115,31 +139,56 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
         where: {
             pin: data.pin,
             id: { not: id }
-        }
+        },
+        select: { id: true }
     })
 
     if (pinExists) {
         return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
     }
 
-    const employee = await prisma.employee.update({
-        where: { id },
-        data: {
-            name: data.name,
-            role: data.role,
-            registrationType: data.registrationType,
-            isRegistered: data.isRegistered,
-            admissionDate: data.admissionDate,
-            pin: data.pin,
-            salary: data.salary ? Number(data.salary) : null,
-            dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
-            points: Number(data.points),
-            transportAllowance: Number(data.transportAllowance),
-            hasCestaBasica: data.hasCestaBasica,
-            allow_term_sales: Boolean(data.allow_term_sales),
-            term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
+    let employee
+    try {
+        employee = await prisma.employee.update({
+            where: { id },
+            data: {
+                name: data.name,
+                role: data.role,
+                registrationType: data.registrationType,
+                isRegistered: data.isRegistered,
+                admissionDate: data.admissionDate,
+                pin: data.pin,
+                salary: data.salary ? Number(data.salary) : null,
+                dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                points: Number(data.points),
+                transportAllowance: Number(data.transportAllowance),
+                hasCestaBasica: data.hasCestaBasica,
+                allow_term_sales: Boolean(data.allow_term_sales),
+                term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
+            }
+        })
+    } catch (err: any) {
+        if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+            employee = await prisma.employee.update({
+                where: { id },
+                data: {
+                    name: data.name,
+                    role: data.role,
+                    registrationType: data.registrationType,
+                    isRegistered: data.isRegistered,
+                    admissionDate: data.admissionDate,
+                    pin: data.pin,
+                    salary: data.salary ? Number(data.salary) : null,
+                    dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                    points: Number(data.points),
+                    transportAllowance: Number(data.transportAllowance),
+                    hasCestaBasica: data.hasCestaBasica,
+                }
+            })
+        } else {
+            throw err
         }
-    })
+    }
 
     return reply.status(200).send(employee)
 }

@@ -56,11 +56,41 @@ export class CalculatePointRateioUseCase {
         const finalRateioPool = baseForRateio * 0.10
 
         // 5. Distribute Points
-        const employees = await prisma.employee.findMany({
-            where: {
-                points: { gt: 0 }
+        let employees: any[] = []
+        try {
+            employees = await prisma.employee.findMany({
+                where: {
+                    points: { gt: 0 }
+                }
+            })
+        } catch (err: any) {
+            if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+                employees = await prisma.employee.findMany({
+                    where: {
+                        points: { gt: 0 }
+                    },
+                    select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    registrationType: true,
+                    isRegistered: true,
+                    admissionDate: true,
+                    pin: true,
+                    salary: true,
+                    dailyRate: true,
+                    points: true,
+                    transportAllowance: true,
+                    hasCestaBasica: true,
+                    photo_url: true,
+                    created_at: true,
+                    updated_at: true,
+                }
+                })
+            } else {
+                throw err
             }
-        })
+        }
 
         if (employees.length === 0) {
             throw new Error("No eligible employees with points found.")

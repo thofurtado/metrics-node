@@ -460,14 +460,15 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         const cleanSearch = entry.identification.replace(/^(Vale|VT)\s*/i, '').trim()
                         if (cleanSearch) {
                             const emp = await prisma.employee.findFirst({
-                                where: { name: { contains: cleanSearch, mode: 'insensitive' } }
+                                where: { name: { contains: cleanSearch, mode: 'insensitive' } },
+                                select: { id: true }
                             })
                             if (emp) employeeId = emp.id
                         }
                     }
 
                     if (!employeeId) {
-                        const firstEmp = await prisma.employee.findFirst()
+                        const firstEmp = await prisma.employee.findFirst({ select: { id: true } })
                         if (firstEmp) employeeId = firstEmp.id
                     }
 

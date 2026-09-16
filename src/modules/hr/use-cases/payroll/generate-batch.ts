@@ -46,7 +46,34 @@ export class GeneratePayrollBatchUseCase {
         console.log(`[GenerateBatch] Type: ${type}, RefDate: ${referenceDate}, CestaValue: ${cestaValue}`)
 
         // 2. Fetch Employees
-        const employees = await prisma.employee.findMany()
+        let employees: any[] = []
+        try {
+            employees = await prisma.employee.findMany()
+        } catch (err: any) {
+            if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+                employees = await prisma.employee.findMany({
+                    select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    registrationType: true,
+                    isRegistered: true,
+                    admissionDate: true,
+                    pin: true,
+                    salary: true,
+                    dailyRate: true,
+                    points: true,
+                    transportAllowance: true,
+                    hasCestaBasica: true,
+                    photo_url: true,
+                    created_at: true,
+                    updated_at: true,
+                }
+                })
+            } else {
+                throw err
+            }
+        }
         console.log(`[GenerateBatch] Found ${employees.length} employees.`)
 
         if (employees.length === 0) {

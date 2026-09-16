@@ -24,7 +24,34 @@ export class CalculateRateioExtrasUseCase {
         const startDate = new Date(year, month - 1, 1)
         const endDate = new Date(year, month, 0) // Last day of month
 
-        const employees = await prisma.employee.findMany()
+        let employees: any[] = []
+        try {
+            employees = await prisma.employee.findMany()
+        } catch (err: any) {
+            if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+                employees = await prisma.employee.findMany({
+                    select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    registrationType: true,
+                    isRegistered: true,
+                    admissionDate: true,
+                    pin: true,
+                    salary: true,
+                    dailyRate: true,
+                    points: true,
+                    transportAllowance: true,
+                    hasCestaBasica: true,
+                    photo_url: true,
+                    created_at: true,
+                    updated_at: true,
+                }
+                })
+            } else {
+                throw err
+            }
+        }
 
         // Fetch TimeClocks
         const timeClocks = await prisma.timeClock.findMany({

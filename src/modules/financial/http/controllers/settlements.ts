@@ -215,7 +215,14 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
 
         const rawVales = await prisma.payrollEntry.findMany({
             where: valeWhere,
-            include: { employee: true },
+            include: {
+                employee: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            },
             orderBy: { referenceDate: 'desc' }
         })
 
