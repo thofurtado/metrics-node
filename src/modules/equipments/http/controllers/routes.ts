@@ -62,10 +62,19 @@ export async function telemetryRoutes(app: FastifyInstance) {
         try {
           const prisma = await getPrismaForDomain(domain);
           if (prisma) {
-            await prisma.equipment.update({
+            // Em vez de marcar offline imediatamente ao fechar socket transitório,
+            // só marca offline se não foi visto nos últimos 10 minutos
+            const eq = await prisma.equipment.findUnique({
               where: { id },
-              data: { is_online: false, last_seen_at: new Date() }
+              select: { last_seen_at: true }
             });
+            const diffMs = eq?.last_seen_at ? Date.now() - new Date(eq.last_seen_at).getTime() : Infinity;
+            if (diffMs > 10 * 60 * 1000) {
+              await prisma.equipment.update({
+                where: { id },
+                data: { is_online: false }
+              });
+            }
           }
         } catch (err) { }
       }
