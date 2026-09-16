@@ -650,3 +650,30 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
         count: cancellations.length
     })
 }
+
+export async function getCancellationsSync(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const audits = await (prisma as any).cancellationAudit.findMany({
+            orderBy: { cancelled_at: 'desc' },
+            take: 100,
+        })
+        return reply.status(200).send({
+            cancellations: (audits || []).map((c: any) => ({
+                id: c.id,
+                date: c.cancelled_at,
+                created_at: c.cancelled_at,
+                origin: c.origin,
+                origin_id: c.origin_identifier || c.origin,
+                item_name: c.product_name,
+                quantity: Number(c.quantity || 1),
+                unit_price: Number(c.unit_price || 0),
+                total_value: Number(c.total_amount || 0),
+                reason: c.reason,
+                cancelled_by: c.user_name || 'Operador',
+                cancellation_type: c.cancellation_type,
+            }))
+        })
+    } catch (err) {
+        return reply.status(200).send({ cancellations: [] })
+    }
+}

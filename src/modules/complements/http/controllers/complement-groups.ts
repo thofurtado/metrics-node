@@ -14,6 +14,8 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
         price: z.number().min(0).default(0),
         linked_product_id: z.string().nullable().optional(),
         linked_supply_id: z.string().nullable().optional(),
+        supply_quantity: z.number().nullable().optional(),
+        active: z.boolean().optional(),
       })
     ).optional(),
     product_ids: z.array(z.string()).optional(),
@@ -35,6 +37,8 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
                 price: opt.price,
                 linked_product_id: opt.linked_product_id || null,
                 linked_supply_id: opt.linked_supply_id || null,
+                supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
+                active: opt.active !== false,
               })),
             }
           : undefined,
@@ -101,6 +105,8 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
         price: z.number().min(0).default(0),
         linked_product_id: z.string().nullable().optional(),
         linked_supply_id: z.string().nullable().optional(),
+        supply_quantity: z.number().nullable().optional(),
+        active: z.boolean().optional(),
       })
     ).optional(),
     product_ids: z.array(z.string()).optional(),
@@ -135,6 +141,8 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
               price: opt.price,
               linked_product_id: opt.linked_product_id || null,
               linked_supply_id: opt.linked_supply_id || null,
+              supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
+              active: opt.active !== undefined ? opt.active : true,
             },
           })
         } else {
@@ -145,6 +153,8 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
               price: opt.price,
               linked_product_id: opt.linked_product_id || null,
               linked_supply_id: opt.linked_supply_id || null,
+              supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
+              active: opt.active !== false,
             },
           })
         }

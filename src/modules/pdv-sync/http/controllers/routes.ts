@@ -14,7 +14,7 @@ import {
     getPaymentConditionsSync,
     getPOSMachinesSync,
     getSystemConfigSync,
-    postCancellationsSync
+    postCancellationsSync, getCancellationsSync
 } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
@@ -73,12 +73,20 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     // Cancelamentos Unificados
     app.post('/api/pdv/sync/cancellations', postCancellationsSync)
     app.post('/api/pdv/cancellations', postCancellationsSync)
+    app.post('/pdv/sync/cancellations', postCancellationsSync)
+    app.get('/api/pdv/sync/cancellations', getCancellationsSync)
+    app.get('/api/pdv/cancellations', getCancellationsSync)
+    app.get('/pdv/sync/cancellations', getCancellationsSync)
 
     // Telemetria de Mesas e Salão
     app.post('/api/pdv/sync/tables', postTablesSync)
     app.post('/api/pdv/tables', postTablesSync)
+    app.post('/pdv/sync/tables', postTablesSync)
     app.get('/api/pdv/sync/tables', getTablesTelemetry)
     app.get('/api/pdv/tables', getTablesTelemetry)
+    app.get('/pdv/sync/tables', getTablesTelemetry)
+    app.get('/pdv/sync/tables/snapshot', getTablesTelemetry)
+    app.get('/api/pdv/sync/tables/snapshot', getTablesTelemetry)
 
     // Sessões de Caixa
     app.post('/api/pdv/sync/cashier/open', postCashierOpenSync)
