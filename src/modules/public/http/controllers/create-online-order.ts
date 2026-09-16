@@ -10,62 +10,55 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
     }
 
     const createOnlineOrderSchema = z.object({
-        uuid: z.string().uuid().optional(),
-        display_id: z.number().optional(),
-        origin: z.string().optional().default('Delivery'),
-        status_delivery: z.string().optional(),
-        status: z.string().optional(),
-        client_name: z.string(),
-        client_phone: z.string(),
-        street: z.string().optional().default(''),
-        number: z.union([z.string(), z.number()]).optional().transform(v => v !== undefined && v !== null ? String(v).trim() : ''),
-        neighborhood: z.string().optional().default(''),
-        city: z.string().optional().default(''),
-        state: z.string().optional().default(''),
-        zipcode: z.string().optional(),
-        complement: z.string().optional(),
-        reference: z.string().optional(),
-        payment_method_id: z.string().optional(),
-        payment_method_name: z.string().default('Dinheiro'),
-        change_for: z.number().optional(),
-        delivery_fee: z.number().default(0),
-        total_amount: z.number(),
-        notes: z.string().optional(),
+        uuid: z.string().uuid().nullable().optional(),
+        display_id: z.union([z.number(), z.string()]).nullable().optional().transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : undefined),
+        origin: z.string().nullable().optional().default('Delivery').transform(v => v || 'Delivery'),
+        status_delivery: z.string().nullable().optional(),
+        status: z.string().nullable().optional(),
+        client_name: z.string().nullable().optional().default('Cliente Delivery').transform(v => v || 'Cliente Delivery'),
+        client_phone: z.string().nullable().optional().default('00000000000').transform(v => v || '00000000000'),
+        street: z.string().nullable().optional().default('').transform(v => v || ''),
+        number: z.union([z.string(), z.number()]).nullable().optional().transform(v => v !== undefined && v !== null ? String(v).trim() : ''),
+        neighborhood: z.string().nullable().optional().default('').transform(v => v || ''),
+        city: z.string().nullable().optional().default('').transform(v => v || ''),
+        state: z.string().nullable().optional().default('').transform(v => v || ''),
+        zipcode: z.union([z.string(), z.number()]).nullable().optional().transform(v => v !== undefined && v !== null ? String(v) : undefined),
+        complement: z.string().nullable().optional().transform(v => v || undefined),
+        reference: z.string().nullable().optional().transform(v => v || undefined),
+        payment_method_id: z.string().nullable().optional().transform(v => v || undefined),
+        payment_method_name: z.string().nullable().optional().default('Dinheiro').transform(v => v || 'Dinheiro'),
+        change_for: z.union([z.number(), z.string()]).nullable().optional().transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : undefined),
+        delivery_fee: z.union([z.number(), z.string()]).nullable().optional().default(0).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 0),
+        total_amount: z.union([z.number(), z.string()]).nullable().optional().default(0).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 0),
+        notes: z.string().nullable().optional().transform(v => v || undefined),
         items: z.array(z.object({
-            product_id: z.string().optional(),
-            name: z.string(),
-            quantity: z.number(),
-            unit_price: z.number(),
-            unit_cost: z.number().optional().default(0),
-            notes: z.string().optional(),
-            complements: z.array(z.object({
-                name: z.string(),
-                price: z.number().default(0),
-                quantity: z.number().default(1)
-            })).optional(),
-            fractions: z.array(z.object({
-                product_id: z.string(),
-                name: z.string(),
-                fraction: z.number().default(0.5)
-            })).optional()
-        }))
+            product_id: z.string().nullable().optional().transform(v => v || undefined),
+            name: z.string().nullable().optional().default('Item').transform(v => v || 'Item'),
+            quantity: z.union([z.number(), z.string()]).nullable().optional().default(1).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 1),
+            unit_price: z.union([z.number(), z.string()]).nullable().optional().default(0).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 0),
+            unit_cost: z.union([z.number(), z.string()]).nullable().optional().default(0).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 0),
+            notes: z.string().nullable().optional().transform(v => v || undefined),
+            complements: z.any().nullable().optional(),
+            fractions: z.any().nullable().optional()
+        })).nullable().optional().default([]).transform(v => v || [])
     })
 
     const body = createOnlineOrderSchema.parse(request.body)
 
     try {
+        const isPdvOrigin = body.origin === 'PDV' || body.origin === 'Mesa' || body.origin === 'Balcao' || body.origin === 'Balcão'
         const isTakeout = 
-            (body.origin === 'Balcão') ||
-            body.street.toLowerCase().includes('retirada') || 
-            body.neighborhood.toLowerCase().includes('balcão') || 
+            (body.origin === 'Balcão' || body.origin === 'Balcao') ||
+            (body.street || '').toLowerCase().includes('retirada') || 
+            (body.neighborhood || '').toLowerCase().includes('balcão') || 
             (Boolean(body.notes) && body.notes!.toLowerCase().includes('retirada')) ||
-            !body.street || !body.neighborhood
+            (!isPdvOrigin && (!body.street || !body.neighborhood))
 
-        let resolvedDeliveryFee = isTakeout ? 0 : body.delivery_fee
+        let resolvedDeliveryFee = isPdvOrigin ? body.delivery_fee : (isTakeout ? 0 : body.delivery_fee)
 
         const companyProfile = await prisma.companyProfile.findFirst()
 
-        if (!isTakeout && companyProfile) {
+        if (!isPdvOrigin && !isTakeout && companyProfile) {
             let sectors: any[] = []
             if (companyProfile.deliverySectors) {
                 sectors = typeof companyProfile.deliverySectors === 'string' 
@@ -98,7 +91,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         }
 
-        const rawDigits = body.client_phone.replace(/\D/g, '')
+            const rawDigits = body.client_phone.replace(/\D/g, '')
         let cleanPhone = rawDigits
         if ((cleanPhone.length === 12 || cleanPhone.length === 13) && cleanPhone.startsWith('55')) {
             cleanPhone = cleanPhone.substring(2)
@@ -259,7 +252,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 uuid: body.uuid || undefined,
                 display_id: body.display_id || displayId,
                 numero_diario: body.display_id || displayId,
-                origem: isTakeout ? 'Balcao' : (body.origin || 'Delivery'),
+                origem: body.origin || (isTakeout ? 'Balcao' : 'Delivery'),
                 caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,

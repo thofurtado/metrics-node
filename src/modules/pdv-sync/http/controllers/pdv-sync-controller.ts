@@ -407,14 +407,33 @@ export async function getPOSMachinesSync(request: FastifyRequest, reply: Fastify
 }
 
 export async function getSystemConfigSync(request: FastifyRequest, reply: FastifyReply) {
-    let config = await prisma.systemConfig.findFirst()
-    if (!config) {
-        config = await prisma.systemConfig.create({ data: {} })
+    try {
+        let config = await prisma.systemConfig.findFirst({
+            select: {
+                blind_cashier_closure: true,
+                cashier_default_origin: true,
+            }
+        })
+        if (!config) {
+            config = await prisma.systemConfig.create({
+                data: {},
+                select: {
+                    blind_cashier_closure: true,
+                    cashier_default_origin: true,
+                }
+            })
+        }
+        return reply.status(200).send({
+            BlindCashierClosure: config?.blind_cashier_closure ?? false,
+            CashierDefaultOrigin: config?.cashier_default_origin ?? 'Mesa'
+        })
+    } catch (err: any) {
+        console.warn('[PDV Sync] Fallback seguro ao ler systemConfig:', err.message)
+        return reply.status(200).send({
+            BlindCashierClosure: false,
+            CashierDefaultOrigin: 'Mesa'
+        })
     }
-    return reply.status(200).send({
-        BlindCashierClosure: config.blind_cashier_closure,
-        CashierDefaultOrigin: config.cashier_default_origin
-    })
 }
 
 
