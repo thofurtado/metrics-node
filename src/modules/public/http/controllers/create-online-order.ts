@@ -17,9 +17,9 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         status: z.string().optional(),
         client_name: z.string(),
         client_phone: z.string(),
-        street: z.string(),
-        number: z.union([z.string(), z.number()]).transform(v => String(v)),
-        neighborhood: z.string(),
+        street: z.string().optional().default(''),
+        number: z.union([z.string(), z.number()]).optional().transform(v => v !== undefined && v !== null ? String(v).trim() : ''),
+        neighborhood: z.string().optional().default(''),
         city: z.string().optional().default(''),
         state: z.string().optional().default(''),
         zipcode: z.string().optional(),
@@ -54,101 +54,136 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
     const body = createOnlineOrderSchema.parse(request.body)
 
     try {
-        // Validação rigorosa de Bairros Atendidos por Setor e Lista de Bairros (quando Delivery)
-        const isTakeout = (body.origin === 'PDV') || body.street.toLowerCase().includes('retirada') || body.neighborhood.toLowerCase().includes('balcão');
-        if (!isTakeout) {
-            const companyProfile = await prisma.companyProfile.findFirst();
-            if (companyProfile) {
-                let sectors: any[] = [];
-                if (companyProfile.deliverySectors) {
-                    sectors = typeof companyProfile.deliverySectors === 'string' 
-                        ? JSON.parse(companyProfile.deliverySectors) 
-                        : companyProfile.deliverySectors;
-                }
-                const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-                // Exige estritamente pertencimento a um setor de entrega
-                const allowedNeighborhoods = (Array.isArray(sectors) ? sectors : [])
-                    .flatMap((s: any) => s.neighborhoods || [])
-                    .map((n: string) => norm(n))
-                    .filter(Boolean);
+        const isTakeout = 
+            (body.origin === 'Balcão') ||
+            body.street.toLowerCase().includes('retirada') || 
+            body.neighborhood.toLowerCase().includes('balcão') || 
+            (Boolean(body.notes) && body.notes!.toLowerCase().includes('retirada')) ||
+            !body.street || !body.neighborhood
 
-                if (allowedNeighborhoods.length > 0) {
-                    const normOrderBairro = norm(body.neighborhood);
-                    const isCovered = allowedNeighborhoods.some(n => n === normOrderBairro);
-                    if (!isCovered) {
+        let resolvedDeliveryFee = isTakeout ? 0 : body.delivery_fee
+
+        const companyProfile = await prisma.companyProfile.findFirst()
+
+        if (!isTakeout && companyProfile) {
+            let sectors: any[] = []
+            if (companyProfile.deliverySectors) {
+                sectors = typeof companyProfile.deliverySectors === 'string' 
+                    ? JSON.parse(companyProfile.deliverySectors) 
+                    : companyProfile.deliverySectors
+            }
+            const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+            
+            if (Array.isArray(sectors) && sectors.length > 0) {
+                const normOrderBairro = norm(body.neighborhood)
+                const matchedSector = sectors.find((s: any) =>
+                    (s.neighborhoods || []).some((n: string) => norm(n) === normOrderBairro)
+                )
+
+                if (matchedSector && matchedSector.fee !== undefined) {
+                    resolvedDeliveryFee = Number(matchedSector.fee)
+                } else {
+                    // Se não está em nenhum setor, valida se loja restringe bairros
+                    const allowedNeighborhoods = sectors
+                        .flatMap((s: any) => s.neighborhoods || [])
+                        .map((n: string) => norm(n))
+                        .filter(Boolean)
+
+                    if (allowedNeighborhoods.length > 0 && !allowedNeighborhoods.includes(normOrderBairro)) {
                         return reply.status(400).send({
                             message: `Desculpe, o bairro "${body.neighborhood}" não está na área de entrega atendida pela loja.`
-                        });
+                        })
                     }
                 }
             }
         }
-        const cleanPhone = body.client_phone.replace(/\D/g, '');
+
+        const rawDigits = body.client_phone.replace(/\D/g, '')
+        let cleanPhone = rawDigits
+        if ((cleanPhone.length === 12 || cleanPhone.length === 13) && cleanPhone.startsWith('55')) {
+            cleanPhone = cleanPhone.substring(2)
+        }
+
+        const phoneVariants = [cleanPhone, body.client_phone]
+        if (cleanPhone.length === 11 && cleanPhone[2] === '9') {
+            phoneVariants.push(cleanPhone.slice(0, 2) + cleanPhone.slice(3))
+            phoneVariants.push(cleanPhone.slice(0, 10))
+        } else if (cleanPhone.length === 10) {
+            phoneVariants.push(cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2))
+        }
+
         let client = await prisma.client.findFirst({
             where: {
-                OR: [
-                    { phone: cleanPhone },
-                    { phone: body.client_phone }
-                ]
+                phone: { in: Array.from(new Set(phoneVariants)) }
             },
             include: {
                 addresses: true
             }
-        });
+        })
 
-        let targetAddressId: string | null = null;
+        let targetAddressId: string | null = null
+        const norm = (s?: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
 
         if (!client) {
+            const addressData = (!isTakeout && body.street && body.neighborhood) ? {
+                create: {
+                    street: body.street,
+                    number: String(body.number || 'S/N'),
+                    neighborhood: body.neighborhood,
+                    city: body.city || 'Cidade',
+                    state: body.state || 'SP',
+                    zipcode: body.zipcode ? String(body.zipcode) : undefined,
+                    complement: body.complement || undefined,
+                    is_main: true
+                }
+            } : undefined
+
             client = await prisma.client.create({
                 data: {
                     name: body.client_name,
                     phone: cleanPhone || body.client_phone,
-                    addresses: {
-                        create: {
-                            street: body.street,
-                            number: String(body.number || 'S/N'),
-                            neighborhood: body.neighborhood,
-                            city: body.city || 'Cidade',
-                            state: body.state || 'UF',
-                            zipcode: body.zipcode ? String(body.zipcode) : undefined,
-                            complement: body.complement || undefined,
-                            is_main: true
-                        }
-                    }
+                    ...(addressData ? { addresses: addressData } : {})
                 },
                 include: {
                     addresses: true
                 }
-            });
-            targetAddressId = client.addresses?.[0]?.id || null;
+            })
+            targetAddressId = (!isTakeout && client.addresses?.[0]) ? client.addresses[0].id : null
         } else {
-            // Verifica se o endereço já existe na lista do cliente para reaproveitar
-            const norm = (s?: string) => (s || '').trim().toLowerCase();
-            const matchingAddr = client.addresses?.find(a => 
-                norm(a.street) === norm(body.street) &&
-                norm(a.number) === norm(body.number) &&
-                norm(a.neighborhood) === norm(body.neighborhood) &&
-                norm(a.city) === norm(body.city)
-            );
+            // Se o cliente já existia:
+            // Atualiza telefone para 11 dígitos caso estivesse com 10
+            if (cleanPhone.length === 11 && client.phone.length !== 11) {
+                await prisma.client.update({
+                    where: { id: client.id },
+                    data: { phone: cleanPhone }
+                })
+            }
 
-            if (matchingAddr) {
-                targetAddressId = matchingAddr.id;
-            } else {
-                // Cria NOVO registro de endereço para o cliente, preservando os pedidos e endereços anteriores intactos
-                const newAddr = await prisma.address.create({
-                    data: {
-                        client_id: client.id,
-                        street: body.street,
-                        number: String(body.number || 'S/N'),
-                        neighborhood: body.neighborhood,
-                        city: body.city || 'Cidade',
-                        state: body.state || 'UF',
-                        zipcode: body.zipcode ? String(body.zipcode) : undefined,
-                        complement: body.complement || undefined,
-                        is_main: false
-                    }
-                });
-                targetAddressId = newAddr.id;
+            // Para Retirada, NUNCA criamos endereço!
+            if (!isTakeout && body.street && body.neighborhood) {
+                const matchingAddr = client.addresses?.find(a => 
+                    norm(a.street) === norm(body.street) &&
+                    norm(a.number) === norm(body.number)
+                )
+
+                if (matchingAddr) {
+                    targetAddressId = matchingAddr.id
+                } else {
+                    const newAddr = await prisma.address.create({
+                        data: {
+                            client_id: client.id,
+                            street: body.street,
+                            number: String(body.number || 'S/N'),
+                            neighborhood: body.neighborhood,
+                            city: body.city || 'Cidade',
+                            state: body.state || 'SP',
+                            zipcode: body.zipcode ? String(body.zipcode) : undefined,
+                            complement: body.complement || undefined,
+                            is_main: false
+                        }
+                    })
+                    targetAddressId = newAddr.id
+                }
             }
         }
 
@@ -156,9 +191,8 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             const existingByUuid = await prisma.pedido.findFirst({
                 where: { uuid: body.uuid },
                 include: { itens: true }
-            });
+            })
             if (existingByUuid) {
-                console.log('[PDV Sync] Pedido existente por UUID reaproveitado:', existingByUuid.uuid);
                 return reply.status(200).send({
                     order: {
                         id: existingByUuid.uuid,
@@ -166,29 +200,23 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                         total_amount: existingByUuid.valor_final,
                         status: existingByUuid.status_delivery
                     }
-                });
+                })
             }
         }
 
-        // Trava Anti-Duplicidade (Idempotência): Se já existir um pedido recente do mesmo cliente nos últimos 3 minutos com o mesmo valor, reaproveita o existente
-        const recentDuplicateWindow = new Date(Date.now() - 3 * 60 * 1000);
+        // Trava Anti-Duplicidade (Idempotência)
+        const recentDuplicateWindow = new Date(Date.now() - 2 * 60 * 1000)
         const existingRecentOrder = await prisma.pedido.findFirst({
             where: {
                 cliente_id: client.id,
-                origem: 'Delivery',
                 valor_final: body.total_amount,
                 data_abertura: { gte: recentDuplicateWindow }
             },
-            include: {
-                itens: true
-            },
-            orderBy: {
-                data_abertura: 'desc'
-            }
-        });
+            include: { itens: true },
+            orderBy: { data_abertura: 'desc' }
+        })
 
         if (existingRecentOrder) {
-            console.log('[Anti-Duplicidade] Pedido duplicado interceptado para o cliente:', client.id, 'Retornando pedido existente:', existingRecentOrder.uuid);
             return reply.status(200).send({
                 order: {
                     id: existingRecentOrder.uuid,
@@ -196,46 +224,47 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                     total_amount: existingRecentOrder.valor_final,
                     status: existingRecentOrder.status_delivery
                 }
-            });
+            })
         }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
         const countToday = await prisma.pedido.count({
             where: {
                 data_abertura: { gte: today }
             }
-        });
-        const displayId = countToday + 1;
+        })
+        const displayId = countToday + 1
 
-        const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name;
+        const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name
         
+        const obsPrefix = isTakeout ? '[Retirada no Balcão]' : 'Entrega (Delivery)'
         const fullObservations = [
+            obsPrefix,
             'Pagamento: ' + infoPagamento,
-            'Taxa: R$ ' + body.delivery_fee.toFixed(2),
+            isTakeout ? 'Frete: R$ 0.00 (Retirada)' : 'Taxa: R$ ' + resolvedDeliveryFee.toFixed(2),
             body.reference ? 'Ref: ' + body.reference : null,
             body.notes ? 'Obs: ' + body.notes : null
-        ].filter(Boolean).join(' | ');
+        ].filter(Boolean).join(' | ')
 
-        const subtotal = Math.max(0, body.total_amount - body.delivery_fee);
+        const subtotal = Math.max(0, body.total_amount - resolvedDeliveryFee)
 
-        // Busca a última sessão de caixa aberta para vincular automaticamente todo pedido novo
         const activeCashier = await prisma.cashierSession.findFirst({
             where: { status: 'OPEN' },
             orderBy: { opened_at: 'desc' }
-        });
+        })
 
         const pedido = await prisma.pedido.create({
             data: {
                 uuid: body.uuid || undefined,
                 display_id: body.display_id || displayId,
                 numero_diario: body.display_id || displayId,
-                origem: body.origin || 'Delivery',
+                origem: isTakeout ? 'Balcão' : (body.origin || 'Delivery'),
                 caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,
                 subtotal: subtotal,
-                valor_frete: body.delivery_fee,
+                valor_frete: resolvedDeliveryFee,
                 valor_final: body.total_amount,
                 valor_troco: body.change_for || 0,
                 status: body.status || 'Aberto',
@@ -244,7 +273,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 sincronizado_web: true,
                 itens: {
                     create: body.items.map(item => {
-                        const itemNotes = item.notes ? item.notes.trim() : null;
+                        const itemNotes = item.notes ? item.notes.trim() : null
                         return {
                             produto_id: (item.product_id && item.product_id.length > 10) ? item.product_id : undefined,
                             quantidade: item.quantity,
@@ -259,19 +288,21 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             include: {
                 itens: true
             }
-        });
+        })
 
-        // Notifica via Server-Sent Events (SSE)
+        // Notifica via SSE
         try {
-            const queryTenant = (request.query as { tenant?: string })?.tenant;
-            const headerTenant = request.headers['x-tenant-domain'] as string;
-            const originHost = request.headers.origin ? request.headers.origin.replace(/^https?:\/\//, '').split(':')[0] : '';
-            const host = queryTenant || headerTenant || originHost || (request.headers.host || '').split(':')[0] || request.hostname;
+            const queryTenant = (request.query as { tenant?: string })?.tenant
+            const headerTenant = request.headers['x-tenant-domain'] as string
+            const originHost = request.headers.origin ? request.headers.origin.replace(/^https?:\/\//, '').split(':')[0] : ''
+            const host = queryTenant || headerTenant || originHost || (request.headers.host || '').split(':')[0] || request.hostname
             
-            const targetAddress = client.addresses?.find(a => a.id === targetAddressId) || client.addresses?.[0];
-            const addressStr = targetAddress
-                ? `${targetAddress.street}, ${targetAddress.number} - ${targetAddress.neighborhood}`
-                : `${body.street}, ${body.number} - ${body.neighborhood}`;
+            const targetAddress = client.addresses?.find(a => a.id === targetAddressId)
+            const addressStr = isTakeout 
+                ? 'Retirada no Balcão (Sem Entrega)'
+                : (targetAddress 
+                    ? `${targetAddress.street}, ${targetAddress.number} - ${targetAddress.neighborhood}`
+                    : `${body.street}, ${body.number} - ${body.neighborhood}`)
 
             const fullOrderDto = {
                 id: pedido.uuid,
@@ -279,8 +310,9 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 display_id: pedido.display_id,
                 client_name: client.name,
                 client_phone: client.phone,
+                is_takeout: isTakeout,
                 address: addressStr,
-                neighborhood: targetAddress?.neighborhood || body.neighborhood,
+                neighborhood: isTakeout ? 'Balcão' : (targetAddress?.neighborhood || body.neighborhood),
                 city: targetAddress?.city || body.city,
                 zipcode: targetAddress?.zipcode || body.zipcode,
                 total_amount: pedido.valor_final,
@@ -296,12 +328,12 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                     observation: i.observacao,
                     complements: i.complementos_json ? JSON.parse(i.complementos_json) : []
                 }))
-            };
+            }
 
-            sseManager.notifyTenant(host, 'new_order', fullOrderDto);
-            sseManager.broadcast('new_order', fullOrderDto, host);
+            sseManager.notifyTenant(host, 'new_order', fullOrderDto)
+            sseManager.broadcast('new_order', fullOrderDto, host)
         } catch (sseErr) {
-            console.error('Erro ao emitir evento SSE de novo pedido:', sseErr);
+            console.error('Erro ao emitir evento SSE de novo pedido:', sseErr)
         }
 
         return reply.status(201).send({
@@ -311,13 +343,12 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 total_amount: pedido.valor_final,
                 status: pedido.status_delivery
             }
-        });
+        })
     } catch (error: any) {
-        console.error('Erro ao criar pedido online:', error);
+        console.error('Erro ao criar pedido online:', error)
         return reply.status(500).send({
             message: 'Erro interno ao processar o pedido online.',
             error: error.message
-        });
+        })
     }
 }
-

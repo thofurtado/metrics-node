@@ -10,14 +10,23 @@ export async function getClientByPhone(request: FastifyRequest, reply: FastifyRe
     })
 
     const { phone } = getClientParamsSchema.parse(request.params)
-    const cleanPhone = phone.replace(/\D/g, '')
+    const rawDigits = phone.replace(/\D/g, '')
+    let cleanPhone = rawDigits
+    if ((cleanPhone.length === 12 || cleanPhone.length === 13) && cleanPhone.startsWith('55')) {
+        cleanPhone = cleanPhone.substring(2)
+    }
+
+    const phoneVariants = [cleanPhone, phone]
+    if (cleanPhone.length === 11 && cleanPhone[2] === '9') {
+        phoneVariants.push(cleanPhone.slice(0, 2) + cleanPhone.slice(3))
+        phoneVariants.push(cleanPhone.slice(0, 10))
+    } else if (cleanPhone.length === 10) {
+        phoneVariants.push(cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2))
+    }
 
     const client = await prisma.client.findFirst({
         where: {
-            OR: [
-                { phone: cleanPhone },
-                { phone: phone }
-            ]
+            phone: { in: Array.from(new Set(phoneVariants)) }
         },
         include: {
             addresses: {
@@ -33,5 +42,11 @@ export async function getClientByPhone(request: FastifyRequest, reply: FastifyRe
         return reply.status(404).send({ message: 'Client not found.' })
     }
 
-    return reply.status(200).send({ client })
+    // Filtra endereços fantasmas de retirada
+    const cleanAddresses = (client.addresses || []).filter(a => 
+        !a.street?.toLowerCase().includes('retirada') &&
+        !a.neighborhood?.toLowerCase().includes('balcão')
+    )
+
+    return reply.status(200).send({ client: { ...client, addresses: cleanAddresses } })
 }
