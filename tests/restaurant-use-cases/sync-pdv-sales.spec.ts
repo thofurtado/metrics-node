@@ -49,15 +49,21 @@ class InMemoryPdvSyncService {
 
             this.sales.set(sale.Uuid, sale)
 
-            // Lançar Pagamentos no Caixa
+            // Lancar Pagamentos no Caixa
             if (sale.Payments) {
+                let payIndex = 0
                 for (const pay of sale.Payments) {
+                    payIndex++
+                    const payIdent = sale.Payments.length === 1
+                        ? `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`
+                        : `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)} [${payIndex}/${sale.Payments.length}] (${pay.Method})`
+
                     this.cashierEntries.push({
                         cashier_session_id: this.activeSessionId,
                         origin: sale.Origin || 'PDV',
                         payment_method: pay.Method,
                         amount: pay.Amount,
-                        identification: `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`
+                        identification: payIdent
                     })
                 }
             }
@@ -292,5 +298,35 @@ describe('PDV Reverse Sales Sync & Automatic CMV Deductions', () => {
         expect(service.products.get('prod-coca-lata')!.stock).toBe(98.0)
         // Cashier entries permanece 1 (NÃO duplicou)
         expect(service.cashierEntries).toHaveLength(1)
+    })
+    it('deve sincronizar venda com múltiplos pagamentos criando todas as entradas de caixa sem descartar nenhuma', () => {
+        const payload = [
+            {
+                Uuid: 'multi-pay-uuid-9999',
+                Origin: 'MESA 05',
+                TotalAmount: 100.00,
+                Status: 'COMPLETED',
+                Payments: [
+                    { Method: 'Dinheiro', Amount: 40.00 },
+                    { Method: 'Cartão de Crédito', Amount: 60.00, PosMachineName: 'Stone 01' }
+                ],
+                Items: [
+                    { Uuid: 'item-pizza-1', ProductId: 'prod-pizza-calabresa', Quantity: 1, UnitPrice: 60.00 },
+                    { Uuid: 'item-pizza-2', ProductId: 'prod-pizza-calabresa', Quantity: 1, UnitPrice: 40.00 }
+                ]
+            }
+        ]
+
+        service.processSalesSync(payload)
+
+        // Deve conter as duas entradas de caixa
+        const multiEntries = service.cashierEntries.filter(e => e.identification.includes('multi-pa'))
+        expect(multiEntries).toHaveLength(2)
+        expect(multiEntries[0].payment_method).toBe('Dinheiro')
+        expect(multiEntries[0].amount).toBe(40.00)
+        expect(multiEntries[0].identification).toContain('[1/2]')
+        expect(multiEntries[1].payment_method).toBe('Cartão de Crédito')
+        expect(multiEntries[1].amount).toBe(60.00)
+        expect(multiEntries[1].identification).toContain('[2/2]')
     })
 })

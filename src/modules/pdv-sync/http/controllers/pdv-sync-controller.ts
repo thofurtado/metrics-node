@@ -83,27 +83,34 @@ export async function getClientsSync(request: FastifyRequest, reply: FastifyRepl
         include: {
             addresses: {
                 where: { is_main: true }
+            },
+            clientTabs: {
+                where: { is_paid: false }
             }
         }
     })
 
-    const formatted = clients.map(c => ({
-        Uuid: c.id,
-        Name: c.name,
-        Identification: c.identification, // CpfCnpj no C#
-        Email: c.email,
-        Phone: c.phone, // Telefone no C#
-        CreatedAt: c.created_at,
-        Address: c.addresses.length > 0 ? {
-            Street: c.addresses[0].street,
-            Number: c.addresses[0].number,
-            Neighborhood: c.addresses[0].neighborhood,
-            City: c.addresses[0].city,
-            State: c.addresses[0].state,
-            Zipcode: c.addresses[0].zipcode,
-            Complement: c.addresses[0].complement
-        } : null
-    }))
+    const formatted = clients.map(c => {
+        const saldoDevedor = c.clientTabs ? c.clientTabs.reduce((acc, tab) => acc + (tab.amount || 0), 0) : 0
+        return {
+            Uuid: c.id,
+            Name: c.name,
+            Identification: c.identification, // CpfCnpj no C#
+            Email: c.email,
+            Phone: c.phone, // Telefone no C#
+            CreatedAt: c.created_at,
+            SaldoDevedor: saldoDevedor,
+            Address: c.addresses.length > 0 ? {
+                Street: c.addresses[0].street,
+                Number: c.addresses[0].number,
+                Neighborhood: c.addresses[0].neighborhood,
+                City: c.addresses[0].city,
+                State: c.addresses[0].state,
+                Zipcode: c.addresses[0].zipcode,
+                Complement: c.addresses[0].complement
+            } : null
+        }
+    })
 
     return reply.status(200).send(formatted)
 }
@@ -520,5 +527,64 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         updated,
         unchanged,
         message: `Sincronização de produtos realizada com sucesso! (${created} criados, ${updated} atualizados, ${unchanged} inalterados).`
+    })
+}
+export async function postCancellationsSync(request: FastifyRequest, reply: FastifyReply) {
+    const cancellationsSchema = z.array(z.object({
+        Uuid: z.string().uuid(),
+        PedidoUuid: z.string().uuid().optional().nullable(),
+        PedidoItemUuid: z.string().uuid().optional().nullable(),
+        ProdutoUuid: z.string().optional().nullable(),
+        ProdutoNome: z.string(),
+        Quantidade: z.number(),
+        ValorUnitario: z.number(),
+        ValorTotal: z.number(),
+        Origem: z.string().default('MESA'),
+        OrigemIdentificador: z.string().optional().nullable(),
+        OrigemUuid: z.string().uuid().optional().nullable(),
+        TipoCancelamento: z.string().default('ITEM_AVULSO'),
+        Motivo: z.string(),
+        UsuarioId: z.string().optional().nullable(),
+        UsuarioNome: z.string().optional().nullable(),
+        DataCancelamento: z.string().optional()
+    }))
+
+    const cancellations = cancellationsSchema.parse(request.body)
+
+    for (const canc of cancellations) {
+        if (canc.PedidoUuid && (canc.TipoCancelamento === 'VENDA_COMPLETA' || canc.TipoCancelamento === 'DELIVERY_CANCELADO')) {
+            const existingSale = await prisma.sale.findUnique({
+                where: { id: canc.PedidoUuid }
+            })
+            if (existingSale) {
+                await prisma.sale.update({
+                    where: { id: canc.PedidoUuid },
+                    data: { status: 'CANCELLED' }
+                })
+                await prisma.cashierEntry.deleteMany({
+                    where: {
+                        identification: { contains: canc.PedidoUuid.slice(0, 8) }
+                    }
+                })
+            }
+
+            const existingPedido = await prisma.pedido.findFirst({
+                where: { uuid: canc.PedidoUuid }
+            })
+            if (existingPedido) {
+                await prisma.pedido.update({
+                    where: { id: existingPedido.id },
+                    data: {
+                        status: 'Cancelado',
+                        motivo_cancelamento: canc.Motivo
+                    }
+                })
+            }
+        }
+    }
+
+    return reply.status(201).send({
+        message: ${cancellations.length} cancelamentos sincronizados com sucesso.,
+        count: cancellations.length
     })
 }

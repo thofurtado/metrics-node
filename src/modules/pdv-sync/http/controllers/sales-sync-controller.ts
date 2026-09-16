@@ -8,13 +8,23 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         CashierSessionId: z.string().uuid().optional().nullable(),
         Origin: z.string().optional().default('PDV'),
         TotalAmount: z.number().min(0),
+        Subtotal: z.number().optional().default(0),
         Discount: z.number().optional().default(0),
+        ValorCouvert: z.number().optional().default(0),
+        ValorServico: z.number().optional().default(0),
+        ValorFrete: z.number().optional().default(0),
+        ClienteUuid: z.string().uuid().optional().nullable(),
         Status: z.string().default('COMPLETED'),
         CreatedAt: z.string().optional(),
         Payments: z.array(z.object({
+            PaymentMethodUuid: z.string().uuid().optional().nullable(),
             Method: z.string(),
             Amount: z.number().min(0),
             PosMachineName: z.string().optional().nullable(),
+            ClienteId: z.string().uuid().optional().nullable(),
+            ColaboradorId: z.string().uuid().optional().nullable(),
+            NomeTitular: z.string().optional().nullable(),
+            Parcelas: z.number().optional().default(1),
         })).optional().default([]),
         Items: z.array(z.object({
             Uuid: z.string().uuid(),
@@ -97,16 +107,25 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     })
                 }
             } else if (targetSessionId && sale.Payments && sale.Payments.length > 0) {
+                let payIndex = 0
                 for (const pay of sale.Payments) {
                     if (pay.Amount <= 0) continue
+                    payIndex++
 
-                    // Evita duplicar entry se a venda já tiver sido sincronizada antes
+                    // Identificador único para múltiplos pagamentos
+                    const payIdent = sale.Payments.length === 1
+                        ? ${sale.Origin || 'PDV'} - Pedido #
+                        : ${sale.Origin || 'PDV'} - Pedido # [/] ()
+
                     const existingEntry = await tx.cashierEntry.findFirst({
                         where: {
                             cashier_session_id: targetSessionId,
-                            identification: { contains: sale.Uuid.slice(0, 8) }
+                            identification: payIdent
                         }
                     })
+
+                    const targetClientId = pay.ClienteId || sale.ClienteUuid || null
+                    const targetEmployeeId = pay.ColaboradorId || null
 
                     if (!existingEntry) {
                         await tx.cashierEntry.create({
@@ -116,16 +135,71 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                 payment_method: pay.Method,
                                 amount: pay.Amount,
                                 type: 'SALE',
-                                identification: `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`,
+                                identification: payIdent,
                                 source: 'PDV',
+                                client_id: targetClientId,
+                                employee_id: targetEmployeeId,
                                 created_at: saleCreatedAt
                             }
                         })
                     }
+
+                    // Venda a Prazo: cria conta a receber (ClientTab)
+                    const normMethod = (pay.Method || '').toLowerCase()
+                    const isTerm = normMethod.includes('prazo') || normMethod.includes('correntista') || normMethod.includes('fiado')
+                    if (isTerm && targetClientId) {
+                        const clientExists = await tx.client.findUnique({ where: { id: targetClientId } })
+                        if (clientExists) {
+                            const existingTab = await tx.clientTab.findFirst({
+                                where: {
+                                    client_id: targetClientId,
+                                    description: { contains: sale.Uuid.slice(0, 8) }
+                                }
+                            })
+                            if (!existingTab) {
+                                await tx.clientTab.create({
+                                    data: {
+                                        client_id: targetClientId,
+                                        cashier_session_id: targetSessionId || null,
+                                        amount: pay.Amount,
+                                        description: Venda a Prazo - Pedido # (),
+                                        is_paid: false,
+                                        created_at: saleCreatedAt
+                                    }
+                                })
+                            }
+                        }
+                    }
+
+                    // Venda para Funcionário: cria lançamento em folha / vale (PayrollEntry)
+                    const isEmployee = normMethod.includes('funcionario') || normMethod.includes('funcionário') || Boolean(targetEmployeeId)
+                    if (isEmployee && targetEmployeeId) {
+                        const employeeExists = await tx.employee.findUnique({ where: { id: targetEmployeeId } })
+                        if (employeeExists) {
+                            const existingVale = await tx.payrollEntry.findFirst({
+                                where: {
+                                    employee_id: targetEmployeeId,
+                                    description: { contains: sale.Uuid.slice(0, 8) }
+                                }
+                            })
+                            if (!existingVale) {
+                                await tx.payrollEntry.create({
+                                    data: {
+                                        employee_id: targetEmployeeId,
+                                        type: 'VALE',
+                                        amount: pay.Amount,
+                                        referenceDate: saleCreatedAt,
+                                        description: Consumo PDV - Pedido # (),
+                                        status: 'PENDING'
+                                    }
+                                })
+                            }
+                        }
+                    }
                 }
             }
 
-            // 4. Processar Itens da Venda e Motor de Baixa de Insumos da Ficha Técnica
+                        // 4. Processar Itens da Venda e Motor de Baixa de Insumos da Ficha Técnica
             for (const item of sale.Items) {
                 const existingItem = await tx.saleItem.findUnique({
                     where: { id: item.Uuid }

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import { getProductsSync, postProductsBulkSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync } from './pdv-sync-controller'
+import { getProductsSync, postProductsBulkSync, getUsersSync, postStocksSync, getSyncStatus, getClientsSync, postClientsSync, getPrintDepartmentsSync, getPaymentsSync, getPaymentIdentifiersSync, getPaymentConditionsSync, getPOSMachinesSync, getSystemConfigSync, postCancellationsSync } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync } from './cashier-sync-controller'
@@ -24,7 +24,9 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/sync/clients', getClientsSync)
     app.post('/api/pdv/sync/stocks', postStocksSync)
     app.post('/api/pdv/sync/clients', postClientsSync)
-    app.post('/api/pdv/sync/sales', postSalesSync)
+        app.post('/api/pdv/sync/sales', postSalesSync)
+    app.post('/api/pdv/sync/cancellations', postCancellationsSync)
+    app.post('/api/pdv/cancellations', postCancellationsSync)
     app.post('/api/pdv/sync/tables', postTablesSync)
     app.post('/api/pdv/tables', postTablesSync)
     app.get('/api/pdv/sync/tables', getTablesTelemetry)
