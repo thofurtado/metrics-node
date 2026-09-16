@@ -18,6 +18,16 @@ export async function postTablesSync(request: FastifyRequest, reply: FastifyRepl
         quantidade_itens: z.number().default(0),
         tempo_minutos: z.number().default(0),
         aberta_em: z.string().optional(),
+        itens: z.array(z.object({
+            id: z.string().optional(),
+            produto_id: z.string().optional().nullable(),
+            produto_nome: z.string(),
+            quantidade: z.number().default(1),
+            valor_unitario: z.number().default(0),
+            valor_total: z.number().default(0),
+            complementos_json: z.string().optional().nullable(),
+            observacao: z.string().optional().nullable(),
+        })).optional().default([])
     }))
 
     const tables = tableSchema.parse(request.body)
@@ -31,6 +41,58 @@ export async function postTablesSync(request: FastifyRequest, reply: FastifyRepl
         faturamento_em_aberto: tables.reduce((acc, t) => acc + (t.total_acumulado || 0), 0),
         tables
     })
+
+    // Persistência resiliente de snapshot em banco de dados
+    try {
+        for (const t of tables) {
+            if (t.status !== 'Livre') {
+                const activeT = await (prisma as any).activeTable.upsert({
+                    where: { identifier: t.identificador },
+                    update: {
+                        type: t.tipo,
+                        status: t.status,
+                        people_count: t.quantidade_pessoas,
+                        total_amount: t.total_acumulado,
+                        opened_at: t.aberta_em ? new Date(t.aberta_em) : new Date()
+                    },
+                    create: {
+                        identifier: t.identificador,
+                        type: t.tipo,
+                        status: t.status,
+                        people_count: t.quantidade_pessoas,
+                        total_amount: t.total_acumulado,
+                        opened_at: t.aberta_em ? new Date(t.aberta_em) : new Date()
+                    }
+                })
+
+                if (t.itens && t.itens.length > 0) {
+                    await (prisma as any).activeTableItem.deleteMany({
+                        where: { active_table_id: activeT.id }
+                    })
+                    for (const it of t.itens) {
+                        await (prisma as any).activeTableItem.create({
+                            data: {
+                                active_table_id: activeT.id,
+                                product_id: it.produto_id || null,
+                                product_name: it.produto_nome,
+                                quantity: it.quantidade,
+                                unit_price: it.valor_unitario,
+                                total_price: it.valor_total,
+                                complements_json: it.complementos_json,
+                                observation: it.observacao
+                            }
+                        })
+                    }
+                }
+            } else {
+                await (prisma as any).activeTable.deleteMany({
+                    where: { identifier: t.identificador }
+                })
+            }
+        }
+    } catch (tableErr) {
+        console.error('[Sync] Falha ao persistir snapshot de mesas ativas:', tableErr)
+    }
 
     return reply.status(200).send({
         message: 'Telemetria de mesas sincronizada com sucesso',

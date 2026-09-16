@@ -254,24 +254,30 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
 export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply) {
     try {
         const maxUser = await prisma.user.aggregate({
-            _max: {
-                updated_at: true
-            }
+            _max: { updated_at: true }
         })
 
         const maxProduct = await prisma.product.aggregate({
-            _max: {
-                updated_at: true
-            }
+            _max: { updated_at: true }
         })
 
-        // Retorna a data correspondente ou a data da época (epoch) caso as tabelas estejam vazias
+        const maxClient = await prisma.client.aggregate({
+            _max: { updated_at: true }
+        })
+
+        const totalProducts = await prisma.product.count({
+            where: { active: true }
+        })
+
         const lastUserModified = maxUser._max.updated_at || new Date(0)
         const lastProductModified = maxProduct._max.updated_at || new Date(0)
+        const lastClientModified = maxClient._max.updated_at || new Date(0)
 
         return reply.status(200).send({
             lastUserModified: lastUserModified.toISOString(),
-            lastProductModified: lastProductModified.toISOString()
+            lastProductModified: lastProductModified.toISOString(),
+            lastClientModified: lastClientModified.toISOString(),
+            totalProducts
         })
     } catch (error: any) {
         console.error('[Sync] Erro ao obter status de sincronização:', error)
@@ -280,6 +286,30 @@ export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply
             details: error.message
         })
     }
+}
+
+export async function getEmployeesSync(request: FastifyRequest, reply: FastifyReply) {
+    const employees = await prisma.employee.findMany({
+        select: {
+            id: true,
+            name: true,
+            role: true,
+            pin: true,
+            allow_term_sales: true,
+            term_credit_limit: true
+        }
+    })
+
+    const formatted = employees.map(e => ({
+        Uuid: e.id,
+        Name: e.name,
+        Role: e.role,
+        Pin: e.pin,
+        PermiteVendaPrazo: e.allow_term_sales,
+        LimiteCredito: Number(e.term_credit_limit || 0)
+    }))
+
+    return reply.status(200).send(formatted)
 }
 
 export async function getPrintDepartmentsSync(request: FastifyRequest, reply: FastifyReply) {
@@ -552,6 +582,38 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
     const cancellations = cancellationsSchema.parse(request.body)
 
     for (const canc of cancellations) {
+        // Grava na tabela de auditoria CancellationAudit
+        try {
+            await (prisma as any).cancellationAudit.upsert({
+                where: { id: canc.Uuid },
+                update: {
+                    reason: canc.Motivo,
+                    cancellation_type: canc.TipoCancelamento
+                },
+                create: {
+                    id: canc.Uuid,
+                    sale_id: canc.PedidoUuid || null,
+                    order_id: canc.PedidoUuid || null,
+                    item_id: canc.PedidoItemUuid || null,
+                    product_id: canc.ProdutoUuid || null,
+                    product_name: canc.ProdutoNome,
+                    quantity: canc.Quantidade,
+                    unit_price: canc.ValorUnitario,
+                    total_amount: canc.ValorTotal,
+                    origin: canc.Origem || 'MESA',
+                    origin_identifier: canc.OrigemIdentificador || null,
+                    origin_uuid: canc.OrigemUuid || null,
+                    cancellation_type: canc.TipoCancelamento || 'ITEM_AVULSO',
+                    reason: canc.Motivo,
+                    user_id: canc.UsuarioId || null,
+                    user_name: canc.UsuarioNome || null,
+                    cancelled_at: canc.DataCancelamento ? new Date(canc.DataCancelamento) : new Date()
+                }
+            })
+        } catch (auditErr) {
+            console.error('[Sync] Falha ao persistir auditoria de cancelamento:', auditErr)
+        }
+
         if (canc.PedidoUuid && (canc.TipoCancelamento === 'VENDA_COMPLETA' || canc.TipoCancelamento === 'DELIVERY_CANCELADO')) {
             const existingSale = await prisma.sale.findUnique({
                 where: { id: canc.PedidoUuid }
@@ -584,7 +646,7 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
     }
 
     return reply.status(201).send({
-        message: ${cancellations.length} cancelamentos sincronizados com sucesso.,
+        message: `${cancellations.length} cancelamentos sincronizados com sucesso.`,
         count: cancellations.length
     })
 }

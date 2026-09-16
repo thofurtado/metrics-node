@@ -23,6 +23,11 @@ const employeeBodySchema = z.object({
     points: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     transportAllowance: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     hasCestaBasica: z.boolean().default(false),
+    allow_term_sales: z.boolean().optional().default(false),
+    term_credit_limit: z.preprocess((val) => {
+        if (val === '' || val === null || val === undefined) return 0
+        return Number(val)
+    }, z.number().min(0).optional().default(0)),
 }).superRefine((data, ctx) => {
     // 1. Validation: Salary/Hourly Rate required if NOT Daily
     if (data.registrationType !== 'DAILY') {
@@ -81,6 +86,8 @@ export async function createEmployee(request: FastifyRequest, reply: FastifyRepl
             points: Number(data.points),
             transportAllowance: Number(data.transportAllowance),
             hasCestaBasica: data.hasCestaBasica,
+            allow_term_sales: Boolean(data.allow_term_sales),
+            term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
         }
     })
 
@@ -129,6 +136,8 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
             points: Number(data.points),
             transportAllowance: Number(data.transportAllowance),
             hasCestaBasica: data.hasCestaBasica,
+            allow_term_sales: Boolean(data.allow_term_sales),
+            term_credit_limit: data.term_credit_limit ? Number(data.term_credit_limit) : 0,
         }
     })
 

@@ -114,8 +114,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
                     // Identificador único para múltiplos pagamentos
                     const payIdent = sale.Payments.length === 1
-                        ? ${sale.Origin || 'PDV'} - Pedido #
-                        : ${sale.Origin || 'PDV'} - Pedido # [/] ()
+                        ? `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`
+                        : `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)} [${payIndex}/${sale.Payments.length}] (${pay.Method})`
 
                     const existingEntry = await tx.cashierEntry.findFirst({
                         where: {
@@ -162,7 +162,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                         client_id: targetClientId,
                                         cashier_session_id: targetSessionId || null,
                                         amount: pay.Amount,
-                                        description: Venda a Prazo - Pedido # (),
+                                        description: `Venda a Prazo - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Cliente'})`,
                                         is_paid: false,
                                         created_at: saleCreatedAt
                                     }
@@ -189,7 +189,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                         type: 'VALE',
                                         amount: pay.Amount,
                                         referenceDate: saleCreatedAt,
-                                        description: Consumo PDV - Pedido # (),
+                                        description: `Consumo PDV - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Colaborador'})`,
                                         status: 'PENDING'
                                     }
                                 })
@@ -310,16 +310,29 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                             }
                         }
 
-                        // CASO C: Baixa de Insumos dos Adicionais Vinculados (Complements)
+                        // CASO C: Baixa de Insumos dos Adicionais Vinculados (Complements com ficha técnica e quantidade)
                         if (item.Complements && item.Complements.length > 0) {
                             for (const compOpt of item.Complements) {
-                                if (compOpt.LinkedSupplyId) {
+                                let targetSupplyId = compOpt.LinkedSupplyId
+                                let targetQuantity = 1.0
+
+                                if (compOpt.OptionId) {
+                                    const dbOpt = await tx.complementOption.findUnique({
+                                        where: { id: compOpt.OptionId }
+                                    })
+                                    if (dbOpt && dbOpt.linked_supply_id) {
+                                        targetSupplyId = dbOpt.linked_supply_id
+                                        targetQuantity = (dbOpt as any).supply_quantity || 1.0
+                                    }
+                                }
+
+                                if (targetSupplyId) {
                                     const supply = await tx.supply.findUnique({
-                                        where: { id: compOpt.LinkedSupplyId }
+                                        where: { id: targetSupplyId }
                                     })
 
                                     if (supply) {
-                                        const deduction = 1.0 * item.Quantity
+                                        const deduction = targetQuantity * item.Quantity
 
                                         await tx.stock.create({
                                             data: {

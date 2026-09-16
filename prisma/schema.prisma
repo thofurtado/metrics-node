@@ -484,6 +484,8 @@ model Employee {
   overtimeValue      Decimal                 @default(0)
   transportAllowance Decimal                 @default(0)
   photo_url          String?
+  allow_term_sales   Boolean                 @default(false)
+  term_credit_limit  Decimal?                @default(0)
   pointSnapshots     EmployeePointSnapshot[]
   user               User?                   @relation(fields: [user_id], references: [id])
   payrollEntries     PayrollEntry[]
@@ -929,6 +931,7 @@ model ComplementOption {
   price             Float           @default(0)
   linked_product_id String?
   linked_supply_id  String?
+  supply_quantity   Float?          @default(1.0)
   active            Boolean         @default(true)
   created_at        DateTime        @default(now())
   updated_at        DateTime        @default(now()) @updatedAt
@@ -1042,4 +1045,63 @@ model PedidoItem {
   pedido              Pedido       @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
 
   @@map("pedido_itens")
+}
+
+
+model CancellationAudit {
+  id                String    @id @default(uuid())
+  sale_id           String?
+  order_id          String?
+  item_id           String?
+  product_id        String?
+  product_name      String
+  quantity          Float     @default(1.0)
+  unit_price        Decimal   @default(0)
+  total_amount      Decimal   @default(0)
+  origin            String    // MESA, BALCAO, DELIVERY, VENDA_FISCAL
+  origin_identifier String?   // Ex: Mesa 07, Comanda 12, Pedido #104
+  origin_uuid       String?
+  cancellation_type String    // ITEM_AVULSO, MESA_COMPLETA, VENDA_TOTAL
+  reason            String
+  user_id           String?
+  user_name         String?
+  stock_restored    Boolean   @default(false)
+  cancelled_at      DateTime  @default(now())
+  created_at        DateTime  @default(now())
+
+  @@map("cancellation_audits")
+}
+
+model ActiveTable {
+  id                String            @id @default(uuid())
+  identifier        String            @unique // Ex: "Mesa 01", "Comanda 14"
+  type              String            @default("MESA") // MESA, COMANDA
+  status            String            @default("Ocupada") // Ocupada, Ociosa, PedindoConta, Fechada
+  people_count      Int               @default(1)
+  total_amount      Decimal           @default(0)
+  waiter_id         String?
+  waiter_name       String?
+  opened_at         DateTime          @default(now())
+  closed_at         DateTime?
+  updated_at        DateTime          @default(now()) @updatedAt
+  items             ActiveTableItem[]
+
+  @@map("active_tables")
+}
+
+model ActiveTableItem {
+  id                String      @id @default(uuid())
+  active_table_id   String
+  active_table      ActiveTable @relation(fields: [active_table_id], references: [id], onDelete: Cascade)
+  product_id        String?
+  product_name      String
+  quantity          Float       @default(1.0)
+  unit_price        Decimal     @default(0)
+  total_price       Decimal     @default(0)
+  complements_json  String?
+  observation       String?
+  waiter_name       String?
+  created_at        DateTime    @default(now())
+
+  @@map("active_table_items")
 }
