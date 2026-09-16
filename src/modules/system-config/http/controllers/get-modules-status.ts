@@ -19,6 +19,7 @@ export async function getModulesStatus(request: FastifyRequest, reply: FastifyRe
         cashier: config.cashier_module,
         cashier_default_origin: (config as any).cashier_default_origin || 'Mesa',
         hr_module: config.hr_module,
+        stock_control: (config as any).stock_control_module ?? false,
         cestaBasicaValue: Number(config.cestaBasicaValue || 0),
         financial_management_profile: config.financial_management_profile,
         dashboard_cards: (config as any).dashboard_cards 

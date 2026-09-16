@@ -10,6 +10,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         cashier: z.boolean().optional(),
         cashier_default_origin: z.enum(['Mesa', 'Balcão', 'Delivery']).optional(),
         hr_module: z.boolean().optional(),
+        stock_control: z.boolean().optional(),
         cestaBasicaValue: z.coerce.number().nullable().optional(),
         financial_management_profile: z.enum(['ANALYTICAL', 'OPERATIONAL']).optional(),
         dashboard_cards: z.any().optional()
@@ -22,6 +23,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         cashier,
         cashier_default_origin,
         hr_module,
+        stock_control,
         cestaBasicaValue, 
         financial_management_profile,
         dashboard_cards 
@@ -45,6 +47,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 // @ts-ignore
                 cashier_default_origin: cashier_default_origin ?? (existingConfig as any).cashier_default_origin ?? 'Mesa',
                 hr_module: hr_module ?? existingConfig.hr_module,
+                stock_control_module: stock_control ?? (existingConfig as any).stock_control_module ?? false,
                 cestaBasicaValue: (cestaBasicaValue !== undefined && cestaBasicaValue !== null) ? cestaBasicaValue : existingConfig.cestaBasicaValue,
                 financial_management_profile: financial_management_profile ?? existingConfig.financial_management_profile,
                 // @ts-ignore
@@ -61,6 +64,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
                 // @ts-ignore
                 cashier_default_origin: cashier_default_origin ?? 'Mesa',
                 hr_module: hr_module ?? true,
+                stock_control_module: stock_control ?? false,
                 cestaBasicaValue: cestaBasicaValue ?? 0,
                 financial_management_profile: financial_management_profile ?? 'ANALYTICAL',
                 // @ts-ignore
@@ -76,6 +80,7 @@ export async function updateModulesStatus(request: FastifyRequest, reply: Fastif
         cashier: config.cashier_module,
         cashier_default_origin: (config as any).cashier_default_origin || 'Mesa',
         hr_module: config.hr_module,
+        stock_control: (config as any).stock_control_module ?? false,
         cestaBasicaValue: Number(config.cestaBasicaValue || 0),
         financial_management_profile: config.financial_management_profile
     })

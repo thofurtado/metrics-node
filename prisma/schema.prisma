@@ -162,6 +162,8 @@ model Product {
   stocks           Stock[]
   treatmentItems   TreatmentItem[]
   saleItems        SaleItem[]
+  supplierMappings SupplierProductMapping[]
+  inventoryItems   InventoryItem[]
   printDepartments ProductPrintDepartment[]
   complementGroups ProductComplementGroup[]
 
@@ -210,6 +212,8 @@ model Supply {
   stocks         Stock[]
   treatmentItems TreatmentItem[]
   saleItems      SaleItem[]
+  supplierMappings SupplierProductMapping[]
+  inventoryItems   InventoryItem[]
 
   @@map("supplies")
 }
@@ -239,6 +243,9 @@ model Stock {
   product       Product?        @relation(fields: [product_id], references: [id])
   supply        Supply?         @relation(fields: [supply_id], references: [id])
   TreatmentItem TreatmentItem[]
+  batch_number    String?
+  expiration_date DateTime?
+  supplier_cnpj   String?
 
   @@map("stocks")
 }
@@ -462,6 +469,10 @@ model SystemConfig {
   cestaBasicaValue             Decimal  @default(0)
   financial_management_profile String   @default("ANALYTICAL")
   dashboard_cards              Json?    @default("{}")
+  stock_control_module         Boolean  @default(false)
+  gemini_api_key               String?
+  gemini_model                 String   @default("gemini-1.5-flash")
+  auto_nfe_mapping             Boolean  @default(true)
 
   @@map("system_configs")
 }
@@ -1104,4 +1115,57 @@ model ActiveTableItem {
   created_at        DateTime    @default(now())
 
   @@map("active_table_items")
+}
+
+
+model SupplierProductMapping {
+  id                    String   @id @default(uuid())
+  supplier_cnpj         String
+  supplier_name         String?
+  supplier_product_code String
+  supplier_product_name String
+  supplier_unit         String
+  supply_id             String?
+  product_id            String?
+  conversion_factor     Float    @default(1.0)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @default(now()) @updatedAt
+
+  supply  Supply?  @relation(fields: [supply_id], references: [id])
+  product Product? @relation(fields: [product_id], references: [id])
+
+  @@unique([supplier_cnpj, supplier_product_code])
+  @@map("supplier_product_mappings")
+}
+
+model InventorySession {
+  id          String          @id @default(uuid())
+  user_id     String?
+  status      String          @default("OPEN")
+  sector      String?         @default("GERAL")
+  blind_count Boolean         @default(true)
+  notes       String?
+  opened_at   DateTime        @default(now())
+  closed_at   DateTime?
+  items       InventoryItem[]
+
+  @@map("inventory_sessions")
+}
+
+model InventoryItem {
+  id                    String           @id @default(uuid())
+  inventory_session_id  String
+  supply_id             String?
+  product_id            String?
+  system_quantity       Float            @default(0)
+  counted_quantity      Float            @default(0)
+  unit_cost             Float            @default(0)
+  difference_quantity   Float            @default(0)
+  total_difference_cost Float            @default(0)
+
+  session InventorySession @relation(fields: [inventory_session_id], references: [id], onDelete: Cascade)
+  supply  Supply?          @relation(fields: [supply_id], references: [id])
+  product Product?         @relation(fields: [product_id], references: [id])
+
+  @@map("inventory_items")
 }

@@ -1,3 +1,4 @@
+import { stockAdvancedRoutes } from '@/modules/stock/http/controllers/routes'
 import fastifyWebsocket from '@fastify/websocket'
 ﻿import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
@@ -175,6 +176,7 @@ app.register(pdvSyncRoutes)
 app.register(printDepartmentsRoutes)
 app.register(cashierRoutes)
 app.register(deliveryRoutes)
+app.register(stockAdvancedRoutes)
 // Quiosque (Electron / metrics-ponto) - autenticado via x-api-key
 app.register(async (instance) => {
     instance.addHook('preHandler', async (request, reply) => {
