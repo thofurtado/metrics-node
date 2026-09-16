@@ -259,7 +259,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 uuid: body.uuid || undefined,
                 display_id: body.display_id || displayId,
                 numero_diario: body.display_id || displayId,
-                origem: isTakeout ? 'Balcão' : (body.origin || 'Delivery'),
+                origem: isTakeout ? 'Balcao' : (body.origin || 'Delivery'),
                 caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,
