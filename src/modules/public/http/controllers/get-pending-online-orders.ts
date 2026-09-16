@@ -13,8 +13,10 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
         const { cashier_session_id } = (request.query as { cashier_session_id?: string }) || {};
 
+        const allowedOrigins = ['Delivery', 'Balcão', 'Balcao', 'iFood', '99Food'];
+
         let whereClause: any = {
-            origem: 'Delivery'
+            origem: { in: allowedOrigins }
         };
 
         if (cashier_session_id) {
@@ -25,11 +27,11 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             if (targetSession) {
                 const sessionOpenTime = targetSession.opened_at ? new Date(targetSession.opened_at) : today;
                 whereClause = {
-                    origem: 'Delivery',
+                    origem: { in: allowedOrigins },
                     OR: [
                         // 1. Pedidos expressamente vinculados a esta sessão de caixa
                         { caixa_id: cashier_session_id },
-                        // 2. Pedidos em andamento (pendentes, produção, rota)
+                        // 2. Pedidos em andamento (pendentes, produção, conferencia, rota)
                         {
                             status: { notIn: ['Fechado', 'Cancelado'] },
                             status_delivery: { notIn: ['Entregue', 'Cancelado', 'Finalizado'] }
@@ -42,11 +44,14 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     ]
                 };
             } else {
-                whereClause.caixa_id = cashier_session_id;
+                whereClause = {
+                    origem: { in: allowedOrigins },
+                    caixa_id: cashier_session_id
+                };
             }
         } else {
             whereClause = {
-                origem: 'Delivery',
+                origem: { in: allowedOrigins },
                 OR: [
                     // 1. Pedidos ainda em andamento / pendentes (independente da data de abertura)
                     {
@@ -91,10 +96,11 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const productMap = new Map(products.map(pr => [pr.id, pr.name]));
 
         const mappedStatus = (statusDelivery: string | null, status: string) => {
-            if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
-            if (statusDelivery === 'SaiuEntrega') return 'dispatched';
-            if (statusDelivery === 'EmPreparo' || statusDelivery === 'Conferencia') return 'in_preparation';
-            if (status === 'Cancelado') return 'cancelled';
+            if (status === 'Fechado' || statusDelivery === 'Entregue' || statusDelivery === 'Finalizado') return 'delivered';
+            if (statusDelivery === 'SaiuEntrega' || statusDelivery === 'EmRota') return 'dispatched';
+            if (statusDelivery === 'Conferencia') return 'conferencia';
+            if (statusDelivery === 'EmPreparo' || statusDelivery === 'EmProducao') return 'in_preparation';
+            if (status === 'Cancelado' || statusDelivery === 'Cancelado') return 'cancelled';
             return 'pending';
         };
 
@@ -121,22 +127,32 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             orders: pedidos.map(p => {
                 const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
                 
-                // Prioriza o endereço histórico salvo no pedido em endereco_entrega_id
-                const orderAddr = p.endereco_entrega_id 
+                const isTakeout = 
+                    p.origem === 'Balcão' || 
+                    p.origem === 'Balcao' || 
+                    (Boolean(p.observacao) && p.observacao!.toLowerCase().includes('retirada')) || 
+                    !p.endereco_entrega_id;
+
+                // Prioriza o endereço histórico salvo no pedido em endereco_entrega_id somente se NÃO for retirada
+                const orderAddr = (!isTakeout && p.endereco_entrega_id) 
                     ? addressMap.get(p.endereco_entrega_id) 
-                    : (client?.addresses?.[0] || null);
+                    : null;
 
                 const cityStr = orderAddr?.city ? `, ${orderAddr.city}` : '';
-                const address = orderAddr
-                    ? `${orderAddr.street}, ${orderAddr.number} - ${orderAddr.neighborhood}${cityStr}`
-                    : '';
-                const neighborhood = orderAddr?.neighborhood || '';
-                const city = orderAddr?.city || '';
-                const zipcode = orderAddr?.zipcode || '';
+                const address = isTakeout 
+                    ? 'Retirada no Balcão' 
+                    : (orderAddr 
+                        ? `${orderAddr.street}, ${orderAddr.number} - ${orderAddr.neighborhood}${cityStr}`
+                        : '');
+                const neighborhood = isTakeout ? 'Balcão' : (orderAddr?.neighborhood || '');
+                const city = isTakeout ? '' : (orderAddr?.city || '');
+                const zipcode = isTakeout ? '' : (orderAddr?.zipcode || '');
 
                 return {
                     id: p.uuid,
                     display_id: p.display_id,
+                    origem: p.origem,
+                    is_takeout: isTakeout,
                     status: mappedStatus(p.status_delivery, p.status),
                     status_delivery: p.status_delivery || 'Pendente',
                     raw_status: p.status || 'Aberto',
