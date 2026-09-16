@@ -426,19 +426,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                     // C. Confirma o evento de cancelamento no endpoint de status exigido
           // pela homologação. requestCancellation() é reservado ao fluxo do PDV.
 
-          try {
-            const ok = await ifoodApi.acknowledgeCancellationRequested(token, event.orderId, cancelReason, cancelCode)
-            if (ok) {
-              cancellationConfirmed = true
-              console.log(`[iFood Polling] Evento CANCELLATION_REQUESTED confirmado para ${event.orderId} com código ${cancelCode}. Sucesso: ${ok}`)
-            } else {
-              console.log(`[iFood Polling] Aviso: confirmação de cancelamento para ${event.orderId} retornou status negativo ou já cancelado. Prosseguindo com cancelamento local e ACK.`)
-            }
-          } catch (accErr: any) {
-            console.log(`[iFood Polling] Aviso acceptCancellation (${event.orderId}):`, accErr.message)
-          }
-
-          // O evento de cancelamento recebido do iFood é processado e confirmado (ACK) dentro do SLA.
+          // C. O evento de cancelamento recebido do iFood é processado e confirmado (ACK) dentro do SLA.
+          // Não chamamos endpoints externos de solicitação aqui, pois o cancelamento já foi iniciado externamente.
           eventProcessed = true
 
           // D. Atualiza pedido no banco de dados local para Cancelado
@@ -512,12 +501,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             'Cancelamento confirmado pelo restaurante'
           )
 
-          // 1. Confirmação imediata nos endpoints oficiais (exigência explícita do Toqan Firefly: POST /order/v1.0/orders/{orderId}/statuses/cancellation)
-          try {
-            await ifoodApi.confirmCancellationStatus(token, event.orderId, cancelReason, cancelCode)
-          } catch (cErr: any) {
-            console.log(`[iFood Polling] Aviso confirmCancellationStatus (${event.orderId}):`, cErr.message)
-          }
+          // Em evento CAN (pedido cancelado definitivamente no iFood), NÃO chamamos requestCancellation
+          // para evitar erro 400 'already cancelled'. Apenas atualizamos localmente e enviamos ACK.
 
           // 2. Atualiza pedido no banco de dados local caso exista
           const merchantId = String(event.merchantId || '4107174')

@@ -314,12 +314,15 @@ export class IFoodApiService {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
         },
       })
 
       if (response.ok) {
         const data = await response.json()
-        return Array.isArray(data) ? data : []
+        if (Array.isArray(data)) return data
+        if (data && Array.isArray(data.reasons)) return data.reasons
+        return []
       }
 
       const err = await response.text()
@@ -358,74 +361,67 @@ export class IFoodApiService {
   }
 
   /**
-   * Confirma cancelamento recebido no fluxo de eventos do iFood.
-   * Usa o mesmo endpoint exigido para o cancelamento iniciado no PDV.
+   * Fluxo oficial completo de cancelamento do iFood iniciado pelo PDV/Integrador.
+   * 1. Consulta obrigatória de motivos disponíveis: GET /order/v1.0/orders/{orderId}/cancellationReasons
+   * 2. Seleciona o motivo válido retornado pelo iFood (ou fallback '501')
+   * 3. Dispara a solicitação de cancelamento: POST /order/v1.0/orders/{orderId}/requestCancellation
    */
-  async acceptCancellation(
+  async cancelOrderFromPdv(
     accessToken: string,
     orderId: string,
-    reason: string = 'Cancelamento aceito pelo restaurante',
-    cancellationCode: string = '501'
+    preferredReason: string = '501',
+    preferredCode: string = '501'
   ): Promise<boolean> {
     try {
-      const payload = {
-        reason: String(reason || 'Cancelamento aceito pelo restaurante'),
-        cancellationCode: String(cancellationCode || '501'),
-      }
+      console.log(`[iFood Cancel PDV] Iniciando fluxo oficial de cancelamento para ${orderId}...`)
 
-      // Contrato oficial de solicitação/aceite de cancelamento:
-      // POST /order/v1.0/orders/{id}/requestCancellation
-      const endpoint = `${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`
-      const response = await this.auditedFetch(endpoint, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(6000),
-      })
+      // Passo 1: Consulta prévia obrigatória aos motivos de cancelamento
+      const reasons = await this.getCancellationReasons(accessToken, orderId)
+      console.log(`[iFood Cancel PDV] Motivos obtidos para ${orderId}: ${reasons.length} motivos encontrados`)
 
-      if (!response.ok) {
-        const responseText = await response.text()
-        const alreadyCancelled = response.status === 400 && /already cancelled/i.test(responseText)
-        if (alreadyCancelled) {
-          console.log(`[iFood Accept Cancellation] Pedido ${orderId} já estava cancelado; tratando como sucesso idempotente.`)
+      let selectedCode = preferredCode || preferredReason || '501'
+      if (reasons && reasons.length > 0) {
+        const match = reasons.find(
+          (r: any) => String(r.code || r.cancellationCode || r.id) === String(selectedCode)
+        )
+        if (match) {
+          selectedCode = String(match.code || match.cancellationCode || match.id)
         } else {
-          console.log(`[iFood Cancellation Info] POST ${response.status}: ${responseText}`)
+          const first = reasons[0]
+          selectedCode = String(first.code || first.cancellationCode || first.id || '501')
         }
-        return alreadyCancelled
       }
 
-      console.log(`[iFood Accept Cancellation Success] (${response.status}) via POST /order/${orderId}/requestCancellation`)
-      return true
-    } catch (e: any) {
-      console.error('[iFood Accept Cancellation General Error]:', e.message)
+      console.log(`[iFood Cancel PDV] Código de cancelamento selecionado: ${selectedCode}`)
+
+      // Passo 2: Executa requestCancellation com o código validado
+      const ok = await this.requestCancellation(accessToken, orderId, selectedCode, selectedCode)
+      return ok
+    } catch (err: any) {
+      console.error(`[iFood Cancel PDV Exception] Erro no cancelamento de ${orderId}:`, err.message)
       return false
     }
   }
 
   /**
-   * Confirma o evento CANCELLATION_REQUESTED no fluxo de homologação do iFood / Toqan.
-   * Contrato oficial exigido pelo Toqan/iFood:
-   * PATCH /order/{orderId}/statuses/cancellationRequested
+   * Confirma cancelamento recebido no fluxo do iFood ou PDV.
    */
-  /**
-   * Confirma o cancelamento de um pedido via endpoints oficiais exigidos pelo Toqan Firefly e iFood.
-   * Cobre:
-   * 1. POST /order/v1.0/orders/{orderId}/statuses/cancellation (Exigência expressa do relatório Toqan)
-   * 2. POST /order/{orderId}/statuses/cancellation
-   * 3. PATCH /order/{orderId}/statuses/cancellationRequested (Exigência do Toqan para eventos)
-   * 4. PATCH /order/v1.0/orders/{orderId}/statuses/cancellationRequested
-   * 5. POST /order/v1.0/orders/{orderId}/requestCancellation (Endpoint de produção do iFood)
-   */
+  async acceptCancellation(
+    accessToken: string,
+    orderId: string,
+    reason: string = '501',
+    cancellationCode: string = '501'
+  ): Promise<boolean> {
+    return this.cancelOrderFromPdv(accessToken, orderId, reason, cancellationCode)
+  }
+
   async acknowledgeCancellationRequested(
     accessToken: string,
     orderId: string,
     reason: string = '501',
     cancellationCode: string = '501'
   ): Promise<boolean> {
-    return this.confirmCancellationStatus(accessToken, orderId, reason, cancellationCode)
+    return this.cancelOrderFromPdv(accessToken, orderId, reason, cancellationCode)
   }
 
   async confirmCancellationStatus(
@@ -434,86 +430,20 @@ export class IFoodApiService {
     reason: string = '501',
     cancellationCode: string = '501'
   ): Promise<boolean> {
-    const code = /^\d+$/.test(String(cancellationCode))
-      ? String(cancellationCode)
-      : (/^\d+$/.test(String(reason)) ? String(reason) : '501')
-
-    const payload = {
-      reason: code,
-      cancellationCode: code,
-      code: code,
-      reasonCode: code,
-      details: 'Cancelamento confirmado pelo restaurante',
-    }
-
-    const candidateEndpoints = [
-      // 1. Endpoint EXPRESSAMENTE solicitado pelo Toqan no cenário "Pedido Cancelado" (Firefly):
-      { url: `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellation`, method: 'POST' as const },
-      { url: `${this.baseUrl}/order/${orderId}/statuses/cancellation`, method: 'POST' as const },
-      // 2. Endpoints solicitados para eventos de solicitação de cancelamento:
-      { url: `${this.baseUrl}/order/${orderId}/statuses/cancellationRequested`, method: 'PATCH' as const },
-      { url: `${this.baseUrl}/order/v1.0/orders/${orderId}/statuses/cancellationRequested`, method: 'PATCH' as const },
-      // 3. Endpoint oficial da API de produção do iFood:
-      { url: `${this.baseUrl}/order/v1.0/orders/${orderId}/requestCancellation`, method: 'POST' as const },
-    ]
-
-    for (const ep of candidateEndpoints) {
-      try {
-        console.log(`[iFood Cancellation] Executando ${ep.method} ${ep.url}...`)
-        const response = await this.auditedFetch(ep.url, {
-          method: ep.method,
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(5000),
-        })
-
-        const responseText = await response.text()
-
-        // 200, 202, 204 = Sucesso
-        if (response.ok) {
-          console.log(`[iFood Cancellation Success] (${response.status}) via ${ep.method} ${ep.url}`)
-          return true
-        }
-
-        // Idempotência: pedido já cancelado é considerado sucesso
-        const isAlreadyDone =
-          (response.status === 400 || response.status === 409) &&
-          /already|cancel|ja cancelado|in progress|finalizado/i.test(responseText)
-
-        if (isAlreadyDone) {
-          console.log(`[iFood Cancellation Idempotent] (${response.status}) Pedido ${orderId} já cancelado: ${responseText}`)
-          return true
-        }
-
-        // Se deu 404, continua para o próximo candidato
-        if (response.status === 404) {
-          continue
-        }
-
-        console.log(`[iFood Cancellation Info] ${ep.method} ${ep.url} retornou ${response.status}: ${responseText}`)
-      } catch (error: any) {
-        console.error(`[iFood Cancellation Error] ${ep.method} ${ep.url}:`, error?.message || error)
-      }
-    }
-
-    return false
+    return this.cancelOrderFromPdv(accessToken, orderId, reason, cancellationCode)
   }
 
   async testCancellationPatch(
     accessToken: string,
     orderId: string,
-    reason: string = 'Cancelamento aceito pelo restaurante',
+    reason: string = '501',
     cancellationCode: string = '501'
   ) {
-    console.log(`[iFood Diagnostic] Executando confirmação PATCH de cancelamento para ${orderId}...`)
-    const ok = await this.acknowledgeCancellationRequested(accessToken, orderId, reason, cancellationCode)
+    console.log(`[iFood Diagnostic] Executando fluxo oficial de cancelamento para ${orderId}...`)
+    const ok = await this.cancelOrderFromPdv(accessToken, orderId, reason, cancellationCode)
     return {
-      method: 'PATCH',
-      endpoint: `/order/${orderId}/statuses/cancellationRequested`,
+      method: 'POST',
+      endpoint: `/order/v1.0/orders/${orderId}/requestCancellation`,
       ok,
       orderId,
       reason,
@@ -521,16 +451,17 @@ export class IFoodApiService {
     }
   }
 
+  /**
+   * Endpoint oficial do iFood para solicitação de cancelamento.
+   * Exige payload limpo: { reason: string, cancellationCode: string }
+   */
   async requestCancellation(
     accessToken: string,
     orderId: string,
     reason: string = '501',
     cancellationCode: string = '501'
   ): Promise<boolean> {
-
     try {
-      // O contrato oficial do iFood no endpoint /requestCancellation exige que o campo
-      // "reason" seja o CÓDIGO numérico do cancelamento (ex: "501", "503"), e não texto livre.
       const code = /^\d+$/.test(String(cancellationCode))
         ? String(cancellationCode)
         : (/^\d+$/.test(String(reason)) ? String(reason) : '501')
@@ -541,12 +472,13 @@ export class IFoodApiService {
       }
 
       const endpoint = `/order/v1.0/orders/${orderId}/requestCancellation`
-      console.log(`[iFood Cancel Order] Executando POST ${endpoint}`)
+      console.log(`[iFood Cancel Order] Executando POST ${endpoint} com payload:`, payload)
       const response = await this.auditedFetch(`${this.baseUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(6000),
@@ -554,13 +486,17 @@ export class IFoodApiService {
 
       if (!response.ok) {
         const responseText = await response.text()
-        const alreadyCancelled = response.status === 400 && /already cancelled/i.test(responseText)
-        if (alreadyCancelled) {
-          console.log(`[iFood Cancel Order] Pedido ${orderId} já estava cancelado; tratando como sucesso idempotente.`)
-        } else {
-          console.error(`[iFood Cancel Order Error] POST ${response.status}: ${responseText}`)
+        const isAlreadyCancelled =
+          (response.status === 400 || response.status === 409) &&
+          /already|cancel|ja cancelado|in progress|finalizado/i.test(responseText)
+
+        if (isAlreadyCancelled) {
+          console.log(`[iFood Cancel Order] Pedido ${orderId} já estava cancelado ou em cancelamento; tratando como sucesso idempotente.`)
+          return true
         }
-        return alreadyCancelled
+
+        console.error(`[iFood Cancel Order Error] POST ${response.status}: ${responseText}`)
+        return false
       }
 
       console.log(`[iFood Cancel Order Success] (${response.status}) via POST ${endpoint} para pedido ${orderId}`)
