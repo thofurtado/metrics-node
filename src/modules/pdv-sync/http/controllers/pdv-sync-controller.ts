@@ -289,27 +289,50 @@ export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply
 }
 
 export async function getEmployeesSync(request: FastifyRequest, reply: FastifyReply) {
-    const employees = await prisma.employee.findMany({
-        select: {
-            id: true,
-            name: true,
-            role: true,
-            pin: true,
-            allow_term_sales: true,
-            term_credit_limit: true
+    try {
+        const employees = await prisma.employee.findMany({
+            select: {
+                id: true,
+                name: true,
+                role: true,
+                pin: true,
+                allow_term_sales: true,
+                term_credit_limit: true
+            }
+        })
+
+        const formatted = employees.map(e => ({
+            Uuid: e.id,
+            Name: e.name,
+            Role: e.role,
+            Pin: e.pin,
+            PermiteVendaPrazo: e.allow_term_sales,
+            LimiteCredito: Number(e.term_credit_limit || 0)
+        }))
+
+        return reply.status(200).send(formatted)
+    } catch (err: any) {
+        if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+            const employees = await prisma.employee.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    pin: true
+                }
+            })
+            const formatted = employees.map(e => ({
+                Uuid: e.id,
+                Name: e.name,
+                Role: e.role,
+                Pin: e.pin,
+                PermiteVendaPrazo: false,
+                LimiteCredito: 0
+            }))
+            return reply.status(200).send(formatted)
         }
-    })
-
-    const formatted = employees.map(e => ({
-        Uuid: e.id,
-        Name: e.name,
-        Role: e.role,
-        Pin: e.pin,
-        PermiteVendaPrazo: e.allow_term_sales,
-        LimiteCredito: Number(e.term_credit_limit || 0)
-    }))
-
-    return reply.status(200).send(formatted)
+        throw err
+    }
 }
 
 export async function getPrintDepartmentsSync(request: FastifyRequest, reply: FastifyReply) {

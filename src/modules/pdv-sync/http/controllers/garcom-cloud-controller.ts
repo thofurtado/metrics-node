@@ -85,10 +85,15 @@ export async function getGarcomCardapio(request: FastifyRequest, reply: FastifyR
  * GET /api/garcom/mesas
  */
 export async function getGarcomMesas(request: FastifyRequest, reply: FastifyReply) {
-    const activeTables = await prisma.activeTable.findMany({
-        include: { items: true },
-        orderBy: { identifier: 'asc' }
-    })
+    let activeTables: any[] = []
+    try {
+        activeTables = await (prisma as any).activeTable.findMany({
+            include: { items: true },
+            orderBy: { identifier: 'asc' }
+        })
+    } catch (err) {
+        activeTables = []
+    }
 
     const totalMesasConfig = 20
     const mesasMap = new Map<string, any>()

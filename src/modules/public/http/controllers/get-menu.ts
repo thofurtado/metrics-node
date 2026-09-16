@@ -93,9 +93,19 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
             }),
             prisma.complementGroup.findMany({
                 where: { active: true },
-                include: {
+                select: {
+                    id: true,
+                    name: true,
+                    min_quantity: true,
+                    max_quantity: true,
+                    free_quantity: true,
                     options: {
                         where: { active: true },
+                        select: {
+                            id: true,
+                            name: true,
+                            price: true,
+                        },
                         orderBy: { name: 'asc' }
                     }
                 }

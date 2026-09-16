@@ -169,18 +169,64 @@ export async function listEmployees(request: FastifyRequest, reply: FastifyReply
         where.isRegistered = isRegistered
     }
 
-    // Run parallel queries
-    const [count, employees] = await Promise.all([
-        prisma.employee.count({ where }),
-        prisma.employee.findMany({
-            where,
-            take: limit,
-            skip,
-            orderBy: {
-                name: "asc",
-            },
-        })
-    ])
+    // Run parallel queries with fallback for legacy schemas
+    let count = 0
+    let employees: any[] = []
+
+    try {
+        const [c, emps] = await Promise.all([
+            prisma.employee.count({ where }),
+            prisma.employee.findMany({
+                where,
+                take: limit,
+                skip,
+                orderBy: {
+                    name: "asc",
+                },
+            })
+        ])
+        count = c
+        employees = emps
+    } catch (err: any) {
+        if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+            const [c, emps] = await Promise.all([
+                prisma.employee.count({ where }),
+                prisma.employee.findMany({
+                    where,
+                    take: limit,
+                    skip,
+                    select: {
+                        id: true,
+                        name: true,
+                        role: true,
+                        registrationType: true,
+                        isRegistered: true,
+                        admissionDate: true,
+                        pin: true,
+                        salary: true,
+                        dailyRate: true,
+                        points: true,
+                        transportAllowance: true,
+                        hasCestaBasica: true,
+                        photo_url: true,
+                        created_at: true,
+                        updated_at: true,
+                    },
+                    orderBy: {
+                        name: "asc",
+                    },
+                })
+            ])
+            count = c
+            employees = emps.map((e: any) => ({
+                ...e,
+                allow_term_sales: false,
+                term_credit_limit: 0,
+            }))
+        } else {
+            throw err
+        }
+    }
 
     // IMPORTANT: Returning object with data to match pagination standard
     return reply.status(200).send({

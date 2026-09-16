@@ -65,26 +65,67 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
 }
 
 export async function fetchComplementGroups(request: FastifyRequest, reply: FastifyReply) {
-  const groups = await prisma.complementGroup.findMany({
-    where: { active: true },
-    include: {
-      options: {
-        where: { active: true },
-        orderBy: { name: 'asc' },
-      },
-      products: {
-        select: {
-          product_id: true,
+  try {
+    const groups = await prisma.complementGroup.findMany({
+      where: { active: true },
+      include: {
+        options: {
+          where: { active: true },
+          orderBy: { name: 'asc' },
+        },
+        products: {
+          select: {
+            product_id: true,
+          },
+        },
+        _count: {
+          select: { products: true },
         },
       },
-      _count: {
-        select: { products: true },
-      },
-    },
-    orderBy: { name: 'asc' },
-  })
+      orderBy: { name: 'asc' },
+    })
 
-  return reply.status(200).send({ groups })
+    return reply.status(200).send({ groups })
+  } catch (err: any) {
+    // Fallback gracioso se a coluna supply_quantity ainda não existir no banco do tenant
+    if (err?.code === 'P2022' || err?.message?.includes('supply_quantity')) {
+      const groups = await prisma.complementGroup.findMany({
+        where: { active: true },
+        select: {
+          id: true,
+          name: true,
+          min_quantity: true,
+          max_quantity: true,
+          free_quantity: true,
+          active: true,
+          options: {
+            where: { active: true },
+            select: {
+              id: true,
+              group_id: true,
+              name: true,
+              price: true,
+              linked_product_id: true,
+              linked_supply_id: true,
+              active: true,
+            },
+            orderBy: { name: 'asc' },
+          },
+          products: {
+            select: {
+              product_id: true,
+            },
+          },
+          _count: {
+            select: { products: true },
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+      return reply.status(200).send({ groups })
+    }
+    throw err
+  }
 }
 
 export async function updateComplementGroup(request: FastifyRequest, reply: FastifyReply) {
