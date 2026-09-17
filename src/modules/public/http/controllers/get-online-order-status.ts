@@ -28,11 +28,21 @@ export async function getOnlineOrderStatus(request: FastifyRequest, reply: Fasti
             return reply.status(404).send({ message: 'Pedido não encontrado.' });
         }
 
+        const isTakeout = 
+            pedido.origem === 'Balcão' || 
+            pedido.origem === 'Balcao' || 
+            pedido.origem === 'BalcÃ£o' || 
+            pedido.origem === 'Retirada' || 
+            pedido.origem === 'Takeout' || 
+            (Boolean(pedido.observacao) && pedido.observacao!.toLowerCase().includes('retirada')) || 
+            !pedido.endereco_entrega_id;
+
         const mappedStatus = (statusDelivery: string | null, status: string) => {
-            if (status === 'Fechado' || statusDelivery === 'Entregue') return 'delivered';
-            if (statusDelivery === 'SaiuEntrega') return 'dispatched';
-            if (statusDelivery === 'EmPreparo') return 'in_preparation';
-            if (status === 'Cancelado') return 'cancelled';
+            if (status === 'Fechado' || statusDelivery === 'Entregue' || statusDelivery === 'Finalizado') return 'delivered';
+            if (statusDelivery === 'SaiuEntrega' || statusDelivery === 'EmRota') return 'dispatched';
+            if (statusDelivery === 'Conferencia') return 'conferencia';
+            if (statusDelivery === 'EmPreparo' || statusDelivery === 'EmProducao') return 'in_preparation';
+            if (status === 'Cancelado' || statusDelivery === 'Cancelado') return 'cancelled';
             return 'pending';
         };
 
@@ -40,6 +50,8 @@ export async function getOnlineOrderStatus(request: FastifyRequest, reply: Fasti
             id: pedido.uuid,
             display_id: pedido.display_id,
             status: mappedStatus(pedido.status_delivery, pedido.status),
+            status_delivery: pedido.status_delivery || 'Pendente',
+            is_takeout: isTakeout,
             created_at: pedido.data_abertura
         });
     } catch (error) {

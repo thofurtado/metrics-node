@@ -187,7 +187,9 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                             name: productMap.get(i.produto_id || '') || 'Item',
                             quantity: i.quantidade,
                             price: i.valor_unitario,
-                            observation: i.observacao,
+                            observation: i.observacao || '',
+                            observations: i.observacao || '',
+                            notes: i.observacao || '',
                             complements: complements
                         };
                     })
