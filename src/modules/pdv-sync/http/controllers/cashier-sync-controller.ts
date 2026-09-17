@@ -69,7 +69,7 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
     })
 
     const sequenceNumber = countToday + 1
-    const periodLabel = data.period || `Caixa ${String(sequenceNumber).padStart(2, '0')}`
+    const periodLabel = data.period || `Turno ${String(sequenceNumber).padStart(2, '0')}`
 
     const session = await prisma.cashierSession.upsert({
         where: { id: data.uuid },

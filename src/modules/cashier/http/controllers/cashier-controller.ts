@@ -34,7 +34,7 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
     })
 
     const sequenceNumber = countToday + 1
-    const periodLabel = `Caixa ${String(sequenceNumber).padStart(2, '0')}`
+    const periodLabel = `Turno ${String(sequenceNumber).padStart(2, '0')}`
 
     const session = await prisma.cashierSession.create({
         data: {
