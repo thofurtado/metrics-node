@@ -1,4 +1,4 @@
-import { stockAdvancedRoutes } from '@/modules/stock/http/controllers/routes'
+﻿import { stockAdvancedRoutes } from '@/modules/stock/http/controllers/routes'
 import fastifyWebsocket from '@fastify/websocket'
 import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'
@@ -66,8 +66,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url === '/public/db-status' ||
         request.url.startsWith('/public/db-sync') ||
         request.url === '/' ||
-        request.url.startsWith('/public/windy') || request.url.startsWith('/api/public/windy') || request.url.startsWith('/api/tenants') || request.url.startsWith('/api/admin/downloads/windy') ||
-        request.url.startsWith('/public/pdv') || request.url.startsWith('/api/public/pdv') || request.url.startsWith('/api/admin/downloads/pdv') ||
+        request.url.startsWith('/public/') || request.url.startsWith('/api/public/') || request.url.startsWith('/api/admin/downloads') || request.url.startsWith('/api/tenants') ||
         request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i)) || request.url.startsWith('/webhooks/') || request.url.startsWith('/api/webhooks/') || request.url.startsWith('/delivery/') || request.url.startsWith('/api/delivery/')
     ) {
         return;
