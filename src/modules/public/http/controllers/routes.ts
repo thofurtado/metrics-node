@@ -1,3 +1,4 @@
+import { getAppsCatalog, getAppLatestVersion, downloadApp, uploadAppRelease } from './unified-downloads'
 import { FastifyInstance } from 'fastify'
 import { getMenu } from './get-menu'
 import { getClientByPhone } from './get-client-by-phone'
@@ -36,7 +37,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.post('/public/db-sync-all', syncAllTenantsDb)
     app.get('/public/profile', getProfile)
 
-    // Pipeline do Cardápio Online & PDV
+    // Pipeline do CardÃ¡pio Online & PDV
     app.post('/public/orders', createOnlineOrder)
     app.post('/api/pdv/orders', createOnlineOrder)
     app.get('/public/orders/pending', getPendingOnlineOrders)
@@ -64,8 +65,8 @@ export async function publicRoutes(app: FastifyInstance) {
 
     app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
 
-    // Distribuição, Vinculação e Auto-Update do Windy
-    // Prontuário e Histórico Público de Equipamento
+    // DistribuiÃ§Ã£o, VinculaÃ§Ã£o e Auto-Update do Windy
+    // ProntuÃ¡rio e HistÃ³rico PÃºblico de Equipamento
     app.get('/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/windy/clients-summary', getClientsSummaryForWindy)
@@ -79,7 +80,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/downloads/Metrics_Windy_Setup.exe', downloadLatestWindy)
     app.post('/api/admin/downloads/windy', uploadWindyRelease)
 
-    // Distribuição e Auto-Update do Metrics PDV
+    // DistribuiÃ§Ã£o e Auto-Update do Metrics PDV
     app.get('/api/public/pdv/latest', getLatestPdvVersion)
     app.get('/public/pdv/latest', getLatestPdvVersion)
     app.get('/api/public/pdv/download', downloadLatestPdv)
@@ -88,5 +89,25 @@ export async function publicRoutes(app: FastifyInstance) {
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
-    })
+    
+    // Catálogo Geral e Releases Unificadas de Todos os Apps Oficiais
+    app.get('/api/public/apps-catalog', getAppsCatalog)
+    app.get('/public/apps-catalog', getAppsCatalog)
+
+    app.get('/api/public/:app/latest', getAppLatestVersion)
+    app.get('/public/:app/latest', getAppLatestVersion)
+
+    app.get('/api/public/:app/download', downloadApp)
+    app.get('/public/:app/download', downloadApp)
+
+    app.post('/api/admin/downloads/:app', uploadAppRelease)
+
+    // Aliases diretos de arquivos
+    app.get('/downloads/Metrics_Sync_Setup.exe', (req, rep) => downloadApp({ ...req, params: { app: 'sync' } } as any, rep))
+    app.get('/downloads/Instalador-MetricsSync.exe', (req, rep) => downloadApp({ ...req, params: { app: 'sync' } } as any, rep))
+    app.get('/downloads/Metrics_Ponto_Setup.exe', (req, rep) => downloadApp({ ...req, params: { app: 'ponto' } } as any, rep))
+    app.get('/downloads/Instalador-MetricsPonto.exe', (req, rep) => downloadApp({ ...req, params: { app: 'ponto' } } as any, rep))
+    app.get('/downloads/metrics-mobile.apk', (req, rep) => downloadApp({ ...req, params: { app: 'mobile' } } as any, rep))
+    app.get('/downloads/metrics-garcom.apk', (req, rep) => downloadApp({ ...req, params: { app: 'garcom' } } as any, rep))
+})
 }
