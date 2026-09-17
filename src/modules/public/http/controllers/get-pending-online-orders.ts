@@ -8,59 +8,57 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
     }
 
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // 1. HorÃ¡rio de corte oficial: fuso horÃ¡rio de BrasÃ­lia (UTC-3)
+        const now = new Date();
+        const spDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // 'YYYY-MM-DD'
+        const todayStart = new Date(spDateStr + 'T00:00:00.000-03:00');
 
         const { cashier_session_id } = (request.query as { cashier_session_id?: string }) || {};
 
-        const allowedOrigins = ['Delivery', 'Balcão', 'Balcao', 'iFood', '99Food'];
+        const allowedOrigins = ['Delivery', 'BalcÃ£o', 'Balcao', 'iFood', '99Food'];
 
-        let whereClause: any = {
-            origem: { in: allowedOrigins }
-        };
-
+        let targetSession = null;
         if (cashier_session_id) {
-            const targetSession = await prisma.cashierSession.findUnique({
+            targetSession = await prisma.cashierSession.findUnique({
                 where: { id: cashier_session_id }
             });
-
-            if (targetSession) {
-                const sessionOpenTime = targetSession.opened_at ? new Date(targetSession.opened_at) : today;
-                whereClause = {
-                    origem: { in: allowedOrigins },
-                    OR: [
-                        // 1. Pedidos expressamente vinculados a esta sessão de caixa
-                        { caixa_id: cashier_session_id },
-                        // 2. Pedidos em andamento (pendentes, produção, conferencia, rota)
-                        {
-                            status: { notIn: ['Fechado', 'Cancelado'] },
-                            status_delivery: { notIn: ['Entregue', 'Cancelado', 'Finalizado'] }
-                        },
-                        // 3. Se a sessão for ABERTA, inclui pedidos sem caixa criados a partir do momento em que este caixa abriu
-                        ...(targetSession.status === 'OPEN' ? [{
-                            caixa_id: null,
-                            data_abertura: { gte: sessionOpenTime }
-                        }] : [])
-                    ]
-                };
-            } else {
-                whereClause = {
-                    origem: { in: allowedOrigins },
-                    caixa_id: cashier_session_id
-                };
-            }
         } else {
+            // Se nÃ£o informou id, busca o caixa atualmente ABERTO para sincronizar o turno
+            targetSession = await prisma.cashierSession.findFirst({
+                where: { status: 'OPEN' },
+                orderBy: { opened_at: 'desc' }
+            });
+        }
+
+        let whereClause: any;
+
+        // Se for um caixa antigo jÃ¡ FECHADO:
+        if (targetSession && targetSession.status === 'CLOSED') {
             whereClause = {
                 origem: { in: allowedOrigins },
+                caixa_id: targetSession.id
+            };
+        } else {
+            // Caixa ATIVO ou monitor de pedidos de hoje:
+            // O corte temporal Ã© o momento de abertura do caixa ativo ou 00h de hoje no Brasil
+            // Para turnos noturnos da virada (ex: abriu Ã s 22h de ontem), tolera atÃ© 14h atrÃ¡s, nunca dias passados
+            const sessionOpenTime = targetSession?.opened_at ? new Date(targetSession.opened_at) : todayStart;
+            const maxLookback = new Date(todayStart.getTime() - 14 * 60 * 60 * 1000);
+            const cutoffTime = sessionOpenTime < todayStart
+                ? (sessionOpenTime > maxLookback ? sessionOpenTime : todayStart)
+                : todayStart;
+
+            whereClause = {
+                origem: { in: allowedOrigins },
+                data_abertura: { gte: cutoffTime },
                 OR: [
-                    // 1. Pedidos ainda em andamento / pendentes (independente da data de abertura)
+                    // 1. Pedidos vinculados expressamente a esta sessÃ£o de caixa (se houver)
+                    ...(targetSession ? [{ caixa_id: targetSession.id }] : []),
+                    // 2. Pedidos sem caixa vinculado criados hoje (Ã³rfÃ£os para o caixa ativo adotar)
+                    { caixa_id: null },
+                    // 3. Pedidos criados no turno/hoje nÃ£o cancelados
                     {
-                        status: { notIn: ['Fechado', 'Cancelado'] },
-                        status_delivery: { notIn: ['Entregue', 'Cancelado', 'Finalizado'] }
-                    },
-                    // 2. Pedidos de hoje
-                    {
-                        data_abertura: { gte: today }
+                        status: { notIn: ['Cancelado'] }
                     }
                 ]
             };
