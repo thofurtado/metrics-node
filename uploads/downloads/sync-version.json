@@ -1,0 +1,11 @@
+﻿{
+    "fileSizeBytes":  60774760,
+    "downloadUrl":  "https://api.metrics.dev.br/api/public/sync/download",
+    "id":  "metrics-sync",
+    "fileName":  "Metrics_Sync_Setup.exe",
+    "key":  "sync",
+    "version":  "1.3.2.5",
+    "name":  "Metrics Sync - Importação \u0026 Sincronização Legada",
+    "updatedAt":  "2026-09-17T13:03:15.9112703Z",
+    "formattedSize":  "58 MB"
+}
