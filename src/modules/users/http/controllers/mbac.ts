@@ -6,9 +6,11 @@ import { prisma } from '@/lib/prisma'
 // Deve estar sincronizado com o SYSTEM_CONFIG_TO_SLUG do frontend
 const SLUG_TO_SYSTEM_CONFIG: Record<string, string> = {
     items:    'merchandise_module',
+    stock:    'stock_control_module',
     finance:  'financial_module',
     service:  'treatments_module',
     hr:       'hr_module',
+    cashier:  'cashier_module',
     settings: null as any, // settings não tem restrição de instância
 }
 
