@@ -15,7 +15,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
         const { cashier_session_id } = (request.query as { cashier_session_id?: string }) || {};
 
-        const allowedOrigins = ['Delivery', 'BalcÃ£o', 'Balcao', 'iFood', '99Food'];
+        const allowedOrigins = ['Delivery', 'Balcão', 'Balcao', 'BalcÃ£o', 'Retirada', 'Takeout', 'iFood', '99Food', 'PDV'];
 
         let targetSession = null;
         if (cashier_session_id) {
@@ -32,16 +32,17 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
         let whereClause: any;
 
-        // Se for um caixa antigo jÃ¡ FECHADO:
+        // Se for um caixa antigo ja FECHADO:
         if (targetSession && targetSession.status === 'CLOSED') {
             whereClause = {
-                origem: { in: allowedOrigins },
+                OR: [
+                    { origem: { in: allowedOrigins } },
+                    { sincronizado_web: true }
+                ],
                 caixa_id: targetSession.id
             };
         } else {
             // Caixa ATIVO ou monitor de pedidos de hoje:
-            // O corte temporal Ã© o momento de abertura do caixa ativo ou 00h de hoje no Brasil
-            // Para turnos noturnos da virada (ex: abriu Ã s 22h de ontem), tolera atÃ© 14h atrÃ¡s, nunca dias passados
             const sessionOpenTime = targetSession?.opened_at ? new Date(targetSession.opened_at) : todayStart;
             const maxLookback = new Date(todayStart.getTime() - 14 * 60 * 60 * 1000);
             const cutoffTime = sessionOpenTime < todayStart
@@ -49,16 +50,20 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 : todayStart;
 
             whereClause = {
-                origem: { in: allowedOrigins },
                 data_abertura: { gte: cutoffTime },
+                status: { notIn: ['Cancelado'] },
                 OR: [
-                    // 1. Pedidos vinculados expressamente a esta sessÃ£o de caixa (se houver)
-                    ...(targetSession ? [{ caixa_id: targetSession.id }] : []),
-                    // 2. Pedidos sem caixa vinculado criados hoje (Ã³rfÃ£os para o caixa ativo adotar)
-                    { caixa_id: null },
-                    // 3. Pedidos criados no turno/hoje nÃ£o cancelados
+                    { origem: { in: allowedOrigins } },
+                    { sincronizado_web: true },
+                    { observacao: { contains: 'Retirada', mode: 'insensitive' } }
+                ],
+                AND: [
                     {
-                        status: { notIn: ['Cancelado'] }
+                        OR: [
+                            ...(targetSession ? [{ caixa_id: targetSession.id }] : []),
+                            { caixa_id: null },
+                            { sincronizado_web: true }
+                        ]
                     }
                 ]
             };
@@ -128,6 +133,9 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                 const isTakeout = 
                     p.origem === 'Balcão' || 
                     p.origem === 'Balcao' || 
+                    p.origem === 'BalcÃ£o' || 
+                    p.origem === 'Retirada' || 
+                    p.origem === 'Takeout' || 
                     (Boolean(p.observacao) && p.observacao!.toLowerCase().includes('retirada')) || 
                     !p.endereco_entrega_id;
 
