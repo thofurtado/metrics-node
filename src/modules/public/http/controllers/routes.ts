@@ -1,4 +1,4 @@
-import { getAppsCatalog, getAppLatestVersion, downloadApp, uploadAppRelease } from './unified-downloads'
+﻿import { getAppsCatalog, getAppLatestVersion, downloadApp, uploadAppRelease } from './unified-downloads'
 import { FastifyInstance } from 'fastify'
 import { getMenu } from './get-menu'
 import { getClientByPhone } from './get-client-by-phone'
@@ -89,6 +89,7 @@ export async function publicRoutes(app: FastifyInstance) {
 
     app.get('/public/health', async (_, reply) => {
         return reply.status(200).send({ status: 'ok' })
+    })
     
     // Catálogo Geral e Releases Unificadas de Todos os Apps Oficiais
     app.get('/api/public/apps-catalog', getAppsCatalog)
@@ -109,5 +110,4 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/downloads/Instalador-MetricsPonto.exe', (req, rep) => downloadApp({ ...req, params: { app: 'ponto' } } as any, rep))
     app.get('/downloads/metrics-mobile.apk', (req, rep) => downloadApp({ ...req, params: { app: 'mobile' } } as any, rep))
     app.get('/downloads/metrics-garcom.apk', (req, rep) => downloadApp({ ...req, params: { app: 'garcom' } } as any, rep))
-})
 }
