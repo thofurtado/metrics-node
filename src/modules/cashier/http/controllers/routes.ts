@@ -1,3 +1,4 @@
+import { deleteOnlineOrder } from './delete-online-order'
 import { FastifyInstance } from 'fastify'
 import { 
     openCashierSession, 
@@ -45,6 +46,7 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.get('/api/cashier/session/:id', getSessionDetails)
         protectedApp.put('/api/cashier/session/:id/balance', updateCashierSessionBalance)
         protectedApp.delete('/api/cashier/sessions/:id', deleteSession)
+        protectedApp.delete('/api/cashier/delivery-orders/:id', deleteOnlineOrder)
         
         protectedApp.post('/api/cashier/session/open', openCashierSession)
         protectedApp.get('/api/cashier/session/active', getActiveSession)
