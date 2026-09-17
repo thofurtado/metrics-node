@@ -24,11 +24,23 @@ export async function deliveryRoutes(app: FastifyInstance) {
 
   // Webhooks Oficiais iFood (homologacao Toqan e producao)
   app.post('/webhooks/ifood', webhookIfoodController)
+  app.get('/webhooks/ifood', async (req, reply) => reply.status(200).send({ status: 'active', service: 'ifood-webhook' }))
   app.post('/api/webhooks/ifood', webhookIfoodController)
+  app.get('/api/webhooks/ifood', async (req, reply) => reply.status(200).send({ status: 'active', service: 'ifood-webhook' }))
   app.post('/delivery/ifood/webhook', webhookIfoodController)
+  app.get('/delivery/ifood/webhook', async (req, reply) => reply.status(200).send({ status: 'active', service: 'ifood-webhook' }))
   app.post('/api/delivery/ifood/webhook', webhookIfoodController)
   app.post('/webhooks/cancellation', webhookIfoodController)
+  app.get('/webhooks/cancellation', async (req, reply) => reply.status(200).send({ status: 'active', service: 'ifood-cancellation' }))
   app.post('/api/webhooks/cancellation', webhookIfoodController)
+  app.post('/order/v1.0/events', webhookIfoodController)
+  app.post('/events', webhookIfoodController)
+  app.get('/events', async (req, reply) => reply.status(200).send({ status: 'active', service: 'ifood-events' }))
+  app.post('/api/events', webhookIfoodController)
+  app.post('/ifood/events', webhookIfoodController)
+  app.post('/api/ifood/events', webhookIfoodController)
+  app.post('/webhooks/events', webhookIfoodController)
+  app.post('/api/webhooks/events', webhookIfoodController)
 
   // Endpoints do iFood para autorização e status
   app.get('/delivery/ifood/usercode', ifoodUserCodeController)

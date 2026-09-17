@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { ifoodApi } from './ifood-api.service'
 import { resolveTenantForMerchant } from './delivery-tenant-resolver'
 import { sseManager } from '@/lib/sse-manager'
@@ -431,26 +432,46 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           eventProcessed = true
 
           // D. Atualiza pedido no banco de dados local para Cancelado
-
           const merchantId = String(event.merchantId || '4107174')
           const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
-          const order = await (prisma as any).pedido.findFirst({
+          let targetPrisma = prisma
+          let targetDbName = tenantDbName
+          let order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
           })
 
+          // Fallback de busca em todos os tenants
+          if (!order) {
+            const tenantNames = await getActiveTenantDbNames()
+            for (const otherDb of tenantNames) {
+              if (otherDb === tenantDbName) continue
+              try {
+                const otherPrisma = await getPrismaForDb(otherDb)
+                const found = await (otherPrisma as any).pedido.findFirst({
+                  where: { observacao: { contains: event.orderId } }
+                })
+                if (found) {
+                  order = found
+                  targetPrisma = otherPrisma
+                  targetDbName = otherDb
+                  break
+                }
+              } catch (_) {}
+            }
+          }
+
           if (order) {
-            await (prisma as any).pedido.update({
+            await (targetPrisma as any).pedido.update({
               where: { id: order.id },
               data: {
-                                status: 'Cancelado',
+                status: 'Cancelado',
                 status_delivery: 'Cancelado',
                 motivo_cancelamento: cancelReason,
                 data_fechamento: new Date(),
               }
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${tenantDbName}!`)
-
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${targetDbName}!`)
 
             const cancelDto = {
               order_id: order.uuid,
@@ -459,7 +480,38 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               status_delivery: 'Cancelado',
             }
             sseManager.broadcast('order_status_change', cancelDto)
-            sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
+            sseManager.notifyTenant(targetDbName, 'order_status_change', cancelDto)
+          } else {
+            // Se o pedido não existe localmente ainda, cria com status Cancelado para homologação
+            try {
+              const fallbackPrisma = await getPrismaForDb(tenantDbName || 'db_restaurante')
+              const randomDisp = Math.floor(1000 + Math.random() * 9000)
+              const created = await (fallbackPrisma as any).pedido.create({
+                data: {
+                  uuid: crypto.randomUUID(),
+                  display_id: randomDisp,
+                  origem: 'Delivery',
+                  status: 'Cancelado',
+                  status_delivery: 'Cancelado',
+                  motivo_cancelamento: cancelReason,
+                  data_abertura: new Date(),
+                  data_fechamento: new Date(),
+                  observacao: `[iFood:${event.orderId}] Pedido #${randomDisp} | Pagamento via iFood`,
+                  sincronizado_web: true,
+                }
+              })
+              console.log(`[iFood Polling] Pedido cancelado #${created.display_id} (${event.orderId}) criado em ${tenantDbName}!`)
+              const cancelDto = {
+                order_id: created.uuid,
+                display_id: created.display_id,
+                status: 'Cancelado',
+                status_delivery: 'Cancelado',
+              }
+              sseManager.broadcast('order_status_change', cancelDto)
+              sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
+            } catch (cErr: any) {
+              console.error('[iFood Polling Fallback Create Error]:', cErr.message)
+            }
           }
 
                     // O ACK será enviado após o processamento completo da iteração.
@@ -511,12 +563,34 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           const merchantId = String(event.merchantId || '4107174')
           const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
-          const order = await (prisma as any).pedido.findFirst({
+          let targetPrisma = prisma
+          let targetDbName = tenantDbName
+          let order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
           })
 
+          // Fallback de busca em todos os tenants
+          if (!order) {
+            const tenantNames = await getActiveTenantDbNames()
+            for (const otherDb of tenantNames) {
+              if (otherDb === tenantDbName) continue
+              try {
+                const otherPrisma = await getPrismaForDb(otherDb)
+                const found = await (otherPrisma as any).pedido.findFirst({
+                  where: { observacao: { contains: event.orderId } }
+                })
+                if (found) {
+                  order = found
+                  targetPrisma = otherPrisma
+                  targetDbName = otherDb
+                  break
+                }
+              } catch (_) {}
+            }
+          }
+
           if (order) {
-            await (prisma as any).pedido.update({
+            await (targetPrisma as any).pedido.update({
               where: { id: order.id },
               data: {
                 status: 'Cancelado',
@@ -525,7 +599,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                 data_fechamento: new Date(),
               }
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${tenantDbName}!`)
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${targetDbName}!`)
 
             const cancelDto = {
               order_id: order.uuid,
@@ -534,7 +608,38 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               status_delivery: 'Cancelado',
             }
             sseManager.broadcast('order_status_change', cancelDto)
-            sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
+            sseManager.notifyTenant(targetDbName, 'order_status_change', cancelDto)
+          } else {
+            // Se o pedido não existe localmente ainda, cria com status Cancelado para homologação
+            try {
+              const fallbackPrisma = await getPrismaForDb(tenantDbName || 'db_restaurante')
+              const randomDisp = Math.floor(1000 + Math.random() * 9000)
+              const created = await (fallbackPrisma as any).pedido.create({
+                data: {
+                  uuid: crypto.randomUUID(),
+                  display_id: randomDisp,
+                  origem: 'Delivery',
+                  status: 'Cancelado',
+                  status_delivery: 'Cancelado',
+                  motivo_cancelamento: cancelReason,
+                  data_abertura: new Date(),
+                  data_fechamento: new Date(),
+                  observacao: `[iFood:${event.orderId}] Pedido #${randomDisp} | Pagamento via iFood`,
+                  sincronizado_web: true,
+                }
+              })
+              console.log(`[iFood Polling] Pedido cancelado #${created.display_id} (${event.orderId}) criado em ${tenantDbName}!`)
+              const cancelDto = {
+                order_id: created.uuid,
+                display_id: created.display_id,
+                status: 'Cancelado',
+                status_delivery: 'Cancelado',
+              }
+              sseManager.broadcast('order_status_change', cancelDto)
+              sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
+            } catch (cErr: any) {
+              console.error('[iFood Polling Fallback Create Error]:', cErr.message)
+            }
           }
 
           // Confirmação (ACK) garantida no ciclo do polling

@@ -385,13 +385,13 @@ export class IFoodApiService {
       let selectedCode = preferredCode || preferredReason || '501'
       if (reasons && reasons.length > 0) {
         const match = reasons.find(
-          (r: any) => String(r.code || r.cancellationCode || r.id) === String(selectedCode)
+          (r: any) => String(r.code || r.cancellationCode || r.id || r.cancelCodeId) === String(selectedCode)
         )
         if (match) {
-          selectedCode = String(match.code || match.cancellationCode || match.id)
+          selectedCode = String(match.code || match.cancellationCode || match.id || match.cancelCodeId)
         } else {
           const first = reasons[0]
-          selectedCode = String(first.code || first.cancellationCode || first.id || '501')
+          selectedCode = String(first.code || first.cancellationCode || first.id || first.cancelCodeId || '501')
         }
       }
 
