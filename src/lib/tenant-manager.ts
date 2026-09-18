@@ -11,7 +11,8 @@ const pool = new Pool({
 const prismaClients = new Map<string, PrismaClient>();
 
 export async function getDbNameForDomain(domain: string): Promise<string | null> {
-  const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE $1 = ANY(string_to_array(replace(domain, \' \', \'\'), \',\')) AND status = $2', [domain, 'active']);
+  const cleanDomain = domain.split(',')[0].trim();
+  const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE $1 = ANY(string_to_array(replace(domain, \' \', \'\'), \',\')) AND status = $2', [cleanDomain, 'active']);
   if (result.rows.length === 0) {
     return null;
   }
@@ -19,13 +20,14 @@ export async function getDbNameForDomain(domain: string): Promise<string | null>
 }
 
 export async function getPrismaForDomain(domain: string): Promise<PrismaClient | null> {
+  const cleanDomain = domain.split(',')[0].trim();
   // If we already have a PrismaClient for this domain in cache, return it
-  if (prismaClients.has(domain)) {
-    return prismaClients.get(domain)!;
+  if (prismaClients.has(cleanDomain)) {
+    return prismaClients.get(cleanDomain)!;
   }
 
   // Find which database belongs to this domain
-  const dbName = await getDbNameForDomain(domain);
+  const dbName = await getDbNameForDomain(cleanDomain);
   if (!dbName) {
     return null; // Domain not recognized or suspended
   }
@@ -46,7 +48,7 @@ export async function getPrismaForDomain(domain: string): Promise<PrismaClient |
   });
 
   // Save to cache
-  prismaClients.set(domain, tenantPrisma);
+  prismaClients.set(cleanDomain, tenantPrisma);
 
   return tenantPrisma;
 }

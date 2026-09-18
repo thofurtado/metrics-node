@@ -302,7 +302,12 @@ export async function getTenantByCode(request: FastifyRequest, reply: FastifyRep
       return reply.status(404).send({ error: 'Empresa não encontrada' })
     }
 
-    return reply.status(200).send(res.rows[0])
+    const tenant = res.rows[0]
+    if (tenant.domain && typeof tenant.domain === 'string') {
+      tenant.domain = tenant.domain.split(',')[0].trim()
+    }
+
+    return reply.status(200).send(tenant)
   } catch (err: any) {
     if (pool) await pool.end().catch(() => {})
     console.error('[Windy] Erro ao consultar Tenant por código:', err)

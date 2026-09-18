@@ -103,6 +103,9 @@ app.addHook('onRequest', async (request, reply) => {
         } catch (e) {}
     }
 
+    // Se contiver múltiplos domínios separados por vírgula (ex: aliases cadastrados), pega o primeiro
+    domain = domain.split(',')[0].trim();
+
     // Remove porta se houver (ex: localhost:3333 -> localhost)
     domain = domain.split(':')[0];
 
