@@ -76,8 +76,13 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
                 if (matchedSector && matchedSector.fee !== undefined) {
                     resolvedDeliveryFee = Number(matchedSector.fee)
+                } else if (sectors.find((s: any) => s?._type === 'neighborhood_policy')?.mode !== 'STRICT') {
+                    // Política FALLBACK (padrão): bairro fora dos setores é aceito com a taxa padrão da loja
+                    if (companyProfile.deliveryFee !== undefined && companyProfile.deliveryFee !== null) {
+                        resolvedDeliveryFee = Number(companyProfile.deliveryFee)
+                    }
                 } else {
-                    // Se não está em nenhum setor, valida se loja restringe bairros
+                    // Política STRICT: só atende bairros vinculados a algum setor
                     const allowedNeighborhoods = sectors
                         .flatMap((s: any) => s.neighborhoods || [])
                         .map((n: string) => norm(n))

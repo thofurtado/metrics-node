@@ -36,6 +36,7 @@ const updateProfileBodySchema = z.object({
   anotaAiApiKey: z.string().nullable().optional(),
   pixKey: z.string().nullable().optional(),
   googleReviewUrl: z.string().nullable().optional(),
+  neighborhoodPolicy: z.enum(['FALLBACK', 'STRICT']).nullable().optional(),
   businessHours: z.array(businessHourSchema).optional(),
 })
 
@@ -53,7 +54,7 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
 
     // Processa deliverySectors e anexa googleReviewUrl de forma segura em JSON sem precisar de migration
     let finalSectors: any[] = Array.isArray(rawDbData.deliverySectors) 
-      ? rawDbData.deliverySectors.filter((s: any) => s?._type !== 'google_review_config') 
+      ? rawDbData.deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy') 
       : [];
     if (rawDbData.googleReviewUrl !== undefined) {
       finalSectors.push({
@@ -62,12 +63,23 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
       });
     }
 
+    // Política de bairros (FALLBACK | STRICT): se o cliente não enviou, preserva a atual
+    let neighborhoodPolicy = rawDbData.neighborhoodPolicy
+    if (!neighborhoodPolicy && profile?.deliverySectors) {
+      try {
+        const current = typeof profile.deliverySectors === 'string' ? JSON.parse(profile.deliverySectors) : profile.deliverySectors
+        if (Array.isArray(current)) neighborhoodPolicy = current.find((s: any) => s?._type === 'neighborhood_policy')?.mode
+      } catch {}
+    }
+    if (neighborhoodPolicy) finalSectors.push({ _type: 'neighborhood_policy', mode: neighborhoodPolicy })
+
     const dataToSave = {
       ...rawDbData,
       availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
       deliverySectors: finalSectors,
     };
     delete (dataToSave as any).googleReviewUrl;
+    delete (dataToSave as any).neighborhoodPolicy;
 
     if (profile) {
       profile = await prisma.companyProfile.update({

@@ -53,7 +53,8 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
 
     const googleReviewConfig = deliverySectors.find((s: any) => s?._type === 'google_review_config');
     const googleReviewUrl = googleReviewConfig?.url || '';
-    deliverySectors = deliverySectors.filter((s: any) => s?._type !== 'google_review_config');
+    const neighborhoodPolicy = deliverySectors.find((s: any) => s?._type === 'neighborhood_policy')?.mode === 'STRICT' ? 'STRICT' : 'FALLBACK';
+    deliverySectors = deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy');
 
     let availableNeighborhoods = profile.availableNeighborhoods || [];
     if (typeof availableNeighborhoods === 'string') {
@@ -70,6 +71,7 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       availableNeighborhoods,
       deliverySectors,
       googleReviewUrl,
+      neighborhoodPolicy,
       paymentMethods: publicPayments,
     })
   } catch (error) {
