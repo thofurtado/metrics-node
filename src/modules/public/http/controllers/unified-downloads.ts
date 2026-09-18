@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { pipeline } from 'stream/promises'
 import { sseManager } from '@/lib/sse-manager'
+import { authorizeReleaseUpload, sha256File } from '@/lib/release-auth'
 
 const DOWNLOADS_DIR = path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'downloads')
 
@@ -190,10 +191,7 @@ export async function downloadApp(request: FastifyRequest<{ Params: { app: strin
 
 export async function uploadAppRelease(request: FastifyRequest<{ Params: { app: string } }>, reply: FastifyReply) {
     try {
-        const apiKey = request.headers['x-api-key']
-        const validKey = process.env.PDV_API_KEY || 'chave-secreta-pdv-123'
-
-        if (apiKey !== validKey && apiKey !== 'metrics_secret_key_2026') {
+        if (!authorizeReleaseUpload(request)) {
             return reply.status(401).send({ message: 'Chave de API inválida para upload de release.' })
         }
 
@@ -220,6 +218,7 @@ export async function uploadAppRelease(request: FastifyRequest<{ Params: { app: 
         await pipeline(data.file, fs.createWriteStream(targetFile))
 
         const sizeBytes = fs.statSync(targetFile).size
+        const sha256 = await sha256File(targetFile)
         const versionData = {
             id: cfg.id,
             key: cfg.key,
@@ -229,7 +228,8 @@ export async function uploadAppRelease(request: FastifyRequest<{ Params: { app: 
             downloadUrl: `https://api.metrics.dev.br/api/public/${cfg.key}/download`,
             updatedAt: new Date().toISOString(),
             fileSizeBytes: sizeBytes,
-            formattedSize: `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+            formattedSize: `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`,
+            sha256
         }
 
         const versionFile = path.join(DOWNLOADS_DIR, `${cfg.key}-version.json`)

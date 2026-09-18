@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { pipeline } from 'stream/promises'
+import { authorizeReleaseUpload, sha256File } from '@/lib/release-auth'
 
 const DOWNLOADS_DIR = path.join(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'), 'downloads')
 const VERSION_FILE = path.join(DOWNLOADS_DIR, 'windy-version.json')
@@ -71,10 +72,7 @@ export async function downloadLatestWindy(request: FastifyRequest, reply: Fastif
 
 export async function uploadWindyRelease(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const apiKey = request.headers['x-api-key']
-        const validKey = process.env.PDV_API_KEY || 'chave-secreta-pdv-123'
-        
-        if (apiKey !== validKey && apiKey !== 'metrics_secret_key_2026') {
+        if (!authorizeReleaseUpload(request)) {
             return reply.status(401).send({ message: 'Chave de API inválida para upload de release.' })
         }
 
@@ -93,9 +91,11 @@ export async function uploadWindyRelease(request: FastifyRequest, reply: Fastify
 
         const targetFile = path.join(DOWNLOADS_DIR, 'Metrics_Windy_Setup.exe')
         await pipeline(data.file, fs.createWriteStream(targetFile))
+        const sha256 = await sha256File(targetFile)
 
         const versionData = {
             version: cleanVersion,
+            sha256,
             downloadUrl: 'https://api.metrics.dev.br/api/public/windy/download',
             updatedAt: new Date().toISOString(),
             fileName: 'Metrics_Windy_Setup.exe'

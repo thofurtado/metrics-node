@@ -1,4 +1,5 @@
 import { sseManager } from '@/lib/sse-manager'
+import { authorizeReleaseUpload, sha256File } from '@/lib/release-auth'
 ﻿import { FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
 import path from 'path'
@@ -70,10 +71,7 @@ export async function downloadLatestPdv(request: FastifyRequest, reply: FastifyR
 
 export async function uploadPdvRelease(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const apiKey = request.headers['x-api-key']
-        const validKey = process.env.PDV_API_KEY || 'chave-secreta-pdv-123'
-        
-        if (apiKey !== validKey && apiKey !== 'metrics_secret_key_2026') {
+        if (!authorizeReleaseUpload(request)) {
             return reply.status(401).send({ message: 'Chave de API inválida para upload de release.' })
         }
 
@@ -88,9 +86,11 @@ export async function uploadPdvRelease(request: FastifyRequest, reply: FastifyRe
         const targetFile = path.join(DOWNLOADS_DIR, 'Instalar_MetricsPDV.exe')
 
         await pipeline(data.file, fs.createWriteStream(targetFile))
+        const sha256 = await sha256File(targetFile)
 
         const versionData = {
             version,
+            sha256,
             fileName: 'Instalar_MetricsPDV.exe',
             updatedAt: new Date().toISOString(),
             sizeBytes: fs.statSync(targetFile).size
