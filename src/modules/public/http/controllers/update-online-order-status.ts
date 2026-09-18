@@ -87,7 +87,11 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 data_fechamento: status === 'delivered' ? new Date() : undefined,
                 hora_saida_rota: status === 'dispatched' ? new Date() : existingPedido.hora_saida_rota,
                 entregador: delivery_man !== undefined ? delivery_man : existingPedido.entregador,
-                caixa_id: cashier_session_id || existingPedido.caixa_id,
+                                // O delivery só entra no caixa no momento da baixa/conclusão.
+                // Alterações de produção, conferência e despacho não o vinculam ao caixa.
+                caixa_id: status === 'delivered'
+                    ? (cashier_session_id || existingPedido.caixa_id)
+                    : existingPedido.caixa_id,
                 observacao: updatedObs
             }
         });
@@ -140,8 +144,8 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             if (companyProfile) {
                 storeTradeName = companyProfile.tradeName || storeTradeName;
                 if (companyProfile.deliverySectors) {
-                    const sec = typeof companyProfile.deliverySectors === 'string' 
-                        ? JSON.parse(companyProfile.deliverySectors) 
+                    const sec = typeof companyProfile.deliverySectors === 'string'
+                        ? JSON.parse(companyProfile.deliverySectors)
                         : companyProfile.deliverySectors;
                     if (Array.isArray(sec)) {
                         const reviewItem = sec.find((s: any) => s?._type === 'google_review_config');

@@ -13,61 +13,24 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const spDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // 'YYYY-MM-DD'
         const todayStart = new Date(spDateStr + 'T00:00:00.000-03:00');
 
-        const { cashier_session_id } = (request.query as { cashier_session_id?: string }) || {};
+                const { date } = (request.query as { date?: string }) || {};
+        const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date! : spDateStr;
+        const requestedDayStart = new Date(`${requestedDate}T00:00:00.000-03:00`);
+        const requestedDayEnd = new Date(`${requestedDate}T23:59:59.999-03:00`);
 
         const allowedOrigins = ['Delivery', 'Balcão', 'Balcao', 'BalcÃ£o', 'Retirada', 'Takeout', 'iFood', '99Food', 'PDV'];
 
-        let targetSession = null;
-        if (cashier_session_id) {
-            targetSession = await prisma.cashierSession.findUnique({
-                where: { id: cashier_session_id }
-            });
-        } else {
-            // Se nÃ£o informou id, busca o caixa atualmente ABERTO para sincronizar o turno
-            targetSession = await prisma.cashierSession.findFirst({
-                where: { status: 'OPEN' },
-                orderBy: { opened_at: 'desc' }
-            });
-        }
-
-        let whereClause: any;
-
-        // Se for um caixa antigo ja FECHADO:
-        if (targetSession && targetSession.status === 'CLOSED') {
-            whereClause = {
-                OR: [
-                    { origem: { in: allowedOrigins } },
-                    { sincronizado_web: true }
-                ],
-                caixa_id: targetSession.id
-            };
-        } else {
-            // Caixa ATIVO ou monitor de pedidos de hoje:
-            const sessionOpenTime = targetSession?.opened_at ? new Date(targetSession.opened_at) : todayStart;
-            const maxLookback = new Date(todayStart.getTime() - 14 * 60 * 60 * 1000);
-            const cutoffTime = sessionOpenTime < todayStart
-                ? (sessionOpenTime > maxLookback ? sessionOpenTime : todayStart)
-                : todayStart;
-
-            whereClause = {
-                data_abertura: { gte: cutoffTime },
-                status: { notIn: ['Cancelado'] },
-                OR: [
-                    { origem: { in: allowedOrigins } },
-                    { sincronizado_web: true },
-                    { observacao: { contains: 'Retirada', mode: 'insensitive' } }
-                ],
-                AND: [
-                    {
-                        OR: [
-                            ...(targetSession ? [{ caixa_id: targetSession.id }] : []),
-                            { caixa_id: null },
-                            { sincronizado_web: true }
-                        ]
-                    }
-                ]
-            };
-        }
+                // A gestão de pedidos é compartilhada entre todos os caixas.
+        // O caixa só é definido na baixa; a visualização é exclusivamente por data.
+        const whereClause: any = {
+            data_abertura: { gte: requestedDayStart, lte: requestedDayEnd },
+            status: { notIn: ['Cancelado'] },
+            OR: [
+                { origem: { in: allowedOrigins } },
+                { sincronizado_web: true },
+                { observacao: { contains: 'Retirada', mode: 'insensitive' } }
+            ]
+        };
 
         const pedidos = await prisma.pedido.findMany({
             where: whereClause,
@@ -129,25 +92,25 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
             },
             orders: pedidos.map(p => {
                 const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
-                
-                const isTakeout = 
-                    p.origem === 'Balcão' || 
-                    p.origem === 'Balcao' || 
-                    p.origem === 'BalcÃ£o' || 
-                    p.origem === 'Retirada' || 
-                    p.origem === 'Takeout' || 
-                    (Boolean(p.observacao) && p.observacao!.toLowerCase().includes('retirada')) || 
+
+                const isTakeout =
+                    p.origem === 'Balcão' ||
+                    p.origem === 'Balcao' ||
+                    p.origem === 'BalcÃ£o' ||
+                    p.origem === 'Retirada' ||
+                    p.origem === 'Takeout' ||
+                    (Boolean(p.observacao) && p.observacao!.toLowerCase().includes('retirada')) ||
                     !p.endereco_entrega_id;
 
                 // Prioriza o endereço histórico salvo no pedido em endereco_entrega_id somente se NÃO for retirada
-                const orderAddr = (!isTakeout && p.endereco_entrega_id) 
-                    ? addressMap.get(p.endereco_entrega_id) 
+                const orderAddr = (!isTakeout && p.endereco_entrega_id)
+                    ? addressMap.get(p.endereco_entrega_id)
                     : null;
 
                 const cityStr = orderAddr?.city ? `, ${orderAddr.city}` : '';
-                const address = isTakeout 
-                    ? 'Retirada no Balcão' 
-                    : (orderAddr 
+                const address = isTakeout
+                    ? 'Retirada no Balcão'
+                    : (orderAddr
                         ? `${orderAddr.street}, ${orderAddr.number} - ${orderAddr.neighborhood}${cityStr}`
                         : '');
                 const neighborhood = isTakeout ? 'Balcão' : (orderAddr?.neighborhood || '');
