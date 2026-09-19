@@ -163,7 +163,7 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             { name: 'Cartão de Crédito', in_sight: false, installment_limit: 12, account_id: null, sefaz_tPag: '03', active_for_in: true, active_for_out: false },
             { name: 'Cartão de Débito', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '04', active_for_in: true, active_for_out: false },
             { name: 'Boleto Bancário', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '15', active_for_in: true, active_for_out: true },
-            { name: 'A Prazo', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '99', active_for_in: true, active_for_out: false },
+            { name: 'A Prazo (Correntista)', in_sight: false, installment_limit: 1, account_id: null, sefaz_tPag: '99', active_for_in: true, active_for_out: false },
             { name: 'Operacional (Evasão de Estoque)', in_sight: true, installment_limit: 1, account_id: null, sefaz_tPag: '90', active_for_in: true, active_for_out: false },
         ]
 
@@ -234,19 +234,19 @@ export async function runTenantOnboarding(dbUrl: string, data: OnboardingData) {
             },
             {
                 name: 'Correntista',
-                parentPaymentName: 'A Prazo',
+                parentPaymentName: 'A Prazo (Correntista)',
                 is_stock_evasion: false,
                 is_correntista_debt: true
             },
             {
                 name: 'Funcionário',
-                parentPaymentName: 'A Prazo',
+                parentPaymentName: 'A Prazo (Correntista)',
                 is_stock_evasion: false,
                 is_correntista_debt: true
             },
             {
                 name: 'Permuta',
-                parentPaymentName: 'A Prazo',
+                parentPaymentName: 'A Prazo (Correntista)',
                 is_stock_evasion: false,
                 is_correntista_debt: true
             }
