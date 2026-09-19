@@ -54,7 +54,11 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
     const googleReviewConfig = deliverySectors.find((s: any) => s?._type === 'google_review_config');
     const googleReviewUrl = googleReviewConfig?.url || '';
     const neighborhoodPolicy = deliverySectors.find((s: any) => s?._type === 'neighborhood_policy')?.mode === 'STRICT' ? 'STRICT' : 'FALLBACK';
-    deliverySectors = deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy');
+    // Tema do cardápio (basic | premium): guardado na mesma lista de configurações, sem migração de banco
+    const menuThemeEntry = deliverySectors.find((s: any) => s?._type === 'menu_theme');
+    const menuThemePreset = typeof menuThemeEntry?.preset === 'string' && menuThemeEntry.preset ? menuThemeEntry.preset : 'basic';
+    const menuTheme = menuThemeEntry?.overrides && typeof menuThemeEntry.overrides === 'object' ? menuThemeEntry.overrides : null;
+    deliverySectors = deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy' && s?._type !== 'menu_theme');
 
     let availableNeighborhoods = profile.availableNeighborhoods || [];
     if (typeof availableNeighborhoods === 'string') {
@@ -72,6 +76,8 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       deliverySectors,
       googleReviewUrl,
       neighborhoodPolicy,
+      menuThemePreset,
+      menuTheme,
       paymentMethods: publicPayments,
     })
   } catch (error) {

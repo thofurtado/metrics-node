@@ -37,6 +37,8 @@ const updateProfileBodySchema = z.object({
   pixKey: z.string().nullable().optional(),
   googleReviewUrl: z.string().nullable().optional(),
   neighborhoodPolicy: z.enum(['FALLBACK', 'STRICT']).nullable().optional(),
+  menuThemePreset: z.string().regex(/^[a-z0-9-]{1,40}$/).nullable().optional(),
+  menuTheme: z.record(z.any()).nullable().optional(),
   businessHours: z.array(businessHourSchema).optional(),
 })
 
@@ -54,7 +56,7 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
 
     // Processa deliverySectors e anexa googleReviewUrl de forma segura em JSON sem precisar de migration
     let finalSectors: any[] = Array.isArray(rawDbData.deliverySectors) 
-      ? rawDbData.deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy') 
+      ? rawDbData.deliverySectors.filter((s: any) => s?._type !== 'google_review_config' && s?._type !== 'neighborhood_policy' && s?._type !== 'menu_theme') 
       : [];
     if (rawDbData.googleReviewUrl !== undefined) {
       finalSectors.push({
@@ -73,6 +75,21 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
     }
     if (neighborhoodPolicy) finalSectors.push({ _type: 'neighborhood_policy', mode: neighborhoodPolicy })
 
+    // Tema do cardápio (basic | premium): se o cliente não enviou, preserva o atual
+    let menuThemePreset = rawDbData.menuThemePreset
+    let menuTheme = rawDbData.menuTheme
+    if (menuThemePreset === undefined && menuTheme === undefined && profile?.deliverySectors) {
+      try {
+        const current = typeof profile.deliverySectors === 'string' ? JSON.parse(profile.deliverySectors) : profile.deliverySectors
+        const entry = Array.isArray(current) ? current.find((s: any) => s?._type === 'menu_theme') : null
+        if (entry) {
+          menuThemePreset = entry.preset
+          menuTheme = entry.overrides
+        }
+      } catch {}
+    }
+    if (menuThemePreset && menuThemePreset !== 'basic') finalSectors.push({ _type: 'menu_theme', preset: menuThemePreset, overrides: menuTheme || null })
+
     const dataToSave = {
       ...rawDbData,
       availableNeighborhoods: rawDbData.availableNeighborhoods ?? [],
@@ -80,6 +97,8 @@ export async function updateCompanyProfile(request: FastifyRequest, reply: Fasti
     };
     delete (dataToSave as any).googleReviewUrl;
     delete (dataToSave as any).neighborhoodPolicy;
+    delete (dataToSave as any).menuThemePreset;
+    delete (dataToSave as any).menuTheme;
 
     if (profile) {
       profile = await prisma.companyProfile.update({
