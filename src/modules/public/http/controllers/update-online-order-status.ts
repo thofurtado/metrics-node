@@ -46,6 +46,12 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             return reply.status(404).send({ message: 'Pedido não encontrado.' });
         }
 
+        // Pedido já cancelado (ex.: o iFood cancela sozinho o pedido não confirmado em 8 minutos) não volta a andar:
+        // antes o aceite no PDV sobrescrevia o "Cancelado" por "em preparo" e ainda chamava o iFood.
+        if (existingPedido.status === 'Cancelado' && status !== 'cancelled') {
+            return reply.status(409).send({ message: 'Este pedido já foi cancelado (o iFood cancela sozinho o pedido que não é confirmado em 8 minutos).' })
+        }
+
         const deliveryStatusMap: Record<string, string> = {
             pending: 'Pendente',
             in_preparation: 'EmPreparo',
