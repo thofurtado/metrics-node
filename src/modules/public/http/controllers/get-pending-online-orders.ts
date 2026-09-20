@@ -13,7 +13,9 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         const spDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // 'YYYY-MM-DD'
         const todayStart = new Date(spDateStr + 'T00:00:00.000-03:00');
 
-                const { date } = (request.query as { date?: string }) || {};
+                const { date, includeCancelled } = (request.query as { date?: string; includeCancelled?: string }) || {};
+        // O PDV pede os cancelados (includeCancelled=1) para descobrir pedidos que o iFood cancelou sozinho; o web não.
+        const withCancelled = includeCancelled === '1' || includeCancelled === 'true';
         const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date! : spDateStr;
         const requestedDayStart = new Date(`${requestedDate}T00:00:00.000-03:00`);
         const requestedDayEnd = new Date(`${requestedDate}T23:59:59.999-03:00`);
@@ -24,7 +26,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
         // O caixa só é definido na baixa; a visualização é exclusivamente por data.
         const whereClause: any = {
             data_abertura: { gte: requestedDayStart, lte: requestedDayEnd },
-            status: { notIn: ['Cancelado'] },
+            status: withCancelled ? undefined : { notIn: ['Cancelado'] },
             OR: [
                 { origem: { in: allowedOrigins } },
                 { sincronizado_web: true },
