@@ -3,8 +3,9 @@ import { webhook99FoodController } from './webhook-99food'
 import { webhookIfoodController } from './webhook-ifood'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
+import { ifoodCancelProbeController, ifoodDiagDataController, ifoodDiagPageController } from './ifood-diagnostic'
 import {
-    ifoodUserCodeController,
+  ifoodUserCodeController,
   ifoodExchangeTokenController,
   ifoodAuthorizationStatusController,
   deliveryStatusController,
@@ -60,6 +61,11 @@ export async function deliveryRoutes(app: FastifyInstance) {
 
     // Diagnóstico sanitizado: não expõe corpo, payload ou credenciais.
     app.get('/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
+
+    // Acompanhamento ao vivo do cancelamento (só funciona com IFOOD_DIAG_KEY definida; a chave vai em ?key=)
+    app.get('/delivery/ifood/diag', ifoodDiagPageController)
+    app.get('/delivery/ifood/diag/data', ifoodDiagDataController)
+    app.post('/delivery/ifood/diag/cancel-probe', ifoodCancelProbeController)
     app.get('/api/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
 
     app.post('/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)

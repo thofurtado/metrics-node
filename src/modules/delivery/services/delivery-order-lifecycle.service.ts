@@ -1,5 +1,6 @@
 import { ifoodApi, IfoodCancelResult } from './ifood-api.service'
 import { getValidAccessToken } from './ifood-poller'
+import { writeJournal } from './ifood-events.service'
 
 interface LifecyclePedido {
   id: number
@@ -45,6 +46,14 @@ export async function cancelDeliveryOrderOnPlatform(
     reason: options.cancelReason,
   })
   console.log(`[iFood Lifecycle] Cancelamento solicitado para ${externalOrderId}: ok=${result.ok} código=${result.code ?? '-'}`)
+  void writeJournal({
+    method: 'PDV',
+    endpoint: '/pdv/cancelamento-solicitado',
+    orderId: externalOrderId,
+    request: { code: options.cancelCode ?? null, reason: options.cancelReason ?? null, pedido: pedido.display_id },
+    response: { ok: result.ok, code: result.code ?? null, message: result.message ?? null },
+    success: result.ok,
+  })
   return { handled: true, ...result }
 }
 

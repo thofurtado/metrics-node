@@ -4,6 +4,7 @@ import { requestContext } from '@fastify/request-context'
 import { extractIfoodOrderId } from '@/modules/delivery/services/delivery-order-lifecycle.service'
 import { getValidAccessToken } from '@/modules/delivery/services/ifood-poller'
 import { ifoodApi } from '@/modules/delivery/services/ifood-api.service'
+import { writeJournal } from '@/modules/delivery/services/ifood-events.service'
 
 /**
  * Motivos de cancelamento válidos AGORA para o pedido (exigência da homologação do iFood:
@@ -45,6 +46,12 @@ export async function getOrderCancellationReasons(request: FastifyRequest, reply
       })
     }
 
+    void writeJournal({
+      method: 'PDV',
+      endpoint: '/pdv/motivos-exibidos',
+      orderId: externalOrderId,
+      response: { count: result.reasons.length, reasons: result.reasons.map((r) => `${r.code}: ${r.description}`) },
+    })
     return reply.status(200).send({ supported: true, reasons: result.reasons })
   } catch (error) {
     console.error('Erro ao consultar motivos de cancelamento:', error)
