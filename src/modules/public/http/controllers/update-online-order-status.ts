@@ -1,4 +1,5 @@
-import { cancelDeliveryOrderOnPlatform, handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
+import { cancelDeliveryOrderOnPlatform, extractIfoodOrderId, handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
+import { writeJournal } from '@/modules/delivery/services/ifood-events.service'
 import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
@@ -22,11 +23,13 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         card_machine: z.string().optional(),
         delivery_man: z.string().optional(),
         cancel_code: z.string().optional(),
-        cancel_reason: z.string().optional()
+        cancel_reason: z.string().optional(),
+        // Cancela só no Metrics, sem avisar o iFood (pedido que o iFood não aceita mais cancelar).
+        skip_platform: z.boolean().optional()
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method, card_machine, delivery_man, cancel_code, cancel_reason } = bodySchema.parse(request.body);
+    const { status, cashier_session_id, payment_method, card_machine, delivery_man, cancel_code, cancel_reason, skip_platform } = bodySchema.parse(request.body);
     const tenantDbName = requestContext.get('tenant') as string | undefined;
 
     try {
@@ -75,7 +78,16 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         }
 
         // Cancelamento no iFood precisa ser aceito externamente (com o motivo escolhido pelo operador) antes de alterar o PDV.
-        if (status === 'cancelled' && existingPedido.origem === 'Delivery') {
+        if (status === 'cancelled' && existingPedido.origem === 'Delivery' && skip_platform) {
+            console.warn(`[iFood] Pedido ${existingPedido.uuid} cancelado SOMENTE no Metrics (o iFood não foi avisado).`)
+            void writeJournal({
+                method: 'PDV',
+                endpoint: '/pdv/cancelamento-somente-metrics',
+                orderId: extractIfoodOrderId(existingPedido.observacao),
+                request: { pedido: existingPedido.display_id },
+                response: { note: 'cancelado só no Metrics; iFood não avisado' }
+            })
+        } else if (status === 'cancelled' && existingPedido.origem === 'Delivery') {
             const cancellation = await cancelDeliveryOrderOnPlatform(existingPedido, {
                 dbName: tenantDbName,
                 cancelCode: cancel_code,

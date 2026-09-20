@@ -415,7 +415,16 @@ export class IFoodApiService {
         return { ok: false, status: response.status, reasons: [], error }
       }
 
-      const data: any = await response.json()
+      // O iFood responde 2xx SEM corpo quando o pedido não pode mais ser cancelado (já concluído/cancelado).
+      const bodyText = await response.text()
+      let data: any = []
+      if (bodyText.trim()) {
+        try {
+          data = JSON.parse(bodyText)
+        } catch {
+          return { ok: false, status: response.status, reasons: [], error: `resposta inválida: ${shortText(bodyText, 160)}` }
+        }
+      }
       const raw: any[] = Array.isArray(data) ? data : Array.isArray(data?.reasons) ? data.reasons : []
       const reasons = raw
         .map((r: any) => ({
@@ -449,7 +458,7 @@ export class IFoodApiService {
         ifoodStatus: list.status,
         ifoodError: shortText(list.error),
         message: list.ok
-          ? 'O iFood não informou motivos de cancelamento para este pedido neste momento.'
+          ? 'O iFood não tem motivos de cancelamento para este pedido agora. Ele pode já ter sido concluído ou cancelado no iFood.'
           : `O iFood não liberou os motivos de cancelamento (resposta ${list.status}). ${explainIfoodStatus(list.status)}`,
       }
     }
