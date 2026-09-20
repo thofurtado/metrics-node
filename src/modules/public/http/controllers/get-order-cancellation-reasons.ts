@@ -40,9 +40,21 @@ export async function getOrderCancellationReasons(request: FastifyRequest, reply
 
     const result = await ifoodApi.listCancellationReasons(token, externalOrderId)
     if (!result.ok) {
-      return reply.status(502).send({
-        message: 'Não foi possível consultar os motivos de cancelamento no iFood agora.',
-        status: result.status,
+      // 424 (e não 502): o Cloudflare troca o corpo de qualquer 502 por "error code: 502" e o motivo real se perde.
+      const podeTerTerminado = [400, 404, 409].includes(result.status)
+      void writeJournal({
+        method: 'PDV',
+        endpoint: '/pdv/motivos-indisponiveis',
+        orderId: externalOrderId,
+        response: { ifoodStatus: result.status, ifoodError: String(result.error || '').slice(0, 400) },
+        success: false,
+      })
+      return reply.status(424).send({
+        message: podeTerTerminado
+          ? `O iFood não liberou os motivos de cancelamento (resposta ${result.status}). O pedido pode já ter sido concluído ou cancelado no iFood, ou não estar mais em um momento que permita cancelar.`
+          : `O iFood não liberou os motivos de cancelamento agora (resposta ${result.status || 'sem resposta'}).`,
+        ifood_status: result.status,
+        ifood_error: String(result.error || '').slice(0, 400),
       })
     }
 

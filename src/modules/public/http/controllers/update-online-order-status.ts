@@ -82,7 +82,12 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 cancelReason: cancel_reason
             })
             if (cancellation.handled && !cancellation.ok) {
-                return reply.status(502).send({ message: cancellation.message || 'O iFood não confirmou o cancelamento do pedido.' })
+                // 424 (e não 502): o Cloudflare esconde o corpo de 502 e o operador não veria o motivo.
+                return reply.status(424).send({
+                    message: cancellation.message || 'O iFood não confirmou o cancelamento do pedido.',
+                    ifood_status: cancellation.ifoodStatus,
+                    ifood_error: cancellation.ifoodError
+                })
             }
         }
 

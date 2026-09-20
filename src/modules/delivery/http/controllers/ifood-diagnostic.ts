@@ -238,7 +238,7 @@ export async function ifoodCancelProbeController(request: FastifyRequest, reply:
 
   await writeJournal({ method: 'PDV', endpoint: '/pdv/sonda-cancelamento', orderId: query.data.orderId, request: { code: query.data.code ?? null }, response: { note: 'cancelamento pela sonda de diagnóstico' } })
   const result = await ifoodApi.cancelOrderFromPdv(token, query.data.orderId, { code: query.data.code })
-  return reply.status(result.ok ? 200 : 502).send(result)
+  return reply.status(result.ok ? 200 : 424).send(result)
 }
 
 export async function ifoodDiagPageController(request: FastifyRequest, reply: FastifyReply) {

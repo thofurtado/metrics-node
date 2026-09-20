@@ -65,6 +65,23 @@ export interface IfoodCancelResult {
   ok: boolean
   message?: string
   code?: string
+  /** Status HTTP e corpo (resumido) da última resposta do iFood, para o operador e o diário. */
+  ifoodStatus?: number
+  ifoodError?: string
+}
+
+function shortText(s?: string, n = 240): string {
+  const v = (s || '').replace(/\s+/g, ' ').trim()
+  return v.length > n ? v.slice(0, n) + '…' : v
+}
+
+/** Tradução curta do que o iFood respondeu, para a mensagem mostrada no PDV. */
+function explainIfoodStatus(status: number): string {
+  if (status === 400 || status === 404 || status === 409) {
+    return 'O pedido pode já ter sido concluído ou cancelado no iFood, ou não estar mais em um momento que permita cancelar.'
+  }
+  if (status === 401 || status === 403) return 'O iFood recusou o acesso (token expirado ou sem permissão).'
+  return 'O iFood não respondeu como esperado.'
 }
 
 export class IFoodApiService {
@@ -429,9 +446,11 @@ export class IFoodApiService {
     if (!list.ok || list.reasons.length === 0) {
       return {
         ok: false,
+        ifoodStatus: list.status,
+        ifoodError: shortText(list.error),
         message: list.ok
           ? 'O iFood não informou motivos de cancelamento para este pedido neste momento.'
-          : `Não foi possível consultar os motivos de cancelamento no iFood (${list.status}).`,
+          : `O iFood não liberou os motivos de cancelamento (resposta ${list.status}). ${explainIfoodStatus(list.status)}`,
       }
     }
 
@@ -448,10 +467,16 @@ export class IFoodApiService {
     }
 
     const reasonText = (choice.reason && choice.reason.trim()) || selected.description || selected.code
-    const ok = await this.requestCancellation(accessToken, orderId, reasonText, selected.code)
-    return ok
-      ? { ok: true, code: selected.code }
-      : { ok: false, code: selected.code, message: 'O iFood recusou a solicitação de cancelamento.' }
+    const sent = await this.requestCancellation(accessToken, orderId, reasonText, selected.code)
+    return sent.ok
+      ? { ok: true, code: selected.code, ifoodStatus: sent.status }
+      : {
+          ok: false,
+          code: selected.code,
+          ifoodStatus: sent.status,
+          ifoodError: shortText(sent.error),
+          message: `O iFood recusou a solicitação de cancelamento (resposta ${sent.status || 'sem resposta'}). ${explainIfoodStatus(sent.status)}`,
+        }
   }
 
   /** Mantido por compatibilidade com rotas de diagnóstico. */
@@ -478,7 +503,7 @@ export class IFoodApiService {
     orderId: string,
     reason: string,
     cancellationCode: string,
-  ): Promise<boolean> {
+  ): Promise<{ ok: boolean; status: number; error?: string }> {
     try {
       const payload = { reason, cancellationCode: String(cancellationCode) }
       const endpoint = `/order/v1.0/orders/${orderId}/requestCancellation`
@@ -501,17 +526,17 @@ export class IFoodApiService {
           /already|cancelled|cancelado|in progress|finalizado/i.test(responseText)
         if (alreadyCancelled) {
           console.log(`[iFood Cancel Order] Pedido ${orderId} já estava cancelado ou em cancelamento (idempotente).`)
-          return true
+          return { ok: true, status: response.status }
         }
         console.error(`[iFood Cancel Order Error] POST ${response.status}: ${responseText}`)
-        return false
+        return { ok: false, status: response.status, error: responseText }
       }
 
       console.log(`[iFood Cancel Order] (${response.status}) solicitação aceita para o pedido ${orderId}; aguardando evento CANCELLED.`)
-      return true
+      return { ok: true, status: response.status }
     } catch (e: any) {
       console.error('[iFood Cancel Order Exception]:', e?.message)
-      return false
+      return { ok: false, status: 0, error: e?.message }
     }
   }
 }
