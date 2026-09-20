@@ -1,4 +1,4 @@
-import { handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
+import { cancelDeliveryOrderOnPlatform, handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
 import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
@@ -20,11 +20,14 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         cashier_session_id: z.string().uuid().optional(),
         payment_method: z.string().optional(),
         card_machine: z.string().optional(),
-        delivery_man: z.string().optional()
+        delivery_man: z.string().optional(),
+        cancel_code: z.string().optional(),
+        cancel_reason: z.string().optional()
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method, card_machine, delivery_man } = bodySchema.parse(request.body);
+    const { status, cashier_session_id, payment_method, card_machine, delivery_man, cancel_code, cancel_reason } = bodySchema.parse(request.body);
+    const tenantDbName = requestContext.get('tenant') as string | undefined;
 
     try {
         const existingPedido = await prisma.pedido.findFirst({
@@ -71,11 +74,15 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             }
         }
 
-        // Cancelamento no iFood precisa ser confirmado externamente antes de alterar o PDV.
+        // Cancelamento no iFood precisa ser aceito externamente (com o motivo escolhido pelo operador) antes de alterar o PDV.
         if (status === 'cancelled' && existingPedido.origem === 'Delivery') {
-            const cancellationAccepted = await handleDeliveryOrderStatusChange(existingPedido, status)
-            if (!cancellationAccepted) {
-                return reply.status(502).send({ message: 'O iFood não confirmou o cancelamento do pedido.' })
+            const cancellation = await cancelDeliveryOrderOnPlatform(existingPedido, {
+                dbName: tenantDbName,
+                cancelCode: cancel_code,
+                cancelReason: cancel_reason
+            })
+            if (cancellation.handled && !cancellation.ok) {
+                return reply.status(502).send({ message: cancellation.message || 'O iFood não confirmou o cancelamento do pedido.' })
             }
         }
 
@@ -97,7 +104,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         });
         // Notifica o ciclo de vida para o iFood e 99Food
                 if (existingPedido.origem === 'Delivery' && status !== 'cancelled') {
-            handleDeliveryOrderStatusChange(existingPedido, status).catch(e =>
+            handleDeliveryOrderStatusChange(existingPedido, status, { dbName: tenantDbName }).catch(e =>
                 console.error('[Delivery Lifecycle Hook Error]:', e)
             );
         }

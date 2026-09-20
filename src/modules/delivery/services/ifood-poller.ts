@@ -22,6 +22,31 @@ export let tokenState: TokenStore = {
 const tokenStates = new Map<string, TokenStore>()
 const DEFAULT_TENANT = 'db_restaurante'
 
+// Homologação iFood: o ACK sai imediatamente após o polling e o mesmo evento pode chegar mais de uma vez.
+// Ids já vistos são descartados; pedidos novos (PLC) que falharem entram numa fila curta de nova tentativa.
+const processedEventIds = new Set<string>()
+const MAX_TRACKED_EVENT_IDS = 5000
+const placedRetryQueue = new Map<string, { event: any; attempts: number }>()
+const MAX_PLACED_RETRIES = 5
+
+function markEventProcessed(eventId: string) {
+  processedEventIds.add(eventId)
+  if (processedEventIds.size > MAX_TRACKED_EVENT_IDS) {
+    const oldest = processedEventIds.values().next().value
+    if (oldest) processedEventIds.delete(oldest)
+  }
+}
+
+function takePlacedRetries(): any[] {
+  const events: any[] = []
+  for (const [orderId, entry] of placedRetryQueue) {
+    events.push({ ...entry.event, __retry: true })
+    entry.attempts++
+    if (entry.attempts > MAX_PLACED_RETRIES) placedRetryQueue.delete(orderId)
+  }
+  return events
+}
+
 function getTokenStore(dbName: string = DEFAULT_TENANT): TokenStore {
   if (!tokenStates.has(dbName)) {
     tokenStates.set(dbName, { accessToken: '', refreshToken: '', expiresAt: 0 })
@@ -159,18 +184,31 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         throw err
       }
     }
-    if (!Array.isArray(events) || events.length === 0) {
+    events = [...(Array.isArray(events) ? events : []), ...takePlacedRetries()]
+    if (events.length === 0) {
       return { polled: true, eventsProcessed: 0, ordersCreated: 0 }
     }
 
     console.log(`[iFood Polling] ${events.length} evento(s) recebido(s) da fila do iFood!`)
 
-        // O ACK só é enviado depois do processamento bem-sucedido. Enviar ACK antes
-    // remove o evento da fila e impede o retry quando a confirmação falha.
-    const ackIds: string[] = []
+    // ACK IMEDIATO de todos os eventos recebidos (exigência da homologação), antes de qualquer processamento.
+    // As retentativas internas (__retry) já foram confirmadas antes e não são reenviadas.
+    const idsRecebidos = Array.from(new Set(events.filter((e: any) => !e?.__retry && e?.id).map((e: any) => String(e.id))))
+    if (idsRecebidos.length > 0) {
+      const acked = await ifoodApi.acknowledgeEvents(token, idsRecebidos)
+      console.log(`[iFood Polling] ACK de ${idsRecebidos.length} evento(s) ${acked ? 'confirmado' : 'FALHOU'} no iFood.`)
+    }
 
-        for (const event of events) {
+    for (const event of events) {
       eventsProcessed++
+      const eventKey = event?.id ? String(event.id) : ''
+      if (eventKey && !event.__retry) {
+        if (processedEventIds.has(eventKey)) {
+          console.log(`[iFood Polling] Evento ${eventKey} duplicado; descartado.`)
+          continue
+        }
+        markEventProcessed(eventKey)
+      }
       let eventProcessed = true
 
       // Registra evento no histórico recente em memória
@@ -190,6 +228,18 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
       if (event.code === 'PLC' && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando novo pedido PLC (${event.orderId})...`)
+          {
+            const { prisma: prismaDup } = await resolveTenantForMerchant(String(event.merchantId || '4107174'), 'IFOOD')
+            const jaExiste = await (prismaDup as any).pedido.findFirst({
+              where: { observacao: { contains: `[iFood:${event.orderId}]` } },
+              select: { id: true },
+            })
+            if (jaExiste) {
+              console.log(`[iFood Polling] Pedido ${event.orderId} já existe (#${jaExiste.id}); evento PLC ignorado.`)
+              placedRetryQueue.delete(String(event.orderId))
+              continue
+            }
+          }
           let order: any = null
           try {
             order = await ifoodApi.getOrderDetails(token, event.orderId)
@@ -382,66 +432,63 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                 }
       }
 
-      // 1. Verificação Ampla de Eventos de Cancelamento Solicitado (cancellationRequested / CCR / CAR / CPR / HANDSHAKE_DISPUTE / HSD)
       const codeStr = String(event.code || '').toUpperCase()
       const fullCodeStr = String(event.fullCode || '').toUpperCase()
-      const isDispute =
-        codeStr === 'HSD' ||
-        fullCodeStr === 'HANDSHAKE_DISPUTE' ||
-        Boolean(event.metadata?.disputeId || event.disputeId)
 
-      const isCancellationRequested =
-        codeStr === 'CCR' ||
-        codeStr === 'CAR' ||
-        codeStr === 'CPR' ||
-        codeStr === 'CANCELLATIONREQUESTED' ||
-        fullCodeStr === 'CANCELLATION_REQUESTED' ||
-        fullCodeStr === 'CANCELLATIONREQUESTED' ||
-        fullCodeStr === 'CONSUMER_CANCELLATION_REQUESTED' ||
-        (codeStr.includes('CANCEL') && codeStr.includes('REQUEST')) ||
-        (fullCodeStr.includes('CANCEL') && fullCodeStr.includes('REQUEST')) ||
-        isDispute
-
-            if (isCancellationRequested && event.orderId) {
-        let cancellationConfirmed = false
-        try {
-          console.log(`[iFood Polling] Processando evento de cancelamento solicitado (${event.code}/${event.fullCode}) para pedido ${event.orderId}...`)
-
-
-          // A. Se for disputa de cancelamento iniciada pelo consumidor/iFood, aceita a disputa
-          const disputeId = String(event.metadata?.disputeId || event.disputeId || '')
-          if (disputeId) {
-            try {
-              await ifoodApi.acceptDispute(token, disputeId)
-              console.log(`[iFood Polling] Disputa ${disputeId} aceita com sucesso no iFood!`)
-            } catch (dErr: any) {
-              console.log('[iFood Polling] Aviso acceptDispute:', dErr.message)
-            }
+      // Plataforma de negociação (HANDSHAKE_DISPUTE): pedido de cancelamento/reembolso vindo do cliente ou do iFood.
+      // Responde pelo endpoint de disputas; o cancelamento efetivo chega depois no evento CANCELLED.
+      const isDispute = codeStr === 'HSD' || fullCodeStr === 'HANDSHAKE_DISPUTE'
+      if (isDispute) {
+        const disputeId = String(event.metadata?.disputeId || event.disputeId || '')
+        if (disputeId) {
+          try {
+            await ifoodApi.acceptDispute(token, disputeId)
+            console.log(`[iFood Polling] Disputa ${disputeId} aceita no iFood (pedido ${event.orderId}).`)
+          } catch (dErr: any) {
+            console.error('[iFood Polling] Falha ao aceitar disputa:', dErr?.message)
           }
+        } else {
+          console.warn(`[iFood Polling] Evento de disputa sem disputeId (pedido ${event.orderId}).`)
+        }
+      }
 
-                    // B. Usa somente os dados do evento. A consulta cancellationReasons retorna 400
-          // para este fluxo e provocava retries infinitos sem contribuir para a confirmação.
-          const cancelCode = String(event.metadata?.cancellationCode || event.metadata?.reason_code || event.metadata?.CANCEL_CODE || '501')
-          const cancelReason = String(event.metadata?.reason || event.metadata?.details || event.metadata?.CANCEL_REASON || 'Cancelamento confirmado pelo restaurante')
+      // CANCELLATION_REQUESTED (CAR): a solicitação foi registrada; o pedido só está cancelado no evento CANCELLED (CAN).
+      // Nada é alterado localmente aqui.
+      if (codeStr === 'CAR' || fullCodeStr === 'CANCELLATION_REQUESTED') {
+        console.log(`[iFood Polling] Solicitação de cancelamento registrada para ${event.orderId}; aguardando CANCELLED.`)
+      }
 
-                    // C. Confirma o evento de cancelamento no endpoint de status exigido
-          // pela homologação. requestCancellation() é reservado ao fluxo do PDV.
+      // CANCELLATION_REQUEST_FAILED (CARF): o iFood recusou a solicitação; o pedido segue ativo. Avisa os PDVs.
+      if ((codeStr === 'CARF' || fullCodeStr === 'CANCELLATION_REQUEST_FAILED') && event.orderId) {
+        console.warn(`[iFood Polling] Cancelamento recusado pelo iFood para ${event.orderId}:`, event.metadata || {})
+        try {
+          sseManager.broadcast('ifood_cancellation_failed', { order_id: String(event.orderId), metadata: event.metadata || {} })
+        } catch (_) {}
+      }
 
-          // C. O evento de cancelamento recebido do iFood é processado e confirmado (ACK) dentro do SLA.
-          // Não chamamos endpoints externos de solicitação aqui, pois o cancelamento já foi iniciado externamente.
-          eventProcessed = true
+      // CANCELLED (CAN): pedido definitivamente cancelado (pelo restaurante, cliente ou iFood).
+      const isCancelled = codeStr === 'CAN' || fullCodeStr === 'CANCELLED'
+      if (isCancelled && event.orderId) {
+        try {
+          console.log(`[iFood Polling] Processando CANCELLED para ${event.orderId}...`)
+          const cancelReason = String(
+            event.metadata?.reason ||
+              event.metadata?.details ||
+              event.metadata?.cancellationReason ||
+              event.metadata?.CANCEL_REASON ||
+              'Cancelado no iFood',
+          )
 
-          // D. Atualiza pedido no banco de dados local para Cancelado
           const merchantId = String(event.merchantId || '4107174')
           const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
 
           let targetPrisma = prisma
           let targetDbName = tenantDbName
           let order = await (prisma as any).pedido.findFirst({
-            where: { observacao: { contains: event.orderId } }
+            where: { observacao: { contains: `[iFood:${event.orderId}]` } },
           })
 
-          // Fallback de busca em todos os tenants
+          // Fallback: procura o pedido nos demais tenants
           if (!order) {
             const tenantNames = await getActiveTenantDbNames()
             for (const otherDb of tenantNames) {
@@ -449,7 +496,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               try {
                 const otherPrisma = await getPrismaForDb(otherDb)
                 const found = await (otherPrisma as any).pedido.findFirst({
-                  where: { observacao: { contains: event.orderId } }
+                  where: { observacao: { contains: `[iFood:${event.orderId}]` } },
                 })
                 if (found) {
                   order = found
@@ -469,9 +516,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                 status_delivery: 'Cancelado',
                 motivo_cancelamento: cancelReason,
                 data_fechamento: new Date(),
-              }
+              },
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) atualizado para Cancelado em ${targetDbName}!`)
+            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${targetDbName}.`)
 
             const cancelDto = {
               order_id: order.uuid,
@@ -482,171 +529,11 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             sseManager.broadcast('order_status_change', cancelDto)
             sseManager.notifyTenant(targetDbName, 'order_status_change', cancelDto)
           } else {
-            // Se o pedido não existe localmente ainda, cria com status Cancelado para homologação
-            try {
-              const fallbackPrisma = await getPrismaForDb(tenantDbName || 'db_restaurante')
-              const randomDisp = Math.floor(1000 + Math.random() * 9000)
-              const created = await (fallbackPrisma as any).pedido.create({
-                data: {
-                  uuid: crypto.randomUUID(),
-                  display_id: randomDisp,
-                  origem: 'Delivery',
-                  status: 'Cancelado',
-                  status_delivery: 'Cancelado',
-                  motivo_cancelamento: cancelReason,
-                  data_abertura: new Date(),
-                  data_fechamento: new Date(),
-                  observacao: `[iFood:${event.orderId}] Pedido #${randomDisp} | Pagamento via iFood`,
-                  sincronizado_web: true,
-                }
-              })
-              console.log(`[iFood Polling] Pedido cancelado #${created.display_id} (${event.orderId}) criado em ${tenantDbName}!`)
-              const cancelDto = {
-                order_id: created.uuid,
-                display_id: created.display_id,
-                status: 'Cancelado',
-                status_delivery: 'Cancelado',
-              }
-              sseManager.broadcast('order_status_change', cancelDto)
-              sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
-            } catch (cErr: any) {
-              console.error('[iFood Polling Fallback Create Error]:', cErr.message)
-            }
+            // Pedido nunca chegou ao Metrics: não há o que cancelar (não se cria pedido fantasma).
+            console.warn(`[iFood Polling] CANCELLED de ${event.orderId} sem pedido local; nada a atualizar.`)
           }
-
-                    // O ACK será enviado após o processamento completo da iteração.
-
-                } catch (crErr) {
-          // O ACK para cancelamentos NUNCA deve ser bloqueado por falha de banco local
-          eventProcessed = true
-          console.error(`[iFood Polling CancellationRequested Error] Falha ao processar ${event.orderId}:`, crErr)
-        }
-      }
-
-
-      // 2. Evento CAN = Cancelled (Pedido definitivamente cancelado pelo iFood / Consumidor / Loja)
-      const isCancelled =
-        codeStr === 'CAN' ||
-        codeStr === 'CANCELLED' ||
-        codeStr === 'CANCELLATION' ||
-        fullCodeStr === 'CANCELLED' ||
-        fullCodeStr === 'CANCELLATION' ||
-        fullCodeStr === 'CAN' ||
-        codeStr === 'CANCELADO' ||
-        fullCodeStr === 'CANCELADO' ||
-        (codeStr.includes('CANCEL') && !isCancellationRequested) ||
-        (fullCodeStr.includes('CANCEL') && !isCancellationRequested)
-
-      if (isCancelled && event.orderId) {
-        try {
-          console.log(`[iFood Polling] Processando evento CAN/CANCELLED (${event.code}/${event.fullCode}) para ${event.orderId}...`)
-
-          const cancelCode = String(
-            event.metadata?.cancellationCode ||
-            event.metadata?.reason_code ||
-            event.metadata?.code ||
-            event.metadata?.CANCEL_CODE ||
-            '501'
-          )
-          const cancelReason = String(
-            event.metadata?.reason ||
-            event.metadata?.details ||
-            event.metadata?.cancellationReason ||
-            event.metadata?.CANCEL_REASON ||
-            'Cancelamento confirmado pelo restaurante'
-          )
-
-          // Em evento CAN (pedido cancelado definitivamente no iFood), NÃO chamamos requestCancellation
-          // para evitar erro 400 'already cancelled'. Apenas atualizamos localmente e enviamos ACK.
-
-          // 2. Atualiza pedido no banco de dados local caso exista
-          const merchantId = String(event.merchantId || '4107174')
-          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
-
-          let targetPrisma = prisma
-          let targetDbName = tenantDbName
-          let order = await (prisma as any).pedido.findFirst({
-            where: { observacao: { contains: event.orderId } }
-          })
-
-          // Fallback de busca em todos os tenants
-          if (!order) {
-            const tenantNames = await getActiveTenantDbNames()
-            for (const otherDb of tenantNames) {
-              if (otherDb === tenantDbName) continue
-              try {
-                const otherPrisma = await getPrismaForDb(otherDb)
-                const found = await (otherPrisma as any).pedido.findFirst({
-                  where: { observacao: { contains: event.orderId } }
-                })
-                if (found) {
-                  order = found
-                  targetPrisma = otherPrisma
-                  targetDbName = otherDb
-                  break
-                }
-              } catch (_) {}
-            }
-          }
-
-          if (order) {
-            await (targetPrisma as any).pedido.update({
-              where: { id: order.id },
-              data: {
-                status: 'Cancelado',
-                status_delivery: 'Cancelado',
-                ...(cancelReason ? { motivo_cancelamento: cancelReason } : {}),
-                data_fechamento: new Date(),
-              }
-            })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Cancelado em ${targetDbName}!`)
-
-            const cancelDto = {
-              order_id: order.uuid,
-              display_id: order.display_id,
-              status: 'Cancelado',
-              status_delivery: 'Cancelado',
-            }
-            sseManager.broadcast('order_status_change', cancelDto)
-            sseManager.notifyTenant(targetDbName, 'order_status_change', cancelDto)
-          } else {
-            // Se o pedido não existe localmente ainda, cria com status Cancelado para homologação
-            try {
-              const fallbackPrisma = await getPrismaForDb(tenantDbName || 'db_restaurante')
-              const randomDisp = Math.floor(1000 + Math.random() * 9000)
-              const created = await (fallbackPrisma as any).pedido.create({
-                data: {
-                  uuid: crypto.randomUUID(),
-                  display_id: randomDisp,
-                  origem: 'Delivery',
-                  status: 'Cancelado',
-                  status_delivery: 'Cancelado',
-                  motivo_cancelamento: cancelReason,
-                  data_abertura: new Date(),
-                  data_fechamento: new Date(),
-                  observacao: `[iFood:${event.orderId}] Pedido #${randomDisp} | Pagamento via iFood`,
-                  sincronizado_web: true,
-                }
-              })
-              console.log(`[iFood Polling] Pedido cancelado #${created.display_id} (${event.orderId}) criado em ${tenantDbName}!`)
-              const cancelDto = {
-                order_id: created.uuid,
-                display_id: created.display_id,
-                status: 'Cancelado',
-                status_delivery: 'Cancelado',
-              }
-              sseManager.broadcast('order_status_change', cancelDto)
-              sseManager.notifyTenant(tenantDbName, 'order_status_change', cancelDto)
-            } catch (cErr: any) {
-              console.error('[iFood Polling Fallback Create Error]:', cErr.message)
-            }
-          }
-
-          // Confirmação (ACK) garantida no ciclo do polling
-          eventProcessed = true
         } catch (canErr) {
-          eventProcessed = true
-          console.error(`[iFood Polling CAN Error] Falha ao processar cancelamento ${event.orderId}:`, canErr)
+          console.error(`[iFood Polling CAN Error] Falha ao registrar cancelamento ${event.orderId}:`, canErr)
         }
       }
 
@@ -688,16 +575,15 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         }
       }
 
-      if (eventProcessed && event.id) {
-        ackIds.push(event.id)
+      // Pedido novo que falhou ao gravar: o ACK já foi dado, então tenta de novo nos próximos ciclos.
+      if (!eventProcessed && event.code === 'PLC' && event.orderId) {
+        const key = String(event.orderId)
+        const entry = placedRetryQueue.get(key)
+        if (!entry) placedRetryQueue.set(key, { event: { ...event, __retry: undefined }, attempts: 0 })
+        console.warn(`[iFood Polling] Pedido ${key} será reprocessado no próximo ciclo (tentativa ${(entry?.attempts ?? 0) + 1}/${MAX_PLACED_RETRIES}).`)
+      } else if (eventProcessed && event.code === 'PLC' && event.orderId) {
+        placedRetryQueue.delete(String(event.orderId))
       }
-    }
-
-    // Confirma somente os eventos processados sem erro; os demais permanecem para retry.
-
-    if (ackIds.length > 0) {
-      await ifoodApi.acknowledgeEvents(token, ackIds)
-      console.log(`[iFood Polling] ${ackIds.length} evento(s) confirmados (ACK) no iFood com sucesso.`)
     }
 
     return { polled: true, eventsProcessed, ordersCreated }
@@ -710,18 +596,18 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
 }
 
 /**
- * Inicia o worker de polling contínuo a cada 15 segundos
+ * Inicia o worker de polling contínuo a cada 30 segundos (recomendação da documentação do iFood)
  */
 export function startIfoodPollingLoop() {
   if (pollIntervalTimer) {
     return
   }
 
-  console.log('🚀 [iFood Poller] Iniciando worker de eventos iFood em tempo real (intervalo: 15s)...')
+  console.log('🚀 [iFood Poller] Iniciando worker de eventos iFood (polling a cada 30s, conforme a homologação)...')
   // Executa uma checagem imediata
     pollAllIfoodTenants().catch((e) => console.error('[iFood Initial Poll Error]:', e))
 
   pollIntervalTimer = setInterval(() => {
     pollAllIfoodTenants().catch((e) => console.error('[iFood Interval Poll Error]:', e))
-  }, 3000)
+  }, 30000)
 }
