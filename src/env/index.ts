@@ -44,6 +44,8 @@ const envSchema = z.object({
     IFOOD_CLIENT_SECRET: z.string().optional(),
     FOOD99_APP_ID: z.string().optional(),
     FOOD99_SECRET: z.string().optional(),
+    // Opcional: app_shop_id padrão para pedidos 99Food antigos sem a loja gravada na observação
+    FOOD99_APP_SHOP_ID: z.string().optional(),
 })
 
 const _env = envSchema.safeParse(process.env)

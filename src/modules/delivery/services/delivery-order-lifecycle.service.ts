@@ -1,6 +1,8 @@
 import { ifoodApi, IfoodCancelResult } from './ifood-api.service'
+import { env } from '@/env'
 import { getValidAccessToken } from './ifood-poller'
 import { writeJournal } from './ifood-events.service'
+import { food99Api } from './food99-api.service'
 
 interface LifecyclePedido {
   id: number
@@ -17,6 +19,16 @@ interface LifecycleOptions {
   cancelReason?: string
 }
 
+/** Pedido da 99Food: id do pedido e a loja (app_shop_id) gravados na observação pelo webhook. */
+export function extractFood99Order(observacao?: string | null): { orderId: string; appShopId: string | null } | null {
+  const obs = observacao || ''
+  if (!obs.includes('[99Food')) return null
+  const m = obs.match(/\[99Food:(\d+)\]/) || obs.match(/Pedido #(\d+)/)
+  if (!m) return null
+  const shop = obs.match(/\[99Loja:([^\]]+)\]/)
+  return { orderId: m[1], appShopId: shop ? shop[1] : env.FOOD99_APP_SHOP_ID ?? null }
+}
+
 export function extractIfoodOrderId(observacao?: string | null): string | null {
   const obs = observacao || ''
   const match = obs.match(/\[iFood:([a-zA-Z0-9-]+)\]/) || (obs.includes('[iFood]') ? obs.match(/Pedido #([a-zA-Z0-9-]+)/) : null)
@@ -31,6 +43,17 @@ export async function cancelDeliveryOrderOnPlatform(
   pedido: LifecyclePedido,
   options: LifecycleOptions = {},
 ): Promise<{ handled: boolean } & IfoodCancelResult> {
+  const food99 = extractFood99Order(pedido.observacao)
+  if (food99) {
+    if (!food99.appShopId) return { handled: true, ok: false, message: 'Loja da 99Food não identificada neste pedido.' }
+    const reasonId = Number(options.cancelCode)
+    const validReason = [1010, 1020, 1030, 1040, 1050, 1060, 1070, 1071, 1072, 1073, 1074, 1080].includes(reasonId) ? reasonId : 1030
+    const detail = options.cancelReason || (validReason === 1080 ? 'Cancelado pelo estabelecimento' : undefined)
+    console.log(`[99Food Lifecycle] Cancelando pedido #${pedido.display_id} (${food99.orderId}) motivo ${validReason}...`)
+    const r = await food99Api.cancelOrder(food99.appShopId, food99.orderId, validReason, detail)
+    return { handled: true, ok: r.ok, message: r.ok ? undefined : r.errmsg }
+  }
+
   const externalOrderId = extractIfoodOrderId(pedido.observacao)
   if (!externalOrderId) return { handled: false, ok: true }
 
@@ -100,10 +123,27 @@ export async function handleDeliveryOrderStatusChange(
   }
 
   // 2. 99FOOD
-  const food99Match = obs.match(/\[99Food:([a-zA-Z0-9-]+)\]/) || (obs.includes('[99Food]') ? obs.match(/Pedido #([a-zA-Z0-9-]+)/) : null)
-  if (food99Match) {
-    const externalOrderId99 = food99Match[1]
-    console.log(`[99Food Lifecycle] Status do pedido #${pedido.display_id} (${externalOrderId99}) atualizado para ${newStatus}`)
+  const food99 = extractFood99Order(obs)
+  if (food99) {
+    console.log(`[99Food Lifecycle] Status do pedido #${pedido.display_id} (${food99.orderId}) atualizado para ${newStatus}`)
+    if (!food99.appShopId) {
+      console.error(`[99Food Lifecycle] Loja (app_shop_id) não identificada para o pedido ${food99.orderId}`)
+      return false
+    }
+    if (newStatus === 'cancelled') {
+      const result = await cancelDeliveryOrderOnPlatform(pedido, options)
+      return result.ok
+    }
+    if (newStatus === 'in_preparation') {
+      const r = await food99Api.confirmOrder(food99.appShopId, food99.orderId)
+      console.log(`[99Food Lifecycle] Confirmação do pedido ${food99.orderId}: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
+      return r.ok
+    }
+    if (newStatus === 'conferencia') {
+      const r = await food99Api.readyOrder(food99.appShopId, food99.orderId)
+      console.log(`[99Food Lifecycle] Pedido ${food99.orderId} pronto: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
+      return r.ok
+    }
   }
 
   return true

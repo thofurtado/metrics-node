@@ -240,7 +240,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           valor_troco: 0,
           status: 'Aberto',
           status_delivery: 'Pendente',
-          observacao: `[99Food] Pedido #${rawOrderId} | Pagamento via 99Food`,
+          observacao: `[99Food] Pedido #${rawOrderId} | Pagamento via 99Food${payload?.app_shop_id ? ` | [99Loja:${payload.app_shop_id}]` : ''}`,
           sincronizado_web: true,
           itens: {
             create: itemsToCreate
