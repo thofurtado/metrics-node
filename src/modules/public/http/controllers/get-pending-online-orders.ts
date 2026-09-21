@@ -149,6 +149,7 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
                         return {
                             id: i.uuid || String(i.id),
+                            product_id: i.produto_id || undefined,
                             name: productMap.get(i.produto_id || '') || 'Item',
                             quantity: i.quantidade,
                             price: i.valor_unitario,

@@ -128,55 +128,50 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         return reply.status(200).send({ errno: 0, errmsg: 'ok' })
       }
 
-      // Identificar ou criar cliente
-      const recvAddr = orderInfo?.receive_address || {}
-      const clientName = String(
-        recvAddr?.name ||
-        orderInfo?.customer_name ||
-        orderInfo?.receiver_name ||
-        orderInfo?.user_name ||
-        'Cliente 99Food'
-      )
-      const clientPhone = String(
-        recvAddr?.phone ||
-        orderInfo?.customer_phone ||
-        orderInfo?.receiver_phone ||
-        '11999999999'
-      ) || '11999999999'
+      // ── Dados reais do pedido (estrutura do orderNew = Get Order Details). Nada é inventado: o que não vier
+      // fica vazio/nulo, e o PDV mostra "não informado".
+      const centavos = (v: any): number => (v == null || v === '' || Number.isNaN(Number(v)) ? 0 : Number(v) / 100)
+      const texto = (v: any): string => (v == null ? '' : String(v).trim())
 
-      let client = await (prisma as any).client.findFirst({
-        where: { phone: clientPhone },
-        include: { addresses: true }
-      })
+      const recvAddr = orderInfo?.receive_address || {}
+      const isPickup = Number(orderInfo?.fulfillment_mode) === 1
+      const deliveryType = Number(orderInfo?.delivery_type) // 0 retirada, 1 entrega 99Food, 2 entrega da loja
+      const payMethod = Number(orderInfo?.pay_method) // 1 online, 2 na entrega
+      const price = orderInfo?.price || {}
+
+      const clientName =
+        texto(recvAddr.name) ||
+        [texto(recvAddr.first_name), texto(recvAddr.last_name)].filter(Boolean).join(' ') ||
+        'Cliente 99Food'
+      const clientPhone = texto(recvAddr.virtual_phone_number) || texto(recvAddr.phone) || null
+
+      let client = clientPhone
+        ? await (prisma as any).client.findFirst({ where: { phone: clientPhone }, include: { addresses: true } })
+        : await (prisma as any).client.findFirst({ where: { phone: null, name: clientName }, include: { addresses: true } })
 
       if (!client) {
         client = await (prisma as any).client.create({
-          data: {
-            name: clientName,
-            phone: clientPhone,
-          },
-          include: { addresses: true }
+          data: { name: clientName, phone: clientPhone },
+          include: { addresses: true },
         })
       }
 
-      // Endereço de entrega
-      let targetAddressId = client.addresses?.[0]?.id || null
-      if (!targetAddressId) {
-        const streetStr = recvAddr?.street_name || recvAddr?.poi_address || orderInfo?.delivery_address?.street || 'Av. Principal'
-        const numberStr = String(recvAddr?.house_number || recvAddr?.street_number || orderInfo?.delivery_address?.number || '100')
-        const neighborhoodStr = recvAddr?.district || orderInfo?.delivery_address?.neighborhood || 'Centro'
-        const cityStr = recvAddr?.city || orderInfo?.delivery_address?.city || 'Caraguatatuba'
-
+      // Endereço: só cria se a 99Food mandou rua/endereço (retirada e o mock do Sandbox vêm sem).
+      const street = texto(recvAddr.street_name) || texto(recvAddr.poi_address)
+      let targetAddressId: string | null = null
+      if (!isPickup && street) {
         const addr = await (prisma as any).address.create({
           data: {
             client_id: client.id,
-            street: streetStr,
-            number: numberStr,
-            neighborhood: neighborhoodStr,
-            city: cityStr,
-            state: 'SP',
-            is_main: true
-          }
+            street,
+            number: texto(recvAddr.house_number) || texto(recvAddr.street_number) || 'S/N',
+            neighborhood: texto(recvAddr.district) || '',
+            city: texto(recvAddr.city) || '',
+            state: texto(recvAddr.state) || '',
+            zipcode: texto(recvAddr.postal_code || recvAddr.postalCode) || undefined,
+            complement: texto(recvAddr.complement) || undefined,
+            is_main: false,
+          },
         })
         targetAddressId = addr.id
       }
@@ -195,37 +190,59 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         orderBy: { opened_at: 'desc' }
       })
 
-      // Cálculo de valores e itens
-      const totalAmount = orderInfo?.price?.order_price
-        ? (orderInfo.price.order_price / 100)
-        : (orderInfo?.price?.real_price
-          ? (orderInfo.price.real_price / 100)
-          : (orderInfo?.total_price
-            ? (orderInfo.total_price / 100)
-            : 25.0))
-      const deliveryFee = orderInfo?.delivery_fee ? (orderInfo.delivery_fee / 100) : 0
+      // Valores (centavos). Total = o que a loja recebe (real_price nos modelos 2/3; order_price no modelo 1).
+      // A taxa de entrega só é da loja quando a entrega é da própria loja (delivery_type 2).
+      const orderPrice = centavos(price.order_price)
+      const totalAmount = price.real_price != null ? centavos(price.real_price) : orderPrice
+      const deliveryFee = deliveryType === 2 ? centavos(price.delivery_price) : 0
       const subtotal = Math.max(0, totalAmount - deliveryFee)
 
-      const rawItems = orderInfo?.order_items || orderInfo?.items || orderInfo?.dishes || []
-      const itemsToCreate = rawItems.length > 0 ? rawItems.map((it: any) => {
-        const itemQty = Number(it.amount || it.quantity || it.count || 1)
-        const itemPrice = it.sku_price
-          ? (it.sku_price / 100)
-          : (it.total_price ? (it.total_price / 100) : (it.price ? (it.price / 100) : 25.0))
-        return {
-          quantidade: itemQty,
-          valor_unitario: itemPrice,
-          valor_total: itemPrice * itemQty,
-          observacao: it.name || it.item_name || 'X-Burguer Artesanal'
-        }
-      }) : [{
-        quantidade: 1,
-        valor_unitario: 25.0,
-        valor_total: 25.0,
-        observacao: 'X-Burguer Artesanal (99Food)'
-      }]
+      // Itens: liga ao produto pelo app_item_id (é o id do produto enviado no cardápio); senão, pelo nome.
+      const rawItems: any[] = orderInfo?.order_items || []
+      const itemsToCreate: any[] = []
+      for (const it of rawItems) {
+        const itemName = texto(it.name) || 'Item 99Food'
+        const appItemId = texto(it.app_item_id)
 
-      // Criar Pedido canônico no banco do tenant (db_restaurante)
+        let matchedProduct: any = null
+        if (appItemId) {
+          matchedProduct = await (prisma as any).product.findFirst({ where: { OR: [{ id: appItemId }, { barcode: appItemId }] } })
+        }
+        if (!matchedProduct) {
+          matchedProduct = await (prisma as any).product.findFirst({ where: { name: { equals: itemName, mode: 'insensitive' } } })
+        }
+
+        const qty = Number(it.amount || 1) || 1
+        const unit = it.sku_price != null ? centavos(it.sku_price) : centavos(it.total_price) / qty
+
+        let obs = itemName
+        const subs: any[] = Array.isArray(it.sub_item_list) ? it.sub_item_list : []
+        if (subs.length > 0) {
+          obs += ` [Adicionais: ${subs.map((o: any) => `${texto(o.name) || 'Opção'} (x${Number(o.amount || 1)})`).join(', ')}]`
+        }
+        if (texto(it.remark)) obs += ` (Obs: ${texto(it.remark)})`
+
+        itemsToCreate.push({
+          produto_id: matchedProduct ? matchedProduct.id : undefined,
+          quantidade: qty,
+          valor_unitario: unit,
+          valor_total: it.total_price != null ? centavos(it.total_price) : unit * qty,
+          observacao: obs,
+        })
+      }
+      if (itemsToCreate.length === 0) {
+        itemsToCreate.push({ quantidade: 1, valor_unitario: totalAmount, valor_total: totalAmount, observacao: 'Pedido 99Food (itens não informados)' })
+      }
+
+      // Pagamento: a marca de texto abaixo é o que o PDV lê. Online = já pago; offline = cobrar na entrega.
+      const changeFor = centavos(orderInfo?.change_for)
+      let pagamentoTxt = 'Forma de pagamento não informada'
+      if (payMethod === 1) pagamentoTxt = 'Pagamento via 99Food'
+      else if (payMethod === 2) pagamentoTxt = `Pagar na entrega (dinheiro)${changeFor > 0 ? ` | troco para ${changeFor.toFixed(2).replace('.', ',')}` : ''}`
+      const entregaTxt = isPickup ? 'Retirada' : deliveryType === 2 ? 'Entrega própria' : deliveryType === 1 ? 'Entrega 99Food' : ''
+      const indexTxt = orderInfo?.order_index != null ? ` | Nº ${orderInfo.order_index}` : ''
+
+      // Criar Pedido canônico no banco do tenant
       const pedido = await (prisma as any).pedido.create({
         data: {
           display_id: displayId,
@@ -237,10 +254,10 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           subtotal: subtotal,
           valor_frete: deliveryFee,
           valor_final: totalAmount,
-          valor_troco: 0,
+          valor_troco: payMethod === 2 && changeFor > totalAmount ? changeFor - totalAmount : 0,
           status: 'Aberto',
           status_delivery: 'Pendente',
-          observacao: `[99Food] Pedido #${rawOrderId} | Pagamento via 99Food${payload?.app_shop_id ? ` | [99Loja:${payload.app_shop_id}]` : ''}`,
+          observacao: `[99Food] Pedido #${rawOrderId} | ${pagamentoTxt}${indexTxt}${entregaTxt ? ` | ${entregaTxt}` : ''}${payload?.app_shop_id ? ` | [99Loja:${payload.app_shop_id}]` : ''}`,
           sincronizado_web: true,
           itens: {
             create: itemsToCreate
@@ -253,21 +270,25 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
 
       // Transmissão via Server-Sent Events (SSE) para os PDVs
       try {
+        const addrText = street
+          ? `${street}${texto(recvAddr.house_number) ? ', ' + texto(recvAddr.house_number) : ''}${texto(recvAddr.district) ? ' - ' + texto(recvAddr.district) : ''}`
+          : ''
         const fullOrderDto = {
           id: pedido.uuid,
           order_id: pedido.uuid,
           display_id: pedido.display_id,
           client_name: client.name,
-          client_phone: client.phone,
-          address: 'Av. Principal, 100 - Centro',
-          neighborhood: 'Centro',
-          city: 'Caraguatatuba',
+          client_phone: client.phone || '',
+          address: addrText,
+          neighborhood: texto(recvAddr.district),
+          city: texto(recvAddr.city),
           total_amount: pedido.valor_final,
           delivery_fee: pedido.valor_frete,
           observations: pedido.observacao || '',
           created_at: pedido.data_abertura,
           items: (pedido.itens || []).map((i: any) => ({
             id: i.uuid,
+            product_id: i.produto_id || undefined,
             name: i.observacao || 'Item',
             quantity: i.quantidade,
             price: i.valor_unitario,
