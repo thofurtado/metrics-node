@@ -35,16 +35,37 @@ async function fetchToken(appShopId: string, forceRefresh: boolean): Promise<str
   }
   const q = `app_id=${encodeURIComponent(appId)}&app_secret=${encodeURIComponent(appSecret)}&app_shop_id=${encodeURIComponent(appShopId)}`
 
-  const started = Date.now()
+  const journalGet = (d: any, t0: number) =>
+    void writeJournal({ method: 'API99', endpoint: 'authtoken/get', request: { app_shop_id: appShopId }, response: { errno: d?.errno, errmsg: d?.errmsg, requestId: d?.requestId, expira_em: d?.data?.token_expiration_time }, durationMs: Date.now() - t0, success: Boolean(d?.data?.auth_token), error: d?.data?.auth_token ? undefined : d?.errmsg })
+
+  const doRefresh = async () => {
+    const t = Date.now()
+    const r = await getJson(`${BASE}/v1/auth/authtoken/refresh?${q}`)
+    void writeJournal({ method: 'API99', endpoint: 'authtoken/refresh', request: { app_shop_id: appShopId }, response: { errno: r?.errno, errmsg: r?.errmsg, requestId: r?.requestId }, durationMs: Date.now() - t, success: r?.errno === 0, error: r?.errno === 0 ? undefined : r?.errmsg })
+    return r
+  }
+
   try {
-    if (forceRefresh) {
-      const r = await getJson(`${BASE}/v1/auth/authtoken/refresh?${q}`)
-      void writeJournal({ method: 'API99', endpoint: 'authtoken/refresh', request: { app_shop_id: appShopId }, response: { errno: r?.errno, errmsg: r?.errmsg, requestId: r?.requestId }, durationMs: Date.now() - started, success: r?.errno === 0, error: r?.errno === 0 ? undefined : r?.errmsg })
+    let firstGetAt = 0
+    if (forceRefresh) await doRefresh()
+
+    let t0 = Date.now()
+    firstGetAt = t0
+    let d = await getJson(`${BASE}/v1/auth/authtoken/get?${q}`)
+    journalGet(d, t0)
+
+    // Autorização da loja vencida (10102): renova e busca de novo. Get/Refresh têm limite de 1 req/30 s,
+    // então esperamos o intervalo antes da segunda busca.
+    if (!d?.data?.auth_token && d?.errno === 10102) {
+      await doRefresh()
+      const wait = 31_000 - (Date.now() - firstGetAt)
+      if (wait > 0) await new Promise(r => setTimeout(r, wait))
+      t0 = Date.now()
+      d = await getJson(`${BASE}/v1/auth/authtoken/get?${q}`)
+      journalGet(d, t0)
     }
-    const t0 = Date.now()
-    const d = await getJson(`${BASE}/v1/auth/authtoken/get?${q}`)
+
     const token = d?.data?.auth_token
-    void writeJournal({ method: 'API99', endpoint: 'authtoken/get', request: { app_shop_id: appShopId }, response: { errno: d?.errno, errmsg: d?.errmsg, requestId: d?.requestId, expira_em: d?.data?.token_expiration_time }, durationMs: Date.now() - t0, success: Boolean(token), error: token ? undefined : d?.errmsg })
     if (!token) return null
     tokens.set(appShopId, { token, expiresAt: Number(d.data.token_expiration_time) || 0, fetchedAt: Date.now() })
     return token
