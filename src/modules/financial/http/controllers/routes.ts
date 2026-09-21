@@ -38,6 +38,7 @@ import { getMonthlySummary } from '@/modules/financial/http/controllers/get-mont
 import { extractTransactionData } from '@/modules/financial/http/controllers/extract-transaction-data'
 import { listCreditCards, createCreditCard, updateCreditCard, deleteCreditCard, payCreditCardInvoice } from '@/modules/financial/http/controllers/credit-cards'
 import { listSettlements, revertSettlement, getPendingSettlements } from '@/modules/financial/http/controllers/settlements'
+import { updateCreditCardPurchase, deleteCreditCardPurchase } from '@/modules/financial/http/controllers/credit-card-purchases'
 import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
 import { settleTermDebt } from '@/modules/financial/http/controllers/settle-term-debt'
 
@@ -94,4 +95,8 @@ export async function financialRoutes(app: FastifyInstance) {
     app.put('/credit-cards/:id', updateCreditCard)
     app.delete('/credit-cards/:id', deleteCreditCard)
     app.patch('/credit-cards/:id/pay-invoice', payCreditCardInvoice)
+
+    // Compras no cartão (editar/excluir dentro da fatura)
+    app.put('/credit-card-purchases/:id', updateCreditCardPurchase)
+    app.delete('/credit-card-purchases/:id', deleteCreditCardPurchase)
 }

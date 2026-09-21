@@ -72,6 +72,11 @@ export class TransactionUseCase {
         const account = await this.accountsRepository.findById(account_id)
         if (!account) throw new ResourceNotFoundError()
 
+        // Compra no cartão de crédito nunca nasce paga: só sai da conta quando a fatura é paga.
+        if (payment_method === 'CREDIT_CARD' && credit_card_id) {
+            confirmed = false
+        }
+
         if (operation === 'transfer') {
             if (!destination_account_id) {
                 throw new Error('Conta de destino é obrigatória para transferências.')

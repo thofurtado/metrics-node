@@ -116,6 +116,8 @@ export class PayCreditCardInvoiceUseCase {
                         where: { id: swipe.id },
                         data: {
                             confirmed: true,
+                            // Sem totalValue as somas de "pago" do dashboard ignoram a compra
+                            totalValue: swipeAmount,
                             account_id: payingAccountId
                         }
                     })
