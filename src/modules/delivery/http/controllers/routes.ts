@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { webhook99FoodController } from './webhook-99food'
 import { webhookIfoodController } from './webhook-ifood'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
+import { parseJsonKeepingLongIds } from '@/lib/json-safe-ids'
 
 import { ifoodCancelProbeController, ifoodDiagDataController, ifoodDiagPageController } from './ifood-diagnostic'
 import {
@@ -20,8 +21,22 @@ import {
 
 export async function deliveryRoutes(app: FastifyInstance) {
   // Webhooks de terceiros (Recebem chamadas automáticas da 99Food e iFood)
-  app.post('/webhooks/99food', webhook99FoodController)
-  app.post('/api/webhooks/99food', webhook99FoodController)
+  // A 99Food usa IDs de 64 bits (loja, pedido, app). Neste contexto isolado o JSON é lido como texto: guardamos o
+  // corpo cru (assinatura e diário) e convertemos os inteiros longos em texto para não perder precisão.
+  await app.register(async (food99) => {
+    food99.removeContentTypeParser('application/json')
+    food99.addContentTypeParser('application/json', { parseAs: 'string' }, (request, body, done) => {
+      ;(request as any).rawBody = body as string
+      try {
+        done(null, (body as string).length ? parseJsonKeepingLongIds(body as string) : {})
+      } catch (err: any) {
+        err.statusCode = 400
+        done(err, undefined)
+      }
+    })
+    food99.post('/webhooks/99food', webhook99FoodController)
+    food99.post('/api/webhooks/99food', webhook99FoodController)
+  })
 
   // Webhooks Oficiais iFood (homologacao Toqan e producao)
   app.post('/webhooks/ifood', webhookIfoodController)

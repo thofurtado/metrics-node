@@ -1,6 +1,9 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
+import crypto from 'node:crypto'
 import { resolveTenantForMerchant } from '../../services/delivery-tenant-resolver'
+import { writeJournal } from '../../services/ifood-events.service'
 import { sseManager } from '@/lib/sse-manager'
+import { env } from '@/env'
 
 export interface DeliveryEventLog {
   id: string
@@ -18,11 +21,45 @@ export const recentDeliveryEvents: DeliveryEventLog[] = []
  * Recebe notificações push de pedidos e status em tempo real diretamente dos servidores da 99Food.
  */
 export async function webhook99FoodController(request: FastifyRequest, reply: FastifyReply) {
+  const startedAt = Date.now()
+  // O corpo chega já convertido com IDs longos (64 bits) como TEXTO (ver routes.ts), e o texto cru é guardado
+  // para conferir a assinatura e para o diário de eventos.
   const payload = request.body as any
+  const rawBody: string = (request as any).rawBody ?? ''
 
-  console.log('[99Food Webhook] Evento recebido com sucesso:', {
-    headers: request.headers,
-    body: payload,
+  const headerType = String(payload?.type || payload?.event_type || payload?.action || 'UNKNOWN')
+
+  // Assinatura: didi-header-sign = MD5(corpo cru + APP SECRET). Por ora só REGISTRAMOS o resultado (não rejeita),
+  // até termos evidência real de que o cálculo bate com o que a 99Food envia.
+  const signHeader = String(request.headers['didi-header-sign'] || '')
+  let signStatus = 'sem_segredo_configurado'
+  if (env.FOOD99_SECRET) {
+    if (!signHeader) signStatus = 'cabecalho_ausente'
+    else signStatus = crypto.createHash('md5').update(rawBody + env.FOOD99_SECRET, 'utf-8').digest('hex') === signHeader ? 'ok' : 'invalida'
+  }
+
+  console.log(`[99Food Webhook] Evento "${headerType}" recebido (assinatura: ${signStatus}, ${rawBody.length} bytes)`)
+
+  // Diário de eventos (evidência): texto cru + cabeçalhos, sem perder os IDs longos.
+  const journalOrderId = payload?.data?.order_id ?? payload?.data?.order_info?.order_id ?? null
+  void writeJournal({
+    method: 'EVENT99',
+    endpoint: headerType,
+    orderId: journalOrderId != null ? String(journalOrderId) : null,
+    request: {
+      signature: signStatus,
+      app_id: payload?.app_id != null ? String(payload.app_id) : null,
+      app_shop_id: payload?.app_shop_id != null ? String(payload.app_shop_id) : null,
+      headers: {
+        'user-agent': request.headers['user-agent'],
+        'content-type': request.headers['content-type'],
+        'didi-header-sign': signHeader || undefined,
+        'x-request-id': request.headers['x-request-id'],
+      },
+      raw: rawBody.length > 60000 ? rawBody.slice(0, 60000) + '…[truncado]' : rawBody,
+    },
+    durationMs: Date.now() - startedAt,
+    success: true,
   })
 
   // Registra no buffer de eventos recentes
@@ -58,16 +95,18 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
     const { dbName, prisma } = await resolveTenantForMerchant(storeId, 'FOOD99')
 
     // 3. Processar tipo de evento (Novo Pedido, Status do Cardápio, etc.)
-    const eventType = String(payload?.event_type || payload?.type || payload?.action || 'UNKNOWN')
+    const eventType = headerType
     console.log(`[99Food Webhook] Evento "${eventType}" recebido para o tenant ${dbName}`)
 
-    // 4. Se for um evento relacionado a pedido ou contiver dados de pedido
-    const isOrderEvent =
-      eventType.toLowerCase().includes('order') ||
-      eventType.toLowerCase().includes('pedido') ||
-      Boolean(payload?.data?.order_info || payload?.order_id || payload?.data?.order_id || payload?.data?.orderId || payload?.data?.order)
+    // 4. SÓ o evento orderNew cria pedido. orderConfirm/orderReady/orderCancel/orderFinish/orderCancelApply etc.
+    // também trazem "order" no nome e antes criavam um pedido falso a cada notificação. Eventos sem "type"
+    // (testes manuais antigos) continuam aceitos se trouxerem order_info.
+    const isNewOrderEvent = eventType === 'orderNew' || (eventType === 'UNKNOWN' && Boolean(payload?.data?.order_info))
+    if (!isNewOrderEvent) {
+      console.log(`[99Food Webhook] Evento "${eventType}" registrado no diário; tratamento específico ainda não implementado.`)
+    }
 
-    if (isOrderEvent) {
+    if (isNewOrderEvent) {
       console.log(`[99Food Webhook] Processando criação/recebimento de pedido 99Food para o banco ${dbName}...`)
       const orderInfo = payload?.data?.order_info || payload?.data?.order || payload?.data || payload
       const rawOrderId = String(
@@ -78,6 +117,16 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         payload?.order_id ||
         Date.now()
       )
+
+      // A 99Food reenvia o webhook até receber errno 0: não criar o mesmo pedido duas vezes.
+      const jaExiste = await (prisma as any).pedido.findFirst({
+        where: { observacao: { contains: `[99Food] Pedido #${rawOrderId} ` } },
+        select: { id: true },
+      })
+      if (jaExiste) {
+        console.log(`[99Food Webhook] Pedido ${rawOrderId} já existe (id ${jaExiste.id}); ignorando reenvio.`)
+        return reply.status(200).send({ errno: 0, errmsg: 'ok' })
+      }
 
       // Identificar ou criar cliente
       const recvAddr = orderInfo?.receive_address || {}
@@ -234,16 +283,12 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       }
     }
 
-    // A 99Food exige retorno 200 OK com código de sucesso imediato: { code: 0, message: "success" }
-    return reply.status(200).send({
-      code: 0,
-      message: 'success',
-    })
+    // Resposta esperada pela 99Food (doc "Webhook Responses"): errno 0. Sem isso ela reenvia várias vezes.
+    return reply.status(200).send({ errno: 0, errmsg: 'ok' })
   } catch (err: any) {
     console.error('[99Food Webhook Error]:', err)
-    return reply.status(200).send({
-      code: 0,
-      message: 'handled with warnings',
-    })
+    void writeJournal({ method: 'EVENT99', endpoint: `${headerType}:erro`, request: { raw: rawBody.slice(0, 20000) }, success: false, error: err?.message || String(err), durationMs: Date.now() - startedAt })
+    // errno diferente de 0 faz a 99Food reenviar (seguro: o pedido já é protegido contra duplicidade).
+    return reply.status(200).send({ errno: 1, errmsg: 'internal error' })
   }
 }

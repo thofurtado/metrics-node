@@ -60,8 +60,9 @@ export class CatalogSyncService {
 
     // Disparar sincronização para 99Food se configurado
     let food99Result: any = { status: 'SKIPPED' }
-    const appId = env.FOOD99_APP_ID || '5764607687831062526'
-    const appSecret = env.FOOD99_SECRET || '981977b92705d256fa73f9387f53e913'
+    // Credenciais SOMENTE por variável de ambiente (FOOD99_APP_ID / FOOD99_SECRET); nunca no código.
+    const appId = env.FOOD99_APP_ID
+    const appSecret = env.FOOD99_SECRET
     const appShopId = '342343227' // Bella Gourmet
 
     if (appId && appSecret) {
