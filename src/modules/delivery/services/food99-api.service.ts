@@ -122,7 +122,60 @@ async function orderCall(appShopId: string, path: string, orderId: string, extra
   return { ok: false, errmsg: 'Falha ao renovar o token da 99Food' }
 }
 
+/**
+ * Envia o cardápio completo (v3). O envio é ASSÍNCRONO: a resposta traz um task_id e o resultado final chega
+ * no webhook uploadMenuTaskStatus (fica no diário EVENT99). Exige token da loja no corpo (auth_token).
+ */
+async function uploadMenu(appShopId: string, menu: { menus: unknown[]; categories: unknown[]; items: unknown[]; modifier_groups?: unknown[] }): Promise<Food99Result & { taskId?: string; data?: unknown }> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const token = await getFood99Token(appShopId, attempt > 0)
+    if (!token) return { ok: false, errmsg: 'Sem token da 99Food (verifique FOOD99_APP_ID/FOOD99_SECRET e se a loja está vinculada a ESTE app).' }
+    const started = Date.now()
+    try {
+      const res = await fetch(`${BASE}/v3/item/item/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth_token: token, modifier_groups: [], ...menu }),
+        signal: AbortSignal.timeout(20000),
+      })
+      const d = parseJsonKeepingLongIds(await res.text())
+      const ok = d?.errno === 0
+      void writeJournal({
+        method: 'API99',
+        endpoint: '/v3/item/item/upload',
+        request: { app_shop_id: appShopId, categorias: menu.categories.length, itens: menu.items.length, tentativa: attempt + 1 },
+        response: { errno: d?.errno, errmsg: d?.errmsg, requestId: d?.requestId, data: d?.data },
+        status: res.status,
+        durationMs: Date.now() - started,
+        success: ok,
+        error: ok ? undefined : d?.errmsg,
+      })
+      if (ok) return { ok: true, errno: 0, requestId: d?.requestId, taskId: d?.data?.task_id != null ? String(d.data.task_id) : undefined, data: d?.data }
+      if ((d?.errno === 10100 || d?.errno === 10102) && attempt === 0) continue
+      return { ok: false, errno: d?.errno, errmsg: d?.errmsg, requestId: d?.requestId, data: d?.data }
+    } catch (e: any) {
+      return { ok: false, errmsg: e?.message || 'Falha de rede com a 99Food' }
+    }
+  }
+  return { ok: false, errmsg: 'Falha ao renovar o token da 99Food' }
+}
+
+/** Lista o cardápio que está de fato na loja (GET /v3/item/item/list). Só leitura. */
+async function listMenu(appShopId: string): Promise<{ ok: boolean; errmsg?: string; items: { app_item_id: string; item_name: string; price: number }[] }> {
+  const token = await getFood99Token(appShopId)
+  if (!token) return { ok: false, errmsg: 'Sem token da 99Food', items: [] }
+  try {
+    const d = await getJson(`${BASE}/v3/item/item/list?auth_token=${encodeURIComponent(token)}`)
+    if (d?.errno !== 0) return { ok: false, errmsg: d?.errmsg, items: [] }
+    return { ok: true, items: (d?.data?.items || []).map((i: any) => ({ app_item_id: String(i.app_item_id), item_name: i.item_name, price: i.price })) }
+  } catch (e: any) {
+    return { ok: false, errmsg: e?.message, items: [] }
+  }
+}
+
 export const food99Api = {
+  uploadMenu,
+  listMenu,
   /** Confirma (aceita) o pedido. Obrigatório em até 5 minutos após o orderNew, senão a 99Food cancela sozinha. */
   confirmOrder: (appShopId: string, orderId: string) => orderCall(appShopId, '/v1/order/order/confirm', orderId),
   /** Pedido pronto para retirada/entrega. */

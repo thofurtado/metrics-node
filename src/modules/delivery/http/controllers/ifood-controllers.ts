@@ -296,7 +296,8 @@ import { catalogSyncService } from '../../services/catalog-sync.service'
 export async function syncCatalogController(request: FastifyRequest, reply: FastifyReply) {
   try {
     const tenantDbName = await resolveIfoodTenantDb(request)
-    const result = await catalogSyncService.syncCatalog(tenantDbName)
+    const appShopId = String((request.query as any)?.app_shop_id || '').trim() || undefined
+    const result = await catalogSyncService.syncCatalog(tenantDbName, { food99AppShopId: appShopId })
     return reply.status(200).send({
       message: 'Cardápio sincronizado com sucesso!',
       ...result,
