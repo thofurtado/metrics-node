@@ -11,6 +11,7 @@ import { updateTreatment } from '@/modules/treatments/http/controllers/updateTre
 import { createInteraction } from '@/modules/treatments/http/controllers/interaction'
 import { getServiceManagementData } from '@/modules/treatments/http/controllers/get-service-management-data'
 import { finish } from '@/modules/treatments/http/controllers/finish'
+import { reopen } from '@/modules/treatments/http/controllers/reopen'
 
 
 
@@ -26,5 +27,6 @@ export async function treatmentsRoutes(app: FastifyInstance) {
     app.post('/treatment-item', createItemTreatment)
     app.delete('/treatment-item/:id', RemoveTreatmentItem)
     app.patch('/treatment/:id/finish', finish)
+    app.patch('/treatment/:id/reopen', reopen)
     app.get('/service-management', getServiceManagementData)
 }

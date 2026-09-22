@@ -171,7 +171,12 @@ export class FinishTreatmentUseCase {
                         paymentMethod = await tx.payment.findUnique({ where: { id: entry.payment_id } })
                     }
 
-                    if (!paymentMethod) continue
+                    // Antes, uma forma de pagamento não encontrada era ignorada em silêncio: a O.S.
+                    // fechava, o estoque baixava, mas aquela parcela nunca virava transação — o dinheiro
+                    // "sumia" do financeiro sem nenhum aviso. Agora a finalização para com um erro claro.
+                    if (!paymentMethod) {
+                        throw new Error('Forma de pagamento não encontrada para um dos itens do pagamento. Corrija o pagamento antes de finalizar o atendimento.')
+                    }
 
                     let accountId = paymentMethod.account_id
                     if (!accountId && tx?.account?.findFirst) {
@@ -182,9 +187,15 @@ export class FinishTreatmentUseCase {
                         accountId = defaultAcc?.id || null
                     }
 
-                    const installmentAmount = Number((entry.amount / entry.occurrences).toFixed(2))
+                    // A última parcela absorve o resto da divisão (mesma regra do parcelamento
+                    // financeiro em transaction.ts): sem isso, parcelas que não dividem exato perdiam
+                    // centavos (ex.: R$100 em 3x virava 3x R$33,33 = R$99,99, faltando R$0,01).
+                    const baseInstallment = Math.floor((entry.amount / entry.occurrences) * 100) / 100
+                    const roundingRemainder = Number((entry.amount - baseInstallment * entry.occurrences).toFixed(2))
 
                     for (let i = 0; i < entry.occurrences; i++) {
+                        const isLast = i === entry.occurrences - 1
+                        const installmentAmount = isLast ? Number((baseInstallment + roundingRemainder).toFixed(2)) : baseInstallment
                         let dueDate = new Date()
                         if (entry.date) {
                             dueDate = new Date(entry.date)

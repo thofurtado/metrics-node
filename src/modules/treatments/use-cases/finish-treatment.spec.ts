@@ -266,4 +266,57 @@ describe('Finish Treatment Use Case', () => {
         await expect(sut.execute({ treatment_id: treatment.id }))
             .rejects.toThrow('Pagamento insuficiente')
     })
+
+    it('should refuse to finish when a payment method cannot be resolved, instead of silently skipping the money', async () => {
+        const treatment = await treatmentsRepository.create({
+            status: 'pending',
+            amount: 100,
+            opening_date: new Date(),
+            request: 'Forma de pagamento removida',
+        })
+        const t: any = treatmentsRepository.items.find(t => t.id === treatment.id)
+        if (t) t.clients = { contract: false }
+
+        const paymentEntry = await paymentEntrysRepository.create({
+            amount: 100,
+            treatment_id: treatment.id,
+            occurrences: 1,
+            payment_id: 'pid-removido',
+        })
+        // Não anexa `.payments`: simula forma de pagamento excluída/não encontrada.
+        void paymentEntry
+
+        await expect(sut.execute({ treatment_id: treatment.id }))
+            .rejects.toThrow('Forma de pagamento não encontrada')
+
+        expect((<any>transactionsRepository).items).toHaveLength(0)
+    })
+
+    it('parcela não divide exato: a última parcela absorve os centavos e a soma bate com o valor total', async () => {
+        const treatment = await treatmentsRepository.create({
+            status: 'pending',
+            amount: 100,
+            opening_date: new Date(),
+            request: 'Parcelado em 3x',
+        })
+        const t: any = treatmentsRepository.items.find(t => t.id === treatment.id)
+        if (t) t.clients = { contract: false }
+
+        const account = await accountsRepository.create({ name: 'Caixa', balance: 0 })
+        const paymentEntry = await paymentEntrysRepository.create({
+            amount: 100,
+            treatment_id: treatment.id,
+            occurrences: 3,
+            payment_id: 'pid',
+        })
+        const pe: any = paymentEntrysRepository.items.find(p => p.id === paymentEntry.id)
+        pe.payments = { id: 'pid', account_id: account.id, name: 'Cartão', in_sight: false }
+
+        await sut.execute({ treatment_id: treatment.id })
+
+        const txs: any[] = (<any>transactionsRepository).items
+        expect(txs).toHaveLength(3)
+        expect(txs.map(t => t.amount)).toEqual([33.33, 33.33, 33.34])
+        expect(Number(txs.reduce((sum, t) => sum + t.amount, 0).toFixed(2))).toBe(100)
+    })
 })

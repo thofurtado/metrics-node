@@ -153,10 +153,20 @@ export async function getSessionDetails(request: FastifyRequest, reply: FastifyR
 export async function deleteSession(request: FastifyRequest, reply: FastifyReply) {
     const paramsSchema = z.object({ id: z.string().uuid() })
     const { id } = paramsSchema.parse(request.params)
-    
+
+    const session = await prisma.cashierSession.findUnique({ where: { id } })
+    if (!session) {
+        return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
+    }
+
+    // Caixa já conferido só pode ser revertido (reverte o saldo corretamente) e depois excluído se for o caso.
+    if (session.status === 'CHECKED') {
+        return reply.status(400).send({ message: 'Este caixa já foi conferido. Reverta a conferência antes de excluir.' })
+    }
+
     // Deleta todas as transações financeiras geradas por esse caixa (resumos, liquidações, sangrias, a prazo, divergências)
     await prisma.transaction.deleteMany({ where: { cashier_session_id: id } })
-    
+
     // Deleta os vales e consumos de funcionários gerados no RH por essa sessão de caixa
     await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${id}` } } })
     // Deleta os lançamentos e a sessão do caixa
@@ -168,6 +178,24 @@ export async function deleteSession(request: FastifyRequest, reply: FastifyReply
 function normalizeString(str: string) {
     if (!str) return ''
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
+/**
+ * Confere, por ID, que o funcion\u00e1rio/cliente escolhido no lan\u00e7amento existe (e no caso do
+ * funcion\u00e1rio, que est\u00e1 ativo) antes de gravar. Sem isso o lan\u00e7amento fica com um ID solto que s\u00f3
+ * quebra depois, na hora da confer\u00eancia do caixa.
+ */
+async function validateEntryPeople(employeeId?: string | null, clientId?: string | null): Promise<string | null> {
+    if (employeeId) {
+        const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { isRegistered: true } })
+        if (!employee) return 'Funcion\u00e1rio n\u00e3o encontrado.'
+        if (!employee.isRegistered) return 'Este funcion\u00e1rio est\u00e1 inativo.'
+    }
+    if (clientId) {
+        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true } })
+        if (!client) return 'Cliente n\u00e3o encontrado.'
+    }
+    return null
 }
 
 export async function addCashierEntry(request: FastifyRequest, reply: FastifyReply) {
@@ -192,6 +220,11 @@ export async function addCashierEntry(request: FastifyRequest, reply: FastifyRep
     const session = await prisma.cashierSession.findUnique({ where: { id: data.session_id } })
     if (!session || session.status !== 'OPEN') {
         return reply.status(400).send({ message: 'Caixa fechado ou não encontrado.' })
+    }
+
+    const peopleError = await validateEntryPeople(data.employee_id, data.client_id)
+    if (peopleError) {
+        return reply.status(400).send({ message: peopleError })
     }
 
     const entryType = data.type || (data.is_withdrawal ? 'WITHDRAWAL' : data.is_addition ? 'ADDITION' : data.is_tip ? 'TIP' : 'SALE')
@@ -244,6 +277,12 @@ export async function updateCashierEntry(request: FastifyRequest, reply: Fastify
         sector_id: z.string().uuid().nullable().optional(),
     })
     const data = updateSchema.parse(request.body)
+
+    const peopleError = await validateEntryPeople(data.employee_id, data.client_id)
+    if (peopleError) {
+        return reply.status(400).send({ message: peopleError })
+    }
+
     const entry = await prisma.cashierEntry.update({
         where: { id },
         data,
@@ -390,31 +429,60 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
         const session = await prisma.cashierSession.findUnique({
             where: { id: session_id },
-            include: { entries: true }
+            include: { entries: { include: { client: true } } }
         })
 
         if (!session) {
             return reply.status(400).send({ message: 'Sessão não encontrada.' })
         }
 
+        // Trava contra duplicidade: só concilia caixa enviado para conferência. Reconferir um caixa
+        // já CHECKED (duplo clique, reload) recriava os lançamentos e dobrava o saldo do Caixa Central.
+        if (session.status === 'CHECKED') {
+            return reply.status(409).send({ message: 'Este caixa já foi conferido. Reverta a conferência antes de conferir de novo.' })
+        }
+        if (session.status !== 'PENDING') {
+            return reply.status(400).send({ message: 'Envie o caixa para conferência antes de auditá-lo.' })
+        }
+
         const user = await prisma.user.findUnique({ where: { id: session.user_id } })
         const operatorName = user ? user.name : 'Operador'
         const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
 
+        // Resolve o funcionário de um vale/consumo com segurança: sempre por ID e sempre ativo.
+        // Nunca adivinha por nome nem cai no primeiro funcionário do banco (isso já atribuiu vale
+        // a funcionário errado). Se o lançamento não tiver funcionário válido, a conferência para
+        // com um erro dizendo qual lançamento precisa ser corrigido antes de tentar de novo.
+        async function resolveActiveEmployeeId(tx: any, entry: { identification: string | null; type: string | null; employee_id: string | null }): Promise<string> {
+            const label = entry.identification || entry.type || 'lançamento'
+            if (!entry.employee_id) {
+                throw new Error(`"${label}" é um vale/consumo de funcionário mas não tem funcionário selecionado. Edite o lançamento e escolha o funcionário antes de conferir.`)
+            }
+            const employee = await tx.employee.findUnique({ where: { id: entry.employee_id }, select: { id: true, isRegistered: true } })
+            if (!employee) {
+                throw new Error(`"${label}": o funcionário selecionado não existe mais. Corrija o lançamento antes de conferir.`)
+            }
+            if (!employee.isRegistered) {
+                throw new Error(`"${label}": o funcionário selecionado está inativo. Corrija o lançamento antes de conferir.`)
+            }
+            return employee.id
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
         // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
         // (Excluindo Destino de Caixa, pois são tratados na resolução de divergência)
-        await prisma.transaction.deleteMany({ 
-            where: { 
+        await tx.transaction.deleteMany({
+            where: {
                 cashier_session_id: session.id,
                 description: { not: { startsWith: 'Destino de Caixa' } }
-            } 
+            }
         })
-        await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
+        await tx.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
         // Localiza contas financeiras ativas com antecedência para vincular despesas e receitas
-        const accounts = await prisma.account.findMany()
+        const accounts = await tx.account.findMany()
         const defaultAccount = accounts.find(a => !a.is_transit) || accounts[0] || null
-        const centralAccount = accounts.find(a => 
-            normalizeString(a.name).includes('caixa central') || 
+        const centralAccount = accounts.find(a =>
+            normalizeString(a.name).includes('caixa central') ||
             normalizeString(a.name) === 'central' ||
             normalizeString(a.name).includes('cofre')
         ) || defaultAccount
@@ -455,38 +523,21 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     (normIdent === 'sangria' && !entry.sector_id) // Sangria genérica sem setor = recolhimento/cofre
 
                 if (isVale) {
-                    let employeeId = entry.employee_id
-                    if (!employeeId && entry.identification) {
-                        const cleanSearch = entry.identification.replace(/^(Vale|VT)\s*/i, '').trim()
-                        if (cleanSearch) {
-                            const emp = await prisma.employee.findFirst({
-                                where: { name: { contains: cleanSearch, mode: 'insensitive' } },
-                                select: { id: true }
-                            })
-                            if (emp) employeeId = emp.id
+                    const employeeId = await resolveActiveEmployeeId(tx, entry)
+
+                    await tx.payrollEntry.create({
+                        data: {
+                            employee_id: employeeId,
+                            amount: amount,
+                            type: 'VALE',
+                            description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                            referenceDate: new Date(session.opened_at),
+                            status: 'PENDING'
                         }
-                    }
-
-                    if (!employeeId) {
-                        const firstEmp = await prisma.employee.findFirst({ select: { id: true } })
-                        if (firstEmp) employeeId = firstEmp.id
-                    }
-
-                    if (employeeId) {
-                        await prisma.payrollEntry.create({
-                            data: {
-                                employee_id: employeeId,
-                                amount: amount,
-                                type: 'VALE',
-                                description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                                referenceDate: new Date(session.opened_at),
-                                status: 'PENDING'
-                            }
-                        })
-                    }
+                    })
 
                     // Gera a transação financeira de despesa vinculada ao Caixa Central
-                    await prisma.transaction.create({
+                    await tx.transaction.create({
                         data: {
                             operation: 'expense',
                             amount,
@@ -507,7 +558,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                     continue
                 } else {
                     // Despesa operacional real da empresa (músico, fornecedor, mercado, compras com setor)
-                    await prisma.transaction.create({
+                    await tx.transaction.create({
                         data: {
                             operation: 'expense',
                             amount,
@@ -529,34 +580,18 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry do RH)
             if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
-                let employeeId = entry.employee_id
-                if (!employeeId && entry.identification) {
-                    const cleanSearch = entry.identification.replace(/^(Mesa|Balcão|Delivery)\s*/i, '').trim()
-                    if (cleanSearch) {
-                        const emp = await prisma.employee.findFirst({
-                            where: { name: { contains: cleanSearch, mode: 'insensitive' } }
-                        })
-                        if (emp) employeeId = emp.id
+                const employeeId = await resolveActiveEmployeeId(tx, entry)
+
+                await tx.payrollEntry.create({
+                    data: {
+                        employee_id: employeeId,
+                        amount: amount,
+                        type: 'VALE',
+                        description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
+                        referenceDate: new Date(session.opened_at),
+                        status: 'PENDING'
                     }
-                }
-
-                if (!employeeId) {
-                    const firstEmp = await prisma.employee.findFirst()
-                    if (firstEmp) employeeId = firstEmp.id
-                }
-
-                if (employeeId) {
-                    await prisma.payrollEntry.create({
-                        data: {
-                            employee_id: employeeId,
-                            amount: amount,
-                            type: 'VALE',
-                            description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                            referenceDate: new Date(session.opened_at),
-                            status: 'PENDING'
-                        }
-                    })
-                }
+                })
                 continue
             }
 
@@ -593,7 +628,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         }
 
         // Busca todas as maquininhas para vincular o account_id e taxas corretas
-        const posMachines = await prisma.pOSMachine.findMany({ include: { rates: true } })
+        const posMachines = await tx.pOSMachine.findMany({ include: { rates: true } })
 
         // Acumula e cria a transação consolidada de Vendas em Dinheiro Físico (Reconhece o faturamento oficial)
         let totalVendasDinheiro = 0
@@ -607,7 +642,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         }
 
         if (totalVendasDinheiro > 0) {
-            await prisma.transaction.create({
+            await tx.transaction.create({
                 data: {
                     operation: 'income',
                     amount: totalVendasDinheiro,
@@ -626,7 +661,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         // Atualiza saldo contábil da conta Caixa Central com o saldo líquido em espécie
         const saldoLiquidoDinheiro = totalVendasDinheiro - totalDespesasDinheiro
         if (centralAccount && saldoLiquidoDinheiro !== 0) {
-            await prisma.account.update({
+            await tx.account.update({
                 where: { id: centralAccount.id },
                 data: { balance: { increment: saldoLiquidoDinheiro } }
             })
@@ -670,17 +705,14 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 due_date.setDate(due_date.getDate() + settlementDays)
             }
 
-            // Determina a conta de destino real
+            // Determina a conta de destino real: só pela maquininha cadastrada (vínculo exato por ID).
+            // Antes havia um segundo palpite comparando nome da conta com o nome do banco por substring
+            // ("includes"), o que podia acertar a conta errada quando duas contas tinham nomes parecidos
+            // (ex.: "Stone" e "Stone Reserva"). Sem a maquininha cadastrada com conta, cai direto e sempre
+            // no Caixa Central, nunca por adivinhação.
             if (matchedMachine && matchedMachine.account_id) {
                 targetAccountId = matchedMachine.account_id
             } else {
-                const matchedAccount = accounts.find(a => a.name.toUpperCase().includes(bankName) || bankName.includes(a.name.toUpperCase()))
-                if (matchedAccount) {
-                    targetAccountId = matchedAccount.id
-                }
-            }
-
-            if (!targetAccountId) {
                 targetAccountId = centralAccount?.id || defaultAccount?.id
             }
 
@@ -700,7 +732,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const feeAmount = (totalAmount * taxPercentage) / 100
             const netAmount = totalAmount - feeAmount
 
-            await prisma.transaction.create({
+            await tx.transaction.create({
                 data: {
                     operation: 'income',
                     amount: totalAmount, // Valor Original/Cheio (Ex: 25.90)
@@ -728,7 +760,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const isTransit = accounts.find(a => a.is_transit);
             const accountToUse = isTransit ? isTransit.id : defaultAccount?.id;
 
-            await prisma.transaction.create({
+            await tx.transaction.create({
                 data: {
                     operation: 'income',
                     amount: totalAmount,
@@ -746,7 +778,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         }
 
         // Criar transação de RESUMO para a listagem (não afeta saldos devido ao tipo)
-        await prisma.transaction.create({
+        await tx.transaction.create({
             data: {
                 operation: 'cashier_summary',
                 amount: summaryTotal > 0 ? summaryTotal : Math.abs(summaryTotal),
@@ -760,15 +792,18 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         })
 
         // Mudar status para CHECKED
-        const updatedSession = await prisma.cashierSession.update({
+        const updatedSession = await tx.cashierSession.update({
             where: { id: session.id },
             data: { status: 'CHECKED' }
         })
 
-        return reply.status(200).send({ message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession })
+        return { message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession }
+        }) // fim do prisma.$transaction: se qualquer passo falhar (ex.: funcionário inválido), nada é gravado
+
+        return reply.status(200).send(result)
     } catch (error: any) {
         console.error('[auditCashierSession Error]', error)
-        return reply.status(500).send({ message: error?.message || 'Erro ao auditar caixa.' })
+        return reply.status(error?.message?.includes('funcionário') || error?.message?.includes('vale/consumo') ? 400 : 500).send({ message: error?.message || 'Erro ao auditar caixa.' })
     }
 }
 
@@ -789,42 +824,56 @@ export async function revertCashierAudit(request: FastifyRequest, reply: Fastify
             return reply.status(400).send({ message: 'Apenas caixas conferidos podem ser revertidos.' })
         }
 
-        // Busca todas as transações que serão deletadas para reverter saldo e apagar vínculos
-        const txsToDelete = await prisma.transaction.findMany({ 
-            where: { cashier_session_id: session.id } 
-        })
+        const result = await prisma.$transaction(async (tx) => {
+            // Reversão perfeita = inverso exato do que a conferência criou. A conferência preserva
+            // "Destino de Caixa" ao reconferir (ele vem da resolução de divergência, não da conferência
+            // em si); a reversão tem que preservar o mesmo jeito, senão apaga o registro da divergência
+            // sem devolver o saldo que ela creditou, e o dinheiro fica "preso" na conta de destino sem
+            // nenhum lançamento que explique por quê.
+            const txsToDelete = await tx.transaction.findMany({
+                where: {
+                    cashier_session_id: session.id,
+                    description: { not: { startsWith: 'Destino de Caixa' } }
+                }
+            })
 
-        for (const tx of txsToDelete) {
-            // Se foi confirmada em uma conta real, revertemos o saldo
-            if (tx.confirmed && tx.account_id) {
-                const amountToRevert = tx.totalValue || tx.amount;
-                if (tx.operation === 'income') {
-                    await prisma.account.update({
-                        where: { id: tx.account_id },
-                        data: { balance: { decrement: amountToRevert } }
-                    })
-                } else if (tx.operation === 'expense') {
-                    await prisma.account.update({
-                        where: { id: tx.account_id },
-                        data: { balance: { increment: amountToRevert } }
-                    })
+            for (const t of txsToDelete) {
+                // Se foi confirmada em uma conta real, revertemos o saldo
+                if (t.confirmed && t.account_id) {
+                    const amountToRevert = t.totalValue || t.amount;
+                    if (t.operation === 'income' || t.operation === 'transfer') {
+                        await tx.account.update({
+                            where: { id: t.account_id },
+                            data: { balance: { decrement: amountToRevert } }
+                        })
+                    } else if (t.operation === 'expense') {
+                        await tx.account.update({
+                            where: { id: t.account_id },
+                            data: { balance: { increment: amountToRevert } }
+                        })
+                    }
                 }
             }
-        }
 
-        const txIds = txsToDelete.map(t => t.id)
-        
-        // Deleta todas as transações financeiras e vales/registros do payroll associados
-        await prisma.transaction.deleteMany({ where: { cashier_session_id: session.id } })
-        await prisma.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
+            // Deleta as transações financeiras (exceto Destino de Caixa) e os vales/registros do payroll
+            await tx.transaction.deleteMany({
+                where: {
+                    cashier_session_id: session.id,
+                    description: { not: { startsWith: 'Destino de Caixa' } }
+                }
+            })
+            await tx.payrollEntry.deleteMany({ where: { description: { contains: `Caixa ${session.id}` } } })
 
-        // Retorna o status para PENDING (Aguardando nova conferência)
-        const updatedSession = await prisma.cashierSession.update({
-            where: { id: session.id },
-            data: { status: 'PENDING' }
+            // Retorna o status para PENDING (Aguardando nova conferência)
+            const updatedSession = await tx.cashierSession.update({
+                where: { id: session.id },
+                data: { status: 'PENDING' }
+            })
+
+            return { message: 'Conferência revertida com sucesso. As transações financeiras foram excluídas.', session: updatedSession }
         })
 
-        return reply.status(200).send({ message: 'Conferência revertida com sucesso. As transações financeiras foram excluídas.', session: updatedSession })
+        return reply.status(200).send(result)
     } catch (error: any) {
         console.error('[revertCashierAudit Error]', error)
         return reply.status(500).send({ message: error?.message || 'Erro ao reverter auditoria de caixa.' })
@@ -1244,7 +1293,9 @@ export async function getCashierUsers(request: FastifyRequest, reply: FastifyRep
 }
 
 export async function getCashierEmployees(request: FastifyRequest, reply: FastifyReply) {
+    // Só funcionários ativos: um vale/consumo nunca pode ser lançado num funcionário desligado.
     const employees = await prisma.employee.findMany({
+        where: { isRegistered: true },
         select: {
             id: true,
             name: true,

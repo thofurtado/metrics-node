@@ -111,10 +111,26 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
         return reply.status(404).send({ message: 'Transação não encontrada.' })
     }
 
+    if (!transaction.confirmed) {
+        return reply.status(400).send({ message: 'Esta liquidação já está pendente, não há o que reverter.' })
+    }
+
     try {
-        await prisma.transaction.update({
-            where: { id },
-            data: { confirmed: false }
+        await prisma.$transaction(async (tx) => {
+            // Reversão perfeita: a liquidação (automática ou manual) creditou o saldo da conta ao
+            // confirmar; reverter tem que devolver exatamente esse mesmo valor, senão o saldo fica
+            // inflado enquanto a transação volta a aparecer como pendente (dinheiro contado duas vezes
+            // se for liquidada de novo).
+            if (transaction.account_id) {
+                await tx.account.update({
+                    where: { id: transaction.account_id },
+                    data: { balance: { decrement: transaction.totalValue ?? transaction.amount } }
+                })
+            }
+            await tx.transaction.update({
+                where: { id },
+                data: { confirmed: false }
+            })
         })
 
         return reply.status(200).send({ message: 'Liquidação revertida com sucesso.' })

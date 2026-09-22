@@ -50,6 +50,14 @@ export class UpdateTransactionUseCase {
             const newAmount = amount !== undefined ? amount : transaction.amount
             const newAccountId = account_id !== undefined ? account_id : oldAccountId
 
+            // Se nem "confirmed" nem "amount" foram enviados, esta edição não mexe no valor
+            // liquidado (ex.: só descrição, data, setor) — o valor real pago/recebido continua
+            // sendo o totalValue antigo (principal + juros - desconto), não o "amount" (só o
+            // principal). Usar "amount" aqui devolvia o juro errado ao saldo da conta na reversão.
+            const newTotalValue = newConfirmed
+                ? (confirmed === undefined && amount === undefined ? oldAmount : newAmount)
+                : null
+
             // 1. Handle Balance Reversion (if it was confirmed)
             if (oldConfirmed && oldAccountId) {
                 const isIncome = oldOperation === 'income'
@@ -61,7 +69,7 @@ export class UpdateTransactionUseCase {
                 where: { id },
                 data: {
                     amount: newAmount,
-                    totalValue: newConfirmed ? (confirmed === undefined && amount === undefined ? transaction.totalValue : newAmount) : null,
+                    totalValue: newTotalValue,
                     account_id: newAccountId,
                     data_vencimento: data_vencimento !== undefined ? data_vencimento : transaction.data_vencimento,
                     data_emissao: data_emissao !== undefined ? data_emissao : transaction.data_emissao,
@@ -73,10 +81,11 @@ export class UpdateTransactionUseCase {
                 }
             })
 
-            // 3. Apply New Balance (if it is now confirmed)
-            if (newConfirmed && newAccountId) {
+            // 3. Apply New Balance (if it is now confirmed) — usa o valor real liquidado (totalValue),
+            // não o principal, senão o juro que já tinha sido cobrado some do saldo da conta.
+            if (newConfirmed && newAccountId && newTotalValue !== null) {
                 const isIncome = oldOperation === 'income'
-                await this.accountsRepository.changeBalance(newAccountId, newAmount, isIncome, tx)
+                await this.accountsRepository.changeBalance(newAccountId, newTotalValue, isIncome, tx)
             }
 
             return {

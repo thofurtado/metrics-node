@@ -10,7 +10,33 @@ export async function listCreditCards(request: FastifyRequest, reply: FastifyRep
         orderBy: { name: 'asc' },
         include: { account: true }
     })
-    return reply.status(200).send({ creditCards: cards })
+
+    // Limite usado = tudo que já foi comprado no cartão e ainda não foi pago (todas as faturas em
+    // aberto, vencidas ou futuras), não só a fatura do mês. É informativo: o sistema não bloqueia
+    // uma compra por estourar o limite (quem decide isso é o banco na hora do cartão físico passar).
+    const pendingByCard = await prisma.transaction.groupBy({
+        by: ['credit_card_id'],
+        where: {
+            payment_method: 'CREDIT_CARD',
+            confirmed: false,
+            credit_card_id: { in: cards.map(c => c.id) }
+        },
+        _sum: { amount: true, totalValue: true }
+    })
+    const usedByCard = new Map(
+        pendingByCard.map(p => [p.credit_card_id as string, Number(p._sum.totalValue ?? p._sum.amount ?? 0)])
+    )
+
+    const creditCards = cards.map(card => {
+        const used_limit = Number((usedByCard.get(card.id) ?? 0).toFixed(2))
+        return {
+            ...card,
+            used_limit,
+            available_limit: Number((card.credit_limit - used_limit).toFixed(2))
+        }
+    })
+
+    return reply.status(200).send({ creditCards })
 }
 
 // ─── CREATE ──────────────────────────────────────────────────────────────────

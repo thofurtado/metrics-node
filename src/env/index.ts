@@ -37,8 +37,6 @@ const envSchema = z.object({
     JWT_SECRET: z.string(),
     // coerce força a conversão, fazendo com que mesmo que seja string, entre como numero a porta
     PORT: z.coerce.number().default(3333),
-    // Chave de integração para sistemas externos (conferência de caixa, etc.)
-    INTEGRATION_API_KEY: z.string().default('marujo-metrics-integration-2026'),
     // Delivery APIs (iFood & 99Food)
     IFOOD_CLIENT_ID: z.string().optional(),
     IFOOD_CLIENT_SECRET: z.string().optional(),

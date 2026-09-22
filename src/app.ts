@@ -207,12 +207,6 @@ app.register(async (instance) => {
     instance.register(adminEquipmentsRoutes)
 })
 
-// IntegraÃƒÂ§ÃƒÂ£o externa: ConferÃƒÂªncia de Caixa Ã¢â€ â€™ Metrics (autenticaÃƒÂ§ÃƒÂ£o via API Key no prÃƒÂ³prio controller)
-import { cashRegisterIntegration } from '@/modules/financial/http/controllers/cash-register-integration'
-app.register(async (instance) => {
-    instance.post('/integration/cash-register', cashRegisterIntegration)
-})
-
 app.register(uploadsRoutes)
 
 app.setErrorHandler((error, _, reply) => {

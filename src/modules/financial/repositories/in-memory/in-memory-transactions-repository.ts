@@ -228,7 +228,15 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
             supplier_id: (data as any).supplier_id as string || null,
             parent_transaction_id: (data as any).parent_transaction_id as string || null,
             credit_card_id: (data as any).credit_card_id as string || null,
-            payment_method: (data as any).payment_method as string || 'BOLETO'
+            payment_method: (data as any).payment_method as string || 'BOLETO',
+            totalValue: (data as any).totalValue ?? null,
+            interest: (data as any).interest ?? 0,
+            fine: (data as any).fine ?? 0,
+            discount: (data as any).discount ?? 0,
+            transaction_group_id: (data as any).transaction_group_id ?? null,
+            cashier_session_id: (data as any).cashier_session_id ?? null,
+            treatment_id: (data as any).treatment_id ?? null,
+            checked: (data as any).checked ?? false,
         }
         this.items.push(transaction)
         return transaction
