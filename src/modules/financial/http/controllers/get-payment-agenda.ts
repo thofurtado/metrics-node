@@ -18,6 +18,12 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
             where: {
                 operation: 'expense',
                 confirmed: false,
+                // Compra individual no cartão de crédito não aparece aqui: ela some numa fatura só
+                // (ver abaixo), do mesmo jeito que a lista de Transações já mostra.
+                OR: [
+                    { credit_card_id: null },
+                    { payment_method: { not: 'CREDIT_CARD' } }
+                ],
                 data_vencimento: {
                     gte: today,
                     lte: tenDaysFromNow,
@@ -30,6 +36,36 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
                 data_vencimento: 'asc'
             }
         })
+
+        // Compras no cartão de crédito: uma linha por cartão (a fatura), não uma por compra —
+        // mesma regra da lista de Transações (prisma-transactions-repository.ts).
+        const creditCardSwipes = await prisma.transaction.findMany({
+            where: {
+                payment_method: 'CREDIT_CARD',
+                credit_card_id: { not: null },
+                confirmed: false,
+                data_vencimento: { gte: today, lte: tenDaysFromNow }
+            },
+            include: { creditCard: true }
+        })
+        const invoicesByCardAndDay = new Map<string, { dayKey: string, description: string, amount: number }>()
+        for (const swipe of creditCardSwipes) {
+            if (!swipe.credit_card_id || !swipe.creditCard) continue
+            const d = swipe.data_vencimento
+            const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            const invoiceKey = `${swipe.credit_card_id}-${dayKey}`
+            const current = invoicesByCardAndDay.get(invoiceKey)
+            const swipeAmount = Number(swipe.totalValue ?? swipe.amount)
+            if (current) {
+                current.amount += swipeAmount
+            } else {
+                invoicesByCardAndDay.set(invoiceKey, {
+                    dayKey,
+                    description: `Fatura Cartão: ${swipe.creditCard.name}`,
+                    amount: swipeAmount
+                })
+            }
+        }
 
         // Agrupar por data (usando chave 'yyyy-MM-dd' para ordenar corretamente)
         const agendaMap: Record<string, { data: string, dateObj: Date, total: number, detalhes: any[] }> = {}
@@ -70,6 +106,18 @@ export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyRe
                 })
             }
         })
+
+        for (const invoice of invoicesByCardAndDay.values()) {
+            if (agendaMap[invoice.dayKey]) {
+                agendaMap[invoice.dayKey].total += invoice.amount
+                agendaMap[invoice.dayKey].detalhes.push({
+                    descricao: invoice.description,
+                    valor: Number(invoice.amount.toFixed(2)),
+                    categoria: 'Cartão de Crédito',
+                    payment_method: 'CREDIT_CARD'
+                })
+            }
+        }
 
         const result = Object.values(agendaMap)
             .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime())
