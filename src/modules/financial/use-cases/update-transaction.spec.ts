@@ -94,4 +94,19 @@ describe('Update Transaction Use Case', () => {
         expect(updated.totalValue).toBe(200)
         expect(account.balance).toBe(700)
     })
+
+    it('não deixa editar um lançamento gerado pela conferência de caixa', async () => {
+        const account = accountsRepository.items[0]
+
+        const transaction = await transactionsRepository.create({
+            operation: 'income',
+            amount: 100,
+            confirmed: false,
+            account_id: account.id,
+            cashier_session_id: 'session-1',
+        } as any)
+
+        await expect(sut.execute({ id: transaction.id, description: 'Corrigido' }))
+            .rejects.toThrow('conferência de caixa')
+    })
 })

@@ -36,6 +36,13 @@ export class UpdateTransactionUseCase {
             throw new ResourceNotFoundError()
         }
 
+        // A conferência de caixa é a dona destes lançamentos (o valor total por forma de pagamento,
+        // a venda em dinheiro, a sangria): ela os recria do zero a cada nova conferência. Editar um
+        // deles por fora fazia a edição sumir sem aviso na próxima vez que o caixa fosse reconferido.
+        if (transaction.cashier_session_id) {
+            throw new Error('Este lançamento foi gerado pela conferência de caixa. Para corrigi-lo, reverta e refaça a conferência do caixa correspondente.')
+        }
+
         // Logic for balance adjustment
         // We only adjust balance if the transaction IS confirmed (either before or after the update)
         

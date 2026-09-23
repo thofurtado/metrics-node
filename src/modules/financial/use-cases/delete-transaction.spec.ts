@@ -47,4 +47,20 @@ describe('Delete Transaction Use Case', () => {
     it('should not be able to delete a non-existent transaction', async () => {
         await expect(sut.execute({ id: 'non-existent-id' })).rejects.toBeInstanceOf(ResourceNotFoundError)
     })
+
+    it('não deixa apagar um lançamento gerado pela conferência de caixa (mesmo pendente)', async () => {
+        const transaction = await transactionsRepository.create({
+            description: 'Caixa Almoço João 21/09 - Stone crédito',
+            amount: 100,
+            operation: 'income',
+            account_id: 'acc-1',
+            confirmed: false,
+            cashier_session_id: 'session-1',
+            date: new Date(),
+        } as any)
+
+        await expect(sut.execute({ id: transaction.id })).rejects.toThrow('conferência de caixa')
+
+        expect(await transactionsRepository.findById(transaction.id)).not.toBeNull()
+    })
 })
