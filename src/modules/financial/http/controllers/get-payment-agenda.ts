@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma'
 
 export async function getPaymentAgenda(request: FastifyRequest, reply: FastifyReply) {
     try {
-        const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-        const localNow = new Date(nowStr)
+        // O servidor roda fixo em America/Sao_Paulo (ver src/server.ts), então new Date() já é
+        // hora de Brasília — sem conversão manual.
+        const localNow = new Date()
 
         const today = new Date(localNow)
         today.setHours(0, 0, 0, 0)

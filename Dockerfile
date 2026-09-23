@@ -26,11 +26,15 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma engine & curl/wget for healthchecks
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl wget && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma engine, curl/wget for healthchecks e tzdata para o fuso horário abaixo
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl wget tzdata && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3333
+# Todos os clientes são do Brasil: o servidor roda sempre no horário de Brasília, então "hoje",
+# "0h" e todo cálculo de dia/mês no código (conferência de caixa, vencimentos, dashboard) usa a
+# data certa sem nenhum ajuste manual de fuso espalhado pelo código.
+ENV TZ=America/Sao_Paulo
 
 # Layer 1: Copy package definitions and prisma schema
 COPY package*.json ./

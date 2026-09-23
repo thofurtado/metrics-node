@@ -12,9 +12,9 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
     const { month, year, projectionDays } = getSummaryQuerySchema.parse(request.query)
 
     try {
-        // Datas base no fuso Brasil (evitar deslocamento UTC)
-        const nowStr = new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-        const localNow = new Date(nowStr)
+        // O servidor roda fixo em America/Sao_Paulo (ver src/server.ts), então new Date() já é
+        // hora de Brasília — sem conversão manual.
+        const localNow = new Date()
 
         // Início do dia atual (00:00:00)
         const startOfToday = new Date(localNow)
