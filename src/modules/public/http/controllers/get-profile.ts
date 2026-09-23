@@ -70,8 +70,23 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
     }
     if (!Array.isArray(availableNeighborhoods)) availableNeighborhoods = [];
 
+    // Endpoint PÚBLICO (sem login, usado pelo cardápio online): nunca devolver segredos.
+    // ifoodAccessToken/ifoodRefreshToken/ifoodTokenExpiresAt eram espalhados aqui por causa do
+    // `...profile` — qualquer um com o domínio do tenant conseguia pegar o token real do iFood
+    // daquele cliente. O front nunca lê esses campos; troca por um booleano.
+    const {
+      ifoodAccessToken,
+      ifoodRefreshToken,
+      ifoodTokenExpiresAt,
+      ...safeProfile
+    } = profile as typeof profile & {
+      ifoodAccessToken: string | null
+      ifoodRefreshToken: string | null
+      ifoodTokenExpiresAt: Date | null
+    }
+
     return reply.status(200).send({
-      ...profile,
+      ...safeProfile,
       availableNeighborhoods,
       deliverySectors,
       googleReviewUrl,
@@ -79,6 +94,7 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       menuThemePreset,
       menuTheme,
       paymentMethods: publicPayments,
+      ifoodConnected: Boolean(ifoodAccessToken),
     })
   } catch (error) {
     console.error('Error fetching public profile:', error)

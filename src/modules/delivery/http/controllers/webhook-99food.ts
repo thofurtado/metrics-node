@@ -204,8 +204,18 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         const itemName = texto(it.name) || 'Item 99Food'
         const appItemId = texto(it.app_item_id)
 
+        // Vínculo manual tem prioridade: cobre o caso raro de o produto ter sido apagado/recriado
+        // com outro ID depois que o cardápio já foi enviado pro 99Food.
         let matchedProduct: any = null
         if (appItemId) {
+          const mapping = await (prisma as any).deliveryItemMapping.findUnique({
+            where: { platform_external_code: { platform: '99FOOD', external_code: appItemId } },
+          })
+          if (mapping) {
+            matchedProduct = await (prisma as any).product.findUnique({ where: { id: mapping.product_id } })
+          }
+        }
+        if (!matchedProduct && appItemId) {
           matchedProduct = await (prisma as any).product.findFirst({ where: { OR: [{ id: appItemId }, { barcode: appItemId }] } })
         }
         if (!matchedProduct) {
@@ -228,6 +238,8 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           valor_unitario: unit,
           valor_total: it.total_price != null ? centavos(it.total_price) : unit * qty,
           observacao: obs,
+          external_code: appItemId || null,
+          external_name: itemName,
         })
       }
       if (itemsToCreate.length === 0) {
@@ -248,6 +260,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           display_id: displayId,
           numero_diario: displayId,
           origem: 'Delivery',
+          plataforma: '99FOOD',
           caixa_id: activeCashier?.id || null,
           cliente_id: client.id,
           endereco_entrega_id: targetAddressId,

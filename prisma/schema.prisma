@@ -166,6 +166,7 @@ model Product {
   inventoryItems   InventoryItem[]
   printDepartments ProductPrintDepartment[]
   complementGroups ProductComplementGroup[]
+  deliveryItemMappings DeliveryItemMapping[]
 
   @@map("products")
 }
@@ -1031,6 +1032,10 @@ model Pedido {
   xml_contingencia    String?
   data_envio_contingencia DateTime?
   sincronizado_web    Boolean      @default(false)
+  // De qual plataforma o pedido veio ('IFOOD', '99FOOD', 'WEB', 'PDV', ...). Nulo = pedidos
+  // antigos, criados antes deste campo existir. Sem isso não dá pra saber a que marketplace um
+  // código de item (external_code) pertence.
+  plataforma          String?
 
   itens               PedidoItem[]
 
@@ -1052,10 +1057,33 @@ model PedidoItem {
   complementos_json   String?
   status_cozinha      String       @default("Pendente")
   hora_inicio_preparo DateTime?
+  // Código do item na plataforma de origem (o `externalCode`/`app_item_id` do iFood ou 99Food).
+  // Guardado mesmo quando o item não casou com nenhum produto, para permitir vincular depois.
+  external_code       String?
+  external_name       String?
 
   pedido              Pedido       @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
 
   @@map("pedido_itens")
+}
+
+// Vínculo manual, feito uma vez, entre um item de cardápio de uma plataforma de delivery
+// (identificado por platform + external_code) e o produto correspondente no Metrics. Depois de
+// vinculado, todo pedido futuro com esse mesmo código casa sozinho — sem precisar configurar nada
+// no painel da plataforma nem repetir o vínculo pedido a pedido.
+model DeliveryItemMapping {
+  id             String   @id @default(uuid())
+  platform       String   // 'IFOOD' | '99FOOD'
+  external_code  String
+  external_name  String?
+  product_id     String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
+
+  product        Product  @relation(fields: [product_id], references: [id])
+
+  @@unique([platform, external_code])
+  @@map("delivery_item_mappings")
 }
 
 

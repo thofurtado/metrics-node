@@ -329,8 +329,19 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             const itemName = it.name || 'Item iFood'
             const extCode = it.externalCode || it.id
 
+            // 1. Vínculo manual já feito uma vez (o mais confiável: veio de uma escolha explícita).
             let matchedProduct: any = null
             if (extCode) {
+              const mapping = await (prisma as any).deliveryItemMapping.findUnique({
+                where: { platform_external_code: { platform: 'IFOOD', external_code: String(extCode) } },
+              })
+              if (mapping) {
+                matchedProduct = await (prisma as any).product.findUnique({ where: { id: mapping.product_id } })
+              }
+            }
+            // 2. Tentativa automática por código (só funciona se o lojista digitou o barcode do
+            // Metrics no "Código PDV" do item, lá no painel do iFood).
+            if (!matchedProduct && extCode) {
               matchedProduct = await (prisma as any).product.findFirst({
                 where: {
                   OR: [
@@ -340,6 +351,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                 },
               })
             }
+            // 3. Último recurso: nome exato (frágil — acento/espaço já quebra).
             if (!matchedProduct && itemName) {
               matchedProduct = await (prisma as any).product.findFirst({
                 where: {
@@ -363,6 +375,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               valor_unitario: Number(it.unitPrice || it.price || 25.0),
               valor_total: Number(it.totalPrice || (it.unitPrice || 25.0) * (it.quantity || 1)),
               observacao: obs,
+              external_code: extCode ? String(extCode) : null,
+              external_name: itemName,
             })
           }
 
@@ -381,6 +395,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               display_id: displayId,
               numero_diario: displayId,
               origem: 'Delivery',
+              plataforma: 'IFOOD',
               caixa_id: activeCashier?.id || null,
               cliente_id: client.id,
               endereco_entrega_id: targetAddressId,

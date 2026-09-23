@@ -18,6 +18,12 @@ import {
 
   syncCatalogController,
 } from './ifood-controllers'
+import {
+  getPendingDeliveryItemMappings,
+  createDeliveryItemMapping,
+  listDeliveryItemMappings,
+  deleteDeliveryItemMapping,
+} from './delivery-item-mapping'
 
 export async function deliveryRoutes(app: FastifyInstance) {
   // Webhooks de terceiros (Recebem chamadas automáticas da 99Food e iFood)
@@ -104,4 +110,14 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.post('/api/delivery/catalog/sync', syncCatalogController)
   app.get('/delivery/catalog/sync', syncCatalogController)
   app.get('/api/delivery/catalog/sync', syncCatalogController)
+
+  // Vínculo de item de delivery (iFood/99Food) com produto do Metrics
+  app.get('/delivery/item-mappings/pending', { preHandler: verifyJwt }, getPendingDeliveryItemMappings)
+  app.get('/api/delivery/item-mappings/pending', { preHandler: verifyJwt }, getPendingDeliveryItemMappings)
+  app.get('/delivery/item-mappings', { preHandler: verifyJwt }, listDeliveryItemMappings)
+  app.get('/api/delivery/item-mappings', { preHandler: verifyJwt }, listDeliveryItemMappings)
+  app.post('/delivery/item-mappings', { preHandler: verifyJwt }, createDeliveryItemMapping)
+  app.post('/api/delivery/item-mappings', { preHandler: verifyJwt }, createDeliveryItemMapping)
+  app.delete('/delivery/item-mappings/:id', { preHandler: verifyJwt }, deleteDeliveryItemMapping)
+  app.delete('/api/delivery/item-mappings/:id', { preHandler: verifyJwt }, deleteDeliveryItemMapping)
 }
