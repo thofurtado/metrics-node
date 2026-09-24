@@ -47,7 +47,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 OptionId: z.string().optional().nullable(),
                 LinkedSupplyId: z.string().optional().nullable(),
                 Price: z.number().min(0).optional().default(0),
-                Name: z.string().optional(),
+                Name: z.string().optional().nullable(),
                 Quantity: z.number().positive().optional().default(1),
                 Cost: z.number().optional().nullable(),
             })).optional(),

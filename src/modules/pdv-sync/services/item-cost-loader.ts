@@ -18,7 +18,7 @@ export interface SaleItemCostPayload {
     Complements?: {
         OptionId?: string | null
         LinkedSupplyId?: string | null
-        Name?: string
+        Name?: string | null
         Quantity?: number
         Cost?: number | null
     }[]
