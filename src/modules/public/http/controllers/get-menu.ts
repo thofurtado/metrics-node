@@ -19,7 +19,6 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                     id: true,
                     name: true,
                     price: true,
-                    cost: true,
                     barcode: true,
                     ncm: true,
                     cest: true,
@@ -123,7 +122,7 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                 id: product.id,
                 name: product.name,
                 price: product.price,
-                cost: product.cost,
+                // O custo NÃO sai no cardápio público (é dado interno do cliente); o PDV pega em /api/pdv/sync/costs
                 barcode: product.barcode,
                 ncm: product.ncm,
                 cest: product.cest,

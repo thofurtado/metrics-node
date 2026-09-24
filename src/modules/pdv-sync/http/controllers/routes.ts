@@ -17,6 +17,7 @@ import {
     postCancellationsSync, getCancellationsSync
 } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
+import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync } from './cashier-sync-controller'
 import {
@@ -51,6 +52,10 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/sync/products/bulk', postProductsBulkSync)
     app.post('/api/pdv/products/bulk', postProductsBulkSync)
     app.get('/api/pdv/products', getProductsSync)
+
+    // Custos vigentes (produto e complemento) para o PDV congelar em cada venda
+    app.get('/api/pdv/sync/costs', getCostsSync)
+    app.get('/api/pdv/costs', getCostsSync)
 
     // Usuários e Colaboradores
     app.get('/api/pdv/sync/users', getUsersSync)

@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
+import { buildItemCost } from '../../services/item-cost-loader'
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
     const saleSchema = z.array(z.object({
@@ -32,17 +34,22 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             Quantity: z.number().positive(),
             UnitPrice: z.number().min(0),
             UnitCost: z.number().optional().default(0),
+            // Custo dos complementos por unidade do item, somado pelo PDV (usado só se não vier a lista)
+            ComplementsCost: z.number().optional().nullable(),
             Discount: z.number().optional().default(0),
             Observation: z.string().optional().nullable(),
             Fractions: z.array(z.object({
                 ProductId: z.string(),
                 Fraction: z.number().positive().max(1),
+                Cost: z.number().optional().nullable(),
             })).optional(),
             Complements: z.array(z.object({
                 OptionId: z.string().optional().nullable(),
                 LinkedSupplyId: z.string().optional().nullable(),
                 Price: z.number().min(0).optional().default(0),
                 Name: z.string().optional(),
+                Quantity: z.number().positive().optional().default(1),
+                Cost: z.number().optional().nullable(),
             })).optional(),
         })),
     }))
@@ -218,6 +225,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 }
 
                 if (!existingItem) {
+                    // Custo congelado do item: usa o que o PDV congelou na venda e completa o que faltar pelo cadastro
+                    const cost = await buildItemCost(tx, item)
+
                     await tx.saleItem.create({
                         data: {
                             id: item.Uuid,
@@ -226,6 +236,10 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                             quantity: item.Quantity,
                             unit_price: item.UnitPrice,
                             discount: item.Discount,
+                            unit_cost: cost.unit_cost,
+                            complements_cost: cost.complements_cost,
+                            cost_source: cost.source,
+                            cost_snapshot: cost.snapshot as unknown as Prisma.InputJsonValue,
                         }
                     })
 
@@ -332,7 +346,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                     })
 
                                     if (supply) {
-                                        const deduction = targetQuantity * item.Quantity
+                                        // Quantidade escolhida da opção (ex.: 2x bacon) multiplica o consumo do insumo
+                                        const deduction = targetQuantity * (compOpt.Quantity ?? 1) * item.Quantity
 
                                         await tx.stock.create({
                                             data: {

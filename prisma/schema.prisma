@@ -675,6 +675,12 @@ model SaleItem {
   unit_price Float
   discount   Float?  @default(0)
 
+  // Custo congelado no momento da venda (por unidade do item); ver modules/pdv-sync/services/item-cost.ts
+  unit_cost        Float?
+  complements_cost Float?
+  cost_source      String?
+  cost_snapshot    Json?
+
   sale    Sale     @relation(fields: [sale_id], references: [id])
   product Product? @relation(fields: [product_id], references: [id])
   service Service? @relation(fields: [service_id], references: [id])
