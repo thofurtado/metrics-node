@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import type { StockReason } from '@prisma/client'
+import { splitStockMovements } from '../../services/stock-movement-rules'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
@@ -205,12 +207,19 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
             productId: z.union([z.string().uuid(), z.number()]), // backend agora aceita UUID ou Int
             quantity: z.number(),
             type: z.enum(['IN', 'OUT']),
-            reason: z.enum(['COMPRA', 'VENDA', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCAO', 'QUEBRA', 'PERDA', 'CORTESIA', 'CONSUMO_INTERNO']).optional().default('VENDA'),
+            // Texto livre: um motivo desconhecido não pode derrubar o lote inteiro (ver stock-movement-rules.ts)
+            reason: z.string().optional().default('VENDA'),
             createdAt: z.string().datetime().optional()
         })
     )
 
-    const movements = stockMovementSchema.parse(request.body)
+    const allMovements = stockMovementSchema.parse(request.body)
+
+    // B0-02: a saída "VENDA" já é feita pelo recebimento da venda; aceitar esta também baixaria o estoque duas vezes.
+    const { accepted: movements, ignoredSales, ignoredUnknown } = splitStockMovements(allMovements)
+    if (ignoredUnknown.length > 0) {
+        console.warn(`[Sync] ${ignoredUnknown.length} movimentação(ões) de estoque com motivo desconhecido ignorada(s).`)
+    }
 
     // Vamos processar de forma transacional
     for (const mov of movements) {
@@ -232,7 +241,7 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
                 product_id: product.id,
                 quantity: mov.quantity,
                 operation: mov.type,
-                description: mov.reason,
+                description: mov.reason as StockReason, // só chegam aqui motivos de APPLICABLE_REASONS
                 created_at: mov.createdAt ? new Date(mov.createdAt) : new Date()
             }
         })
@@ -248,7 +257,12 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
         })
     }
 
-    return reply.status(201).send({ message: 'Movimentações sincronizadas com sucesso' })
+    return reply.status(201).send({
+        message: 'Movimentações sincronizadas com sucesso',
+        applied: movements.length,
+        ignored_sales: ignoredSales.length,
+        ignored_unknown: ignoredUnknown.length,
+    })
 }
 
 export async function getSyncStatus(request: FastifyRequest, reply: FastifyReply) {
