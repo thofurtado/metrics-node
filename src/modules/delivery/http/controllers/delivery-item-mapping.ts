@@ -83,10 +83,18 @@ export async function createDeliveryItemMapping(request: FastifyRequest, reply: 
         return reply.status(404).send({ message: 'Produto não encontrado.' })
     }
 
+    // Guarda o nome que o item tem NA PLATAFORMA (o que veio no pedido), nao o nome do produto do Metrics.
+    const seen = await prisma.pedidoItem.findFirst({
+        where: { external_code, pedido: { plataforma: platform } },
+        orderBy: { id: 'desc' },
+        select: { external_name: true },
+    })
+    const external_name = seen?.external_name || null
+
     const mapping = await prisma.deliveryItemMapping.upsert({
         where: { platform_external_code: { platform, external_code } },
-        update: { product_id },
-        create: { platform, external_code, product_id, external_name: product.name },
+        update: { product_id, ...(external_name ? { external_name } : {}) },
+        create: { platform, external_code, product_id, external_name },
     })
 
     // Corrige na hora os pedidos passados que ficaram com esse item sem produto — não precisa
