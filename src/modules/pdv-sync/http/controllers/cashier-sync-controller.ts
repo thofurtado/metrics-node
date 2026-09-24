@@ -117,6 +117,9 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
     }
 
     let processedCount = 0
+    // Ids aceitos e recusados: o PDV só marca como enviado o que estiver em "accepted"
+    const accepted: string[] = []
+    const ignored: { uuid: string; reason: string }[] = []
 
     await prisma.$transaction(async (tx) => {
         for (const mov of movements) {
@@ -127,6 +130,7 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
 
             if (!session) {
                 console.warn(`[CashierSync] Movimentação ignorada: sessão ${mov.cashier_session_id} não encontrada.`)
+                ignored.push({ uuid: mov.uuid, reason: 'SESSAO_NAO_ENCONTRADA' })
                 continue
             }
 
@@ -181,11 +185,14 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
             })
 
             processedCount++
+            accepted.push(mov.uuid)
         }
     })
 
     return reply.status(200).send({
         count: processedCount,
+        accepted,
+        ignored,
         message: `${processedCount} movimentações sincronizadas com sucesso.`
     })
 }
