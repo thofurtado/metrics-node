@@ -74,7 +74,7 @@ app.addHook('onRequest', async (request, reply) => {
         request.url.startsWith('/public/mobile') || request.url.startsWith('/api/public/mobile') ||
         request.url.startsWith('/public/garcom') || request.url.startsWith('/api/public/garcom') ||
         request.url.startsWith('/api/admin/downloads') || request.url.startsWith('/api/tenants') ||
-        request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i)) || request.url.startsWith('/webhooks/') || request.url.startsWith('/api/webhooks/') || request.url.startsWith('/delivery/') || request.url.startsWith('/api/delivery/')
+        request.url.startsWith('/downloads/') || (request.method === 'GET' && request.url.startsWith('/uploads/') && request.url.match(/\.(jpg|jpeg|png|gif|webp|pdf|csv|txt|doc|docx)$/i)) || request.url.startsWith('/webhooks/') || request.url.startsWith('/api/webhooks/') || (request.url.startsWith('/delivery/') || request.url.startsWith('/api/delivery/')) && !/^\/(api\/)?delivery\/item-mappings/.test(request.url)
     ) {
         return;
     }
