@@ -272,9 +272,28 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                             data: { stock: { decrement: deduction } }
                                         })
                                     }
+                                } else if (fracProd) {
+                                    // Sabor que é produto simples (sem ficha técnica): baixa a fração do próprio produto
+                                    const deduction = frac.Fraction * item.Quantity
+
+                                    await tx.stock.create({
+                                        data: {
+                                            product_id: fracProd.id,
+                                            quantity: deduction,
+                                            unit_cost: fracProd.cost ?? null,
+                                            operation: 'OUT',
+                                            description: 'VENDA',
+                                            created_at: saleCreatedAt
+                                        }
+                                    })
+
+                                    await tx.product.update({
+                                        where: { id: fracProd.id },
+                                        data: { stock: { decrement: deduction } }
+                                    })
                                 }
                             }
-                        } 
+                        }
                         // CASO B: Produto Inteiro (Composto ou Simples)
                         else if (item.ProductId) {
                             const prod = await tx.product.findUnique({
