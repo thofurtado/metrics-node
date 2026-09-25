@@ -17,6 +17,7 @@ import {
     postCancellationsSync, getCancellationsSync
 } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
+import { getIbptSync } from './ibpt-sync-controller'
 import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync, getOpenCashierSessions } from './cashier-sync-controller'
@@ -115,6 +116,9 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/pos-machines', getPOSMachinesSync)
     app.get('/api/pdv/sync/config', getSystemConfigSync)
     app.get('/api/pdv/config', getSystemConfigSync)
+
+    // De Olho no Imposto: alíquotas dos NCMs que o PDV usa (o token do cliente fica só no backend)
+    app.get('/api/pdv/sync/ibpt', getIbptSync)
 
     // Rotas de Salão Direto para Garçom Móvel (Contingência / Nuvem)
     app.get('/api/garcom/cardapio', getGarcomCardapio)

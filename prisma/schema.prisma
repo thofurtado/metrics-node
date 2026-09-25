@@ -1233,3 +1233,18 @@ model InventoryItem {
 
   @@map("inventory_items")
 }
+
+// Integrações do cliente com serviços de fora (25/09/2026): uma linha por serviço.
+// IBPT (De Olho no Imposto): token e CNPJ da empresa cadastrada no site do IBPT; 99Food: id da loja.
+// O segredo (token) nunca volta inteiro para a web nem vai para o PDV.
+model TenantIntegration {
+  id         String   @id @default(uuid())
+  provider   String   @unique
+  enabled    Boolean  @default(true)
+  settings   Json?
+  secret     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("tenant_integrations")
+}

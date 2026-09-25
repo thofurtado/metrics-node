@@ -78,11 +78,13 @@ export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
       ifoodAccessToken,
       ifoodRefreshToken,
       ifoodTokenExpiresAt,
+      anotaAiApiKey,
       ...safeProfile
     } = profile as typeof profile & {
       ifoodAccessToken: string | null
       ifoodRefreshToken: string | null
       ifoodTokenExpiresAt: Date | null
+      anotaAiApiKey: string | null
     }
 
     return reply.status(200).send({
