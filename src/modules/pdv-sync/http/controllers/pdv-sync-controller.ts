@@ -698,7 +698,11 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                 }
             })
         } catch (auditErr) {
+            // Antes o erro era engolido e o PDV recebia "ok": o cancelamento se perdia (a tabela nem existia até a
+            // migration 20260925150000). Agora fica pendente no PDV, com o motivo, e é tentado de novo.
             console.error('[Sync] Falha ao persistir auditoria de cancelamento:', auditErr)
+            ignored.push({ uuid: canc.Uuid, reason: 'ERRO_AO_GRAVAR' })
+            continue
         }
 
         if (canc.PedidoUuid && (canc.TipoCancelamento === 'VENDA_COMPLETA' || canc.TipoCancelamento === 'DELIVERY_CANCELADO')) {
