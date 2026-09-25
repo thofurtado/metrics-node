@@ -113,6 +113,26 @@ app.addHook('onRequest', async (request, reply) => {
     domain = domain.replace(/^www\./, '');
     domain = domain.replace(/^api\./, '');
 
+    // Se o domínio for 'metrics.dev.br' ou local e não veio x-tenant-domain explícito,
+    // verifica se a requisição possui token JWT (Bearer ou cookie) com tenantDomain embutido
+    if ((domain === 'metrics.dev.br' || domain === 'localhost' || domain === '127.0.0.1') && !request.headers['x-tenant-domain']) {
+        try {
+            const authHeader = request.headers.authorization;
+            let tokenToDecode: string | null = null;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                tokenToDecode = authHeader.substring(7).trim();
+            } else if ((request as any).cookies?.refreshToken) {
+                tokenToDecode = (request as any).cookies.refreshToken;
+            }
+            if (tokenToDecode) {
+                const decoded = app.jwt.decode(tokenToDecode) as any;
+                if (decoded?.tenantDomain && typeof decoded.tenantDomain === 'string') {
+                    domain = decoded.tenantDomain.split(',')[0].trim().split(':')[0].replace(/^www\./, '').replace(/^api\./, '');
+                }
+            }
+        } catch (e) {}
+    }
+
     // 3. Busca a conexÃƒÂ£o do Prisma no TenantManager
     const tenantPrisma = await getPrismaForDomain(domain);
     const tenantDbName = await getDbNameForDomain(domain);
@@ -124,6 +144,7 @@ app.addHook('onRequest', async (request, reply) => {
     // 4. Injeta a conexÃƒÂ£o Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
     requestContext.set('prisma', tenantPrisma);
     requestContext.set('tenant', tenantDbName);
+    requestContext.set('tenantDomain', domain);
 })
 
 app.register(fastifyMultipart, {

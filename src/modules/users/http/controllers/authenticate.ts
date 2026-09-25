@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
+import { requestContext } from '@fastify/request-context'
 import { z } from 'zod'
 import { InvalidCredentialsError } from '@/errors/invalid-credentials-error'
 import { makeAuthenticateUseCase } from '@/modules/users/use-cases/factories/make-authenticate-use-case'
@@ -33,9 +34,12 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
         })
         const moduleNames = userModules.map(um => um.module.name)
 
+        const tenantDomain = (requestContext.get('tenantDomain') as string) || (request.headers['x-tenant-domain'] as string) || undefined
+
         const token = await reply.jwtSign({
             role: user.role,
-            modules: moduleNames
+            modules: moduleNames,
+            tenantDomain
         }, {
             sign: {
                 sub: user.id,
@@ -44,7 +48,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
         })
         const refreshToken = await reply.jwtSign({
             role: user.role,
-            modules: moduleNames
+            modules: moduleNames,
+            tenantDomain
         }, {
             sign: {
                 sub: user.id,
