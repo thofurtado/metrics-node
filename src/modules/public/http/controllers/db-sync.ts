@@ -1,8 +1,8 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { Pool } from 'pg'
-import { execSync } from 'child_process'
 import { getSchemaHash } from './db-status'
+import { resumoDoProblema, sincronizarBanco, type ResultadoDoBanco } from '../../services/schema-sync'
 
 async function ensureMasterSchema(pool: Pool) {
   // O botão de sincronização sempre operou apenas nos tenants. Esta tabela, porém,
@@ -27,12 +27,13 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
     return reply.status(401).send({ message: 'Acesso não autorizado para sincronização' })
   }
 
+  // forcePush ainda é aceito (Admin antigo manda), mas não muda nada: nenhum caminho apaga tabela ou coluna.
   const syncBodySchema = z.object({
     dbName: z.string().min(1),
     forcePush: z.boolean().optional().default(false)
   })
 
-  const { dbName, forcePush } = syncBodySchema.parse(request.body)
+  const { dbName } = syncBodySchema.parse(request.body)
 
   // Validate dbName to avoid SQL injection
   if (!/^[a-zA-Z0-9_]+$/.test(dbName)) {
@@ -40,55 +41,34 @@ export async function syncTenantDb(request: FastifyRequest, reply: FastifyReply)
   }
 
   try {
-    console.log(`🚀 Iniciando sincronização para o banco: ${dbName} (forcePush: ${forcePush})`)
+    console.log(`🚀 Iniciando sincronização para o banco: ${dbName}`)
 
     // 1. Construct database URL
     const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
     const dbUrl = `${baseUrl}/${dbName}?schema=public`
 
-    let result = ''
-
-    // Limpa registros de migrações incompletas/falhas anteriores para não bloquear o prisma migrate deploy (P3009)
-    try {
-      const cleanupPool = new Pool({ connectionString: dbUrl })
-      await cleanupPool.query('DELETE FROM "_prisma_migrations" WHERE "finished_at" IS NULL')
-      await cleanupPool.end()
-    } catch (_) {}
-
-    if (forcePush) {
-      console.log(`⚙️ Executando db push direto no banco ${dbName}...`)
-      result = execSync(`npx prisma db push --accept-data-loss`, { 
-        env: { ...process.env, DATABASE_URL: dbUrl },
-        encoding: 'utf-8'
-      })
-    } else {
-      try {
-        console.log(`📦 Tentando prisma migrate deploy no banco ${dbName}...`)
-        result = execSync(`npx prisma migrate deploy`, { 
-          env: { ...process.env, DATABASE_URL: dbUrl },
-          encoding: 'utf-8'
-        })
-      } catch (deployError: any) {
-        console.warn(`⚠️ prisma migrate deploy falhou no banco ${dbName}, executando db push como fallback:`, deployError.message)
-        result = execSync(`npx prisma db push --accept-data-loss`, { 
-          env: { ...process.env, DATABASE_URL: dbUrl },
-          encoding: 'utf-8'
-        })
-      }
-    }
-
-    console.log(result)
+    const resultado = await sincronizarBanco(dbName, dbUrl)
+    console.log(`Resultado da sincronização do banco ${dbName}:`, JSON.stringify(resultado))
 
     // 3. Update Tenant schemaVersion in db_master
     const currentHash = getSchemaHash()
     const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
     const pool = new Pool({ connectionString: masterUrl })
     await ensureMasterSchema(pool)
-    await pool.query('UPDATE "Tenant" SET "schemaVersion" = $1, "dbSyncedAt" = NOW() WHERE "dbName" = $2', [currentHash, dbName])
+    // Só marca "em dia" quando deu tudo certo; com problema, o Admin continua mostrando o banco como pendente.
+    if (resultado.ok) {
+      await pool.query('UPDATE "Tenant" SET "schemaVersion" = $1, "dbSyncedAt" = NOW() WHERE "dbName" = $2', [currentHash, dbName])
+    }
     await pool.end()
 
-    console.log(`✅ Sincronização do banco ${dbName} concluída com sucesso!`)
-    return reply.status(200).send({ success: true, message: 'Banco de dados sincronizado com sucesso!', log: result })
+    if (!resultado.ok) {
+      const problema = resumoDoProblema(resultado)
+      console.error(`❌ Sincronização do banco ${dbName} com problemas: ${problema}`)
+      return reply.status(500).send({ success: false, message: `Sincronização com problemas (nada foi apagado). ${problema}`, resultado })
+    }
+
+    console.log(`✅ Sincronização do banco ${dbName} concluída sem apagar nada.`)
+    return reply.status(200).send({ success: true, message: 'Banco sincronizado. Nada foi apagado.', resultado })
   } catch (error: any) {
     console.error('❌ Erro na sincronização:', error)
     return reply.status(500).send({ message: 'Erro ao sincronizar banco de dados: ' + (error.stderr || error.message), details: error.message })
@@ -102,11 +82,12 @@ export async function syncAllTenantsDb(request: FastifyRequest, reply: FastifyRe
     return reply.status(401).send({ message: 'Acesso não autorizado para sincronização' })
   }
 
+  // forcePush ainda é aceito (Admin antigo manda), mas não muda nada: nenhum caminho apaga tabela ou coluna.
   const syncBodySchema = z.object({
     forcePush: z.boolean().optional().default(false)
   }).optional()
 
-  const { forcePush = false } = syncBodySchema?.parse(request.body || {}) || {}
+  syncBodySchema?.parse(request.body || {})
 
   const masterUrl = process.env.MASTER_DATABASE_URL || "postgresql://postgres:T0p1nf0r!@localhost:5432/db_master?schema=public"
   const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432"
@@ -123,10 +104,11 @@ export async function syncAllTenantsDb(request: FastifyRequest, reply: FastifyRe
       return reply.status(200).send({ success: true, message: 'Nenhum tenant ativo encontrado.', total: 0, successes: 0, failures: [] })
     }
 
-    console.log(`🚀 Iniciando sincronização em massa para ${tenants.length} tenants ativos (forcePush: ${forcePush})...`)
+    console.log(`🚀 Iniciando sincronização em massa para ${tenants.length} tenants ativos...`)
 
     let successes = 0
     const failures: any[] = []
+    const resultados: (ResultadoDoBanco & { domain: string })[] = []
     const currentHash = getSchemaHash()
 
     for (const tenant of tenants) {
@@ -137,32 +119,14 @@ export async function syncAllTenantsDb(request: FastifyRequest, reply: FastifyRe
       console.log(`🔄 Sincronizando banco: ${dbName} (Domínio: ${domain})`)
 
       try {
-        // Limpa registros de migrações incompletas/falhas anteriores
-        try {
-          const cleanupPool = new Pool({ connectionString: dbUrl })
-          await cleanupPool.query('DELETE FROM "_prisma_migrations" WHERE "finished_at" IS NULL')
-          await cleanupPool.end()
-        } catch (_) {}
+        const resultado = await sincronizarBanco(dbName, dbUrl)
+        resultados.push({ ...resultado, domain })
 
-        let log = ''
-        if (forcePush) {
-          log = execSync(`npx prisma db push --accept-data-loss`, {
-            env: { ...process.env, DATABASE_URL: dbUrl },
-            encoding: 'utf-8'
-          })
-        } else {
-          try {
-            log = execSync(`npx prisma migrate deploy`, {
-              env: { ...process.env, DATABASE_URL: dbUrl },
-              encoding: 'utf-8'
-            })
-          } catch (deployError: any) {
-            console.warn(`⚠️ migrate deploy falhou no banco ${dbName}, executando db push como fallback:`, deployError.message)
-            log = execSync(`npx prisma db push --accept-data-loss`, {
-              env: { ...process.env, DATABASE_URL: dbUrl },
-              encoding: 'utf-8'
-            })
-          }
+        if (!resultado.ok) {
+          const problema = resumoDoProblema(resultado)
+          console.error(`❌ Falha no banco ${dbName}:`, problema)
+          failures.push({ dbName, domain, error: problema })
+          continue
         }
 
         successes++
@@ -183,7 +147,8 @@ export async function syncAllTenantsDb(request: FastifyRequest, reply: FastifyRe
       total: tenants.length,
       successes,
       failures,
-      message: `Sincronização concluída: ${successes}/${tenants.length} bancos atualizados com sucesso.`
+      resultados,
+      message: `Sincronização concluída: ${successes}/${tenants.length} bancos atualizados com sucesso. Nada foi apagado.`
     })
   } catch (error: any) {
     if (pool) {
