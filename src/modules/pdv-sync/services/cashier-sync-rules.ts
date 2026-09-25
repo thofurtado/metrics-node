@@ -180,3 +180,37 @@ export function isPlaceholderFromClose(s: StoredSession): boolean {
 export function shouldApplyClose(status: string): boolean {
     return status === SESSION_OPEN
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Fase 2 (25/09/2026): terminal do caixa, contado no fechamento e estoque do cancelamento
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Terminal do caixa: o caixa aberto na web não tem terminal. Quando o PDV "vincula" esse caixa (decisão do Thomás),
+ * o caixa passa a ter o terminal do PDV. Um terminal já gravado nunca é trocado.
+ */
+export function terminalToStore(current: string | null | undefined, incoming: string | null | undefined): string | null {
+    if (current) return current
+    const t = (incoming || '').trim()
+    return t ? t : null
+}
+
+/** Contado por forma de pagamento no fechamento: só números finitos, arredondados em centavos. */
+export function normalizeCounted(counted: Record<string, unknown> | null | undefined): Record<string, number> | null {
+    if (!counted || typeof counted !== 'object') return null
+    const result: Record<string, number> = {}
+    for (const [method, value] of Object.entries(counted)) {
+        const n = typeof value === 'number' ? value : Number(value)
+        if (method.trim() && Number.isFinite(n)) result[method.trim()] = Math.round(n * 100) / 100
+    }
+    return Object.keys(result).length > 0 ? result : null
+}
+
+/**
+ * Cancelamento de venda que já subiu (decisão do Thomás, 25/09): o estoque segue a escolha do operador no PDV.
+ * "ESTORNO" (Devolver ao Estoque) devolve; "DESPERDICIO" (Registrar como Desperdício) mantém a saída.
+ * Sem a escolha (PDV antigo) nada é devolvido, como antes. Devolve uma vez só.
+ */
+export function shouldReverseStock(destino: string | null | undefined, alreadyRestored: boolean): boolean {
+    return !alreadyRestored && (destino || '').trim().toUpperCase() === 'ESTORNO'
+}

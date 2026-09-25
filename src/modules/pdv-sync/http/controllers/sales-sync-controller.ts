@@ -26,6 +26,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         ValorServico: z.number().optional().default(0),
         ValorFrete: z.number().optional().default(0),
         ClienteUuid: z.string().uuid().optional().nullable(),
+        // Mesa ou comanda de onde a venda veio ("Mesa 07"), para relatório por mesa
+        OriginIdentifier: z.string().optional().nullable(),
         Status: z.string().default('COMPLETED'),
         CreatedAt: z.string().optional(),
         Payments: z.array(z.object({
@@ -73,7 +75,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             //    Antes, venda de caixa fechado (ou sem caixa) caía no caixa aberto mais recente de QUALQUER terminal.
             const existingSale = await tx.sale.findUnique({
                 where: { id: sale.Uuid },
-                select: { cashier_session_id: true, total_amount: true, discount: true, status: true }
+                select: { cashier_session_id: true, total_amount: true, discount: true, status: true, origin: true }
             })
             const targetSessionId = chooseSaleSessionId(sale.CashierSessionId, existingSale?.cashier_session_id)
             const session = targetSessionId
@@ -84,7 +86,11 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             const desiredEntries = buildSaleEntries(sale.Uuid, sale.Origin, sale.Status, sale.Payments)
             const storedEntries = session && targetSessionId
                 ? await tx.cashierEntry.findMany({
-                    where: { cashier_session_id: targetSessionId, type: 'SALE', source: 'PDV', identification: { contains: saleEntryTag(sale.Uuid) } },
+                    where: {
+                        cashier_session_id: targetSessionId, type: 'SALE', source: 'PDV',
+                        // Pela venda (coluna sale_id, desde 2.6.89) ou, para lançamento antigo, pelo texto
+                        OR: [{ sale_id: sale.Uuid }, { sale_id: null, identification: { contains: saleEntryTag(sale.Uuid) } }],
+                    },
                     select: { id: true, identification: true, payment_method: true, amount: true }
                 })
                 : []
@@ -101,7 +107,21 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
             const rejection = checkSaleSession(targetSessionId, session, changesSession)
             if (rejection) throw new SyncRejection(rejection, sale.Uuid)
-            if (!changesSession) continue // reenvio idêntico: nada a gravar
+
+            // Origem, mesa e taxas não mexem em dinheiro: completam a venda antiga até em caixa conferido
+            const detalhes = {
+                origin: sale.Origin || null,
+                origin_identifier: sale.OriginIdentifier || null,
+                delivery_fee: sale.ValorFrete ?? 0,
+                service_fee: sale.ValorServico ?? 0,
+                cover_charge: sale.ValorCouvert ?? 0,
+            }
+            if (!changesSession) {
+                if (existingSale && existingSale.origin === null) {
+                    await tx.sale.update({ where: { id: sale.Uuid }, data: detalhes })
+                }
+                continue // reenvio idêntico: nada mais a gravar
+            }
 
             const saleCreatedAt = sale.CreatedAt ? new Date(sale.CreatedAt) : new Date()
 
@@ -133,6 +153,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     discount: sale.Discount,
                     status: sale.Status,
                     cashier_session_id: targetSessionId,
+                    ...detalhes,
                 },
                 create: {
                     id: sale.Uuid,
@@ -141,6 +162,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     status: sale.Status,
                     cashier_session_id: targetSessionId,
                     created_at: saleCreatedAt,
+                    ...detalhes,
                 }
             })
 
@@ -161,6 +183,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                             type: 'SALE',
                             identification: entry.identification,
                             source: 'PDV',
+                            sale_id: sale.Uuid,
+                            // Maquininha da venda: a conferência usa para achar a taxa e o banco de destino
+                            bank: positivePayments[i]?.PosMachineName || null,
                             client_id: paymentLinks[i]?.clientId ?? null,
                             employee_id: paymentLinks[i]?.employeeId ?? null,
                             created_at: saleCreatedAt
@@ -275,6 +300,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                                 supply_id: comp.supply_id,
                                                 quantity: deduction,
                                                 unit_cost: comp.supply.cost,
+                                                sale_item_id: item.Uuid,
                                                 operation: 'OUT',
                                                 description: 'VENDA',
                                                 created_at: saleCreatedAt
@@ -295,6 +321,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                             product_id: fracProd.id,
                                             quantity: deduction,
                                             unit_cost: fracProd.cost ?? null,
+                                            sale_item_id: item.Uuid,
                                             operation: 'OUT',
                                             description: 'VENDA',
                                             created_at: saleCreatedAt
@@ -326,6 +353,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                                 supply_id: comp.supply_id,
                                                 quantity: deduction,
                                                 unit_cost: comp.supply.cost,
+                                                sale_item_id: item.Uuid,
                                                 operation: 'OUT',
                                                 description: 'VENDA',
                                                 created_at: saleCreatedAt
@@ -343,6 +371,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                         data: {
                                             product_id: prod.id,
                                             quantity: item.Quantity,
+                                            sale_item_id: item.Uuid,
                                             operation: 'OUT',
                                             description: 'VENDA',
                                             created_at: saleCreatedAt
@@ -387,6 +416,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                                 supply_id: supply.id,
                                                 quantity: deduction,
                                                 unit_cost: supply.cost,
+                                                sale_item_id: item.Uuid,
                                                 operation: 'OUT',
                                                 description: 'VENDA',
                                                 created_at: saleCreatedAt

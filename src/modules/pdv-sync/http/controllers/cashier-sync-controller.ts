@@ -2,12 +2,15 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import {
+    SESSION_CHECKED,
     SESSION_OPEN,
     SESSION_PENDING,
     SyncRejection,
     acceptsChanges,
     isPlaceholderFromClose,
+    normalizeCounted,
     shouldApplyClose,
+    terminalToStore,
 } from '../../services/cashier-sync-rules'
 
 /**
@@ -86,6 +89,12 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
     const existing = await prisma.cashierSession.findUnique({ where: { id: data.uuid } })
     if (existing) {
         if (!isPlaceholderFromClose(existing)) {
+            // Caixa aberto na web e "vinculado" pelo PDV (decisão do Thomás, 25/09): passa a ter o terminal do PDV.
+            const terminal = terminalToStore(existing.terminal_id, data.terminal_id)
+            if (terminal !== existing.terminal_id && existing.status !== SESSION_CHECKED) {
+                const vinculado = await prisma.cashierSession.update({ where: { id: data.uuid }, data: { terminal_id: terminal } })
+                return reply.status(200).send({ message: 'Caixa da nuvem vinculado a este terminal', session: vinculado })
+            }
             return reply.status(200).send({ message: 'Caixa já estava na nuvem', session: existing })
         }
         const repaired = await prisma.cashierSession.update({
@@ -96,6 +105,8 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
                 period: periodLabel,
                 sequence_number: sequenceNumber,
                 opened_at: openedAt,
+                terminal_id: terminalToStore(existing.terminal_id, data.terminal_id),
+                source: 'PDV',
             }
         })
         return reply.status(200).send({ message: 'Abertura do caixa corrigida com os dados do PDV', session: repaired })
@@ -110,12 +121,35 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
             period: periodLabel,
             sequence_number: sequenceNumber,
             opened_at: openedAt,
+            terminal_id: terminalToStore(null, data.terminal_id),
+            source: 'PDV',
         }
     })
 
     return reply.status(200).send({
         message: 'Caixa sincronizado com sucesso',
         session
+    })
+}
+
+/**
+ * Caixas abertos na nuvem, para o PDV decidir na abertura (decisão do Thomás, 25/09): caixa aberto na web (sem
+ * terminal) no mesmo dia operacional → o PDV pergunta se quer vincular; caixa de outro terminal → o PDV só avisa.
+ */
+export async function getOpenCashierSessions(request: FastifyRequest, reply: FastifyReply) {
+    const sessions = await prisma.cashierSession.findMany({
+        where: { status: SESSION_OPEN },
+        orderBy: { opened_at: 'desc' },
+        take: 20,
+        select: { id: true, terminal_id: true, source: true, opened_at: true, initial_balance: true, period: true, user_id: true },
+    })
+    const users = await prisma.user.findMany({
+        where: { id: { in: [...new Set(sessions.map(s => s.user_id))] } },
+        select: { id: true, name: true },
+    })
+    const nomes = new Map(users.map(u => [u.id, u.name]))
+    return reply.status(200).send({
+        sessions: sessions.map(s => ({ ...s, operator_name: nomes.get(s.user_id) ?? null })),
     })
 }
 
@@ -240,7 +274,10 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
         uuid: z.string().uuid(),
         closed_at: z.string().optional(),
         final_balance: z.number().optional().nullable(),
-        status: z.string().optional().default('PENDING')
+        status: z.string().optional().default('PENDING'),
+        // Contado por forma de pagamento e quebra (-) ou sobra (+), vindos do fechamento do PDV
+        counted: z.record(z.string(), z.any()).optional().nullable(),
+        closing_difference: z.number().optional().nullable(),
     })
 
     const data = closeSchema.parse(request.body)
@@ -258,7 +295,19 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
 
     // Só caixa ABERTO vai para conferência. Reenvio para caixa em conferência ou já conferido não mexe em nada
     // (antes podia tirar um caixa conferido dessa situação, e conferir de novo somava o dinheiro duas vezes).
+    const counted = normalizeCounted(data.counted)
+    const contado = {
+        ...(counted ? { counted } : {}),
+        ...(data.closing_difference !== undefined && data.closing_difference !== null
+            ? { closing_difference: Math.round(data.closing_difference * 100) / 100 } : {}),
+    }
+
     if (!shouldApplyClose(session.status)) {
+        // Reenvio: só completa o contado se ainda faltava e o caixa não foi conferido
+        if (session.status !== SESSION_CHECKED && session.counted === null && Object.keys(contado).length > 0) {
+            const completado = await prisma.cashierSession.update({ where: { id: data.uuid }, data: contado })
+            return reply.status(200).send({ message: 'Contado do fechamento registrado', session: completado })
+        }
         return reply.status(200).send({ message: 'Fechamento já estava na nuvem', session })
     }
 
@@ -266,7 +315,8 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
         where: { id: data.uuid },
         data: {
             status: SESSION_PENDING,
-            closed_at: closedAt
+            closed_at: closedAt,
+            ...contado,
         }
     })
 

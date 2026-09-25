@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
 import { splitStockMovements } from '../../services/stock-movement-rules'
-import { acceptsChanges, saleEntryTag } from '../../services/cashier-sync-rules'
+import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
@@ -616,6 +616,31 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         message: `Sincronização de produtos realizada com sucesso! (${created} criados, ${updated} atualizados, ${unchanged} inalterados).`
     })
 }
+/**
+ * Devolve ao estoque as baixas de um item vendido que foi cancelado, uma vez só (marca stock_restored no registro do
+ * cancelamento). Só acha as baixas gravadas com sale_item_id (vendas recebidas a partir do backend 2.6.89).
+ */
+async function estornarEstoqueDoItem(cancelamentoId: string, saleItemId: string, destino: string | null | undefined) {
+    await prisma.$transaction(async (tx) => {
+        const registro = await tx.cancellationAudit.findUnique({ where: { id: cancelamentoId }, select: { stock_restored: true } })
+        if (!registro || !shouldReverseStock(destino, registro.stock_restored)) return
+        const baixas = await tx.stock.findMany({ where: { sale_item_id: saleItemId, operation: 'OUT', description: 'VENDA' } })
+        for (const b of baixas) {
+            await tx.stock.create({
+                data: {
+                    quantity: b.quantity, operation: 'IN', description: 'DEVOLUCAO',
+                    product_id: b.product_id, supply_id: b.supply_id, unit_cost: b.unit_cost, sale_item_id: saleItemId,
+                }
+            })
+            if (b.product_id) await tx.product.update({ where: { id: b.product_id }, data: { stock: { increment: b.quantity } } })
+            else if (b.supply_id) await tx.supply.update({ where: { id: b.supply_id }, data: { stock: { increment: b.quantity } } })
+        }
+        if (baixas.length > 0) {
+            await tx.cancellationAudit.update({ where: { id: cancelamentoId }, data: { stock_restored: true } })
+        }
+    })
+}
+
 export async function postCancellationsSync(request: FastifyRequest, reply: FastifyReply) {
     const cancellationsSchema = z.array(z.object({
         Uuid: z.string().uuid(),
@@ -633,7 +658,9 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
         Motivo: z.string(),
         UsuarioId: z.string().optional().nullable(),
         UsuarioNome: z.string().optional().nullable(),
-        DataCancelamento: z.string().optional()
+        DataCancelamento: z.string().optional(),
+        // Escolha do operador na janela de cancelamento: ESTORNO (devolver ao estoque) ou DESPERDICIO
+        DestinoEstoque: z.string().optional().nullable(),
     }))
 
     const cancellations = cancellationsSchema.parse(request.body)
@@ -698,10 +725,16 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                             cashier_session_id: existingSale.cashier_session_id ?? '__sem_caixa__',
                             type: 'SALE',
                             source: 'PDV',
-                            identification: { contains: saleEntryTag(canc.PedidoUuid) }
+                            OR: [{ sale_id: canc.PedidoUuid }, { identification: { contains: saleEntryTag(canc.PedidoUuid) } }],
                         }
                     }),
                 ])
+
+                // Estoque segue a escolha do operador (decisão do Thomás, 25/09): "Devolver ao Estoque" desfaz as baixas
+                // deste item; "Registrar como Desperdício" mantém a saída.
+                if (canc.PedidoItemUuid) {
+                    await estornarEstoqueDoItem(canc.Uuid, canc.PedidoItemUuid, canc.DestinoEstoque)
+                }
             }
 
             const existingPedido = await prisma.pedido.findFirst({

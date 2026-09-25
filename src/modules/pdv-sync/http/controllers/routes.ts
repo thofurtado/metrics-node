@@ -19,7 +19,7 @@ import {
 import { postSalesSync } from './sales-sync-controller'
 import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
-import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync } from './cashier-sync-controller'
+import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync, getOpenCashierSessions } from './cashier-sync-controller'
 import {
     getGarcomCardapio,
     getGarcomMesas,
@@ -99,6 +99,7 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/sync/cashier/movements', postCashierMovementsSync)
     app.post('/api/pdv/cashier/movements', postCashierMovementsSync)
     app.post('/api/pdv/sync/cashier/close', postCashierCloseSync)
+    app.get('/api/pdv/sync/cashier/open-sessions', getOpenCashierSessions)
     app.post('/api/pdv/cashier/close', postCashierCloseSync)
 
     // Departamentos e Configurações Financeiras

@@ -241,13 +241,17 @@ model Stock {
   product_id    String?
   supply_id     String?
   unit_cost     Float?
+  // Item vendido que gerou esta baixa (estorno do cancelamento e conferência dependem disso)
+  sale_item_id  String?
   product       Product?        @relation(fields: [product_id], references: [id])
   supply        Supply?         @relation(fields: [supply_id], references: [id])
+  saleItem      SaleItem?       @relation(fields: [sale_item_id], references: [id], onDelete: SetNull)
   TreatmentItem TreatmentItem[]
   batch_number    String?
   expiration_date DateTime?
   supplier_cnpj   String?
 
+  @@index([sale_item_id])
   @@map("stocks")
 }
 
@@ -658,7 +662,15 @@ model Sale {
   created_at         DateTime @default(now())
   updated_at         DateTime @default(now()) @updatedAt
 
+  // Origem (Balcao, Mesa, Salao, Delivery…), mesa/comanda de onde veio e as taxas que não entram no preço dos itens
+  origin             String?
+  origin_identifier  String?
+  delivery_fee       Float?   @default(0)
+  service_fee        Float?   @default(0)
+  cover_charge       Float?   @default(0)
+
   items          SaleItem[]
+  entries        CashierEntry[]
   treatment      Treatment?      @relation(fields: [treatment_id], references: [id])
   cashierSession CashierSession? @relation(fields: [cashier_session_id], references: [id])
 
@@ -685,6 +697,7 @@ model SaleItem {
   product Product? @relation(fields: [product_id], references: [id])
   service Service? @relation(fields: [service_id], references: [id])
   supply  Supply?  @relation(fields: [supply_id], references: [id])
+  stocks  Stock[]
 
   @@map("sale_items")
 }
@@ -808,6 +821,12 @@ model CashierSession {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 
+  // Terminal do PDV (vazio = caixa aberto na web), quem criou, o contado por forma no fechamento e a quebra (-) ou sobra (+)
+  terminal_id        String?
+  source             String    @default("WEB")
+  counted            Json?
+  closing_difference Float?
+
   entries      CashierEntry[]
   sales        Sale[]
   transactions Transaction[]
@@ -836,10 +855,15 @@ model CashierEntry {
   created_at         DateTime @default(now())
   updated_at         DateTime @default(now()) @updatedAt
 
+  // Venda que gerou o lançamento (antes só pelo texto "Balcao - Pedido #1f9408ee")
+  sale_id            String?
+
   session  CashierSession @relation(fields: [cashier_session_id], references: [id])
   client   Client?        @relation(fields: [client_id], references: [id], onDelete: SetNull)
   employee Employee?      @relation(fields: [employee_id], references: [id], onDelete: SetNull)
+  sale     Sale?          @relation(fields: [sale_id], references: [id], onDelete: SetNull)
 
+  @@index([sale_id])
   @@map("cashier_entries")
 }
 

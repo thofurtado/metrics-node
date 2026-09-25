@@ -9,8 +9,11 @@ import {
     isTermPayment,
     saleEntryTag,
     saleFieldsChanged,
+    normalizeCounted,
     sameEntries,
     shouldApplyClose,
+    shouldReverseStock,
+    terminalToStore,
 } from './cashier-sync-rules'
 
 const SALE = '1f9408ee-8adf-4566-8d61-127896f99733'
@@ -192,5 +195,52 @@ describe('SyncRejection', () => {
         expect(r.message.startsWith('O caixa já foi conferido')).toBe(true)
         expect(r.message).toContain('(1f9408ee)')
         expect(r.ref).toBe(SALE)
+    })
+})
+
+describe('terminalToStore', () => {
+    it('caixa da web sem terminal passa a ter o terminal do PDV que o vinculou', () => {
+        expect(terminalToStore(null, 'CAIXA-01')).toBe('CAIXA-01')
+    })
+
+    it('terminal já gravado nunca é trocado', () => {
+        expect(terminalToStore('CAIXA-01', 'CAIXA-02')).toBe('CAIXA-01')
+    })
+
+    it('terminal vazio não é gravado', () => {
+        expect(terminalToStore(null, '  ')).toBeNull()
+        expect(terminalToStore(undefined, undefined)).toBeNull()
+    })
+})
+
+describe('normalizeCounted', () => {
+    it('guarda o contado por forma em centavos', () => {
+        expect(normalizeCounted({ Dinheiro: 480.004, Pix: '121.8' })).toEqual({ Dinheiro: 480, Pix: 121.8 })
+    })
+
+    it('ignora valor que não é número e forma sem nome', () => {
+        expect(normalizeCounted({ Dinheiro: 'abc', '': 10, Débito: 76.5 })).toEqual({ Débito: 76.5 })
+    })
+
+    it('sem contado nenhum fica vazio', () => {
+        expect(normalizeCounted(null)).toBeNull()
+        expect(normalizeCounted({})).toBeNull()
+    })
+})
+
+describe('shouldReverseStock', () => {
+    it('"Devolver ao Estoque" devolve uma vez', () => {
+        expect(shouldReverseStock('ESTORNO', false)).toBe(true)
+        expect(shouldReverseStock('estorno', false)).toBe(true)
+        expect(shouldReverseStock('ESTORNO', true)).toBe(false)
+    })
+
+    it('"Registrar como Desperdício" mantém a saída', () => {
+        expect(shouldReverseStock('DESPERDICIO', false)).toBe(false)
+    })
+
+    it('PDV antigo, sem a escolha, não devolve (como antes)', () => {
+        expect(shouldReverseStock(null, false)).toBe(false)
+        expect(shouldReverseStock(undefined, false)).toBe(false)
     })
 })
