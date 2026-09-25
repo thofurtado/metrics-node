@@ -1,11 +1,12 @@
-﻿{
-    "fileSizeBytes":  2235914,
-    "downloadUrl":  "https://api.metrics.dev.br/api/public/mobile/download",
-    "id":  "metrics-mobile",
-    "fileName":  "metrics-mobile.apk",
-    "key":  "mobile",
-    "version":  "2.0.0",
-    "name":  "Metrics Mobile - Comanda \u0026 Gestão Móvel",
-    "updatedAt":  "2026-09-17T13:03:15.9112703Z",
-    "formattedSize":  "2.1 MB"
+{
+  "id": "metrics-mobile",
+  "key": "mobile",
+  "name": "Metrics Mobile - Comanda & Gestão Móvel",
+  "version": "2.0.2",
+  "fileName": "metrics-mobile.apk",
+  "downloadUrl": "https://api.metrics.dev.br/api/public/mobile/download",
+  "updatedAt": "2026-09-25T15:33:07.000Z",
+  "fileSizeBytes": 2235918,
+  "formattedSize": "2.1 MB",
+  "sha256": "010adc90c1da43da761688e9c05346d42c3f25e5badc29134ffee8bfeb9ad7fa"
 }
