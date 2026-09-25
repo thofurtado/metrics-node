@@ -1,9 +1,9 @@
 {
- "gerado_em": "2026-09-25T11:03:57",
+ "gerado_em": "2026-09-25T12:09:24",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "f3e7f6e 2026-09-25",
+   "versao": "37b5f12 2026-09-25",
    "tabelas": 62
   },
   "saas": {
@@ -13,7 +13,7 @@
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "04dc269 2026-09-25",
+   "versao": "7405c85 2026-09-25",
    "tabelas": 34
   }
  },
@@ -2086,6 +2086,17 @@
      "comentario": null
     },
     {
+     "nome": "sale_item_id",
+     "coluna": "sale_item_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Item vendido que gerou esta baixa (estorno do cancelamento e conferência dependem disso)"
+    },
+    {
      "nome": "batch_number",
      "coluna": "batch_number",
      "tipo": "String",
@@ -2146,6 +2157,20 @@
       "id"
      ],
      "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "saleItem",
+     "alvo": "nuvem:SaleItem",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "sale_item_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
      "nome": null
     },
     {
@@ -5185,12 +5210,77 @@
      "unico": false,
      "padrao": "now()",
      "comentario": null
+    },
+    {
+     "nome": "origin",
+     "coluna": "origin",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Origem (Balcao, Mesa, Salao, Delivery…), mesa/comanda de onde veio e as taxas que não entram no preço dos itens"
+    },
+    {
+     "nome": "origin_identifier",
+     "coluna": "origin_identifier",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "delivery_fee",
+     "coluna": "delivery_fee",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "service_fee",
+     "coluna": "service_fee",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "cover_charge",
+     "coluna": "cover_charge",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
     }
    ],
    "relacoes": [
     {
      "campo": "items",
      "alvo": "nuvem:SaleItem",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "entries",
+     "alvo": "nuvem:CashierEntry",
      "lista": true,
      "opcional": false,
      "fks": [],
@@ -5420,6 +5510,16 @@
      "refs": [
       "id"
      ],
+     "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "stocks",
+     "alvo": "nuvem:Stock",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
      "on_delete": null,
      "nome": null
     }
@@ -6281,6 +6381,50 @@
      "unico": false,
      "padrao": "now()",
      "comentario": null
+    },
+    {
+     "nome": "terminal_id",
+     "coluna": "terminal_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Terminal do PDV (vazio = caixa aberto na web), quem criou, o contado por forma no fechamento e a quebra (-) ou sobra (+)"
+    },
+    {
+     "nome": "source",
+     "coluna": "source",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"WEB\"",
+     "comentario": null
+    },
+    {
+     "nome": "counted",
+     "coluna": "counted",
+     "tipo": "Json",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "closing_difference",
+     "coluna": "closing_difference",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -6528,6 +6672,17 @@
      "unico": false,
      "padrao": "now()",
      "comentario": null
+    },
+    {
+     "nome": "sale_id",
+     "coluna": "sale_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Venda que gerou o lançamento (antes só pelo texto \"Balcao - Pedido #1f9408ee\")"
     }
    ],
    "relacoes": [
@@ -6566,6 +6721,20 @@
      "opcional": true,
      "fks": [
       "employee_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    },
+    {
+     "campo": "sale",
+     "alvo": "nuvem:Sale",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "sale_id"
      ],
      "refs": [
       "id"
@@ -9897,6 +10066,61 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ContadoJson",
+     "coluna": "contado_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DiferencaFechamento",
+     "coluna": "diferenca_fechamento",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [],
@@ -9935,6 +10159,39 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,
@@ -10102,6 +10359,39 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,
@@ -11524,6 +11814,39 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,

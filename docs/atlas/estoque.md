@@ -37,10 +37,10 @@ Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e
 
 ## Movimento de estoque · `stocks` (nuvem)
 
-- **O que é:** Cada entrada e saída de produto ou insumo. A venda gera uma saída por insumo de cada item. O saldo do produto e do insumo é a soma destes movimentos.
+- **O que é:** Cada entrada e saída de produto ou insumo. A venda gera uma saída por insumo de cada item, apontando o item vendido (sale_item_id); o cancelamento com "Devolver ao Estoque" gera a entrada de volta. O saldo é a soma destes movimentos.
 - **Quem grava:** A nuvem, ao receber a venda (o PDV não manda mais estoque desde o 2.4.16); entrada por nota fiscal; ajustes.
 - **Cresce:** ~1.800 por dia num restaurante de 200 vendas com fichas de 3 insumos (~650 mil por ano). A maior tabela.
-- **Atenção:** Não diz de qual venda veio: estorno de cancelamento e conferência dependem da proposta sale_item_id.
+- **Atenção:** Baixas gravadas antes do backend 2.6.89 não apontam o item vendido.
 
 | Coluna | Tipo | Obrigatória | Liga com | Nota |
 |---|---|---|---|---|
@@ -52,10 +52,10 @@ Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e
 | `product_id` | String | não | Produto (Cardápio e produtos) |  |
 | `supply_id` | String | não | Insumo (Estoque e compras) |  |
 | `unit_cost` | Float | não |  |  |
+| `sale_item_id` | String | não | Item vendido (Caixa e vendas) | Item vendido que gerou esta baixa (estorno do cancelamento e conferência dependem disso) |
 | `batch_number` | String | não |  |  |
 | `expiration_date` | DateTime | não |  |  |
 | `supplier_cnpj` | String | não |  |  |
-| `+ sale_item_id` | proposta | | | → Item vendido |
 
 ## Fornecedor · `suppliers` (nuvem)
 
@@ -173,6 +173,7 @@ Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e
 - Item contado `product_id` → Produto (Cardápio e produtos)
 - Item da evasão (PDV) `produto_id` → Produto (PDV) (Cardápio e produtos)
 - Movimento de estoque `product_id` → Produto (Cardápio e produtos)
+- Movimento de estoque `sale_item_id` → Item vendido (Caixa e vendas)
 - Movimento de estoque (PDV) `produto_id` → Produto (PDV) (Cardápio e produtos)
 - Item da O.S. (Ordens de serviço) `stock_id` → Movimento de estoque
 - Item da O.S. (Ordens de serviço) `supply_id` → Insumo
@@ -182,4 +183,4 @@ Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e
 ## Pendências e decisões
 
 - Custo médio (CMP) na entrada de nota ainda substitui o custo em vez de fazer a média ponderada.
-- Estorno de estoque no cancelamento depois da sincronia (pergunta 9).
+- Cancelamento depois da sincronia: o estoque segue a escolha do operador (decisão de 25/09, backend 2.6.89).

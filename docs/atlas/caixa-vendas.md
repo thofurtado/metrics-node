@@ -6,8 +6,8 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 
 ## Caixa · `cashier_sessions` (nuvem)
 
-- **O que é:** Cada caixa aberto, no PDV ou na web. No PDV tem o mesmo código do caixa local. Situação: aberto (OPEN), fechado esperando conferência (PENDING), conferido (CHECKED).
-- **Quem grava:** A web ao abrir o caixa; o PDV ao abrir e ao fechar (desde o backend 2.6.87 o reenvio não reabre nem renumera, e caixa conferido não muda).
+- **O que é:** Cada caixa aberto, no PDV ou na web. No PDV tem o mesmo código do caixa local. Situação: aberto (OPEN), fechado esperando conferência (PENDING), conferido (CHECKED). Desde o backend 2.6.89 guarda o terminal, quem criou (PDV ou web), o contado em cada forma no fechamento e a quebra ou sobra.
+- **Quem grava:** A web ao abrir o caixa; o PDV ao abrir e ao fechar. O reenvio não reabre nem renumera, e caixa conferido não muda. Caixa aberto na web e vinculado pelo PDV passa a ter o terminal do PDV.
 - **Quem lê:** Conferência de caixa e auditoria mensal.
 - **Cresce:** 1 a 3 linhas por dia.
 - **Espelho:** Caixa (PDV)
@@ -24,26 +24,25 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `initial_balance` | Float | sim |  | (fundo) |
 | `created_at` | DateTime | sim |  |  |
 | `updated_at` | DateTime | sim |  |  |
-| `+ terminal_id` | proposta | | |  |
-| `+ source` | proposta | | | PDV \| WEB |
-| `+ counted` | proposta | | | (contado por forma) |
-| `+ closing_difference` | proposta | | | (quebra) |
+| `terminal_id` | String | não |  | (vazio = web) |
+| `source` | String | sim |  | PDV \| WEB |
+| `counted` | Json | não |  | (contado por forma) |
+| `closing_difference` | Float | não |  | (quebra -, sobra +) |
 
 ## Lançamento do caixa · `cashier_entries` (nuvem)
 
-- **O que é:** Cada entrada ou saída do caixa: um por pagamento de venda e um por sangria, suprimento, despesa ou vale. É o que a Conferência soma por forma de pagamento.
+- **O que é:** Cada entrada ou saída do caixa: um por pagamento de venda e um por sangria, suprimento, despesa ou vale. É o que a Conferência soma por forma de pagamento. O lançamento de venda aponta a venda (sale_id) e leva a maquininha usada.
 - **Quem grava:** A web (lançamento manual e baixa de delivery) e o PDV (vendas e movimentos).
 - **Quem lê:** Conferência de caixa.
 - **Cresce:** ~230 por dia num restaurante de 200 vendas (1,1 por venda, mais os movimentos).
 - **Espelho:** Movimento do caixa (PDV)
-- **Atenção:** Hoje o lançamento só sabe de qual venda veio pelo texto "Balcao - Pedido #1f9408ee".
 
 | Coluna | Tipo | Obrigatória | Liga com | Nota |
 |---|---|---|---|---|
 | `id` | String (chave) | sim |  |  |
 | `cashier_session_id` | String | sim | Caixa (Caixa e vendas) |  |
 | `origin` | String | não |  |  |
-| `bank` | String | não |  |  |
+| `bank` | String | não |  | (maquininha) |
 | `payment_method` | String | sim |  | (forma) |
 | `amount` | Float | sim |  |  |
 | `is_withdrawal` | Boolean | sim |  |  |
@@ -58,11 +57,11 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `sector_id` | String | não |  |  |
 | `created_at` | DateTime | sim |  |  |
 | `updated_at` | DateTime | sim |  |  |
-| `+ sale_id` | proposta | | | → Venda |
+| `sale_id` | String | não | Venda (Caixa e vendas) | Venda que gerou o lançamento (antes só pelo texto "Balcao - Pedido #1f9408ee") |
 
 ## Venda · `sales` (nuvem)
 
-- **O que é:** Uma venda fechada no PDV: balcão, mesa ou salão. Tem o mesmo código do pedido no PDV. Guarda só total, desconto e situação.
+- **O que é:** Uma venda fechada no PDV: balcão, mesa ou salão. Tem o mesmo código do pedido no PDV. Guarda total, desconto, situação, origem, a mesa ou comanda de onde veio, frete, taxa de serviço e couvert.
 - **Quem grava:** O PDV, na hora do pagamento e no ciclo de 5 minutos. A nuvem recusa com motivo venda sem caixa, de caixa desconhecido ou de caixa conferido.
 - **Quem lê:** Custo da mercadoria vendida (CMV) e os relatórios que vão ser feitos.
 - **Cresce:** 200 por dia (~73 mil por ano) no exemplo.
@@ -78,11 +77,11 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `status` | String | sim |  | COMPLETED \| CANCELLED |
 | `created_at` | DateTime | sim |  |  |
 | `updated_at` | DateTime | sim |  |  |
-| `+ origin` | proposta | | | Balcão, Mesa… |
-| `+ origin_identifier` | proposta | | | Mesa 07 |
-| `+ delivery_fee` | proposta | | |  |
-| `+ service_fee` | proposta | | |  |
-| `+ cover_charge` | proposta | | |  |
+| `origin` | String | não |  | Balcao, Mesa… |
+| `origin_identifier` | String | não |  | Mesa 07 |
+| `delivery_fee` | Float | não |  |  |
+| `service_fee` | Float | não |  |  |
+| `cover_charge` | Float | não |  |  |
 
 ## Item vendido · `sale_items` (nuvem)
 
@@ -174,6 +173,11 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `valor_couvert` | decimal | sim |  |  |
 | `usuario_id` | Guid | não |  |  |
 | `sincronizado_web` | bool | sim |  |  |
+| `sync_tentativas` | int | sim |  |  |
+| `sync_ultimo_erro` | string | não |  |  |
+| `sync_proxima_tentativa` | DateTime | não |  |  |
+| `contado_json` | string | não |  |  |
+| `diferenca_fechamento` | decimal | não |  |  |
 
 ## Movimento do caixa (PDV) · `caixa_transacoes` (PDV)
 
@@ -186,6 +190,9 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `id` | int (chave) | sim |  |  |
 | `uuid` | Guid | sim |  |  |
 | `sincronizado_web` | bool | sim |  |  |
+| `sync_tentativas` | int | sim |  |  |
+| `sync_ultimo_erro` | string | não |  |  |
+| `sync_proxima_tentativa` | DateTime | não |  |  |
 | `caixa_id` | int | sim | Caixa (PDV) (Caixa e vendas) |  |
 | `tipo` | string | sim |  |  |
 | `valor` | decimal | sim |  |  |
@@ -314,11 +321,12 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 | `usuario_nome` | string | não |  |  |
 | `data_cancelamento` | DateTime | sim |  |  |
 | `sincronizado_web` | bool | sim |  |  |
+| `sync_tentativas` | int | sim |  |  |
+| `sync_ultimo_erro` | string | não |  |  |
+| `sync_proxima_tentativa` | DateTime | não |  |  |
 
 ## Ligações sem chave e propostas
 
-- Lançamento do caixa → Venda: proposta · + sale_id (hoje: texto)
-- Movimento de estoque → Item vendido: proposta · + sale_item_id
 - Cancelamento → Venda: texto · sale_id sem chave
 - Pedido online → Venda: codigo · mesmo código: pedidos.uuid = sales.id
 - Pedido online → Caixa: texto · caixa_id
@@ -369,6 +377,7 @@ O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa s
 - Pedido (PDV) `usuario_id` → Usuário (PDV) (Empresa, usuários e configuração)
 - Venda `treatment_id` → Ordem de serviço (Ordens de serviço)
 - Lançamento financeiro (Financeiro) `cashier_session_id` → Caixa
+- Movimento de estoque (Estoque e compras) `sale_item_id` → Item vendido
 
 ## Notas
 
@@ -376,5 +385,6 @@ Regras e decisões do caixa e da sincronia: skill metrics-regras-negocio e Metri
 
 ## Pendências e decisões
 
-- Aprovar as colunas propostas (pergunta 1 do documento de sincronia) e a sugestão nova sales.origin_identifier.
+- Rodar npm run migrate:all antes de publicar o backend 2.6.89.
+- Vendas e baixas de estoque recebidas antes do 2.6.89 não têm sale_item_id: o estorno do cancelamento só vale para as novas.
 - Fiado (pergunta 5) e vale do funcionário (pergunta 4).

@@ -73,6 +73,9 @@ Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de s
 | `cpf_cnpj` | string | não |  |  |
 | `email` | string | não |  |  |
 | `sincronizado_web` | bool | sim |  |  |
+| `sync_tentativas` | int | sim |  |  |
+| `sync_ultimo_erro` | string | não |  |  |
+| `sync_proxima_tentativa` | DateTime | não |  |  |
 | `limite_credito` | decimal | não |  |  |
 | `saldo_devedor` | decimal | sim |  |  |
 | `endereco_principal_id` | int | não | Endereço (PDV) (Clientes) |  |

@@ -2,31 +2,70 @@
   "id": "estoque",
   "nome": "Estoque e compras",
   "apelido": "insumo, ficha técnica, nota de entrada",
-  "mapa": { "col": 2, "linha": 2 },
+  "mapa": {
+    "col": 2,
+    "linha": 2
+  },
   "resumo": "Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).",
   "diagramas": [
     {
       "id": "nuvem",
       "titulo": "Na nuvem (metrics-node)",
       "tabelas": {
-        "nuvem:Supplier": { "col": 1, "linha": 1 },
-        "nuvem:SupplierProductMapping": { "col": 1, "linha": 2 },
-        "nuvem:Supply": { "col": 2, "linha": 1 },
-        "nuvem:Composition": { "col": 2, "linha": 2 },
-        "nuvem:Stock": { "col": 2, "linha": 3 },
-        "nuvem:Product": { "col": 3, "linha": 1 },
-        "nuvem:InventoryItem": { "col": 3, "linha": 2 },
-        "nuvem:InventorySession": { "col": 3, "linha": 3 }
+        "nuvem:Supplier": {
+          "col": 1,
+          "linha": 1
+        },
+        "nuvem:SupplierProductMapping": {
+          "col": 1,
+          "linha": 2
+        },
+        "nuvem:Supply": {
+          "col": 2,
+          "linha": 1
+        },
+        "nuvem:Composition": {
+          "col": 2,
+          "linha": 2
+        },
+        "nuvem:Stock": {
+          "col": 2,
+          "linha": 3
+        },
+        "nuvem:Product": {
+          "col": 3,
+          "linha": 1
+        },
+        "nuvem:InventoryItem": {
+          "col": 3,
+          "linha": 2
+        },
+        "nuvem:InventorySession": {
+          "col": 3,
+          "linha": 3
+        }
       }
     },
     {
       "id": "pdv",
       "titulo": "No PDV (banco local)",
       "tabelas": {
-        "pdv:EvasaoEstoque": { "col": 1, "linha": 1 },
-        "pdv:EvasaoEstoqueItem": { "col": 1, "linha": 2 },
-        "pdv:Produto": { "col": 2, "linha": 1 },
-        "pdv:MovimentacaoEstoque": { "col": 2, "linha": 2 }
+        "pdv:EvasaoEstoque": {
+          "col": 1,
+          "linha": 1
+        },
+        "pdv:EvasaoEstoqueItem": {
+          "col": 1,
+          "linha": 2
+        },
+        "pdv:Produto": {
+          "col": 2,
+          "linha": 1
+        },
+        "pdv:MovimentacaoEstoque": {
+          "col": 2,
+          "linha": 2
+        }
       }
     }
   ],
@@ -43,33 +82,48 @@
     },
     "nuvem:Stock": {
       "nome": "Movimento de estoque",
-      "o_que_e": "Cada entrada e saída de produto ou insumo. A venda gera uma saída por insumo de cada item. O saldo do produto e do insumo é a soma destes movimentos.",
+      "o_que_e": "Cada entrada e saída de produto ou insumo. A venda gera uma saída por insumo de cada item, apontando o item vendido (sale_item_id); o cancelamento com \"Devolver ao Estoque\" gera a entrada de volta. O saldo é a soma destes movimentos.",
       "quem_grava": "A nuvem, ao receber a venda (o PDV não manda mais estoque desde o 2.4.16); entrada por nota fiscal; ajustes.",
       "cresce": "~1.800 por dia num restaurante de 200 vendas com fichas de 3 insumos (~650 mil por ano). A maior tabela.",
-      "propostas": [{ "campo": "sale_item_id", "nota": "→ Item vendido" }],
-      "alertas": ["Não diz de qual venda veio: estorno de cancelamento e conferência dependem da proposta sale_item_id."]
+      "alertas": [
+        "Baixas gravadas antes do backend 2.6.89 não apontam o item vendido."
+      ]
     },
-    "nuvem:Supplier": { "nome": "Fornecedor", "o_que_e": "Fornecedor das notas de entrada e das despesas." },
+    "nuvem:Supplier": {
+      "nome": "Fornecedor",
+      "o_que_e": "Fornecedor das notas de entrada e das despesas."
+    },
     "nuvem:SupplierProductMapping": {
       "nome": "De-Para do fornecedor",
       "o_que_e": "Liga o item da nota do fornecedor ao insumo ou produto do Metrics, com fator de conversão da embalagem.",
       "quem_grava": "Entrada de nota fiscal (XML do fornecedor)."
     },
-    "nuvem:InventorySession": { "nome": "Contagem de inventário", "o_que_e": "Uma contagem de estoque (pode ser cega), por setor." },
-    "nuvem:InventoryItem": { "nome": "Item contado", "o_que_e": "Quantidade contada de cada insumo ou produto numa contagem." },
+    "nuvem:InventorySession": {
+      "nome": "Contagem de inventário",
+      "o_que_e": "Uma contagem de estoque (pode ser cega), por setor."
+    },
+    "nuvem:InventoryItem": {
+      "nome": "Item contado",
+      "o_que_e": "Quantidade contada de cada insumo ou produto numa contagem."
+    },
     "pdv:MovimentacaoEstoque": {
       "nome": "Movimento de estoque (PDV)",
       "o_que_e": "Movimentos gravados pelo PDV (estorno e desperdício no cancelamento, evasão).",
-      "alertas": ["Não sobe mais para a nuvem (decisão de 24/09: estoque só pelo backend)."]
+      "alertas": [
+        "Não sobe mais para a nuvem (decisão de 24/09: estoque só pelo backend)."
+      ]
     },
     "pdv:EvasaoEstoque": {
       "nome": "Evasão de estoque (PDV)",
       "o_que_e": "Saída de mercadoria sem venda, classificada por um identificador (ex.: consumo interno, cortesia)."
     },
-    "pdv:EvasaoEstoqueItem": { "nome": "Item da evasão (PDV)", "o_que_e": "Produtos e quantidades de cada evasão." }
+    "pdv:EvasaoEstoqueItem": {
+      "nome": "Item da evasão (PDV)",
+      "o_que_e": "Produtos e quantidades de cada evasão."
+    }
   },
   "pendencias": [
     "Custo médio (CMP) na entrada de nota ainda substitui o custo em vez de fazer a média ponderada.",
-    "Estorno de estoque no cancelamento depois da sincronia (pergunta 9)."
+    "Cancelamento depois da sincronia: o estoque segue a escolha do operador (decisão de 25/09, backend 2.6.89)."
   ]
 }

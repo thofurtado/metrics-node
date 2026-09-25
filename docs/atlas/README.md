@@ -33,6 +33,7 @@ Gerado em 25/09/2026. Abra `atlas.html` no navegador para ver os desenhos.
 - Caixa e vendas → Empresa, usuários e configuração: 2
 - Ordens de serviço → Cardápio e produtos: 1
 - Estoque e compras → Ordens de serviço: 1
+- Estoque e compras → Caixa e vendas: 1
 - Financeiro → Ordens de serviço: 1
 - Financeiro → Estoque e compras: 1
 - Financeiro → Caixa e vendas: 1
