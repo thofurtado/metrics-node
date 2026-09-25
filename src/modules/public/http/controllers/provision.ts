@@ -5,6 +5,7 @@ import { execSync } from 'child_process'
 import { env } from '@/env'
 import { getSchemaHash } from './db-status'
 import { runTenantOnboarding } from '@/modules/public/services/tenant-onboarding'
+import { resumoDoProblema, sincronizarBanco } from '@/modules/public/services/schema-sync'
 
 export async function provisionTenant(request: FastifyRequest, reply: FastifyReply) {
     const provisionBodySchema = z.object({
@@ -65,11 +66,12 @@ export async function provisionTenant(request: FastifyRequest, reply: FastifyRep
 
         // 4. Rodar as migra��es (Push) e o Seed base
         console.log(`??? Construindo schema do Prisma no novo banco...`)
-        const migrateResult = execSync(`npx prisma migrate deploy`, { 
-            env: { ...process.env, DATABASE_URL: newDbUrl },
-            encoding: 'utf-8'
-        })
-        console.log(migrateResult)
+        // Mesma regra do Sincronizar do Admin: migrations e depois cria o que ainda faltar do schema (nunca apaga).
+        const estrutura = await sincronizarBanco(dbName, newDbUrl)
+        console.log(`Estrutura do banco ${dbName}:`, JSON.stringify(estrutura))
+        if (!estrutura.ok) {
+            throw new Error(`Falha ao montar o banco ${dbName}: ${resumoDoProblema(estrutura)}`)
+        }
 
         console.log(`?? Populando m�dulos e usu�rio admin padr�o no novo banco...`)
         execSync(`npx prisma db seed`, { 

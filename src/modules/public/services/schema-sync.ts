@@ -43,11 +43,19 @@ export async function sincronizarBanco(dbName: string, dbUrl: string): Promise<R
       await pool.query('DELETE FROM "_prisma_migrations" WHERE "finished_at" IS NULL')
     } catch (_) {}
 
-    try {
-      await prisma('migrate deploy', dbUrl)
-    } catch (err) {
-      r.migracoes = 'falhou'
-      r.erroMigracao = erroDoPrisma(err)
+    // Queda momentânea de conexão (P1001/P1017, visto em 25/09) ganha mais uma tentativa antes de virar problema.
+    for (let tentativa = 1; tentativa <= 2; tentativa++) {
+      try {
+        await prisma('migrate deploy', dbUrl)
+        r.migracoes = 'ok'
+        r.erroMigracao = undefined
+        break
+      } catch (err) {
+        r.migracoes = 'falhou'
+        r.erroMigracao = erroDoPrisma(err)
+        if (!/P1001|P1017/.test(r.erroMigracao)) break
+        await new Promise(resolve => setTimeout(resolve, 3000))
+      }
     }
 
     try {

@@ -406,6 +406,12 @@ model Transaction {
   cashierSession        CashierSession?       @relation(fields: [cashier_session_id], references: [id])
   treatmentTransactions TreatmentTransaction[]
 
+  // Criados pela migration 20260904130000 e nunca declarados aqui: o "db push" forçado de 25/09/2026 apagou.
+  @@index([data_vencimento])
+  @@index([account_id])
+  @@index([sector_id])
+  @@index([supplier_id])
+  @@index([cashier_session_id])
   @@map("transactions")
 }
 
