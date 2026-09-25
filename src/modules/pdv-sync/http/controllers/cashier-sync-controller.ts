@@ -1,6 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import {
+    SESSION_OPEN,
+    SESSION_PENDING,
+    SyncRejection,
+    acceptsChanges,
+    isPlaceholderFromClose,
+    shouldApplyClose,
+} from '../../services/cashier-sync-rules'
 
 /**
  * Determina o período do dia caso não seja informado
@@ -64,27 +72,41 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
 
     const countToday = await prisma.cashierSession.count({
         where: {
-            opened_at: { gte: dayStart, lt: dayEnd }
+            opened_at: { gte: dayStart, lt: dayEnd },
+            NOT: { id: data.uuid } // o próprio caixa não conta (reenvio ou correção)
         }
     })
 
     const sequenceNumber = countToday + 1
     const periodLabel = data.period || `Turno ${String(sequenceNumber).padStart(2, '0')}`
 
-    const session = await prisma.cashierSession.upsert({
-        where: { id: data.uuid },
-        update: {
-            initial_balance: data.initial_balance,
-            status: 'OPEN',
-            period: periodLabel,
-            sequence_number: sequenceNumber,
-            opened_at: openedAt,
-        },
-        create: {
+    // Reenviar a abertura é seguro: o caixa que já existe não é reaberto, renumerado nem tem o fundo trocado
+    // (antes o reenvio forçava OPEN e recontava o turno, e o PDV reenviava sempre). Única exceção: o caixa que a regra
+    // antiga criou a partir do fechamento (fundo 0, abertura = fechamento) recebe os dados verdadeiros da abertura.
+    const existing = await prisma.cashierSession.findUnique({ where: { id: data.uuid } })
+    if (existing) {
+        if (!isPlaceholderFromClose(existing)) {
+            return reply.status(200).send({ message: 'Caixa já estava na nuvem', session: existing })
+        }
+        const repaired = await prisma.cashierSession.update({
+            where: { id: data.uuid },
+            data: {
+                user_id: targetUserId,
+                initial_balance: data.initial_balance,
+                period: periodLabel,
+                sequence_number: sequenceNumber,
+                opened_at: openedAt,
+            }
+        })
+        return reply.status(200).send({ message: 'Abertura do caixa corrigida com os dados do PDV', session: repaired })
+    }
+
+    const session = await prisma.cashierSession.create({
+        data: {
             id: data.uuid,
             user_id: targetUserId,
             initial_balance: data.initial_balance,
-            status: 'OPEN',
+            status: SESSION_OPEN,
             period: periodLabel,
             sequence_number: sequenceNumber,
             opened_at: openedAt,
@@ -131,6 +153,17 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
             if (!session) {
                 console.warn(`[CashierSync] Movimentação ignorada: sessão ${mov.cashier_session_id} não encontrada.`)
                 ignored.push({ uuid: mov.uuid, reason: 'SESSAO_NAO_ENCONTRADA' })
+                continue
+            }
+
+            // Caixa já conferido na web não recebe movimento novo nem alteração (a conferência já lançou o financeiro).
+            if (!acceptsChanges(session)) {
+                const current = await tx.cashierEntry.findUnique({ where: { id: mov.uuid }, select: { amount: true } })
+                if (current && Math.round(current.amount * 100) === Math.round(mov.valor * 100)) {
+                    accepted.push(mov.uuid) // reenvio do que já estava lá
+                } else {
+                    ignored.push({ uuid: mov.uuid, reason: 'CAIXA_JA_CONFERIDO' })
+                }
                 continue
             }
 
@@ -218,35 +251,21 @@ export async function postCashierCloseSync(request: FastifyRequest, reply: Fasti
     })
 
     if (!session) {
-        // Se a sessão não existia na nuvem (ex: aberta em modo offline), cria com status PENDING
-        const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } })
-        const targetUserId = adminUser?.id || (await prisma.user.findFirst({ select: { id: true } }))?.id
+        // Antes a nuvem criava o caixa aqui, com fundo 0, abertura = fechamento e o primeiro administrador como operador.
+        // Agora recusa com motivo: o PDV manda a abertura (com os dados verdadeiros) e depois o fechamento.
+        return reply.status(409).send(new SyncRejection('CAIXA_NAO_ENVIADO', data.uuid).toResponse())
+    }
 
-        if (targetUserId) {
-            const newSession = await prisma.cashierSession.create({
-                data: {
-                    id: data.uuid,
-                    user_id: targetUserId,
-                    status: data.status || 'PENDING',
-                    opened_at: closedAt,
-                    closed_at: closedAt,
-                    initial_balance: 0,
-                    period: 'Caixa PDV',
-                    sequence_number: 1
-                }
-            })
-            return reply.status(200).send({
-                message: 'Fechamento de caixa registrado e enviado para conferência com sucesso',
-                session: newSession
-            })
-        }
-        return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
+    // Só caixa ABERTO vai para conferência. Reenvio para caixa em conferência ou já conferido não mexe em nada
+    // (antes podia tirar um caixa conferido dessa situação, e conferir de novo somava o dinheiro duas vezes).
+    if (!shouldApplyClose(session.status)) {
+        return reply.status(200).send({ message: 'Fechamento já estava na nuvem', session })
     }
 
     const updated = await prisma.cashierSession.update({
         where: { id: data.uuid },
         data: {
-            status: data.status || 'PENDING',
+            status: SESSION_PENDING,
             closed_at: closedAt
         }
     })

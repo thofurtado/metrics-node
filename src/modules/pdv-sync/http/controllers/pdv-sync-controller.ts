@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
 import { splitStockMovements } from '../../services/stock-movement-rules'
+import { acceptsChanges, saleEntryTag } from '../../services/cashier-sync-rules'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
@@ -636,6 +637,9 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
     }))
 
     const cancellations = cancellationsSchema.parse(request.body)
+    // O PDV só marca como enviado o que estiver em "accepted"; o resto fica pendente com o motivo
+    const accepted: string[] = []
+    const ignored: { uuid: string; reason: string }[] = []
 
     for (const canc of cancellations) {
         // Grava na tabela de auditoria CancellationAudit
@@ -675,15 +679,29 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                 where: { id: canc.PedidoUuid }
             })
             if (existingSale) {
-                await prisma.sale.update({
-                    where: { id: canc.PedidoUuid },
-                    data: { status: 'CANCELLED' }
-                })
-                await prisma.cashierEntry.deleteMany({
-                    where: {
-                        identification: { contains: canc.PedidoUuid.slice(0, 8) }
-                    }
-                })
+                // Só mexe no caixa DA venda e nunca em caixa já conferido (antes apagava lançamentos de qualquer caixa,
+                // até conferido, sem desfazer o financeiro). Caixa conferido: fica pendente no PDV com o motivo.
+                const session = existingSale.cashier_session_id
+                    ? await prisma.cashierSession.findUnique({ where: { id: existingSale.cashier_session_id }, select: { status: true } })
+                    : null
+                if (session && !acceptsChanges(session) && existingSale.status !== 'CANCELLED') {
+                    ignored.push({ uuid: canc.Uuid, reason: 'CAIXA_JA_CONFERIDO' })
+                    continue
+                }
+                await prisma.$transaction([
+                    prisma.sale.update({
+                        where: { id: canc.PedidoUuid },
+                        data: { status: 'CANCELLED' }
+                    }),
+                    prisma.cashierEntry.deleteMany({
+                        where: {
+                            cashier_session_id: existingSale.cashier_session_id ?? '__sem_caixa__',
+                            type: 'SALE',
+                            source: 'PDV',
+                            identification: { contains: saleEntryTag(canc.PedidoUuid) }
+                        }
+                    }),
+                ])
             }
 
             const existingPedido = await prisma.pedido.findFirst({
@@ -699,11 +717,14 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                 })
             }
         }
+        accepted.push(canc.Uuid)
     }
 
     return reply.status(201).send({
-        message: `${cancellations.length} cancelamentos sincronizados com sucesso.`,
-        count: cancellations.length
+        message: `${accepted.length} cancelamentos sincronizados com sucesso.`,
+        count: accepted.length,
+        accepted,
+        ignored
     })
 }
 

@@ -3,6 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { buildItemCost } from '../../services/item-cost-loader'
+import {
+    SyncRejection,
+    buildSaleEntries,
+    checkSaleSession,
+    chooseSaleSessionId,
+    isTermPayment,
+    saleEntryTag,
+    saleFieldsChanged,
+    sameEntries,
+} from '../../services/cashier-sync-rules'
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
     const saleSchema = z.array(z.object({
@@ -56,157 +66,161 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
     const sales = saleSchema.parse(request.body)
 
-    await prisma.$transaction(async (tx) => {
+    try {
+        await prisma.$transaction(async (tx) => {
         for (const sale of sales) {
-            // 1. Descobrir ou vincular a sessão de caixa ativa se não veio explicitamente ou se o caixa anterior foi fechado
-            let targetSessionId = sale.CashierSessionId
-            if (targetSessionId) {
-                const session = await tx.cashierSession.findUnique({
-                    where: { id: targetSessionId }
+            // 1. Caixa da venda (regras em services/cashier-sync-rules.ts): a nuvem nunca escolhe um caixa por conta própria.
+            //    Antes, venda de caixa fechado (ou sem caixa) caía no caixa aberto mais recente de QUALQUER terminal.
+            const existingSale = await tx.sale.findUnique({
+                where: { id: sale.Uuid },
+                select: { cashier_session_id: true, total_amount: true, discount: true, status: true }
+            })
+            const targetSessionId = chooseSaleSessionId(sale.CashierSessionId, existingSale?.cashier_session_id)
+            const session = targetSessionId
+                ? await tx.cashierSession.findUnique({ where: { id: targetSessionId }, select: { status: true } })
+                : null
+
+            // 2. O que a venda muda: lançamentos (um por pagamento), valores/status e itens novos.
+            const desiredEntries = buildSaleEntries(sale.Uuid, sale.Origin, sale.Status, sale.Payments)
+            const storedEntries = session && targetSessionId
+                ? await tx.cashierEntry.findMany({
+                    where: { cashier_session_id: targetSessionId, type: 'SALE', source: 'PDV', identification: { contains: saleEntryTag(sale.Uuid) } },
+                    select: { id: true, identification: true, payment_method: true, amount: true }
                 })
-                if (!session || session.status !== 'OPEN') {
-                    const activeSession = await tx.cashierSession.findFirst({
-                        where: { status: 'OPEN' },
-                        orderBy: { opened_at: 'desc' }
-                    })
-                    targetSessionId = activeSession ? activeSession.id : targetSessionId
-                }
-            } else {
-                const activeSession = await tx.cashierSession.findFirst({
-                    where: { status: 'OPEN' },
-                    orderBy: { opened_at: 'desc' }
-                })
-                if (activeSession) {
-                    targetSessionId = activeSession.id
-                }
-            }
+                : []
+            const entriesChanged = !sameEntries(
+                storedEntries.map(e => ({ identification: e.identification ?? '', payment_method: e.payment_method, amount: e.amount })),
+                desiredEntries,
+            )
+            const storedItemIds = new Set((await tx.saleItem.findMany({
+                where: { id: { in: sale.Items.map(i => i.Uuid) } },
+                select: { id: true }
+            })).map(i => i.id))
+            const hasNewItems = sale.Items.some(i => !storedItemIds.has(i.Uuid))
+            const changesSession = !existingSale || saleFieldsChanged(existingSale, sale) || entriesChanged || hasNewItems
+
+            const rejection = checkSaleSession(targetSessionId, session, changesSession)
+            if (rejection) throw new SyncRejection(rejection, sale.Uuid)
+            if (!changesSession) continue // reenvio idêntico: nada a gravar
 
             const saleCreatedAt = sale.CreatedAt ? new Date(sale.CreatedAt) : new Date()
 
-            // 2. Upsert da Venda
+            // Pagamentos positivos, na mesma ordem dos lançamentos desejados (cliente e colaborador conferidos antes de gravar)
+            const positivePayments = sale.Status === 'CANCELLED' ? [] : sale.Payments.filter(p => p.Amount > 0)
+            const paymentLinks: { clientId: string | null; employeeId: string | null }[] = []
+            for (const pay of positivePayments) {
+                const wantedClientId = pay.ClienteId || sale.ClienteUuid || null
+                const clientExists = wantedClientId
+                    ? !!(await tx.client.findUnique({ where: { id: wantedClientId }, select: { id: true } }))
+                    : false
+                // Fiado sem o cliente na nuvem perderia a conta a receber: recusa até o cadastro do cliente subir.
+                if (isTermPayment(pay.Method) && wantedClientId && !clientExists) throw new SyncRejection('CLIENTE_NAO_ENVIADO', sale.Uuid)
+
+                const wantedEmployeeId = pay.ColaboradorId || null
+                if (wantedEmployeeId) {
+                    const employeeExists = await tx.employee.findUnique({ where: { id: wantedEmployeeId }, select: { id: true } })
+                    // O PDV manda um usuário do sistema como colaborador; sem funcionário do RH o vale se perderia.
+                    if (!employeeExists) throw new SyncRejection('FUNCIONARIO_NAO_ENCONTRADO', sale.Uuid)
+                }
+                paymentLinks.push({ clientId: clientExists ? wantedClientId : null, employeeId: wantedEmployeeId })
+            }
+
+            // 3. Venda: o caixa de uma venda que já existe nunca muda.
             await tx.sale.upsert({
                 where: { id: sale.Uuid },
                 update: {
                     total_amount: sale.TotalAmount,
                     discount: sale.Discount,
                     status: sale.Status,
-                    cashier_session_id: targetSessionId || null,
+                    cashier_session_id: targetSessionId,
                 },
                 create: {
                     id: sale.Uuid,
                     total_amount: sale.TotalAmount,
                     discount: sale.Discount,
                     status: sale.Status,
-                    cashier_session_id: targetSessionId || null,
+                    cashier_session_id: targetSessionId,
                     created_at: saleCreatedAt,
                 }
             })
 
-            // 3. Registrar Entradas de Caixa (CashierEntry) para conferência
-            if (sale.Status === 'CANCELLED') {
-                // Cancelamento: remove qualquer entrada de caixa que essa venda tenha gerado (venda cancelada não entra no caixa)
-                if (targetSessionId) {
-                    await tx.cashierEntry.deleteMany({
-                        where: {
-                            cashier_session_id: targetSessionId,
-                            identification: { contains: sale.Uuid.slice(0, 8) }
+            // 4. Lançamentos de caixa da venda: só no caixa DELA. Se mudaram (pagamento alterado, cancelamento), troca todos;
+            //    antes, trocar a forma com um pagamento não chegava à nuvem e com vários pagamentos duplicava.
+            if (entriesChanged) {
+                if (storedEntries.length > 0) {
+                    await tx.cashierEntry.deleteMany({ where: { id: { in: storedEntries.map(e => e.id) } } })
+                }
+                for (let i = 0; i < desiredEntries.length; i++) {
+                    const entry = desiredEntries[i]
+                    await tx.cashierEntry.create({
+                        data: {
+                            cashier_session_id: targetSessionId!,
+                            origin: sale.Origin || 'PDV',
+                            payment_method: entry.payment_method,
+                            amount: entry.amount,
+                            type: 'SALE',
+                            identification: entry.identification,
+                            source: 'PDV',
+                            client_id: paymentLinks[i]?.clientId ?? null,
+                            employee_id: paymentLinks[i]?.employeeId ?? null,
+                            created_at: saleCreatedAt
                         }
                     })
                 }
-            } else if (targetSessionId && sale.Payments && sale.Payments.length > 0) {
-                let payIndex = 0
-                for (const pay of sale.Payments) {
-                    if (pay.Amount <= 0) continue
-                    payIndex++
+            }
 
-                    // Identificador único para múltiplos pagamentos
-                    const payIdent = sale.Payments.length === 1
-                        ? `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)}`
-                        : `${sale.Origin || 'PDV'} - Pedido #${sale.Uuid.slice(0, 8)} [${payIndex}/${sale.Payments.length}] (${pay.Method})`
+            // 5. Fiado e consumo de funcionário (cliente e funcionário já conferidos acima; não duplicam no reenvio)
+            for (let i = 0; i < positivePayments.length; i++) {
+                const pay = positivePayments[i]
+                const targetClientId = paymentLinks[i].clientId
+                const targetEmployeeId = paymentLinks[i].employeeId
 
-                    const existingEntry = await tx.cashierEntry.findFirst({
+                // Venda a Prazo: cria conta a receber (ClientTab)
+                if (isTermPayment(pay.Method) && targetClientId) {
+                    const existingTab = await tx.clientTab.findFirst({
                         where: {
-                            cashier_session_id: targetSessionId,
-                            identification: payIdent
+                            client_id: targetClientId,
+                            description: { contains: sale.Uuid.slice(0, 8) }
                         }
                     })
-
-                    const targetClientId = pay.ClienteId || sale.ClienteUuid || null
-                    const targetEmployeeId = pay.ColaboradorId || null
-
-                    if (!existingEntry) {
-                        await tx.cashierEntry.create({
+                    if (!existingTab) {
+                        await tx.clientTab.create({
                             data: {
-                                cashier_session_id: targetSessionId,
-                                origin: sale.Origin || 'PDV',
-                                payment_method: pay.Method,
-                                amount: pay.Amount,
-                                type: 'SALE',
-                                identification: payIdent,
-                                source: 'PDV',
                                 client_id: targetClientId,
-                                employee_id: targetEmployeeId,
+                                cashier_session_id: targetSessionId,
+                                amount: pay.Amount,
+                                description: `Venda a Prazo - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Cliente'})`,
+                                is_paid: false,
                                 created_at: saleCreatedAt
                             }
                         })
                     }
+                }
 
-                    // Venda a Prazo: cria conta a receber (ClientTab)
-                    const normMethod = (pay.Method || '').toLowerCase()
-                    const isTerm = normMethod.includes('prazo') || normMethod.includes('correntista') || normMethod.includes('fiado')
-                    if (isTerm && targetClientId) {
-                        const clientExists = await tx.client.findUnique({ where: { id: targetClientId } })
-                        if (clientExists) {
-                            const existingTab = await tx.clientTab.findFirst({
-                                where: {
-                                    client_id: targetClientId,
-                                    description: { contains: sale.Uuid.slice(0, 8) }
-                                }
-                            })
-                            if (!existingTab) {
-                                await tx.clientTab.create({
-                                    data: {
-                                        client_id: targetClientId,
-                                        cashier_session_id: targetSessionId || null,
-                                        amount: pay.Amount,
-                                        description: `Venda a Prazo - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Cliente'})`,
-                                        is_paid: false,
-                                        created_at: saleCreatedAt
-                                    }
-                                })
-                            }
+                // Venda para Funcionário: cria lançamento em folha / vale (PayrollEntry)
+                if (targetEmployeeId) {
+                    const existingVale = await tx.payrollEntry.findFirst({
+                        where: {
+                            employee_id: targetEmployeeId,
+                            description: { contains: sale.Uuid.slice(0, 8) }
                         }
-                    }
-
-                    // Venda para Funcionário: cria lançamento em folha / vale (PayrollEntry)
-                    const isEmployee = normMethod.includes('funcionario') || normMethod.includes('funcionário') || Boolean(targetEmployeeId)
-                    if (isEmployee && targetEmployeeId) {
-                        const employeeExists = await tx.employee.findUnique({ where: { id: targetEmployeeId } })
-                        if (employeeExists) {
-                            const existingVale = await tx.payrollEntry.findFirst({
-                                where: {
-                                    employee_id: targetEmployeeId,
-                                    description: { contains: sale.Uuid.slice(0, 8) }
-                                }
-                            })
-                            if (!existingVale) {
-                                await tx.payrollEntry.create({
-                                    data: {
-                                        employee_id: targetEmployeeId,
-                                        type: 'VALE',
-                                        amount: pay.Amount,
-                                        referenceDate: saleCreatedAt,
-                                        description: `Consumo PDV - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Colaborador'})`,
-                                        status: 'PENDING'
-                                    }
-                                })
+                    })
+                    if (!existingVale) {
+                        await tx.payrollEntry.create({
+                            data: {
+                                employee_id: targetEmployeeId,
+                                type: 'VALE',
+                                amount: pay.Amount,
+                                referenceDate: saleCreatedAt,
+                                description: `Consumo PDV - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Colaborador'})`,
+                                status: 'PENDING'
                             }
-                        }
+                        })
                     }
                 }
             }
 
-                        // 4. Processar Itens da Venda e Motor de Baixa de Insumos da Ficha Técnica
+            // 6. Processar Itens da Venda e Motor de Baixa de Insumos da Ficha Técnica
             for (const item of sale.Items) {
                 const existingItem = await tx.saleItem.findUnique({
                     where: { id: item.Uuid }
@@ -391,7 +405,12 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 }
             }
         }
-    })
+        }, { timeout: 30000, maxWait: 10000 })
+    } catch (err) {
+        // Recusa com motivo (409): o PDV isola a venda, tenta de novo com espera e mostra o motivo em "Estado da sincronia".
+        if (err instanceof SyncRejection) return reply.status(409).send(err.toResponse())
+        throw err
+    }
 
     return reply.status(201).send({ message: 'Vendas e baixas de CMV sincronizadas com sucesso' })
 }
