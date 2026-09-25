@@ -10,6 +10,11 @@ const pool = new Pool({
 // Cache for PrismaClient instances to avoid memory leaks
 const prismaClients = new Map<string, PrismaClient>();
 
+// Teto de conexões por banco de cliente (decisão do Thomás, 25/09/2026: 6). Sem teto, o Prisma abre até
+// (processadores x 2 + 1) por banco e a soma de todos os clientes pode passar do limite do servidor (100).
+// Dá para mudar sem novo deploy do código pela variável TENANT_DB_CONNECTION_LIMIT.
+const LIMITE_CONEXOES_POR_BANCO = Number(process.env.TENANT_DB_CONNECTION_LIMIT) || 6;
+
 export async function getDbNameForDomain(domain: string): Promise<string | null> {
   const cleanDomain = domain.split(',')[0].trim();
   const result = await pool.query('SELECT "dbName" FROM "Tenant" WHERE $1 = ANY(string_to_array(replace(domain, \' \', \'\'), \',\')) AND status = $2', [cleanDomain, 'active']);
@@ -32,22 +37,9 @@ export async function getPrismaForDomain(domain: string): Promise<PrismaClient |
     return null; // Domain not recognized or suspended
   }
 
-  // Construct the connection string dynamically
-  // Assuming all tenant databases are on the same Postgres server as defined by a base URL
-  const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432";
-  const tenantUrl = `${baseUrl}/${dbName}?schema=public`;
-
-  // Instantiate a new PrismaClient for this specific tenant
-  const tenantPrisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: tenantUrl,
-      },
-    },
-    log: env.NODE_ENV === 'dev' ? ['query'] : [],
-  });
-
-  // Save to cache
+  // Um único conjunto de conexões por banco: antes cada domínio (e o iFood, por getPrismaForDb) abria o seu,
+  // e o mesmo restaurante chegava a ter 2 ou 3 conjuntos, cada um com o seu teto.
+  const tenantPrisma = await getPrismaForDb(dbName);
   prismaClients.set(cleanDomain, tenantPrisma);
 
   return tenantPrisma;
@@ -88,7 +80,7 @@ export async function getPrismaForDb(dbName: string): Promise<PrismaClient> {
   }
 
   const baseUrl = process.env.DATABASE_BASE_URL || "postgres://postgres:hvuDvmTtt4qbXxF2AQmwQvTMVblJ346M0W4elmnxndJtnMALQcD96gbuspvI771C@187.77.232.244:5432";
-  const tenantUrl = `${baseUrl}/${dbName}?schema=public`;
+  const tenantUrl = `${baseUrl}/${dbName}?schema=public&connection_limit=${LIMITE_CONEXOES_POR_BANCO}`;
 
   const client = new PrismaClient({
     datasources: {
