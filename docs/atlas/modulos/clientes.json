@@ -1,0 +1,45 @@
+{
+  "id": "clientes",
+  "nome": "Clientes",
+  "apelido": "cliente, endereço",
+  "mapa": { "col": 3, "linha": 2 },
+  "resumo": "Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:ClientGroup": { "col": 1, "linha": 1 },
+        "nuvem:Client": { "col": 2, "linha": 1 },
+        "nuvem:Address": { "col": 2, "linha": 2 }
+      }
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:Cliente": { "col": 1, "linha": 1 },
+        "pdv:EnderecoCliente": { "col": 1, "linha": 2 }
+      }
+    }
+  ],
+  "tabelas": {
+    "nuvem:Client": { "nome": "Cliente", "o_que_e": "Cadastro do cliente (nome, telefone, documento, e-mail).", "espelho": "pdv:Cliente" },
+    "nuvem:Address": { "nome": "Endereço", "o_que_e": "Endereços do cliente, com o principal marcado.", "espelho": "pdv:EnderecoCliente" },
+    "nuvem:ClientGroup": {
+      "nome": "Grupo de clientes",
+      "o_que_e": "Agrupamento de clientes com usuário e chave de VPN (Headscale).",
+      "alertas": ["A confirmar: parece do suporte remoto (Windy), não do restaurante."]
+    },
+    "pdv:Cliente": {
+      "nome": "Cliente (PDV)",
+      "o_que_e": "Cópia local, mais o saldo devedor do fiado e o limite de crédito. Cliente cadastrado no PDV sobe para a nuvem (voltou a subir no 2.4.19.0).",
+      "espelho": "nuvem:Client"
+    },
+    "pdv:EnderecoCliente": { "nome": "Endereço (PDV)", "o_que_e": "Endereços do cliente no PDV.", "espelho": "nuvem:Address" }
+  },
+  "espelhos": [
+    { "pdv": "pdv:Cliente", "nuvem": "nuvem:Client", "como": "Mesmo código; sobe e desce a cada ciclo (o download sobrescreve o saldo devedor local)." },
+    { "pdv": "pdv:EnderecoCliente", "nuvem": "nuvem:Address", "como": "Sobe junto com o cliente (só o principal)." }
+  ]
+}

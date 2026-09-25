@@ -1,0 +1,32 @@
+{
+  "id": "servicos",
+  "nome": "Ordens de serviço",
+  "apelido": "O.S., equipamento, serviço",
+  "mapa": { "col": 3, "linha": 3 },
+  "resumo": "Atendimento técnico: a ordem de serviço de um equipamento do cliente, os itens e serviços usados, o andamento e o pagamento.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:TreatmentItem": { "col": 1, "linha": 1 },
+        "nuvem:Service": { "col": 1, "linha": 2 },
+        "nuvem:Treatment": { "col": 2, "linha": 1 },
+        "nuvem:PaymentEntry": { "col": 2, "linha": 2 },
+        "nuvem:Equipment": { "col": 3, "linha": 1 },
+        "nuvem:Interaction": { "col": 3, "linha": 2 },
+        "nuvem:TreatmentTransaction": { "col": 3, "linha": 3 }
+      }
+    }
+  ],
+  "tabelas": {
+    "nuvem:Treatment": { "nome": "Ordem de serviço", "o_que_e": "Atendimento técnico de um cliente, ligado a um equipamento e a um responsável." },
+    "nuvem:TreatmentItem": { "nome": "Item da O.S.", "o_que_e": "Produto, insumo ou serviço usado na ordem de serviço (baixa estoque)." },
+    "nuvem:Service": { "nome": "Serviço", "o_que_e": "Serviço cobrado (mão de obra)." },
+    "nuvem:Equipment": { "nome": "Equipamento", "o_que_e": "Equipamento do cliente atendido." },
+    "nuvem:Interaction": { "nome": "Andamento", "o_que_e": "Registro do andamento da ordem de serviço, por usuário." },
+    "nuvem:TreatmentTransaction": { "nome": "O.S. × lançamento", "o_que_e": "Liga a ordem de serviço aos lançamentos financeiros que ela gerou." },
+    "nuvem:PaymentEntry": { "nome": "Pagamento da O.S.", "o_que_e": "Forma de pagamento, parcelas e valor pagos na ordem de serviço." }
+  },
+  "pendencias": ["Descrições tiradas dos nomes e das ligações: confirmar com quem usa o módulo."]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "rh",
+  "nome": "RH e ponto",
+  "apelido": "funcionário, ponto, folha",
+  "mapa": { "col": 4, "linha": 2 },
+  "resumo": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:TimeClock": { "col": 1, "linha": 1 },
+        "nuvem:EmployeePointSnapshot": { "col": 1, "linha": 2 },
+        "nuvem:Employee": { "col": 2, "linha": 1 },
+        "nuvem:PayrollEntry": { "col": 2, "linha": 2 },
+        "nuvem:HrRuleHistory": { "col": 3, "linha": 1 },
+        "nuvem:Holiday": { "col": 3, "linha": 2 }
+      }
+    }
+  ],
+  "tabelas": {
+    "nuvem:Employee": {
+      "nome": "Funcionário",
+      "o_que_e": "Funcionário do RH, com salário, forma de registro, PIN do ponto e limite de compra a prazo. Pode estar ligado a um usuário do sistema.",
+      "mostrar": ["id", "name", "role", "user_id", "isRegistered", "salary", "pin", "allow_term_sales", "term_credit_limit"]
+    },
+    "nuvem:TimeClock": {
+      "nome": "Batida de ponto",
+      "o_que_e": "Entrada, intervalo e saída de um dia de trabalho. O dia é o de competência: batida antes das 07:00 conta para o dia anterior.",
+      "quem_grava": "App Metrics.Ponto (online e sincronização offline) e ajustes do administrador.",
+      "cresce": "Uma linha por funcionário por dia."
+    },
+    "nuvem:EmployeePointSnapshot": { "nome": "Pontuação do funcionário", "o_que_e": "Foto da pontuação e do valor do ponto em uma data." },
+    "nuvem:PayrollEntry": {
+      "nome": "Lançamento de folha",
+      "o_que_e": "Vale, salário, benefício, consumo e outros lançamentos da folha do funcionário.",
+      "quem_grava": "Web (RH), conferência de caixa (vales) e sincronia de vendas do PDV (consumo de funcionário)."
+    },
+    "nuvem:HrRuleHistory": { "nome": "Regras de hora extra", "o_que_e": "Divisor, multiplicadores e jornada diária, com data de início de vigência." },
+    "nuvem:Holiday": { "nome": "Feriado", "o_que_e": "Feriados usados no cálculo de horas." }
+  },
+  "pendencias": ["Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4)."]
+}

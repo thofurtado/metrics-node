@@ -1,0 +1,70 @@
+{
+  "id": "delivery",
+  "nome": "Delivery e pedidos online",
+  "apelido": "cardápio online, iFood, 99Food",
+  "mapa": { "col": 1, "linha": 3 },
+  "resumo": "Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do PDV, o vínculo dos itens das plataformas com os produtos do Metrics e o diário de eventos do iFood. Pela decisão R2/R3, com PDV o delivery sobe como venda do caixa que deu a baixa.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:Pedido": { "col": 1, "linha": 1 },
+        "nuvem:PedidoItem": { "col": 1, "linha": 2 },
+        "nuvem:DeliveryItemMapping": { "col": 2, "linha": 1 },
+        "nuvem:IfoodApiLog": { "col": 2, "linha": 2 },
+        "nuvem:Product": { "col": 3, "linha": 1 },
+        "nuvem:Sale": { "col": 3, "linha": 2 }
+      }
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:TaxaEntrega": { "col": 1, "linha": 1 },
+        "pdv:Motoboy": { "col": 2, "linha": 1 }
+      },
+      "legenda": "O pedido de delivery no PDV é a tabela pedidos (módulo Caixa e vendas), com origem Delivery, iFood ou 99Food."
+    }
+  ],
+  "tabelas": {
+    "nuvem:Pedido": {
+      "nome": "Pedido online",
+      "o_que_e": "Pedido do cardápio online, iFood, 99Food ou delivery feito no PDV, com cliente, endereço, status da entrega e NFC-e. Quando vira venda, tem o mesmo código da venda.",
+      "quem_grava": "O cardápio online, o recebimento do iFood (consulta a cada 30 s e webhook), o webhook do 99Food e o PDV (delivery lançado no balcão).",
+      "quem_le": "PDV (pedidos pendentes e mudanças de status) e Conferência de caixa (barra de deliveries do dia).",
+      "cresce": "Um por pedido.",
+      "notas_campos": { "uuid": "= id da Venda", "caixa_id": "(texto, sem chave)" },
+      "mostrar": ["id", "uuid", "display_id", "origem", "plataforma", "status", "status_delivery", "valor_final", "valor_frete", "caixa_id", "cliente_id"],
+      "alertas": ["O caixa é fixado quando o pedido nasce; pela decisão R3 deve ser o caixa que deu a baixa."]
+    },
+    "nuvem:PedidoItem": {
+      "nome": "Item do pedido",
+      "o_que_e": "Itens do pedido online, com o código e o nome que o item tem no iFood/99Food.",
+      "notas_campos": { "external_code": "(iFood/99Food)" }
+    },
+    "nuvem:DeliveryItemMapping": {
+      "nome": "Vínculo com delivery",
+      "o_que_e": "Liga o código do item no iFood/99Food a um produto do Metrics. Um vínculo vale para sempre e corrige os pedidos antigos daquele código.",
+      "quem_grava": "Tela Mercadorias → Vínculos com Delivery."
+    },
+    "nuvem:IfoodApiLog": {
+      "nome": "Diário do iFood",
+      "o_que_e": "Cada chamada e cada evento do iFood (e ações do PDV no cancelamento), com tempo e resultado. É a evidência usada na homologação.",
+      "quem_le": "Página de diagnóstico /delivery/ifood/diag.",
+      "cresce": "Várias linhas por pedido do iFood."
+    },
+    "pdv:TaxaEntrega": {
+      "nome": "Taxa de entrega (PDV)",
+      "o_que_e": "Taxa por setor de bairros, cadastrada no PDV.",
+      "alertas": ["Nunca sobe para a nuvem."]
+    },
+    "pdv:Motoboy": { "nome": "Entregador (PDV)", "o_que_e": "Cadastro dos entregadores usados no acerto do motoboy." }
+  },
+  "ligacoes": [
+    { "de": "nuvem:Pedido", "para": "nuvem:Sale", "tipo": "codigo", "rotulo": "mesmo código" }
+  ],
+  "pendencias": [
+    "Decisão R2/R3: o delivery com PDV vira venda do caixa que deu a baixa, e a Conferência não pode contá-lo duas vezes."
+  ]
+}

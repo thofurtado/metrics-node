@@ -1,0 +1,32 @@
+{
+  "id": "fiscal",
+  "nome": "Fiscal (NFC-e)",
+  "apelido": "nota do consumidor, IBPT",
+  "mapa": { "col": 2, "linha": 3 },
+  "resumo": "A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numeração e a tabela do IBPT (valor aproximado dos tributos) ficam no banco local. Os dados fiscais do produto (NCM, CFOP, CSOSN) ficam no cardápio.",
+  "diagramas": [
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:NfceDocumento": { "col": 1, "linha": 1 },
+        "pdv:NfceInutilizacao": { "col": 2, "linha": 1 },
+        "pdv:IbptTabela": { "col": 3, "linha": 1 }
+      }
+    }
+  ],
+  "tabelas": {
+    "pdv:NfceDocumento": {
+      "nome": "XML da NFC-e",
+      "o_que_e": "Cópia do XML de cada nota (autorizada, contingência, cancelamento). O arquivo também fica em C:\\ProgramData\\Metrics.PDV\\nfce.",
+      "quem_le": "Reimpressão, ZIP para o contador."
+    },
+    "pdv:NfceInutilizacao": { "nome": "Inutilização", "o_que_e": "Faixas de numeração da NFC-e inutilizadas na SEFAZ." },
+    "pdv:IbptTabela": {
+      "nome": "Tabela do IBPT",
+      "o_que_e": "Percentual aproximado de tributos por NCM, importado do CSV oficial do IBPT (um por estado). Cada importação troca a tabela inteira.",
+      "cresce": "Milhares de linhas, substituídas a cada importação."
+    }
+  },
+  "pendencias": ["A nota não sobe para a nuvem: a venda da nuvem não guarda chave nem número da NFC-e."]
+}

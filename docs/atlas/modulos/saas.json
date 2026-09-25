@@ -1,0 +1,28 @@
+{
+  "id": "saas",
+  "nome": "SaaS (banco master)",
+  "apelido": "clientes do Metrics",
+  "mapa": { "col": 4, "linha": 3 },
+  "resumo": "O banco master do SaaS Admin: cada cliente do Metrics (tenant) com seu domínio e o nome do banco próprio, e as credenciais globais de integração (iFood).",
+  "diagramas": [
+    {
+      "id": "saas",
+      "titulo": "No banco master (metrics-saas-admin)",
+      "tabelas": {
+        "saas:Tenant": { "col": 1, "linha": 1 },
+        "saas:SaaSIntegrationConfig": { "col": 2, "linha": 1 }
+      }
+    }
+  ],
+  "tabelas": {
+    "saas:Tenant": {
+      "nome": "Cliente do Metrics (tenant)",
+      "o_que_e": "Cada restaurante cliente: domínio, código, nome do banco próprio, versão do schema e tipo de página do cardápio.",
+      "quem_le": "metrics-node, para descobrir o banco de cada requisição pelo domínio (x-tenant-domain)."
+    },
+    "saas:SaaSIntegrationConfig": {
+      "nome": "Credencial global de integração",
+      "o_que_e": "Credenciais de integração que valem para todos os clientes (ex.: app do iFood). Têm prioridade sobre as variáveis de ambiente do backend."
+    }
+  }
+}

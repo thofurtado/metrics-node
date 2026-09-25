@@ -1,0 +1,88 @@
+{
+  "id": "cardapio",
+  "nome": "Cardápio e produtos",
+  "apelido": "produto, complemento, impressão",
+  "mapa": { "col": 2, "linha": 1 },
+  "resumo": "Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de impressão (para onde cada produto vai na cozinha). A nuvem é a fonte: o PDV baixa o cardápio a cada ciclo.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:Category": { "col": 1, "linha": 1 },
+        "nuvem:Subcategory": { "col": 1, "linha": 2 },
+        "nuvem:Product": { "col": 2, "linha": 1 },
+        "nuvem:ProductComplementGroup": { "col": 2, "linha": 2 },
+        "nuvem:ProductPrintDepartment": { "col": 2, "linha": 3 },
+        "nuvem:ComplementGroup": { "col": 3, "linha": 1 },
+        "nuvem:ComplementOption": { "col": 3, "linha": 2 },
+        "nuvem:PrintDepartment": { "col": 3, "linha": 3 },
+        "nuvem:Supply": { "col": 4, "linha": 1 }
+      }
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:Setor": { "col": 1, "linha": 1 },
+        "pdv:Grupo": { "col": 1, "linha": 2 },
+        "pdv:Produto": { "col": 2, "linha": 1 },
+        "pdv:ProdutoGrupoComplemento": { "col": 2, "linha": 2 },
+        "pdv:GrupoComplemento": { "col": 3, "linha": 1 },
+        "pdv:OpcaoComplemento": { "col": 3, "linha": 2 },
+        "pdv:DepartamentoImpressao": { "col": 4, "linha": 1 },
+        "pdv:DepartamentoImpressaoProduto": { "col": 4, "linha": 2 }
+      }
+    }
+  ],
+  "tabelas": {
+    "nuvem:Product": {
+      "nome": "Produto",
+      "o_que_e": "Produto vendido, com preço, custo, dados fiscais (NCM, CFOP, CSOSN), estoque e se aparece no cardápio online.",
+      "quem_grava": "Web → Mercadorias & Cardápio; importador Metrics.Sync.",
+      "quem_le": "Cardápio online, PDV (baixa a cada ciclo), estoque, custo e delivery.",
+      "mostrar": ["id", "display_id", "name", "price", "cost", "category_id", "subcategory_id", "is_composite", "show_on_menu", "active", "ncm"]
+    },
+    "nuvem:Category": { "nome": "Categoria", "o_que_e": "Categoria do cardápio." },
+    "nuvem:Subcategory": { "nome": "Subcategoria", "o_que_e": "Subdivisão de uma categoria." },
+    "nuvem:ComplementGroup": {
+      "nome": "Grupo de adicionais",
+      "o_que_e": "Grupo de opções de um produto (ex.: \"Adicionais\", \"Ponto da carne\"), com mínimo, máximo e quantidade grátis."
+    },
+    "nuvem:ComplementOption": {
+      "nome": "Opção de adicional",
+      "o_que_e": "Cada opção do grupo, com preço e, se baixa estoque, o insumo e o consumo por porção.",
+      "quem_grava": "Web → aba Adicionais & Opcionais (campo Consumo por porção desde a web 2.6.20.3).",
+      "notas_campos": { "supply_quantity": "(consumo por porção)" },
+      "alertas": ["linked_supply_id e linked_product_id não são chaves no banco."]
+    },
+    "nuvem:ProductComplementGroup": { "nome": "Produto × grupo de adicionais", "o_que_e": "Quais grupos de adicionais cada produto oferece, e em que ordem." },
+    "nuvem:PrintDepartment": { "nome": "Departamento de impressão", "o_que_e": "Setor da cozinha que recebe o pedido impresso (ex.: bar, chapa)." },
+    "nuvem:ProductPrintDepartment": { "nome": "Produto × departamento", "o_que_e": "Para quais departamentos cada produto é impresso." },
+    "pdv:Produto": { "nome": "Produto (PDV)", "o_que_e": "Cópia local do produto, baixada da nuvem, com o custo recebido pela rota de custos.", "espelho": "nuvem:Product" },
+    "pdv:Setor": { "nome": "Setor (PDV)", "o_que_e": "Agrupamento de produtos no PDV (e se aparece na cozinha)." },
+    "pdv:Grupo": { "nome": "Grupo (PDV)", "o_que_e": "Grupo de produtos dentro de um setor." },
+    "pdv:GrupoComplemento": { "nome": "Grupo de adicionais (PDV)", "o_que_e": "Cópia local do grupo de adicionais.", "espelho": "nuvem:ComplementGroup" },
+    "pdv:OpcaoComplemento": {
+      "nome": "Opção de adicional (PDV)",
+      "o_que_e": "Cópia local da opção, com o custo. Não guarda qual insumo está ligado.",
+      "espelho": "nuvem:ComplementOption"
+    },
+    "pdv:ProdutoGrupoComplemento": { "nome": "Produto × grupo (PDV)", "o_que_e": "Cópia local da ligação produto × grupo de adicionais.", "espelho": "nuvem:ProductComplementGroup" },
+    "pdv:DepartamentoImpressao": { "nome": "Departamento de impressão (PDV)", "o_que_e": "Cópia local do departamento.", "espelho": "nuvem:PrintDepartment" },
+    "pdv:DepartamentoImpressaoProduto": { "nome": "Produto × departamento (PDV)", "o_que_e": "Cópia local da ligação.", "espelho": "nuvem:ProductPrintDepartment" }
+  },
+  "ligacoes": [
+    { "de": "nuvem:ComplementOption", "para": "nuvem:Supply", "tipo": "texto", "rotulo": "linked_supply_id" },
+    { "de": "nuvem:ComplementOption", "para": "nuvem:Product", "tipo": "texto", "rotulo": "linked_product_id" },
+    { "de": "pdv:OpcaoComplemento", "para": "pdv:GrupoComplemento", "tipo": "texto", "rotulo": "grupo_complemento_id" }
+  ],
+  "espelhos": [
+    { "pdv": "pdv:Produto", "nuvem": "nuvem:Product", "como": "Mesmo código (uuid); o PDV baixa a cada ciclo." },
+    { "pdv": "pdv:GrupoComplemento", "nuvem": "nuvem:ComplementGroup", "como": "Baixado do cardápio público." },
+    { "pdv": "pdv:OpcaoComplemento", "nuvem": "nuvem:ComplementOption", "como": "Baixado do cardápio público; custo pela rota de custos." },
+    { "pdv": "pdv:ProdutoGrupoComplemento", "nuvem": "nuvem:ProductComplementGroup", "como": "Baixado do cardápio público." },
+    { "pdv": "pdv:DepartamentoImpressao", "nuvem": "nuvem:PrintDepartment", "como": "Baixado a cada ciclo." }
+  ],
+  "pendencias": ["Confirmar se Setor e Grupo do PDV correspondem a Categoria e Subcategoria da nuvem."]
+}

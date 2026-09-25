@@ -1,0 +1,2032 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas do Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>:root {
+  --bg: #F3F5F7;
+  --surface: #FFFFFF;
+  --ink: #18212B;
+  --ink-2: #3A4654;
+  --muted: #637083;
+  --line: #D8DEE5;
+  --line-strong: #A9B5C2;
+  --accent: #0B7A63;
+  --accent-soft: #E2F2EC;
+  --warn: #8A5200;
+  --warn-soft: #FAEFDD;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --display: "Archivo", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #101418; --surface: #171D23; --ink: #E7ECF1; --ink-2: #C4CDD7; --muted: #8F9BA9;
+    --line: #2A333D; --line-strong: #4A5663; --accent: #3CC6A4; --accent-soft: #123229;
+    --warn: #E6A955; --warn-soft: #36270F;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101418; --surface: #171D23; --ink: #E7ECF1; --ink-2: #C4CDD7; --muted: #8F9BA9;
+  --line: #2A333D; --line-strong: #4A5663; --accent: #3CC6A4; --accent-soft: #123229;
+  --warn: #E6A955; --warn-soft: #36270F;
+}
+
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); padding-block: 40px 64px; padding-inline: 16px; }
+main { max-width: 1200px; margin: 0 auto; display: grid; gap: 64px; }
+.prose { max-width: 72ch; }
+h1, h2, h3, h4 { font-family: var(--display); text-wrap: balance; margin: 0; color: var(--ink); }
+h1 { font-size: clamp(30px, 4.4vw, 44px); line-height: 1.1; letter-spacing: -0.01em; }
+h2 { font-size: 26px; line-height: 1.25; }
+h3 { font-size: 18px; line-height: 1.3; }
+h4 { font-size: 16px; line-height: 1.3; }
+p { margin: 0; }
+section { display: grid; gap: 18px; scroll-margin-top: 16px; }
+.modulo { border-top: 1px solid var(--line); padding-top: 40px; }
+.mod-head { display: grid; gap: 8px; }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+.eyebrow { font: 600 12px/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--ink-2); font-size: 18px; }
+.note { font-size: 14px; color: var(--muted); max-width: 90ch; }
+.muted { color: var(--muted); }
+header { display: grid; gap: 14px; }
+
+.nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.navchip {
+  font: 500 14px var(--sans); color: var(--ink); text-decoration: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+}
+.navchip:hover { border-color: var(--accent); color: var(--accent); }
+.navchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+figure { margin: 0; display: grid; gap: 12px; }
+.canvas { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.canvas svg { display: block; width: 100%; height: auto; }
+figcaption { color: var(--ink-2); font-size: 15px; max-width: 80ch; }
+
+.d-box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; }
+.d-div { stroke: var(--line); stroke-width: 1; }
+.d-title { font: 600 13.5px var(--sans); fill: var(--ink); }
+.d-table { font: 500 11px var(--mono); fill: var(--muted); }
+.d-col { font: 400 11.5px var(--mono); fill: var(--ink-2); }
+.d-more { font: 400 11.5px var(--sans); fill: var(--muted); }
+.d-new { font: 600 11.5px var(--mono); fill: var(--accent); }
+.d-edge { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.d-edge-text { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+.d-edge-new { stroke: var(--accent); stroke-width: 2; fill: none; stroke-dasharray: 7 4; }
+.d-label { font: 500 11.5px var(--sans); fill: var(--muted); }
+.d-label-new { font: 600 11.5px var(--mono); fill: var(--accent); }
+.d-zone { fill: none; stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.d-zone-label { font: 600 11px var(--sans); letter-spacing: 0.08em; fill: var(--muted); }
+.d-ah { fill: var(--ink-2); }
+.d-ah-muted { fill: var(--muted); }
+.d-ah-new { fill: var(--accent); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 26px; font-size: 13.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 10px; }
+.legend svg { width: 44px; height: 12px; flex: none; }
+.legend .newcol { font-family: var(--mono); font-weight: 600; color: var(--accent); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.card-head { display: grid; gap: 2px; }
+.card-head .mono { color: var(--muted); font-size: 12.5px; }
+.card dl { margin: 0; display: grid; grid-template-columns: 88px 1fr; gap: 6px 12px; font-size: 14.5px; }
+.card dt { color: var(--muted); font-weight: 500; }
+.card dd { margin: 0; color: var(--ink-2); }
+.mirror { font-size: 13.5px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 600 12.5px var(--mono); color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 3px 7px; }
+.chip.warn { color: var(--warn); background: var(--warn-soft); font-family: var(--sans); }
+
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td { color: var(--ink-2); }
+td:first-child { font-weight: 600; color: var(--ink); }
+
+.cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 90ch; }
+ul.plain li { color: var(--ink-2); }
+li.warn { color: var(--warn); font-weight: 600; }
+footer { color: var(--muted); font-size: 13.5px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.d-box-ext { fill: var(--bg); stroke-dasharray: 4 3; }
+.d-title-ext { fill: var(--ink-2); }
+</style>
+<main>
+<header><p class="eyebrow">Metrics · gerado em 25/09/2026</p><h1>Atlas do Metrics</h1>
+<p class="lede prose">Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.</p>
+<p class="note">98 tabelas em 12 módulos. 0 ainda sem descrição. Fontes: nuvem: metrics-node/prisma/schema.prisma (f3e7f6e 2026-09-25) · saas: metrics-saas-admin/prisma/schema.prisma (5e0d7cb 2026-09-14) · pdv: Metrics.PDV/Metrics.Shared/Models (04dc269 2026-09-25).</p>
+<nav class="nav" aria-label="Módulos"><a class="navchip" href="#caixa-vendas">Caixa e vendas</a><a class="navchip" href="#mesas">Mesas e salão</a><a class="navchip" href="#delivery">Delivery e pedidos online</a><a class="navchip" href="#cardapio">Cardápio e produtos</a><a class="navchip" href="#estoque">Estoque e compras</a><a class="navchip" href="#financeiro">Financeiro</a><a class="navchip" href="#clientes">Clientes</a><a class="navchip" href="#servicos">Ordens de serviço</a><a class="navchip" href="#rh">RH e ponto</a><a class="navchip" href="#fiscal">Fiscal (NFC-e)</a><a class="navchip" href="#empresa">Empresa, usuários e configuração</a><a class="navchip" href="#saas">SaaS (banco master)</a></nav></header>
+<section id="mapa"><h2>Mapa dos módulos</h2>
+<p class="prose">Cada caixa é um módulo. As setas contam quantas ligações por chave vão de um módulo para outro: são as costuras que precisariam de cuidado se um módulo virasse um sistema separado.</p>
+<figure><div class="canvas"><svg viewBox="0 0 1224 819" role="img" aria-label="Mapa dos módulos do Metrics e quantas ligações por chave vão de um módulo para outro" style="min-width:1100px;max-width:1224px">
+<defs>
+<marker id="mapa-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="mapa-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="mapa-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,273.5 332.0,273.5" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="296" y="268" text-anchor="middle">2</text>
+<polyline class="d-edge" points="260.0,210.0 276.0,210.0 276.0,138.0 592.0,138.0 592.0,441.0 648.0,441.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="434" y="133" text-anchor="middle">5</text>
+<polyline class="d-edge" points="260.0,225.0 286.0,225.0 286.0,122.0 908.0,122.0 908.0,210.0 964.0,210.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="597" y="117" text-anchor="middle">2</text>
+<polyline class="d-edge" points="260.0,240.0 296.0,240.0 296.0,441.0 332.0,441.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 290 340)" x="290" y="340" text-anchor="middle">1</text>
+<polyline class="d-edge" points="260.0,255.0 306.0,255.0 306.0,106.0 602.0,106.0 602.0,210.0 648.0,210.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="454" y="101" text-anchor="middle">4</text>
+<polyline class="d-edge" points="138.0,367.0 138.0,411.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 132 389)" x="132" y="389" text-anchor="middle">1</text>
+<polyline class="d-edge" points="260.0,270.0 316.0,270.0 316.0,90.0 918.0,90.0 918.0,441.0 964.0,441.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="617" y="85" text-anchor="middle">1</text>
+<polyline class="d-edge" points="260.0,285.0 276.0,285.0 276.0,74.0 612.0,74.0 612.0,655.0 648.0,655.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 606 364)" x="606" y="364" text-anchor="middle">2</text>
+<polyline class="d-edge" points="260.0,638.0 286.0,638.0 286.0,210.0 332.0,210.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 280 424)" x="280" y="424" text-anchor="middle">1</text>
+<polyline class="d-edge" points="454.0,411.0 454.0,367.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 448 389)" x="448" y="389" text-anchor="middle">6</text>
+<polyline class="d-edge" points="576.0,441.0 622.0,441.0 622.0,58.0 928.0,58.0 928.0,225.0 964.0,225.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 616 250)" x="616" y="250" text-anchor="middle">1</text>
+<polyline class="d-edge" points="576.0,456.0 632.0,456.0 632.0,225.0 648.0,225.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 626 340)" x="626" y="340" text-anchor="middle">1</text>
+<polyline class="d-edge" points="576.0,471.0 592.0,471.0 592.0,670.0 648.0,670.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 586 570)" x="586" y="570" text-anchor="middle">1</text>
+<polyline class="d-edge" points="648.0,240.0 602.0,240.0 602.0,42.0 296.0,42.0 296.0,300.0 260.0,300.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" x="449" y="37" text-anchor="middle">1</text>
+<polyline class="d-edge" points="648.0,255.0 612.0,255.0 612.0,486.0 576.0,486.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 606 370)" x="606" y="370" text-anchor="middle">1</text>
+<polyline class="d-edge" points="892.0,210.0 938.0,210.0 938.0,655.0 892.0,655.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 932 432)" x="932" y="432" text-anchor="middle">1</text>
+<polyline class="d-edge" points="1086.0,411.0 1086.0,367.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 1080 389)" x="1080" y="389" text-anchor="middle">1</text>
+<polyline class="d-edge" points="964.0,456.0 948.0,456.0 948.0,225.0 892.0,225.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 942 340)" x="942" y="340" text-anchor="middle">1</text>
+<polyline class="d-edge" points="648.0,685.0 622.0,685.0 622.0,210.0 576.0,210.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 616 448)" x="616" y="448" text-anchor="middle">1</text>
+<polyline class="d-edge" points="770.0,625.0 770.0,581.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 764 603)" x="764" y="603" text-anchor="middle">2</text>
+<polyline class="d-edge" points="892.0,670.0 908.0,670.0 908.0,240.0 964.0,240.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 902 455)" x="902" y="455" text-anchor="middle">2</text>
+<polyline class="d-edge" points="648.0,700.0 632.0,700.0 632.0,501.0 576.0,501.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 626 600)" x="626" y="600" text-anchor="middle">2</text>
+<polyline class="d-edge" points="892.0,685.0 918.0,685.0 918.0,240.0 892.0,240.0" marker-end="url(#mapa-d2-ah)"/>
+<text class="d-label" transform="rotate(-90 912 462)" x="912" y="462" text-anchor="middle">2</text>
+<rect class="d-box" x="16" y="180" width="244" height="187" rx="8"/>
+<text class="d-title" x="28" y="199">Caixa e vendas</text>
+<text class="d-table" x="28" y="214">caixa, venda, pagamento</text>
+<line class="d-div" x1="16" y1="222" x2="260" y2="222"/>
+<text class="d-col" x="28" y="238">6 tabela(s) na nuvem</text>
+<text class="d-col" x="28" y="255">6 tabela(s) no PDV</text>
+<text class="d-more" x="28" y="272">· Caixa</text>
+<text class="d-more" x="28" y="289">· Lançamento do caixa</text>
+<text class="d-more" x="28" y="306">· Venda</text>
+<text class="d-more" x="28" y="323">· Item vendido</text>
+<text class="d-more" x="28" y="340">· Fiado</text>
+<text class="d-more" x="28" y="357">· e mais 7</text>
+<rect class="d-box" x="16" y="411" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="430">Mesas e salão</text>
+<text class="d-table" x="28" y="445">mesa, comanda</text>
+<line class="d-div" x1="16" y1="453" x2="260" y2="453"/>
+<text class="d-col" x="28" y="469">2 tabela(s) na nuvem</text>
+<text class="d-col" x="28" y="486">2 tabela(s) no PDV</text>
+<text class="d-more" x="28" y="503">· Mesa aberta</text>
+<text class="d-more" x="28" y="520">· Item na mesa</text>
+<text class="d-more" x="28" y="537">· Atendimento (mesa/comanda)</text>
+<text class="d-more" x="28" y="554">· Transferência (PDV)</text>
+<rect class="d-box" x="16" y="608" width="244" height="187" rx="8"/>
+<text class="d-title" x="28" y="627">Delivery e pedidos online</text>
+<text class="d-table" x="28" y="642">cardápio online, iFood, 99Food</text>
+<line class="d-div" x1="16" y1="650" x2="260" y2="650"/>
+<text class="d-col" x="28" y="666">4 tabela(s) na nuvem</text>
+<text class="d-col" x="28" y="683">2 tabela(s) no PDV</text>
+<text class="d-more" x="28" y="700">· Pedido online</text>
+<text class="d-more" x="28" y="717">· Item do pedido</text>
+<text class="d-more" x="28" y="734">· Vínculo com delivery</text>
+<text class="d-more" x="28" y="751">· Diário do iFood</text>
+<text class="d-more" x="28" y="768">· Taxa de entrega (PDV)</text>
+<text class="d-more" x="28" y="785">· e mais 1</text>
+<rect class="d-box" x="332" y="180" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="199">Cardápio e produtos</text>
+<text class="d-table" x="344" y="214">produto, complemento, impressão</text>
+<line class="d-div" x1="332" y1="222" x2="576" y2="222"/>
+<text class="d-col" x="344" y="238">8 tabela(s) na nuvem</text>
+<text class="d-col" x="344" y="255">8 tabela(s) no PDV</text>
+<text class="d-more" x="344" y="272">· Produto</text>
+<text class="d-more" x="344" y="289">· Categoria</text>
+<text class="d-more" x="344" y="306">· Subcategoria</text>
+<text class="d-more" x="344" y="323">· Grupo de adicionais</text>
+<text class="d-more" x="344" y="340">· Opção de adicional</text>
+<text class="d-more" x="344" y="357">· e mais 11</text>
+<rect class="d-box" x="332" y="411" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="430">Estoque e compras</text>
+<text class="d-table" x="344" y="445">insumo, ficha técnica, nota de en…</text>
+<line class="d-div" x1="332" y1="453" x2="576" y2="453"/>
+<text class="d-col" x="344" y="469">7 tabela(s) na nuvem</text>
+<text class="d-col" x="344" y="486">3 tabela(s) no PDV</text>
+<text class="d-more" x="344" y="503">· Insumo</text>
+<text class="d-more" x="344" y="520">· Ficha técnica</text>
+<text class="d-more" x="344" y="537">· Movimento de estoque</text>
+<text class="d-more" x="344" y="554">· Fornecedor</text>
+<text class="d-more" x="344" y="571">· De-Para do fornecedor</text>
+<text class="d-more" x="344" y="588">· e mais 5</text>
+<rect class="d-box" x="648" y="180" width="244" height="187" rx="8"/>
+<text class="d-title" x="660" y="199">Financeiro</text>
+<text class="d-table" x="660" y="214">contas, lançamentos, formas de pa…</text>
+<line class="d-div" x1="648" y1="222" x2="892" y2="222"/>
+<text class="d-col" x="660" y="238">13 tabela(s) na nuvem</text>
+<text class="d-col" x="660" y="255">6 tabela(s) no PDV</text>
+<text class="d-more" x="660" y="272">· Lançamento financeiro</text>
+<text class="d-more" x="660" y="289">· Conta</text>
+<text class="d-more" x="660" y="306">· Cartão de crédito</text>
+<text class="d-more" x="660" y="323">· Ajuste de saldo</text>
+<text class="d-more" x="660" y="340">· Parcelamento / recorrência</text>
+<text class="d-more" x="660" y="357">· e mais 14</text>
+<rect class="d-box" x="648" y="411" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="430">Clientes</text>
+<text class="d-table" x="660" y="445">cliente, endereço</text>
+<line class="d-div" x1="648" y1="453" x2="892" y2="453"/>
+<text class="d-col" x="660" y="469">3 tabela(s) na nuvem</text>
+<text class="d-col" x="660" y="486">2 tabela(s) no PDV</text>
+<text class="d-more" x="660" y="503">· Cliente</text>
+<text class="d-more" x="660" y="520">· Endereço</text>
+<text class="d-more" x="660" y="537">· Grupo de clientes</text>
+<text class="d-more" x="660" y="554">· Cliente (PDV)</text>
+<text class="d-more" x="660" y="571">· Endereço (PDV)</text>
+<rect class="d-box" x="648" y="625" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="644">Ordens de serviço</text>
+<text class="d-table" x="660" y="659">O.S., equipamento, serviço</text>
+<line class="d-div" x1="648" y1="667" x2="892" y2="667"/>
+<text class="d-col" x="660" y="683">7 tabela(s) na nuvem</text>
+<text class="d-more" x="660" y="700">· Ordem de serviço</text>
+<text class="d-more" x="660" y="717">· Item da O.S.</text>
+<text class="d-more" x="660" y="734">· Serviço</text>
+<text class="d-more" x="660" y="751">· Equipamento</text>
+<text class="d-more" x="660" y="768">· Andamento</text>
+<text class="d-more" x="660" y="785">· e mais 2</text>
+<rect class="d-box" x="964" y="411" width="244" height="170" rx="8"/>
+<text class="d-title" x="976" y="430">RH e ponto</text>
+<text class="d-table" x="976" y="445">funcionário, ponto, folha</text>
+<line class="d-div" x1="964" y1="453" x2="1208" y2="453"/>
+<text class="d-col" x="976" y="469">6 tabela(s) na nuvem</text>
+<text class="d-more" x="976" y="486">· Funcionário</text>
+<text class="d-more" x="976" y="503">· Batida de ponto</text>
+<text class="d-more" x="976" y="520">· Pontuação do funcionário</text>
+<text class="d-more" x="976" y="537">· Lançamento de folha</text>
+<text class="d-more" x="976" y="554">· Regras de hora extra</text>
+<text class="d-more" x="976" y="571">· e mais 1</text>
+<rect class="d-box" x="332" y="642" width="244" height="119" rx="8"/>
+<text class="d-title" x="344" y="661">Fiscal (NFC-e)</text>
+<text class="d-table" x="344" y="676">nota do consumidor, IBPT</text>
+<line class="d-div" x1="332" y1="684" x2="576" y2="684"/>
+<text class="d-col" x="344" y="700">3 tabela(s) no PDV</text>
+<text class="d-more" x="344" y="717">· XML da NFC-e</text>
+<text class="d-more" x="344" y="734">· Inutilização</text>
+<text class="d-more" x="344" y="751">· Tabela do IBPT</text>
+<rect class="d-box" x="964" y="180" width="244" height="187" rx="8"/>
+<text class="d-title" x="976" y="199">Empresa, usuários e configura…</text>
+<text class="d-table" x="976" y="214">perfil, usuário, módulos</text>
+<line class="d-div" x1="964" y1="222" x2="1208" y2="222"/>
+<text class="d-col" x="976" y="238">6 tabela(s) na nuvem</text>
+<text class="d-col" x="976" y="255">2 tabela(s) no PDV</text>
+<text class="d-more" x="976" y="272">· Usuário</text>
+<text class="d-more" x="976" y="289">· Módulo liberado</text>
+<text class="d-more" x="976" y="306">· Usuário × módulo</text>
+<text class="d-more" x="976" y="323">· Perfil da empresa</text>
+<text class="d-more" x="976" y="340">· Horário de funcionamento</text>
+<text class="d-more" x="976" y="357">· e mais 3</text>
+<rect class="d-box" x="964" y="625" width="244" height="102" rx="8"/>
+<text class="d-title" x="976" y="644">SaaS (banco master)</text>
+<text class="d-table" x="976" y="659">clientes do Metrics</text>
+<line class="d-div" x1="964" y1="667" x2="1208" y2="667"/>
+<text class="d-col" x="976" y="683">2 tabela(s) no SaaS (master)</text>
+<text class="d-more" x="976" y="700">· Cliente do Metrics (tenant)</text>
+<text class="d-more" x="976" y="717">· Credencial global de integraç…</text>
+</svg></div></figure></section>
+<section class="modulo" id="caixa-vendas">
+<div class="mod-head"><p class="eyebrow">Módulo · 6 na nuvem · 6 no PDV</p><h2>Caixa e vendas</h2>
+<p class="prose">O caixa (aberto no PDV ou na web), os lançamentos que a Conferência de caixa soma por forma de pagamento, e a venda do PDV com itens e custo. Com o PDV, cada pagamento de uma venda vira um lançamento igual aos da web: a Conferência não muda de forma, e a venda fica ao lado, presa ao mesmo caixa.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1224 875" role="img" aria-label="Tabelas do módulo Caixa e vendas (Na nuvem (metrics-node)): Item vendido, Movimento de estoque, Venda, Cancelamento, Caixa, Lançamento do caixa, Fiado, Pedido online, Lançamento de folha" style="min-width:1100px;max-width:1224px">
+<defs>
+<marker id="caixa-vendas-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="caixa-vendas-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="caixa-vendas-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,219.0 332.0,219.0" marker-end="url(#caixa-vendas-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,227.5 648.0,227.5" marker-end="url(#caixa-vendas-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="770.0,416.0 770.0,372.0" marker-end="url(#caixa-vendas-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="892.0,728.0 908.0,728.0 908.0,130.0 892.0,130.0" marker-end="url(#caixa-vendas-nuvem-d2-ah)"/>
+<polyline class="d-edge-new" points="648.0,446.0 592.0,446.0 592.0,130.0 576.0,130.0" marker-end="url(#caixa-vendas-nuvem-d2-ah-new)"/>
+<text class="d-label-new" transform="rotate(-90 586 288)" x="586" y="288" text-anchor="middle">+ sale_id (hoje: texto)</text>
+<polyline class="d-edge-new" points="138.0,382.0 138.0,338.0" marker-end="url(#caixa-vendas-nuvem-d2-ah-new)"/>
+<text class="d-label-new" x="146" y="364">+ sale_item_id</text>
+<polyline class="d-edge-text" points="454.0,399.0 454.0,355.0" marker-end="url(#caixa-vendas-nuvem-d2-ah-muted)"/>
+<text class="d-label" x="462" y="381">sale_id sem chave</text>
+<polyline class="d-edge-text" points="964.0,130.0 918.0,130.0 918.0,58.0 602.0,58.0 602.0,145.0 576.0,145.0" marker-end="url(#caixa-vendas-nuvem-d2-ah-muted)"/>
+<text class="d-label" x="760" y="53" text-anchor="middle">mesmo código: pedidos.uuid = sales.id</text>
+<polyline class="d-edge-text" points="964.0,227.5 892.0,227.5" marker-end="url(#caixa-vendas-nuvem-d2-ah-muted)"/>
+<text class="d-label" x="928" y="222" text-anchor="middle">caixa_id</text>
+<polyline class="d-edge-text" points="964.0,429.0 928.0,429.0 928.0,42.0 612.0,42.0 612.0,160.0 576.0,160.0" marker-end="url(#caixa-vendas-nuvem-d2-ah-muted)"/>
+<rect class="d-box" x="16" y="100" width="244" height="238" rx="8"/>
+<text class="d-title" x="28" y="119">Item vendido</text>
+<text class="d-table" x="28" y="134">sale_items</text>
+<line class="d-div" x1="16" y1="142" x2="260" y2="142"/>
+<text class="d-col" x="28" y="158">id  = item no PDV</text>
+<text class="d-col" x="28" y="175">sale_id → Venda</text>
+<text class="d-col" x="28" y="192">product_id → Produto</text>
+<text class="d-col" x="28" y="209">quantity</text>
+<text class="d-col" x="28" y="226">unit_price</text>
+<text class="d-col" x="28" y="243">discount</text>
+<text class="d-col" x="28" y="260">unit_cost</text>
+<text class="d-col" x="28" y="277">complements_cost</text>
+<text class="d-col" x="28" y="294">cost_source</text>
+<text class="d-col" x="28" y="311">cost_snapshot</text>
+<text class="d-more" x="28" y="328">… mais 2 coluna(s)</text>
+<rect class="d-box d-box-ext" x="16" y="382" width="244" height="221" rx="8"/>
+<text class="d-title d-title-ext" x="28" y="401">Movimento de estoque</text>
+<text class="d-table" x="28" y="416">stocks · módulo Estoque e compras</text>
+<line class="d-div" x1="16" y1="424" x2="260" y2="424"/>
+<text class="d-col" x="28" y="440">id</text>
+<text class="d-col" x="28" y="457">product_id → Produto</text>
+<text class="d-col" x="28" y="474">supply_id → Insumo</text>
+<text class="d-col" x="28" y="491">quantity</text>
+<text class="d-col" x="28" y="508">operation</text>
+<text class="d-col" x="28" y="525">description</text>
+<text class="d-col" x="28" y="542">unit_cost</text>
+<text class="d-col" x="28" y="559">batch_number</text>
+<text class="d-more" x="28" y="576">… mais 2 coluna(s)</text>
+<text class="d-new" x="28" y="593">+ sale_item_id  → Item vendido</text>
+<rect class="d-box" x="332" y="100" width="244" height="255" rx="8"/>
+<text class="d-title" x="344" y="119">Venda</text>
+<text class="d-table" x="344" y="134">sales</text>
+<line class="d-div" x1="332" y1="142" x2="576" y2="142"/>
+<text class="d-col" x="344" y="158">id  = pedido no PDV</text>
+<text class="d-col" x="344" y="175">cashier_session_id → Caixa</text>
+<text class="d-col" x="344" y="192">total_amount</text>
+<text class="d-col" x="344" y="209">discount</text>
+<text class="d-col" x="344" y="226">status  COMPLETED | CANCELLED</text>
+<text class="d-col" x="344" y="243">created_at</text>
+<text class="d-more" x="344" y="260">… mais 2 coluna(s)</text>
+<text class="d-new" x="344" y="277">+ origin  Balcão, Mesa…</text>
+<text class="d-new" x="344" y="294">+ origin_identifier  Mesa 07</text>
+<text class="d-new" x="344" y="311">+ delivery_fee</text>
+<text class="d-new" x="344" y="328">+ service_fee</text>
+<text class="d-new" x="344" y="345">+ cover_charge</text>
+<rect class="d-box" x="332" y="399" width="244" height="238" rx="8"/>
+<text class="d-title" x="344" y="418">Cancelamento</text>
+<text class="d-table" x="344" y="433">cancellation_audits</text>
+<line class="d-div" x1="332" y1="441" x2="576" y2="441"/>
+<text class="d-col" x="344" y="457">id</text>
+<text class="d-col" x="344" y="474">sale_id</text>
+<text class="d-col" x="344" y="491">order_id</text>
+<text class="d-col" x="344" y="508">item_id</text>
+<text class="d-col" x="344" y="525">product_name</text>
+<text class="d-col" x="344" y="542">quantity</text>
+<text class="d-col" x="344" y="559">total_amount</text>
+<text class="d-col" x="344" y="576">reason</text>
+<text class="d-col" x="344" y="593">origin</text>
+<text class="d-col" x="344" y="610">stock_restored</text>
+<text class="d-more" x="344" y="627">… mais 9 coluna(s)</text>
+<rect class="d-box" x="648" y="100" width="244" height="272" rx="8"/>
+<text class="d-title" x="660" y="119">Caixa</text>
+<text class="d-table" x="660" y="134">cashier_sessions</text>
+<line class="d-div" x1="648" y1="142" x2="892" y2="142"/>
+<text class="d-col" x="660" y="158">id  = caixa no PDV</text>
+<text class="d-col" x="660" y="175">user_id  (operador)</text>
+<text class="d-col" x="660" y="192">status  OPEN→PENDING→CHECKED</text>
+<text class="d-col" x="660" y="209">opened_at</text>
+<text class="d-col" x="660" y="226">closed_at</text>
+<text class="d-col" x="660" y="243">initial_balance  (fundo)</text>
+<text class="d-col" x="660" y="260">period</text>
+<text class="d-col" x="660" y="277">sequence_number</text>
+<text class="d-more" x="660" y="294">… mais 2 coluna(s)</text>
+<text class="d-new" x="660" y="311">+ terminal_id</text>
+<text class="d-new" x="660" y="328">+ source  PDV | WEB</text>
+<text class="d-new" x="660" y="345">+ counted  (contado por forma)</text>
+<text class="d-new" x="660" y="362">+ closing_difference  (quebra)</text>
+<rect class="d-box" x="648" y="416" width="244" height="238" rx="8"/>
+<text class="d-title" x="660" y="435">Lançamento do caixa</text>
+<text class="d-table" x="660" y="450">cashier_entries</text>
+<line class="d-div" x1="648" y1="458" x2="892" y2="458"/>
+<text class="d-col" x="660" y="474">id</text>
+<text class="d-col" x="660" y="491">cashier_session_id → Caixa</text>
+<text class="d-col" x="660" y="508">type  SALE | ADDITION | …</text>
+<text class="d-col" x="660" y="525">payment_method  (forma)</text>
+<text class="d-col" x="660" y="542">amount</text>
+<text class="d-col" x="660" y="559">bank</text>
+<text class="d-col" x="660" y="576">identification  (texto)</text>
+<text class="d-col" x="660" y="593">client_id → Cliente</text>
+<text class="d-col" x="660" y="610">employee_id → Funcionário</text>
+<text class="d-more" x="660" y="627">… mais 9 coluna(s)</text>
+<text class="d-new" x="660" y="644">+ sale_id  → Venda</text>
+<rect class="d-box" x="648" y="698" width="244" height="153" rx="8"/>
+<text class="d-title" x="660" y="717">Fiado</text>
+<text class="d-table" x="660" y="732">client_tabs</text>
+<line class="d-div" x1="648" y1="740" x2="892" y2="740"/>
+<text class="d-col" x="660" y="756">id</text>
+<text class="d-col" x="660" y="773">client_id → Cliente</text>
+<text class="d-col" x="660" y="790">cashier_session_id → Caixa</text>
+<text class="d-col" x="660" y="807">amount</text>
+<text class="d-col" x="660" y="824">description</text>
+<text class="d-col" x="660" y="841">is_paid</text>
+<rect class="d-box d-box-ext" x="964" y="100" width="244" height="255" rx="8"/>
+<text class="d-title d-title-ext" x="976" y="119">Pedido online</text>
+<text class="d-table" x="976" y="134">pedidos · módulo Delivery e pedid…</text>
+<line class="d-div" x1="964" y1="142" x2="1208" y2="142"/>
+<text class="d-col" x="976" y="158">id</text>
+<text class="d-col" x="976" y="175">uuid  = id da Venda</text>
+<text class="d-col" x="976" y="192">display_id</text>
+<text class="d-col" x="976" y="209">origem</text>
+<text class="d-col" x="976" y="226">plataforma</text>
+<text class="d-col" x="976" y="243">status</text>
+<text class="d-col" x="976" y="260">status_delivery</text>
+<text class="d-col" x="976" y="277">valor_final</text>
+<text class="d-col" x="976" y="294">valor_frete</text>
+<text class="d-col" x="976" y="311">caixa_id  (texto, sem chave)</text>
+<text class="d-col" x="976" y="328">cliente_id</text>
+<text class="d-more" x="976" y="345">… mais 23 coluna(s)</text>
+<rect class="d-box d-box-ext" x="964" y="399" width="244" height="187" rx="8"/>
+<text class="d-title d-title-ext" x="976" y="418">Lançamento de folha</text>
+<text class="d-table" x="976" y="433">payroll_entries · módulo RH e pon…</text>
+<line class="d-div" x1="964" y1="441" x2="1208" y2="441"/>
+<text class="d-col" x="976" y="457">id</text>
+<text class="d-col" x="976" y="474">employee_id → Funcionário</text>
+<text class="d-col" x="976" y="491">transaction_id → Lançamento fin…</text>
+<text class="d-col" x="976" y="508">description</text>
+<text class="d-col" x="976" y="525">amount</text>
+<text class="d-col" x="976" y="542">type</text>
+<text class="d-col" x="976" y="559">referenceDate</text>
+<text class="d-col" x="976" y="576">status</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+<figcaption>A Conferência lê o Caixa e o Lançamento do caixa. Venda, itens e estoque ficam ao lado e não mudam a conta da Conferência. Tabelas tracejadas são de outros módulos e aparecem para dar contexto.</figcaption>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 908 829" role="img" aria-label="Tabelas do módulo Caixa e vendas (No PDV (banco local)): Item do pedido (PDV), Pedido (PDV), Pagamento (PDV), Caixa (PDV), Movimento do caixa (PDV), Item cancelado (PDV)" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="caixa-vendas-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="caixa-vendas-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="caixa-vendas-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,164.5 332.0,164.5" marker-end="url(#caixa-vendas-pdv-d2-ah)"/>
+<polyline class="d-edge" points="576.0,164.5 648.0,164.5" marker-end="url(#caixa-vendas-pdv-d2-ah)"/>
+<polyline class="d-edge" points="454.0,353.0 454.0,309.0" marker-end="url(#caixa-vendas-pdv-d2-ah)"/>
+<polyline class="d-edge" points="770.0,319.0 770.0,275.0" marker-end="url(#caixa-vendas-pdv-d2-ah)"/>
+<polyline class="d-edge-text" points="648.0,580.0 592.0,580.0 592.0,84.0 576.0,84.0" marker-end="url(#caixa-vendas-pdv-d2-ah-muted)"/>
+<text class="d-label" transform="rotate(-90 586 332)" x="586" y="332" text-anchor="middle">pedido_id</text>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Item do pedido (PDV)</text>
+<text class="d-table" x="28" y="88">pedido_itens · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">pedido_id → Pedido (PDV)</text>
+<text class="d-col" x="28" y="146">produto_id → Produto (PDV)</text>
+<text class="d-col" x="28" y="163">uuid</text>
+<text class="d-col" x="28" y="180">custo_unitario</text>
+<text class="d-col" x="28" y="197">custo_complementos</text>
+<text class="d-col" x="28" y="214">custo_detalhe_json</text>
+<text class="d-col" x="28" y="231">complementos_json</text>
+<text class="d-col" x="28" y="248">status_cozinha</text>
+<text class="d-more" x="28" y="265">… mais 3 coluna(s)</text>
+<rect class="d-box" x="332" y="54" width="244" height="255" rx="8"/>
+<text class="d-title" x="344" y="73">Pedido (PDV)</text>
+<text class="d-table" x="344" y="88">pedidos · PDV</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">uuid</text>
+<text class="d-col" x="344" y="146">display_id</text>
+<text class="d-col" x="344" y="163">origem</text>
+<text class="d-col" x="344" y="180">status</text>
+<text class="d-col" x="344" y="197">caixa_id → Caixa (PDV)</text>
+<text class="d-col" x="344" y="214">atendimento_id → Atendimento (m…</text>
+<text class="d-col" x="344" y="231">cliente_id → Cliente (PDV)</text>
+<text class="d-col" x="344" y="248">valor_final</text>
+<text class="d-col" x="344" y="265">sincronizado_web</text>
+<text class="d-col" x="344" y="282">sync_tentativas</text>
+<text class="d-more" x="344" y="299">… mais 31 coluna(s)</text>
+<rect class="d-box" x="332" y="353" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="372">Pagamento (PDV)</text>
+<text class="d-table" x="344" y="387">pedido_pagamentos · PDV</text>
+<line class="d-div" x1="332" y1="395" x2="576" y2="395"/>
+<text class="d-col" x="344" y="411">id</text>
+<text class="d-col" x="344" y="428">pedido_id → Pedido (PDV)</text>
+<text class="d-col" x="344" y="445">forma_pagamento_id → Forma de p…</text>
+<text class="d-col" x="344" y="462">condicao_pagamento_id → Condiçã…</text>
+<text class="d-col" x="344" y="479">maquininha_id → Maquininha (PDV)</text>
+<text class="d-col" x="344" y="496">identificador_id → Identificado…</text>
+<text class="d-col" x="344" y="513">cliente_id → Cliente (PDV)</text>
+<text class="d-col" x="344" y="530">colaborador_id → Usuário (PDV)</text>
+<text class="d-col" x="344" y="547">uuid</text>
+<text class="d-more" x="344" y="564">… mais 3 coluna(s)</text>
+<rect class="d-box" x="648" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="660" y="73">Caixa (PDV)</text>
+<text class="d-table" x="660" y="88">caixas · PDV</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">uuid  = id na nuvem</text>
+<text class="d-col" x="660" y="146">terminal_id</text>
+<text class="d-col" x="660" y="163">data_abertura</text>
+<text class="d-col" x="660" y="180">data_fechamento</text>
+<text class="d-col" x="660" y="197">valor_abertura</text>
+<text class="d-col" x="660" y="214">valor_fechamento</text>
+<text class="d-col" x="660" y="231">status</text>
+<text class="d-col" x="660" y="248">couvert_ativo</text>
+<text class="d-more" x="660" y="265">… mais 3 coluna(s)</text>
+<rect class="d-box" x="648" y="319" width="244" height="187" rx="8"/>
+<text class="d-title" x="660" y="338">Movimento do caixa (PDV)</text>
+<text class="d-table" x="660" y="353">caixa_transacoes · PDV</text>
+<line class="d-div" x1="648" y1="361" x2="892" y2="361"/>
+<text class="d-col" x="660" y="377">id</text>
+<text class="d-col" x="660" y="394">caixa_id → Caixa (PDV)</text>
+<text class="d-col" x="660" y="411">uuid</text>
+<text class="d-col" x="660" y="428">sincronizado_web</text>
+<text class="d-col" x="660" y="445">tipo</text>
+<text class="d-col" x="660" y="462">valor</text>
+<text class="d-col" x="660" y="479">data_transacao</text>
+<text class="d-col" x="660" y="496">observacao</text>
+<rect class="d-box" x="648" y="550" width="244" height="255" rx="8"/>
+<text class="d-title" x="660" y="569">Item cancelado (PDV)</text>
+<text class="d-table" x="660" y="584">itens_cancelados · PDV</text>
+<line class="d-div" x1="648" y1="592" x2="892" y2="592"/>
+<text class="d-col" x="660" y="608">id</text>
+<text class="d-col" x="660" y="625">uuid</text>
+<text class="d-col" x="660" y="642">pedido_id</text>
+<text class="d-col" x="660" y="659">pedido_uuid</text>
+<text class="d-col" x="660" y="676">produto_nome</text>
+<text class="d-col" x="660" y="693">quantidade</text>
+<text class="d-col" x="660" y="710">valor_total</text>
+<text class="d-col" x="660" y="727">tipo_cancelamento</text>
+<text class="d-col" x="660" y="744">destino_estoque</text>
+<text class="d-col" x="660" y="761">motivo</text>
+<text class="d-col" x="660" y="778">sincronizado_web</text>
+<text class="d-more" x="660" y="795">… mais 10 coluna(s)</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+<figcaption>No PDV, Pedido é a venda de qualquer origem (balcão, mesa, delivery). Ela sobe para a nuvem como Venda quando fecha.</figcaption>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Caixa</h4><span class="mono">cashier_sessions · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Cada caixa aberto, no PDV ou na web. No PDV tem o mesmo código do caixa local. Situação: aberto (OPEN), fechado esperando conferência (PENDING), conferido (CHECKED).</dd><dt>Quem grava</dt><dd>A web ao abrir o caixa; o PDV ao abrir e ao fechar (desde o backend 2.6.87 o reenvio não reabre nem renumera, e caixa conferido não muda).</dd><dt>Quem lê</dt><dd>Conferência de caixa e auditoria mensal.</dd><dt>Cresce</dt><dd>1 a 3 linhas por dia.</dd></dl><p class="mirror">Espelho: Caixa (PDV) <span class="mono">caixas</span></p><div class=chips><span class="chip">+ terminal_id</span><span class="chip">+ source</span><span class="chip">+ counted</span><span class="chip">+ closing_difference</span></div></article><article class="card"><div class="card-head"><h4>Lançamento do caixa</h4><span class="mono">cashier_entries · nuvem · 18 colunas</span></div><dl><dt>O que é</dt><dd>Cada entrada ou saída do caixa: um por pagamento de venda e um por sangria, suprimento, despesa ou vale. É o que a Conferência soma por forma de pagamento.</dd><dt>Quem grava</dt><dd>A web (lançamento manual e baixa de delivery) e o PDV (vendas e movimentos).</dd><dt>Quem lê</dt><dd>Conferência de caixa.</dd><dt>Cresce</dt><dd>~230 por dia num restaurante de 200 vendas (1,1 por venda, mais os movimentos).</dd></dl><p class="mirror">Espelho: Movimento do caixa (PDV) <span class="mono">caixa_transacoes</span></p><div class=chips><span class="chip">+ sale_id</span><span class="chip warn">Hoje o lançamento só sabe de qual venda veio pelo texto &quot;Balcao - Pedido #1f9408ee&quot;.</span></div></article><article class="card"><div class="card-head"><h4>Venda</h4><span class="mono">sales · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Uma venda fechada no PDV: balcão, mesa ou salão. Tem o mesmo código do pedido no PDV. Guarda só total, desconto e situação.</dd><dt>Quem grava</dt><dd>O PDV, na hora do pagamento e no ciclo de 5 minutos. A nuvem recusa com motivo venda sem caixa, de caixa desconhecido ou de caixa conferido.</dd><dt>Quem lê</dt><dd>Custo da mercadoria vendida (CMV) e os relatórios que vão ser feitos.</dd><dt>Cresce</dt><dd>200 por dia (~73 mil por ano) no exemplo.</dd></dl><p class="mirror">Espelho: Pedido (PDV) <span class="mono">pedidos</span></p><div class=chips><span class="chip">+ origin</span><span class="chip">+ origin_identifier</span><span class="chip">+ delivery_fee</span><span class="chip">+ service_fee</span><span class="chip">+ cover_charge</span></div></article><article class="card"><div class="card-head"><h4>Item vendido</h4><span class="mono">sale_items · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Produto, quantidade, preço e o custo congelado na hora da venda, com o retrato de como o custo foi calculado.</dd><dt>Quem grava</dt><dd>O PDV, junto com a venda. A baixa de estoque é feita pela nuvem ao gravar o item.</dd><dt>Quem lê</dt><dd>Custo (CMV) e, no futuro, o relatório de produtos vendidos.</dd><dt>Cresce</dt><dd>600 por dia (~220 mil por ano) no exemplo. O retrato do custo (cost_snapshot) é o campo mais pesado.</dd></dl><p class="mirror">Espelho: Item do pedido (PDV) <span class="mono">pedido_itens</span></p></article><article class="card"><div class="card-head"><h4>Fiado</h4><span class="mono">client_tabs · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Conta a receber do cliente, criada quando a venda do PDV tem pagamento a prazo. Liga à venda só pelo texto.</dd><dt>Quem grava</dt><dd>Só a sincronia do PDV. O fiado lançado na web vira receita a prazo, não esta conta.</dd><dt>Cresce</dt><dd>Poucos por dia.</dd></dl><div class=chips><span class="chip warn">Depende da decisão sobre o fiado (pergunta 5 do documento de sincronia).</span></div></article><article class="card"><div class="card-head"><h4>Cancelamento</h4><span class="mono">cancellation_audits · nuvem · 19 colunas</span></div><dl><dt>O que é</dt><dd>Registro de cada item ou venda cancelada, com motivo, operador e origem. Aponta a venda pelo código, sem chave.</dd><dt>Quem grava</dt><dd>O PDV, no ciclo de 5 minutos (voltou a subir no PDV 2.4.19.0).</dd><dt>Cresce</dt><dd>Poucos por dia.</dd></dl><p class="mirror">Espelho: Item cancelado (PDV) <span class="mono">itens_cancelados</span></p></article><article class="card"><div class="card-head"><h4>Caixa (PDV)</h4><span class="mono">caixas · PDV · 12 colunas</span></div><dl><dt>O que é</dt><dd>O caixa aberto neste terminal. Um aberto por terminal.</dd><dt>Quem grava</dt><dd>CaixaView (abertura) e FechamentoCaixaView (fechamento).</dd></dl><p class="mirror">Espelho: Caixa <span class="mono">cashier_sessions</span></p></article><article class="card"><div class="card-head"><h4>Movimento do caixa (PDV)</h4><span class="mono">caixa_transacoes · PDV · 8 colunas</span></div><dl><dt>O que é</dt><dd>Sangria, suprimento, saída operacional, vale, sobra e quebra lançados no caixa do PDV.</dd></dl><p class="mirror">Espelho: Lançamento do caixa <span class="mono">cashier_entries</span></p><div class=chips><span class="chip warn">Não guarda forma de pagamento, funcionário nem setor; a nuvem deduz o tipo pelo texto.</span></div></article><article class="card"><div class="card-head"><h4>Pedido (PDV)</h4><span class="mono">pedidos · PDV · 42 colunas</span></div><dl><dt>O que é</dt><dd>A venda do PDV, de qualquer origem (balcão, mesa, delivery, iFood, 99Food), com NFC-e, controle de sincronia e totais.</dd><dt>Quem grava</dt><dd>Caixa, Mesas, Delivery e o observador de pedidos online.</dd><dt>Cresce</dt><dd>Um por venda ou pedido.</dd></dl><p class="mirror">Espelho: Venda <span class="mono">sales</span></p><div class=chips><span class="chip warn">42 colunas: totais, NFC-e, contingência, delivery e sincronia na mesma tabela.</span></div></article><article class="card"><div class="card-head"><h4>Item do pedido (PDV)</h4><span class="mono">pedido_itens · PDV · 12 colunas</span></div><dl><dt>O que é</dt><dd>Item lançado no pedido, com o custo congelado no momento do lançamento.</dd></dl><p class="mirror">Espelho: Item vendido <span class="mono">sale_items</span></p></article><article class="card"><div class="card-head"><h4>Pagamento (PDV)</h4><span class="mono">pedido_pagamentos · PDV · 12 colunas</span></div><dl><dt>O que é</dt><dd>Cada pagamento do pedido: forma, maquininha, parcelas, cliente do fiado e colaborador.</dd></dl><p class="mirror">Espelho: Lançamento do caixa <span class="mono">cashier_entries</span></p><div class=chips><span class="chip warn">O colaborador é um usuário do sistema, não um funcionário do RH (pergunta 4).</span></div></article><article class="card"><div class="card-head"><h4>Item cancelado (PDV)</h4><span class="mono">itens_cancelados · PDV · 21 colunas</span></div><dl><dt>O que é</dt><dd>Registro de cancelamento de item ou venda, com destino do estoque escolhido pelo operador (estorno ou desperdício).</dd></dl><p class="mirror">Espelho: Cancelamento <span class="mono">cancellation_audits</span></p></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Caixa (PDV) (caixas)</td><td>Caixa (cashier_sessions)</td><td>Mesmo código (uuid do PDV = id na nuvem).</td></tr><tr><td>Movimento do caixa (PDV) (caixa_transacoes)</td><td>Lançamento do caixa (cashier_entries)</td><td>Mesmo código.</td></tr><tr><td>Pedido (PDV) (pedidos)</td><td>Venda (sales)</td><td>Mesmo código, quando fecha. Delivery hoje não vira venda (paliativo).</td></tr><tr><td>Item do pedido (PDV) (pedido_itens)</td><td>Item vendido (sale_items)</td><td>Mesmo código.</td></tr><tr><td>Pagamento (PDV) (pedido_pagamentos)</td><td>Lançamento do caixa (cashier_entries)</td><td>Um lançamento por pagamento; hoje ligado pelo texto, proposta sale_id.</td></tr><tr><td>Item cancelado (PDV) (itens_cancelados)</td><td>Cancelamento (cancellation_audits)</td><td>Mesmo código.</td></tr></tbody></table></div>
+<h3>Uma venda de mesa, do começo ao fim</h3>
+<div class="tablewrap"><table><thead><tr><th>Momento</th><th>No PDV (banco local)</th><th>Na nuvem</th></tr></thead><tbody><tr><td>Abrir a mesa e lançar itens</td><td>atendimentos, pedidos (Aberto) e pedido_itens</td><td>Mesa aberta e item na mesa, como foto, a cada 5 minutos</td></tr><tr><td>Transferir um item</td><td>O item muda de pedido e ganha uma linha em log_transferencias</td><td>Só a foto muda. A transferência não sobe.</td></tr><tr><td>Fechar a conta e pagar</td><td>O pedido vira Fechado e ganha pedido_pagamentos</td><td>Venda, itens vendidos, um lançamento por pagamento e as baixas de estoque. Fiado vira conta do cliente; consumo de funcionário vira vale. A mesa sai da foto.</td></tr><tr><td>Cancelar a venda</td><td>O pedido vira Cancelado e ganha itens_cancelados</td><td>A venda vira CANCELLED, os lançamentos dela são apagados e o cancelamento fica registrado. O estoque não volta (pergunta 9). Caixa conferido não é mexido.</td></tr><tr><td>Sangria, suprimento, despesa ou vale</td><td>caixa_transacoes</td><td>Um lançamento do caixa, com o mesmo código</td></tr><tr><td>Fechar o caixa</td><td>O caixa vira Fechado</td><td>O caixa vira PENDING. Depois a Conferência marca CHECKED.</td></tr><tr><td>Delivery baixado no PDV</td><td>O pedido vira Fechado e ganha pagamentos</td><td>Hoje: muda o status do pedido e às vezes sobe como venda. Pela decisão R2: sobe como venda do caixa que deu a baixa, uma vez só na Conferência.</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>Fiado <span class=mono>client_id</span> → Cliente <span class=muted>(Clientes)</span></li><li>Item do pedido (PDV) <span class=mono>produto_id</span> → Produto (PDV) <span class=muted>(Cardápio e produtos)</span></li><li>Item vendido <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Item vendido <span class=mono>service_id</span> → Serviço <span class=muted>(Ordens de serviço)</span></li><li>Item vendido <span class=mono>supply_id</span> → Insumo <span class=muted>(Estoque e compras)</span></li><li>Lançamento do caixa <span class=mono>client_id</span> → Cliente <span class=muted>(Clientes)</span></li><li>Lançamento do caixa <span class=mono>employee_id</span> → Funcionário <span class=muted>(RH e ponto)</span></li><li>Pagamento (PDV) <span class=mono>cliente_id</span> → Cliente (PDV) <span class=muted>(Clientes)</span></li><li>Pagamento (PDV) <span class=mono>colaborador_id</span> → Usuário (PDV) <span class=muted>(Empresa, usuários e configuração)</span></li><li>Pagamento (PDV) <span class=mono>condicao_pagamento_id</span> → Condição (PDV) <span class=muted>(Financeiro)</span></li><li>Pagamento (PDV) <span class=mono>forma_pagamento_id</span> → Forma de pagamento (PDV) <span class=muted>(Financeiro)</span></li><li>Pagamento (PDV) <span class=mono>identificador_id</span> → Identificador (PDV) <span class=muted>(Financeiro)</span></li><li>Pagamento (PDV) <span class=mono>maquininha_id</span> → Maquininha (PDV) <span class=muted>(Financeiro)</span></li><li>Pedido (PDV) <span class=mono>atendimento_id</span> → Atendimento (mesa/comanda) <span class=muted>(Mesas e salão)</span></li><li>Pedido (PDV) <span class=mono>cliente_id</span> → Cliente (PDV) <span class=muted>(Clientes)</span></li><li>Pedido (PDV) <span class=mono>endereco_entrega_id</span> → Endereço (PDV) <span class=muted>(Clientes)</span></li><li>Pedido (PDV) <span class=mono>usuario_id</span> → Usuário (PDV) <span class=muted>(Empresa, usuários e configuração)</span></li><li>Venda <span class=mono>treatment_id</span> → Ordem de serviço <span class=muted>(Ordens de serviço)</span></li></ul></div>
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Lançamento financeiro <span class=muted>(Financeiro)</span> <span class=mono>cashier_session_id</span> → Caixa</li></ul></div>
+</div>
+<h3>Notas</h3><p class="prose">Regras e decisões do caixa e da sincronia: skill metrics-regras-negocio e Metrics.PDV/docs/CAIXA-E-SINCRONIA-PDV-X-CONFERENCIA.md.</p>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Aprovar as colunas propostas (pergunta 1 do documento de sincronia) e a sugestão nova sales.origin_identifier.</li><li>Fiado (pergunta 5) e vale do funcionário (pergunta 4).</li></ul>
+</section>
+<section class="modulo" id="mesas">
+<div class="mod-head"><p class="eyebrow">Módulo · 2 na nuvem · 2 no PDV</p><h2>Mesas e salão</h2>
+<p class="prose">Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem existe só uma foto ao vivo das mesas abertas, sem ligação com venda ou caixa. Quando a mesa é paga, sai da foto e vira venda (módulo Caixa e vendas).</p>
+</div>
+<figure><h3>Na nuvem (foto ao vivo)</h3><div class="canvas"><svg viewBox="0 0 592 299" role="img" aria-label="Tabelas do módulo Mesas e salão (Na nuvem (foto ao vivo)): Mesa aberta, Item na mesa" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="mesas-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="mesas-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="mesas-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<rect class="d-zone" x="6" y="24" width="580" height="261" rx="10"/>
+<text class="d-zone-label" x="18" y="42">FOTO AO VIVO · SEM LIGAÇÃO COM VENDA OU CAIXA</text>
+<polyline class="d-edge" points="332.0,164.5 260.0,164.5" marker-end="url(#mesas-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Mesa aberta</text>
+<text class="d-table" x="28" y="88">active_tables</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">identifier  Mesa 07 (único)</text>
+<text class="d-col" x="28" y="146">type  MESA | COMANDA</text>
+<text class="d-col" x="28" y="163">status</text>
+<text class="d-col" x="28" y="180">people_count</text>
+<text class="d-col" x="28" y="197">total_amount</text>
+<text class="d-col" x="28" y="214">waiter_id</text>
+<text class="d-col" x="28" y="231">waiter_name</text>
+<text class="d-col" x="28" y="248">opened_at</text>
+<text class="d-col" x="28" y="265">closed_at</text>
+<rect class="d-box" x="332" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="73">Item na mesa</text>
+<text class="d-table" x="344" y="88">active_table_items</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">active_table_id → Mesa aberta</text>
+<text class="d-col" x="344" y="146">product_id</text>
+<text class="d-col" x="344" y="163">product_name</text>
+<text class="d-col" x="344" y="180">quantity</text>
+<text class="d-col" x="344" y="197">unit_price</text>
+<text class="d-col" x="344" y="214">total_price</text>
+<text class="d-col" x="344" y="231">complements_json</text>
+<text class="d-col" x="344" y="248">observation</text>
+<text class="d-col" x="344" y="265">waiter_name</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 592 581" role="img" aria-label="Tabelas do módulo Mesas e salão (No PDV (banco local)): Atendimento (mesa/comanda), Transferência (PDV), Pedido (PDV)" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="mesas-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="mesas-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="mesas-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="332.0,156.0 260.0,156.0" marker-end="url(#mesas-pdv-d2-ah)"/>
+<polyline class="d-edge-text" points="260.0,332.0 276.0,332.0 276.0,84.0 332.0,84.0" marker-end="url(#mesas-pdv-d2-ah-muted)"/>
+<text class="d-label" transform="rotate(-90 270 208)" x="270" y="208" text-anchor="middle">pedido_origem_id / destino</text>
+<rect class="d-box" x="16" y="54" width="244" height="204" rx="8"/>
+<text class="d-title" x="28" y="73">Atendimento (mesa/comanda)</text>
+<text class="d-table" x="28" y="88">atendimentos · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">uuid</text>
+<text class="d-col" x="28" y="146">identificador  Mesa 07</text>
+<text class="d-col" x="28" y="163">status_atual</text>
+<text class="d-col" x="28" y="180">data_fechamento</text>
+<text class="d-col" x="28" y="197">hora_despacho_delivery</text>
+<text class="d-col" x="28" y="214">hora_conclusao</text>
+<text class="d-col" x="28" y="231">excluido</text>
+<text class="d-col" x="28" y="248">quantidade_pessoas</text>
+<rect class="d-box" x="16" y="302" width="244" height="255" rx="8"/>
+<text class="d-title" x="28" y="321">Transferência (PDV)</text>
+<text class="d-table" x="28" y="336">log_transferencias · PDV</text>
+<line class="d-div" x1="16" y1="344" x2="260" y2="344"/>
+<text class="d-col" x="28" y="360">id</text>
+<text class="d-col" x="28" y="377">tipo</text>
+<text class="d-col" x="28" y="394">origem</text>
+<text class="d-col" x="28" y="411">destino</text>
+<text class="d-col" x="28" y="428">pedido_origem_id</text>
+<text class="d-col" x="28" y="445">pedido_destino_id</text>
+<text class="d-col" x="28" y="462">produto_nome</text>
+<text class="d-col" x="28" y="479">quantidade</text>
+<text class="d-col" x="28" y="496">valor_total</text>
+<text class="d-col" x="28" y="513">motivo</text>
+<text class="d-col" x="28" y="530">usuario_nome</text>
+<text class="d-more" x="28" y="547">… mais 4 coluna(s)</text>
+<rect class="d-box d-box-ext" x="332" y="54" width="244" height="255" rx="8"/>
+<text class="d-title d-title-ext" x="344" y="73">Pedido (PDV)</text>
+<text class="d-table" x="344" y="88">pedidos · módulo Caixa e vendas</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">uuid</text>
+<text class="d-col" x="344" y="146">display_id</text>
+<text class="d-col" x="344" y="163">origem</text>
+<text class="d-col" x="344" y="180">status</text>
+<text class="d-col" x="344" y="197">caixa_id → Caixa (PDV)</text>
+<text class="d-col" x="344" y="214">atendimento_id → Atendimento (m…</text>
+<text class="d-col" x="344" y="231">cliente_id → Cliente (PDV)</text>
+<text class="d-col" x="344" y="248">valor_final</text>
+<text class="d-col" x="344" y="265">sincronizado_web</text>
+<text class="d-col" x="344" y="282">sync_tentativas</text>
+<text class="d-more" x="344" y="299">… mais 31 coluna(s)</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+<figcaption>Pedido é do módulo Caixa e vendas: a mesa (atendimento) tem pedidos, e a transferência registra o pedido de origem e o de destino.</figcaption>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Mesa aberta</h4><span class="mono">active_tables · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>A foto das mesas e comandas abertas agora.</dd><dt>Quem grava</dt><dd>O PDV, a cada ciclo de 5 minutos (a mesa fechada sai da foto). O garçom no modo pela internet também abre mesa aqui.</dd><dt>Quem lê</dt><dd>O garçom pela internet. O painel de mesas da web lê uma cópia em memória do mesmo envio do PDV, não esta tabela.</dd><dt>Cresce</dt><dd>Não cresce: no máximo o número de mesas abertas.</dd></dl><p class="mirror">Espelho: Atendimento (mesa/comanda) <span class="mono">atendimentos</span></p></article><article class="card"><div class="card-head"><h4>Item na mesa</h4><span class="mono">active_table_items · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>Os itens de cada mesa aberta, na foto.</dd><dt>Quem grava</dt><dd>O PDV (apaga e recria os itens de cada mesa a cada envio) e o garçom pela internet.</dd></dl><div class=chips><span class="chip warn">A confirmar: item lançado pelo garçom pela internet pode ser apagado pela foto seguinte do PDV.</span></div></article><article class="card"><div class="card-head"><h4>Atendimento (mesa/comanda)</h4><span class="mono">atendimentos · PDV · 11 colunas</span></div><dl><dt>O que é</dt><dd>A mesa ou comanda aberta no PDV, com a situação (Em consumo, Ociosa, Conta, Livre) e o número de pessoas. Tem os pedidos da mesa.</dd></dl><p class="mirror">Espelho: Mesa aberta <span class="mono">active_tables</span></p></article><article class="card"><div class="card-head"><h4>Transferência (PDV)</h4><span class="mono">log_transferencias · PDV · 15 colunas</span></div><dl><dt>O que é</dt><dd>Registro de cada transferência de item ou de mesa inteira: origem, destino, item, valor, motivo e operador.</dd><dt>Quem grava</dt><dd>MesasView, na mesma gravação da transferência (tudo ou nada, desde o PDV 2.4.17.2).</dd><dt>Quem lê</dt><dd>Ninguém ainda: não há tela e não sobe para a nuvem.</dd></dl></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Atendimento (mesa/comanda) (atendimentos)</td><td>Mesa aberta (active_tables)</td><td>Pelo nome da mesa (identificador), só enquanto está aberta.</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Pedido (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>atendimento_id</span> → Atendimento (mesa/comanda)</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Confirmar se o garçom pela internet é usado; se for, o envio de mesas do PDV não pode apagar os itens dele.</li><li>A venda não guarda de que mesa veio (proposta sales.origin_identifier, módulo Caixa e vendas).</li></ul>
+</section>
+<section class="modulo" id="delivery">
+<div class="mod-head"><p class="eyebrow">Módulo · 4 na nuvem · 2 no PDV</p><h2>Delivery e pedidos online</h2>
+<p class="prose">Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do PDV, o vínculo dos itens das plataformas com os produtos do Metrics e o diário de eventos do iFood. Pela decisão R2/R3, com PDV o delivery sobe como venda do caixa que deu a baixa.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 908 662" role="img" aria-label="Tabelas do módulo Delivery e pedidos online (Na nuvem (metrics-node)): Pedido online, Item do pedido, Vínculo com delivery, Diário do iFood, Produto, Venda" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="delivery-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="delivery-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="delivery-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,383.0 138.0,339.0" marker-end="url(#delivery-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,152.0 648.0,152.0" marker-end="url(#delivery-nuvem-d2-ah)"/>
+<polyline class="d-edge-text" points="260.0,114.0 276.0,114.0 276.0,42.0 592.0,42.0 592.0,413.0 648.0,413.0" marker-end="url(#delivery-nuvem-d2-ah-muted)"/>
+<text class="d-label" transform="rotate(-90 586 228)" x="586" y="228" text-anchor="middle">mesmo código</text>
+<rect class="d-box" x="16" y="84" width="244" height="255" rx="8"/>
+<text class="d-title" x="28" y="103">Pedido online</text>
+<text class="d-table" x="28" y="118">pedidos</text>
+<line class="d-div" x1="16" y1="126" x2="260" y2="126"/>
+<text class="d-col" x="28" y="142">id</text>
+<text class="d-col" x="28" y="159">uuid  = id da Venda</text>
+<text class="d-col" x="28" y="176">display_id</text>
+<text class="d-col" x="28" y="193">origem</text>
+<text class="d-col" x="28" y="210">plataforma</text>
+<text class="d-col" x="28" y="227">status</text>
+<text class="d-col" x="28" y="244">status_delivery</text>
+<text class="d-col" x="28" y="261">valor_final</text>
+<text class="d-col" x="28" y="278">valor_frete</text>
+<text class="d-col" x="28" y="295">caixa_id  (texto, sem chave)</text>
+<text class="d-col" x="28" y="312">cliente_id</text>
+<text class="d-more" x="28" y="329">… mais 23 coluna(s)</text>
+<rect class="d-box" x="16" y="383" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="402">Item do pedido</text>
+<text class="d-table" x="28" y="417">pedido_itens</text>
+<line class="d-div" x1="16" y1="425" x2="260" y2="425"/>
+<text class="d-col" x="28" y="441">id</text>
+<text class="d-col" x="28" y="458">pedido_id → Pedido online</text>
+<text class="d-col" x="28" y="475">uuid</text>
+<text class="d-col" x="28" y="492">produto_id</text>
+<text class="d-col" x="28" y="509">quantidade</text>
+<text class="d-col" x="28" y="526">valor_unitario</text>
+<text class="d-col" x="28" y="543">desconto</text>
+<text class="d-col" x="28" y="560">valor_total</text>
+<text class="d-col" x="28" y="577">valor_tributos</text>
+<text class="d-more" x="28" y="594">… mais 7 coluna(s)</text>
+<rect class="d-box" x="332" y="84" width="244" height="136" rx="8"/>
+<text class="d-title" x="344" y="103">Vínculo com delivery</text>
+<text class="d-table" x="344" y="118">delivery_item_mappings</text>
+<line class="d-div" x1="332" y1="126" x2="576" y2="126"/>
+<text class="d-col" x="344" y="142">id</text>
+<text class="d-col" x="344" y="159">product_id → Produto</text>
+<text class="d-col" x="344" y="176">platform</text>
+<text class="d-col" x="344" y="193">external_code</text>
+<text class="d-col" x="344" y="210">external_name</text>
+<rect class="d-box" x="332" y="264" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="283">Diário do iFood</text>
+<text class="d-table" x="344" y="298">ifood_api_logs</text>
+<line class="d-div" x1="332" y1="306" x2="576" y2="306"/>
+<text class="d-col" x="344" y="322">id</text>
+<text class="d-col" x="344" y="339">method</text>
+<text class="d-col" x="344" y="356">endpoint</text>
+<text class="d-col" x="344" y="373">order_id</text>
+<text class="d-col" x="344" y="390">local_order_id</text>
+<text class="d-col" x="344" y="407">request_body</text>
+<text class="d-col" x="344" y="424">response_status</text>
+<text class="d-col" x="344" y="441">response_body</text>
+<text class="d-col" x="344" y="458">duration_ms</text>
+<text class="d-more" x="344" y="475">… mais 2 coluna(s)</text>
+<rect class="d-box d-box-ext" x="648" y="84" width="244" height="255" rx="8"/>
+<text class="d-title d-title-ext" x="660" y="103">Produto</text>
+<text class="d-table" x="660" y="118">products · módulo Cardápio e prod…</text>
+<line class="d-div" x1="648" y1="126" x2="892" y2="126"/>
+<text class="d-col" x="660" y="142">id</text>
+<text class="d-col" x="660" y="159">display_id</text>
+<text class="d-col" x="660" y="176">name</text>
+<text class="d-col" x="660" y="193">price</text>
+<text class="d-col" x="660" y="210">cost</text>
+<text class="d-col" x="660" y="227">category_id → Categoria</text>
+<text class="d-col" x="660" y="244">subcategory_id → Subcategoria</text>
+<text class="d-col" x="660" y="261">is_composite</text>
+<text class="d-col" x="660" y="278">show_on_menu</text>
+<text class="d-col" x="660" y="295">active</text>
+<text class="d-col" x="660" y="312">ncm</text>
+<text class="d-more" x="660" y="329">… mais 18 coluna(s)</text>
+<rect class="d-box d-box-ext" x="648" y="383" width="244" height="255" rx="8"/>
+<text class="d-title d-title-ext" x="660" y="402">Venda</text>
+<text class="d-table" x="660" y="417">sales · módulo Caixa e vendas</text>
+<line class="d-div" x1="648" y1="425" x2="892" y2="425"/>
+<text class="d-col" x="660" y="441">id  = pedido no PDV</text>
+<text class="d-col" x="660" y="458">cashier_session_id → Caixa</text>
+<text class="d-col" x="660" y="475">total_amount</text>
+<text class="d-col" x="660" y="492">discount</text>
+<text class="d-col" x="660" y="509">status  COMPLETED | CANCELLED</text>
+<text class="d-col" x="660" y="526">created_at</text>
+<text class="d-more" x="660" y="543">… mais 2 coluna(s)</text>
+<text class="d-new" x="660" y="560">+ origin  Balcão, Mesa…</text>
+<text class="d-new" x="660" y="577">+ origin_identifier  Mesa 07</text>
+<text class="d-new" x="660" y="594">+ delivery_fee</text>
+<text class="d-new" x="660" y="611">+ service_fee</text>
+<text class="d-new" x="660" y="628">+ cover_charge</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 592 231" role="img" aria-label="Tabelas do módulo Delivery e pedidos online (No PDV (banco local)): Taxa de entrega (PDV), Entregador (PDV)" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="delivery-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="delivery-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="delivery-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<rect class="d-box" x="16" y="54" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="73">Taxa de entrega (PDV)</text>
+<text class="d-table" x="28" y="88">taxas_entrega · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">nome_setor</text>
+<text class="d-col" x="28" y="146">valor</text>
+<text class="d-col" x="28" y="163">bairros</text>
+<text class="d-col" x="28" y="180">uuid</text>
+<text class="d-col" x="28" y="197">sincronizado_web</text>
+<rect class="d-box" x="332" y="54" width="244" height="85" rx="8"/>
+<text class="d-title" x="344" y="73">Entregador (PDV)</text>
+<text class="d-table" x="344" y="88">motoboys · PDV</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">nome</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+<figcaption>O pedido de delivery no PDV é a tabela pedidos (módulo Caixa e vendas), com origem Delivery, iFood ou 99Food.</figcaption>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Pedido online</h4><span class="mono">pedidos · nuvem · 34 colunas</span></div><dl><dt>O que é</dt><dd>Pedido do cardápio online, iFood, 99Food ou delivery feito no PDV, com cliente, endereço, status da entrega e NFC-e. Quando vira venda, tem o mesmo código da venda.</dd><dt>Quem grava</dt><dd>O cardápio online, o recebimento do iFood (consulta a cada 30 s e webhook), o webhook do 99Food e o PDV (delivery lançado no balcão).</dd><dt>Quem lê</dt><dd>PDV (pedidos pendentes e mudanças de status) e Conferência de caixa (barra de deliveries do dia).</dd><dt>Cresce</dt><dd>Um por pedido.</dd></dl><div class=chips><span class="chip warn">O caixa é fixado quando o pedido nasce; pela decisão R3 deve ser o caixa que deu a baixa.</span></div></article><article class="card"><div class="card-head"><h4>Item do pedido</h4><span class="mono">pedido_itens · nuvem · 16 colunas</span></div><dl><dt>O que é</dt><dd>Itens do pedido online, com o código e o nome que o item tem no iFood/99Food.</dd></dl></article><article class="card"><div class="card-head"><h4>Vínculo com delivery</h4><span class="mono">delivery_item_mappings · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Liga o código do item no iFood/99Food a um produto do Metrics. Um vínculo vale para sempre e corrige os pedidos antigos daquele código.</dd><dt>Quem grava</dt><dd>Tela Mercadorias → Vínculos com Delivery.</dd></dl></article><article class="card"><div class="card-head"><h4>Diário do iFood</h4><span class="mono">ifood_api_logs · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Cada chamada e cada evento do iFood (e ações do PDV no cancelamento), com tempo e resultado. É a evidência usada na homologação.</dd><dt>Quem lê</dt><dd>Página de diagnóstico /delivery/ifood/diag.</dd><dt>Cresce</dt><dd>Várias linhas por pedido do iFood.</dd></dl></article><article class="card"><div class="card-head"><h4>Taxa de entrega (PDV)</h4><span class="mono">taxas_entrega · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Taxa por setor de bairros, cadastrada no PDV.</dd></dl><div class=chips><span class="chip warn">Nunca sobe para a nuvem.</span></div></article><article class="card"><div class="card-head"><h4>Entregador (PDV)</h4><span class="mono">motoboys · PDV · 2 colunas</span></div><dl><dt>O que é</dt><dd>Cadastro dos entregadores usados no acerto do motoboy.</dd></dl></article></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>Vínculo com delivery <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Decisão R2/R3: o delivery com PDV vira venda do caixa que deu a baixa, e a Conferência não pode contá-lo duas vezes.</li></ul>
+</section>
+<section class="modulo" id="cardapio">
+<div class="mod-head"><p class="eyebrow">Módulo · 8 na nuvem · 8 no PDV</p><h2>Cardápio e produtos</h2>
+<p class="prose">Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de impressão (para onde cada produto vai na cozinha). A nuvem é a fonte: o PDV baixa o cardápio a cada ciclo.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1224 625" role="img" aria-label="Tabelas do módulo Cardápio e produtos (Na nuvem (metrics-node)): Categoria, Subcategoria, Produto, Produto × grupo de adicionais, Produto × departamento, Grupo de adicionais, Opção de adicional, Departamento de impressão, Insumo" style="min-width:1100px;max-width:1224px">
+<defs>
+<marker id="cardapio-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="cardapio-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="cardapio-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,183.0 138.0,139.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="332.0,96.5 260.0,96.5" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="332.0,246.0 260.0,246.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,353.0 454.0,309.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,383.0 592.0,383.0 592.0,84.0 648.0,84.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,529.0 602.0,529.0 602.0,84.0 576.0,84.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,533.0 648.0,533.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="770.0,251.0 770.0,207.0" marker-end="url(#cardapio-nuvem-d2-ah)"/>
+<polyline class="d-edge-text" points="892.0,281.0 908.0,281.0 908.0,84.0 964.0,84.0" marker-end="url(#cardapio-nuvem-d2-ah-muted)"/>
+<text class="d-label" transform="rotate(-90 902 182)" x="902" y="182" text-anchor="middle">linked_supply_id</text>
+<polyline class="d-edge-text" points="648.0,280.0 576.0,280.0" marker-end="url(#cardapio-nuvem-d2-ah-muted)"/>
+<text class="d-label" x="612" y="275" text-anchor="middle">linked_product_id</text>
+<rect class="d-box" x="16" y="54" width="244" height="85" rx="8"/>
+<text class="d-title" x="28" y="73">Categoria</text>
+<text class="d-table" x="28" y="88">categories</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">name</text>
+<rect class="d-box" x="16" y="183" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="202">Subcategoria</text>
+<text class="d-table" x="28" y="217">subcategories</text>
+<line class="d-div" x1="16" y1="225" x2="260" y2="225"/>
+<text class="d-col" x="28" y="241">id</text>
+<text class="d-col" x="28" y="258">category_id → Categoria</text>
+<text class="d-col" x="28" y="275">name</text>
+<text class="d-col" x="28" y="292">accepts_fractions</text>
+<text class="d-col" x="28" y="309">max_fractions</text>
+<text class="d-col" x="28" y="326">active</text>
+<rect class="d-box" x="332" y="54" width="244" height="255" rx="8"/>
+<text class="d-title" x="344" y="73">Produto</text>
+<text class="d-table" x="344" y="88">products</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">display_id</text>
+<text class="d-col" x="344" y="146">name</text>
+<text class="d-col" x="344" y="163">price</text>
+<text class="d-col" x="344" y="180">cost</text>
+<text class="d-col" x="344" y="197">category_id → Categoria</text>
+<text class="d-col" x="344" y="214">subcategory_id → Subcategoria</text>
+<text class="d-col" x="344" y="231">is_composite</text>
+<text class="d-col" x="344" y="248">show_on_menu</text>
+<text class="d-col" x="344" y="265">active</text>
+<text class="d-col" x="344" y="282">ncm</text>
+<text class="d-more" x="344" y="299">… mais 18 coluna(s)</text>
+<rect class="d-box" x="332" y="353" width="244" height="102" rx="8"/>
+<text class="d-title" x="344" y="372">Produto × grupo de adicionais</text>
+<text class="d-table" x="344" y="387">product_complement_groups</text>
+<line class="d-div" x1="332" y1="395" x2="576" y2="395"/>
+<text class="d-col" x="344" y="411">product_id → Produto</text>
+<text class="d-col" x="344" y="428">group_id → Grupo de adicionais</text>
+<text class="d-col" x="344" y="445">order</text>
+<rect class="d-box" x="332" y="499" width="244" height="102" rx="8"/>
+<text class="d-title" x="344" y="518">Produto × departamento</text>
+<text class="d-table" x="344" y="533">product_print_departments</text>
+<line class="d-div" x1="332" y1="541" x2="576" y2="541"/>
+<text class="d-col" x="344" y="557">id</text>
+<text class="d-col" x="344" y="574">product_id → Produto</text>
+<text class="d-col" x="344" y="591">print_department_id → Departame…</text>
+<rect class="d-box" x="648" y="54" width="244" height="153" rx="8"/>
+<text class="d-title" x="660" y="73">Grupo de adicionais</text>
+<text class="d-table" x="660" y="88">complement_groups</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">name</text>
+<text class="d-col" x="660" y="146">min_quantity</text>
+<text class="d-col" x="660" y="163">max_quantity</text>
+<text class="d-col" x="660" y="180">free_quantity</text>
+<text class="d-col" x="660" y="197">active</text>
+<rect class="d-box" x="648" y="251" width="244" height="187" rx="8"/>
+<text class="d-title" x="660" y="270">Opção de adicional</text>
+<text class="d-table" x="660" y="285">complement_options</text>
+<line class="d-div" x1="648" y1="293" x2="892" y2="293"/>
+<text class="d-col" x="660" y="309">id</text>
+<text class="d-col" x="660" y="326">group_id → Grupo de adicionais</text>
+<text class="d-col" x="660" y="343">name</text>
+<text class="d-col" x="660" y="360">price</text>
+<text class="d-col" x="660" y="377">linked_product_id</text>
+<text class="d-col" x="660" y="394">linked_supply_id</text>
+<text class="d-col" x="660" y="411">supply_quantity  (consumo por p…</text>
+<text class="d-col" x="660" y="428">active</text>
+<rect class="d-box" x="648" y="482" width="244" height="85" rx="8"/>
+<text class="d-title" x="660" y="501">Departamento de impressão</text>
+<text class="d-table" x="660" y="516">print_departments</text>
+<line class="d-div" x1="648" y1="524" x2="892" y2="524"/>
+<text class="d-col" x="660" y="540">id</text>
+<text class="d-col" x="660" y="557">name</text>
+<rect class="d-box d-box-ext" x="964" y="54" width="244" height="187" rx="8"/>
+<text class="d-title d-title-ext" x="976" y="73">Insumo</text>
+<text class="d-table" x="976" y="88">supplies · módulo Estoque e compr…</text>
+<line class="d-div" x1="964" y1="96" x2="1208" y2="96"/>
+<text class="d-col" x="976" y="112">id</text>
+<text class="d-col" x="976" y="129">cost</text>
+<text class="d-col" x="976" y="146">stock</text>
+<text class="d-col" x="976" y="163">unit</text>
+<text class="d-col" x="976" y="180">active</text>
+<text class="d-col" x="976" y="197">category</text>
+<text class="d-col" x="976" y="214">description</text>
+<text class="d-col" x="976" y="231">name</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 1224 462" role="img" aria-label="Tabelas do módulo Cardápio e produtos (No PDV (banco local)): Setor (PDV), Grupo (PDV), Produto (PDV), Produto × grupo (PDV), Grupo de adicionais (PDV), Opção de adicional (PDV), Departamento de impressão (PDV), Produto × departamento (PDV)" style="min-width:1100px;max-width:1224px">
+<defs>
+<marker id="cardapio-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="cardapio-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="cardapio-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,234.0 138.0,190.0" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge" points="332.0,122.0 260.0,122.0" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge" points="332.0,254.5 260.0,254.5" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge" points="454.0,319.0 454.0,275.0" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge" points="576.0,349.0 592.0,349.0 592.0,84.0 648.0,84.0" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge" points="1086.0,183.0 1086.0,139.0" marker-end="url(#cardapio-pdv-d2-ah)"/>
+<polyline class="d-edge-text" points="770.0,268.0 770.0,224.0" marker-end="url(#cardapio-pdv-d2-ah-muted)"/>
+<text class="d-label" x="778" y="250">grupo_complemento_id</text>
+<rect class="d-box" x="16" y="54" width="244" height="136" rx="8"/>
+<text class="d-title" x="28" y="73">Setor (PDV)</text>
+<text class="d-table" x="28" y="88">setores · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">uuid</text>
+<text class="d-col" x="28" y="146">nome</text>
+<text class="d-col" x="28" y="163">ativo</text>
+<text class="d-col" x="28" y="180">exibe_no_kdv</text>
+<rect class="d-box" x="16" y="234" width="244" height="136" rx="8"/>
+<text class="d-title" x="28" y="253">Grupo (PDV)</text>
+<text class="d-table" x="28" y="268">grupos · PDV</text>
+<line class="d-div" x1="16" y1="276" x2="260" y2="276"/>
+<text class="d-col" x="28" y="292">id</text>
+<text class="d-col" x="28" y="309">setor_id → Setor (PDV)</text>
+<text class="d-col" x="28" y="326">uuid</text>
+<text class="d-col" x="28" y="343">nome</text>
+<text class="d-col" x="28" y="360">ativo</text>
+<rect class="d-box" x="332" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="73">Produto (PDV)</text>
+<text class="d-table" x="344" y="88">produtos · PDV</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">setor_id → Setor (PDV)</text>
+<text class="d-col" x="344" y="146">grupo_id → Grupo (PDV)</text>
+<text class="d-col" x="344" y="163">uuid</text>
+<text class="d-col" x="344" y="180">display_id</text>
+<text class="d-col" x="344" y="197">nome</text>
+<text class="d-col" x="344" y="214">preco</text>
+<text class="d-col" x="344" y="231">preco_custo</text>
+<text class="d-col" x="344" y="248">codigo_barras</text>
+<text class="d-more" x="344" y="265">… mais 21 coluna(s)</text>
+<rect class="d-box" x="332" y="319" width="244" height="102" rx="8"/>
+<text class="d-title" x="344" y="338">Produto × grupo (PDV)</text>
+<text class="d-table" x="344" y="353">produto_grupos_complemento · PDV</text>
+<line class="d-div" x1="332" y1="361" x2="576" y2="361"/>
+<text class="d-col" x="344" y="377">produto_id → Produto (PDV)</text>
+<text class="d-col" x="344" y="394">grupo_complemento_id → Grupo de…</text>
+<text class="d-col" x="344" y="411">ordem</text>
+<rect class="d-box" x="648" y="54" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="73">Grupo de adicionais (PDV)</text>
+<text class="d-table" x="660" y="88">grupos_complemento · PDV</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">uuid</text>
+<text class="d-col" x="660" y="146">nome</text>
+<text class="d-col" x="660" y="163">min_quantidade</text>
+<text class="d-col" x="660" y="180">max_quantidade</text>
+<text class="d-col" x="660" y="197">free_quantidade</text>
+<text class="d-col" x="660" y="214">ativo</text>
+<rect class="d-box" x="648" y="268" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="287">Opção de adicional (PDV)</text>
+<text class="d-table" x="660" y="302">opcoes_complemento · PDV</text>
+<line class="d-div" x1="648" y1="310" x2="892" y2="310"/>
+<text class="d-col" x="660" y="326">id</text>
+<text class="d-col" x="660" y="343">uuid</text>
+<text class="d-col" x="660" y="360">grupo_complemento_id</text>
+<text class="d-col" x="660" y="377">nome</text>
+<text class="d-col" x="660" y="394">preco</text>
+<text class="d-col" x="660" y="411">custo</text>
+<text class="d-col" x="660" y="428">ativo</text>
+<rect class="d-box" x="964" y="54" width="244" height="85" rx="8"/>
+<text class="d-title" x="976" y="73">Departamento de impressão (PD…</text>
+<text class="d-table" x="976" y="88">departamentos_impressao · PDV</text>
+<line class="d-div" x1="964" y1="96" x2="1208" y2="96"/>
+<text class="d-col" x="976" y="112">uuid</text>
+<text class="d-col" x="976" y="129">nome</text>
+<rect class="d-box" x="964" y="183" width="244" height="102" rx="8"/>
+<text class="d-title" x="976" y="202">Produto × departamento (PDV)</text>
+<text class="d-table" x="976" y="217">departamento_impressao_produtos ·…</text>
+<line class="d-div" x1="964" y1="225" x2="1208" y2="225"/>
+<text class="d-col" x="976" y="241">id</text>
+<text class="d-col" x="976" y="258">departamento_uuid → Departament…</text>
+<text class="d-col" x="976" y="275">produto_uuid</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Produto</h4><span class="mono">products · nuvem · 29 colunas</span></div><dl><dt>O que é</dt><dd>Produto vendido, com preço, custo, dados fiscais (NCM, CFOP, CSOSN), estoque e se aparece no cardápio online.</dd><dt>Quem grava</dt><dd>Web → Mercadorias &amp; Cardápio; importador Metrics.Sync.</dd><dt>Quem lê</dt><dd>Cardápio online, PDV (baixa a cada ciclo), estoque, custo e delivery.</dd></dl></article><article class="card"><div class="card-head"><h4>Categoria</h4><span class="mono">categories · nuvem · 2 colunas</span></div><dl><dt>O que é</dt><dd>Categoria do cardápio.</dd></dl></article><article class="card"><div class="card-head"><h4>Subcategoria</h4><span class="mono">subcategories · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Subdivisão de uma categoria.</dd></dl></article><article class="card"><div class="card-head"><h4>Grupo de adicionais</h4><span class="mono">complement_groups · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Grupo de opções de um produto (ex.: &quot;Adicionais&quot;, &quot;Ponto da carne&quot;), com mínimo, máximo e quantidade grátis.</dd></dl></article><article class="card"><div class="card-head"><h4>Opção de adicional</h4><span class="mono">complement_options · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Cada opção do grupo, com preço e, se baixa estoque, o insumo e o consumo por porção.</dd><dt>Quem grava</dt><dd>Web → aba Adicionais &amp; Opcionais (campo Consumo por porção desde a web 2.6.20.3).</dd></dl><div class=chips><span class="chip warn">linked_supply_id e linked_product_id não são chaves no banco.</span></div></article><article class="card"><div class="card-head"><h4>Produto × grupo de adicionais</h4><span class="mono">product_complement_groups · nuvem · 3 colunas</span></div><dl><dt>O que é</dt><dd>Quais grupos de adicionais cada produto oferece, e em que ordem.</dd></dl></article><article class="card"><div class="card-head"><h4>Departamento de impressão</h4><span class="mono">print_departments · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Setor da cozinha que recebe o pedido impresso (ex.: bar, chapa).</dd></dl></article><article class="card"><div class="card-head"><h4>Produto × departamento</h4><span class="mono">product_print_departments · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Para quais departamentos cada produto é impresso.</dd></dl></article><article class="card"><div class="card-head"><h4>Produto (PDV)</h4><span class="mono">produtos · PDV · 30 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local do produto, baixada da nuvem, com o custo recebido pela rota de custos.</dd></dl><p class="mirror">Espelho: Produto <span class="mono">products</span></p></article><article class="card"><div class="card-head"><h4>Setor (PDV)</h4><span class="mono">setores · PDV · 5 colunas</span></div><dl><dt>O que é</dt><dd>Agrupamento de produtos no PDV (e se aparece na cozinha).</dd></dl></article><article class="card"><div class="card-head"><h4>Grupo (PDV)</h4><span class="mono">grupos · PDV · 5 colunas</span></div><dl><dt>O que é</dt><dd>Grupo de produtos dentro de um setor.</dd></dl></article><article class="card"><div class="card-head"><h4>Grupo de adicionais (PDV)</h4><span class="mono">grupos_complemento · PDV · 7 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local do grupo de adicionais.</dd></dl><p class="mirror">Espelho: Grupo de adicionais <span class="mono">complement_groups</span></p></article><article class="card"><div class="card-head"><h4>Opção de adicional (PDV)</h4><span class="mono">opcoes_complemento · PDV · 7 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local da opção, com o custo. Não guarda qual insumo está ligado.</dd></dl><p class="mirror">Espelho: Opção de adicional <span class="mono">complement_options</span></p></article><article class="card"><div class="card-head"><h4>Produto × grupo (PDV)</h4><span class="mono">produto_grupos_complemento · PDV · 3 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local da ligação produto × grupo de adicionais.</dd></dl><p class="mirror">Espelho: Produto × grupo de adicionais <span class="mono">product_complement_groups</span></p></article><article class="card"><div class="card-head"><h4>Departamento de impressão (PDV)</h4><span class="mono">departamentos_impressao · PDV · 2 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local do departamento.</dd></dl><p class="mirror">Espelho: Departamento de impressão <span class="mono">print_departments</span></p></article><article class="card"><div class="card-head"><h4>Produto × departamento (PDV)</h4><span class="mono">departamento_impressao_produtos · PDV · 3 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local da ligação.</dd></dl><p class="mirror">Espelho: Produto × departamento <span class="mono">product_print_departments</span></p></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Produto (PDV) (produtos)</td><td>Produto (products)</td><td>Mesmo código (uuid); o PDV baixa a cada ciclo.</td></tr><tr><td>Grupo de adicionais (PDV) (grupos_complemento)</td><td>Grupo de adicionais (complement_groups)</td><td>Baixado do cardápio público.</td></tr><tr><td>Opção de adicional (PDV) (opcoes_complemento)</td><td>Opção de adicional (complement_options)</td><td>Baixado do cardápio público; custo pela rota de custos.</td></tr><tr><td>Produto × grupo (PDV) (produto_grupos_complemento)</td><td>Produto × grupo de adicionais (product_complement_groups)</td><td>Baixado do cardápio público.</td></tr><tr><td>Departamento de impressão (PDV) (departamentos_impressao)</td><td>Departamento de impressão (print_departments)</td><td>Baixado a cada ciclo.</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>De-Para do fornecedor <span class=muted>(Estoque e compras)</span> <span class=mono>product_id</span> → Produto</li><li>Ficha técnica <span class=muted>(Estoque e compras)</span> <span class=mono>product_id</span> → Produto</li><li>Item contado <span class=muted>(Estoque e compras)</span> <span class=mono>product_id</span> → Produto</li><li>Item da O.S. <span class=muted>(Ordens de serviço)</span> <span class=mono>product_id</span> → Produto</li><li>Item da evasão (PDV) <span class=muted>(Estoque e compras)</span> <span class=mono>produto_id</span> → Produto (PDV)</li><li>Item do pedido (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>produto_id</span> → Produto (PDV)</li><li>Item vendido <span class=muted>(Caixa e vendas)</span> <span class=mono>product_id</span> → Produto</li><li>Movimento de estoque <span class=muted>(Estoque e compras)</span> <span class=mono>product_id</span> → Produto</li><li>Movimento de estoque (PDV) <span class=muted>(Estoque e compras)</span> <span class=mono>produto_id</span> → Produto (PDV)</li><li>Vínculo com delivery <span class=muted>(Delivery e pedidos online)</span> <span class=mono>product_id</span> → Produto</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Confirmar se Setor e Grupo do PDV correspondem a Categoria e Subcategoria da nuvem.</li></ul>
+</section>
+<section class="modulo" id="estoque">
+<div class="mod-head"><p class="eyebrow">Módulo · 7 na nuvem · 3 no PDV</p><h2>Estoque e compras</h2>
+<p class="prose">Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 908 842" role="img" aria-label="Tabelas do módulo Estoque e compras (Na nuvem (metrics-node)): Fornecedor, De-Para do fornecedor, Insumo, Ficha técnica, Movimento de estoque, Produto, Item contado, Contagem de inventário" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="estoque-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="estoque-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="estoque-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,294.0 276.0,294.0 276.0,114.0 332.0,114.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="260.0,309.0 286.0,309.0 286.0,42.0 592.0,42.0 592.0,114.0 648.0,114.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,345.0 602.0,345.0 602.0,129.0 648.0,129.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,315.0 454.0,271.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,525.0 612.0,525.0 612.0,144.0 648.0,144.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,540.0 622.0,540.0 622.0,114.0 576.0,114.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="770.0,587.0 770.0,631.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="648.0,413.0 632.0,413.0 632.0,129.0 576.0,129.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="770.0,383.0 770.0,339.0" marker-end="url(#estoque-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="84" width="244" height="136" rx="8"/>
+<text class="d-title" x="28" y="103">Fornecedor</text>
+<text class="d-table" x="28" y="118">suppliers</text>
+<line class="d-div" x1="16" y1="126" x2="260" y2="126"/>
+<text class="d-col" x="28" y="142">id</text>
+<text class="d-col" x="28" y="159">name</text>
+<text class="d-col" x="28" y="176">document</text>
+<text class="d-col" x="28" y="193">email</text>
+<text class="d-col" x="28" y="210">phone</text>
+<rect class="d-box" x="16" y="264" width="244" height="204" rx="8"/>
+<text class="d-title" x="28" y="283">De-Para do fornecedor</text>
+<text class="d-table" x="28" y="298">supplier_product_mappings</text>
+<line class="d-div" x1="16" y1="306" x2="260" y2="306"/>
+<text class="d-col" x="28" y="322">id</text>
+<text class="d-col" x="28" y="339">supply_id → Insumo</text>
+<text class="d-col" x="28" y="356">product_id → Produto</text>
+<text class="d-col" x="28" y="373">supplier_cnpj</text>
+<text class="d-col" x="28" y="390">supplier_name</text>
+<text class="d-col" x="28" y="407">supplier_product_code</text>
+<text class="d-col" x="28" y="424">supplier_product_name</text>
+<text class="d-col" x="28" y="441">supplier_unit</text>
+<text class="d-col" x="28" y="458">conversion_factor</text>
+<rect class="d-box" x="332" y="84" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="103">Insumo</text>
+<text class="d-table" x="344" y="118">supplies</text>
+<line class="d-div" x1="332" y1="126" x2="576" y2="126"/>
+<text class="d-col" x="344" y="142">id</text>
+<text class="d-col" x="344" y="159">cost</text>
+<text class="d-col" x="344" y="176">stock</text>
+<text class="d-col" x="344" y="193">unit</text>
+<text class="d-col" x="344" y="210">active</text>
+<text class="d-col" x="344" y="227">category</text>
+<text class="d-col" x="344" y="244">description</text>
+<text class="d-col" x="344" y="261">name</text>
+<rect class="d-box" x="332" y="315" width="244" height="136" rx="8"/>
+<text class="d-title" x="344" y="334">Ficha técnica</text>
+<text class="d-table" x="344" y="349">compositions</text>
+<line class="d-div" x1="332" y1="357" x2="576" y2="357"/>
+<text class="d-col" x="344" y="373">id</text>
+<text class="d-col" x="344" y="390">product_id → Produto</text>
+<text class="d-col" x="344" y="407">supply_id → Insumo</text>
+<text class="d-col" x="344" y="424">service_id → Serviço</text>
+<text class="d-col" x="344" y="441">quantity</text>
+<rect class="d-box" x="332" y="495" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="514">Movimento de estoque</text>
+<text class="d-table" x="344" y="529">stocks</text>
+<line class="d-div" x1="332" y1="537" x2="576" y2="537"/>
+<text class="d-col" x="344" y="553">id</text>
+<text class="d-col" x="344" y="570">product_id → Produto</text>
+<text class="d-col" x="344" y="587">supply_id → Insumo</text>
+<text class="d-col" x="344" y="604">quantity</text>
+<text class="d-col" x="344" y="621">operation</text>
+<text class="d-col" x="344" y="638">description</text>
+<text class="d-col" x="344" y="655">unit_cost</text>
+<text class="d-col" x="344" y="672">batch_number</text>
+<text class="d-more" x="344" y="689">… mais 2 coluna(s)</text>
+<text class="d-new" x="344" y="706">+ sale_item_id  → Item vendido</text>
+<rect class="d-box d-box-ext" x="648" y="84" width="244" height="255" rx="8"/>
+<text class="d-title d-title-ext" x="660" y="103">Produto</text>
+<text class="d-table" x="660" y="118">products · módulo Cardápio e prod…</text>
+<line class="d-div" x1="648" y1="126" x2="892" y2="126"/>
+<text class="d-col" x="660" y="142">id</text>
+<text class="d-col" x="660" y="159">display_id</text>
+<text class="d-col" x="660" y="176">name</text>
+<text class="d-col" x="660" y="193">price</text>
+<text class="d-col" x="660" y="210">cost</text>
+<text class="d-col" x="660" y="227">category_id → Categoria</text>
+<text class="d-col" x="660" y="244">subcategory_id → Subcategoria</text>
+<text class="d-col" x="660" y="261">is_composite</text>
+<text class="d-col" x="660" y="278">show_on_menu</text>
+<text class="d-col" x="660" y="295">active</text>
+<text class="d-col" x="660" y="312">ncm</text>
+<text class="d-more" x="660" y="329">… mais 18 coluna(s)</text>
+<rect class="d-box" x="648" y="383" width="244" height="204" rx="8"/>
+<text class="d-title" x="660" y="402">Item contado</text>
+<text class="d-table" x="660" y="417">inventory_items</text>
+<line class="d-div" x1="648" y1="425" x2="892" y2="425"/>
+<text class="d-col" x="660" y="441">id</text>
+<text class="d-col" x="660" y="458">inventory_session_id → Contagem…</text>
+<text class="d-col" x="660" y="475">supply_id → Insumo</text>
+<text class="d-col" x="660" y="492">product_id → Produto</text>
+<text class="d-col" x="660" y="509">system_quantity</text>
+<text class="d-col" x="660" y="526">counted_quantity</text>
+<text class="d-col" x="660" y="543">unit_cost</text>
+<text class="d-col" x="660" y="560">difference_quantity</text>
+<text class="d-col" x="660" y="577">total_difference_cost</text>
+<rect class="d-box" x="648" y="631" width="244" height="187" rx="8"/>
+<text class="d-title" x="660" y="650">Contagem de inventário</text>
+<text class="d-table" x="660" y="665">inventory_sessions</text>
+<line class="d-div" x1="648" y1="673" x2="892" y2="673"/>
+<text class="d-col" x="660" y="689">id</text>
+<text class="d-col" x="660" y="706">user_id</text>
+<text class="d-col" x="660" y="723">status</text>
+<text class="d-col" x="660" y="740">sector</text>
+<text class="d-col" x="660" y="757">blind_count</text>
+<text class="d-col" x="660" y="774">notes</text>
+<text class="d-col" x="660" y="791">opened_at</text>
+<text class="d-col" x="660" y="808">closed_at</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 592 530" role="img" aria-label="Tabelas do módulo Estoque e compras (No PDV (banco local)): Evasão de estoque (PDV), Item da evasão (PDV), Produto (PDV), Movimento de estoque (PDV)" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="estoque-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="estoque-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="estoque-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,251.0 138.0,207.0" marker-end="url(#estoque-pdv-d2-ah)"/>
+<polyline class="d-edge" points="260.0,281.0 276.0,281.0 276.0,84.0 332.0,84.0" marker-end="url(#estoque-pdv-d2-ah)"/>
+<polyline class="d-edge" points="454.0,319.0 454.0,275.0" marker-end="url(#estoque-pdv-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="73">Evasão de estoque (PDV)</text>
+<text class="d-table" x="28" y="88">evasoes_estoque · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">identificador_id → Identificado…</text>
+<text class="d-col" x="28" y="146">usuario_id → Usuário (PDV)</text>
+<text class="d-col" x="28" y="163">uuid</text>
+<text class="d-col" x="28" y="180">data_evasao</text>
+<text class="d-col" x="28" y="197">observacao</text>
+<rect class="d-box" x="16" y="251" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="270">Item da evasão (PDV)</text>
+<text class="d-table" x="28" y="285">evasoes_estoque_itens · PDV</text>
+<line class="d-div" x1="16" y1="293" x2="260" y2="293"/>
+<text class="d-col" x="28" y="309">id</text>
+<text class="d-col" x="28" y="326">evasao_id → Evasão de estoque (…</text>
+<text class="d-col" x="28" y="343">produto_id → Produto (PDV)</text>
+<text class="d-col" x="28" y="360">uuid</text>
+<text class="d-col" x="28" y="377">quantidade</text>
+<text class="d-col" x="28" y="394">custo_unitario</text>
+<rect class="d-box d-box-ext" x="332" y="54" width="244" height="221" rx="8"/>
+<text class="d-title d-title-ext" x="344" y="73">Produto (PDV)</text>
+<text class="d-table" x="344" y="88">produtos · módulo Cardápio e prod…</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">setor_id → Setor (PDV)</text>
+<text class="d-col" x="344" y="146">grupo_id → Grupo (PDV)</text>
+<text class="d-col" x="344" y="163">uuid</text>
+<text class="d-col" x="344" y="180">display_id</text>
+<text class="d-col" x="344" y="197">nome</text>
+<text class="d-col" x="344" y="214">preco</text>
+<text class="d-col" x="344" y="231">preco_custo</text>
+<text class="d-col" x="344" y="248">codigo_barras</text>
+<text class="d-more" x="344" y="265">… mais 21 coluna(s)</text>
+<rect class="d-box" x="332" y="319" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="338">Movimento de estoque (PDV)</text>
+<text class="d-table" x="344" y="353">movimentacoes_estoque · PDV</text>
+<line class="d-div" x1="332" y1="361" x2="576" y2="361"/>
+<text class="d-col" x="344" y="377">id</text>
+<text class="d-col" x="344" y="394">produto_id → Produto (PDV)</text>
+<text class="d-col" x="344" y="411">uuid</text>
+<text class="d-col" x="344" y="428">quantidade</text>
+<text class="d-col" x="344" y="445">operacao</text>
+<text class="d-col" x="344" y="462">motivo</text>
+<text class="d-col" x="344" y="479">data_hora</text>
+<text class="d-col" x="344" y="496">sincronizado_web</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Insumo</h4><span class="mono">supplies · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Matéria-prima com custo, unidade e saldo (bacon em kg, caixa de pizza em unidade).</dd><dt>Quem lê</dt><dd>Ficha técnica, custo e baixa das vendas.</dd></dl></article><article class="card"><div class="card-head"><h4>Ficha técnica</h4><span class="mono">compositions · nuvem · 5 colunas</span></div><dl><dt>O que é</dt><dd>Quanto de cada insumo vai em um produto composto (ou em um serviço).</dd><dt>Quem lê</dt><dd>Custo do produto e baixa de estoque da venda.</dd></dl></article><article class="card"><div class="card-head"><h4>Movimento de estoque</h4><span class="mono">stocks · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>Cada entrada e saída de produto ou insumo. A venda gera uma saída por insumo de cada item. O saldo do produto e do insumo é a soma destes movimentos.</dd><dt>Quem grava</dt><dd>A nuvem, ao receber a venda (o PDV não manda mais estoque desde o 2.4.16); entrada por nota fiscal; ajustes.</dd><dt>Cresce</dt><dd>~1.800 por dia num restaurante de 200 vendas com fichas de 3 insumos (~650 mil por ano). A maior tabela.</dd></dl><div class=chips><span class="chip">+ sale_item_id</span><span class="chip warn">Não diz de qual venda veio: estorno de cancelamento e conferência dependem da proposta sale_item_id.</span></div></article><article class="card"><div class="card-head"><h4>Fornecedor</h4><span class="mono">suppliers · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Fornecedor das notas de entrada e das despesas.</dd></dl></article><article class="card"><div class="card-head"><h4>De-Para do fornecedor</h4><span class="mono">supplier_product_mappings · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>Liga o item da nota do fornecedor ao insumo ou produto do Metrics, com fator de conversão da embalagem.</dd><dt>Quem grava</dt><dd>Entrada de nota fiscal (XML do fornecedor).</dd></dl></article><article class="card"><div class="card-head"><h4>Contagem de inventário</h4><span class="mono">inventory_sessions · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Uma contagem de estoque (pode ser cega), por setor.</dd></dl></article><article class="card"><div class="card-head"><h4>Item contado</h4><span class="mono">inventory_items · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Quantidade contada de cada insumo ou produto numa contagem.</dd></dl></article><article class="card"><div class="card-head"><h4>Movimento de estoque (PDV)</h4><span class="mono">movimentacoes_estoque · PDV · 8 colunas</span></div><dl><dt>O que é</dt><dd>Movimentos gravados pelo PDV (estorno e desperdício no cancelamento, evasão).</dd></dl><div class=chips><span class="chip warn">Não sobe mais para a nuvem (decisão de 24/09: estoque só pelo backend).</span></div></article><article class="card"><div class="card-head"><h4>Evasão de estoque (PDV)</h4><span class="mono">evasoes_estoque · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Saída de mercadoria sem venda, classificada por um identificador (ex.: consumo interno, cortesia).</dd></dl></article><article class="card"><div class="card-head"><h4>Item da evasão (PDV)</h4><span class="mono">evasoes_estoque_itens · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Produtos e quantidades de cada evasão.</dd></dl></article></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>De-Para do fornecedor <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Evasão de estoque (PDV) <span class=mono>identificador_id</span> → Identificador (PDV) <span class=muted>(Financeiro)</span></li><li>Evasão de estoque (PDV) <span class=mono>usuario_id</span> → Usuário (PDV) <span class=muted>(Empresa, usuários e configuração)</span></li><li>Ficha técnica <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Ficha técnica <span class=mono>service_id</span> → Serviço <span class=muted>(Ordens de serviço)</span></li><li>Item contado <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Item da evasão (PDV) <span class=mono>produto_id</span> → Produto (PDV) <span class=muted>(Cardápio e produtos)</span></li><li>Movimento de estoque <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Movimento de estoque (PDV) <span class=mono>produto_id</span> → Produto (PDV) <span class=muted>(Cardápio e produtos)</span></li></ul></div>
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Item da O.S. <span class=muted>(Ordens de serviço)</span> <span class=mono>stock_id</span> → Movimento de estoque</li><li>Item da O.S. <span class=muted>(Ordens de serviço)</span> <span class=mono>supply_id</span> → Insumo</li><li>Item vendido <span class=muted>(Caixa e vendas)</span> <span class=mono>supply_id</span> → Insumo</li><li>Lançamento financeiro <span class=muted>(Financeiro)</span> <span class=mono>supplier_id</span> → Fornecedor</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Custo médio (CMP) na entrada de nota ainda substitui o custo em vez de fazer a média ponderada.</li><li>Estorno de estoque no cancelamento depois da sincronia (pergunta 9).</li></ul>
+</section>
+<section class="modulo" id="financeiro">
+<div class="mod-head"><p class="eyebrow">Módulo · 13 na nuvem · 6 no PDV</p><h2>Financeiro</h2>
+<p class="prose">Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1540 706" role="img" aria-label="Tabelas do módulo Financeiro (Na nuvem (metrics-node)): Setor (centro de custo), Parcelamento / recorrência, Transferência, Lançamento financeiro, Parcela, Conta, Cartão de crédito, Ajuste de saldo, Forma de pagamento, Identificador, Condição de pagamento, Maquininha, Taxa da maquininha" style="min-width:1100px;max-width:1540px">
+<defs>
+<marker id="financeiro-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="financeiro-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="financeiro-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,457.0 276.0,457.0 276.0,114.0 332.0,114.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="260.0,472.0 286.0,472.0 286.0,129.0 332.0,129.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,160.5 648.0,160.5" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,310.0 648.0,310.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="332.0,143.5 260.0,143.5" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="332.0,293.0 260.0,293.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,413.0 592.0,413.0 592.0,42.0 908.0,42.0 908.0,114.0 964.0,114.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,383.0 454.0,339.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="770.0,281.0 770.0,237.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="892.0,576.0 918.0,576.0 918.0,114.0 892.0,114.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="964.0,160.5 892.0,160.5" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="1086.0,332.0 1086.0,288.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="1402.0,247.0 1402.0,203.0" marker-end="url(#financeiro-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="84" width="244" height="119" rx="8"/>
+<text class="d-title" x="28" y="103">Setor (centro de custo)</text>
+<text class="d-table" x="28" y="118">sectors</text>
+<line class="d-div" x1="16" y1="126" x2="260" y2="126"/>
+<text class="d-col" x="28" y="142">id</text>
+<text class="d-col" x="28" y="159">name</text>
+<text class="d-col" x="28" y="176">budget</text>
+<text class="d-col" x="28" y="193">type</text>
+<rect class="d-box" x="16" y="247" width="244" height="136" rx="8"/>
+<text class="d-title" x="28" y="266">Parcelamento / recorrência</text>
+<text class="d-table" x="28" y="281">transaction_groups</text>
+<line class="d-div" x1="16" y1="289" x2="260" y2="289"/>
+<text class="d-col" x="28" y="305">id</text>
+<text class="d-col" x="28" y="322">totalAmount</text>
+<text class="d-col" x="28" y="339">installmentsCount</text>
+<text class="d-col" x="28" y="356">description</text>
+<text class="d-col" x="28" y="373">frequency</text>
+<rect class="d-box" x="16" y="427" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="446">Transferência</text>
+<text class="d-table" x="28" y="461">transfer_transactions</text>
+<line class="d-div" x1="16" y1="469" x2="260" y2="469"/>
+<text class="d-col" x="28" y="485">id</text>
+<text class="d-col" x="28" y="502">source_transaction_id → Lançame…</text>
+<text class="d-col" x="28" y="519">dest_transaction_id → Lançament…</text>
+<text class="d-col" x="28" y="536">fee_amount</text>
+<text class="d-col" x="28" y="553">description</text>
+<text class="d-col" x="28" y="570">is_automated</text>
+<rect class="d-box" x="332" y="84" width="244" height="255" rx="8"/>
+<text class="d-title" x="344" y="103">Lançamento financeiro</text>
+<text class="d-table" x="344" y="118">transactions</text>
+<line class="d-div" x1="332" y1="126" x2="576" y2="126"/>
+<text class="d-col" x="344" y="142">id</text>
+<text class="d-col" x="344" y="159">operation</text>
+<text class="d-col" x="344" y="176">amount</text>
+<text class="d-col" x="344" y="193">data_vencimento</text>
+<text class="d-col" x="344" y="210">account_id → Conta</text>
+<text class="d-col" x="344" y="227">sector_id → Setor (centro de cu…</text>
+<text class="d-col" x="344" y="244">credit_card_id → Cartão de créd…</text>
+<text class="d-col" x="344" y="261">transaction_group_id → Parcelam…</text>
+<text class="d-col" x="344" y="278">cashier_session_id → Caixa</text>
+<text class="d-col" x="344" y="295">confirmed</text>
+<text class="d-col" x="344" y="312">payment_method</text>
+<text class="d-more" x="344" y="329">… mais 12 coluna(s)</text>
+<rect class="d-box" x="332" y="383" width="244" height="119" rx="8"/>
+<text class="d-title" x="344" y="402">Parcela</text>
+<text class="d-table" x="344" y="417">installment_payments</text>
+<line class="d-div" x1="332" y1="425" x2="576" y2="425"/>
+<text class="d-col" x="344" y="441">id</text>
+<text class="d-col" x="344" y="458">payment_id → Forma de pagamento</text>
+<text class="d-col" x="344" y="475">transaction_id → Lançamento fin…</text>
+<text class="d-col" x="344" y="492">installment_number</text>
+<rect class="d-box" x="648" y="84" width="244" height="153" rx="8"/>
+<text class="d-title" x="660" y="103">Conta</text>
+<text class="d-table" x="660" y="118">accounts</text>
+<line class="d-div" x1="648" y1="126" x2="892" y2="126"/>
+<text class="d-col" x="660" y="142">id</text>
+<text class="d-col" x="660" y="159">name</text>
+<text class="d-col" x="660" y="176">description</text>
+<text class="d-col" x="660" y="193">balance</text>
+<text class="d-col" x="660" y="210">goal</text>
+<text class="d-col" x="660" y="227">is_transit</text>
+<rect class="d-box" x="648" y="281" width="244" height="221" rx="8"/>
+<text class="d-title" x="660" y="300">Cartão de crédito</text>
+<text class="d-table" x="660" y="315">credit_cards</text>
+<line class="d-div" x1="648" y1="323" x2="892" y2="323"/>
+<text class="d-col" x="660" y="339">id</text>
+<text class="d-col" x="660" y="356">account_id → Conta</text>
+<text class="d-col" x="660" y="373">name</text>
+<text class="d-col" x="660" y="390">bank</text>
+<text class="d-col" x="660" y="407">credit_limit</text>
+<text class="d-col" x="660" y="424">closing_day</text>
+<text class="d-col" x="660" y="441">due_day</text>
+<text class="d-col" x="660" y="458">last_four_digits</text>
+<text class="d-col" x="660" y="475">color</text>
+<text class="d-col" x="660" y="492">active</text>
+<rect class="d-box" x="648" y="546" width="244" height="136" rx="8"/>
+<text class="d-title" x="660" y="565">Ajuste de saldo</text>
+<text class="d-table" x="660" y="580">account_adjustments</text>
+<line class="d-div" x1="648" y1="588" x2="892" y2="588"/>
+<text class="d-col" x="660" y="604">id</text>
+<text class="d-col" x="660" y="621">account_id → Conta</text>
+<text class="d-col" x="660" y="638">previous_balance</text>
+<text class="d-col" x="660" y="655">new_balance</text>
+<text class="d-col" x="660" y="672">description</text>
+<rect class="d-box" x="964" y="84" width="244" height="204" rx="8"/>
+<text class="d-title" x="976" y="103">Forma de pagamento</text>
+<text class="d-table" x="976" y="118">payments</text>
+<line class="d-div" x1="964" y1="126" x2="1208" y2="126"/>
+<text class="d-col" x="976" y="142">id</text>
+<text class="d-col" x="976" y="159">account_id → Conta</text>
+<text class="d-col" x="976" y="176">name</text>
+<text class="d-col" x="976" y="193">installment_limit</text>
+<text class="d-col" x="976" y="210">in_sight</text>
+<text class="d-col" x="976" y="227">active</text>
+<text class="d-col" x="976" y="244">active_for_in</text>
+<text class="d-col" x="976" y="261">active_for_out</text>
+<text class="d-col" x="976" y="278">sefaz_tPag</text>
+<rect class="d-box" x="964" y="332" width="244" height="153" rx="8"/>
+<text class="d-title" x="976" y="351">Identificador</text>
+<text class="d-table" x="976" y="366">payment_identifiers</text>
+<line class="d-div" x1="964" y1="374" x2="1208" y2="374"/>
+<text class="d-col" x="976" y="390">id</text>
+<text class="d-col" x="976" y="407">payment_method_id → Forma de pa…</text>
+<text class="d-col" x="976" y="424">name</text>
+<text class="d-col" x="976" y="441">is_correntista_debt</text>
+<text class="d-col" x="976" y="458">is_stock_evasion</text>
+<text class="d-col" x="976" y="475">active</text>
+<rect class="d-box" x="964" y="529" width="244" height="119" rx="8"/>
+<text class="d-title" x="976" y="548">Condição de pagamento</text>
+<text class="d-table" x="976" y="563">payment_conditions</text>
+<line class="d-div" x1="964" y1="571" x2="1208" y2="571"/>
+<text class="d-col" x="976" y="587">id</text>
+<text class="d-col" x="976" y="604">name</text>
+<text class="d-col" x="976" y="621">installments</text>
+<text class="d-col" x="976" y="638">active</text>
+<rect class="d-box" x="1280" y="84" width="244" height="119" rx="8"/>
+<text class="d-title" x="1292" y="103">Maquininha</text>
+<text class="d-table" x="1292" y="118">pos_machines</text>
+<line class="d-div" x1="1280" y1="126" x2="1524" y2="126"/>
+<text class="d-col" x="1292" y="142">id</text>
+<text class="d-col" x="1292" y="159">name</text>
+<text class="d-col" x="1292" y="176">account_id</text>
+<text class="d-col" x="1292" y="193">active</text>
+<rect class="d-box" x="1280" y="247" width="244" height="170" rx="8"/>
+<text class="d-title" x="1292" y="266">Taxa da maquininha</text>
+<text class="d-table" x="1292" y="281">pos_machine_rates</text>
+<line class="d-div" x1="1280" y1="289" x2="1524" y2="289"/>
+<text class="d-col" x="1292" y="305">id</text>
+<text class="d-col" x="1292" y="322">pos_machine_id → Maquininha</text>
+<text class="d-col" x="1292" y="339">payment_category</text>
+<text class="d-col" x="1292" y="356">installments</text>
+<text class="d-col" x="1292" y="373">tax_percentage</text>
+<text class="d-col" x="1292" y="390">advance_tax_percentage</text>
+<text class="d-col" x="1292" y="407">settlement_days</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 908 526" role="img" aria-label="Tabelas do módulo Financeiro (No PDV (banco local)): Banco (PDV), Forma de pagamento (PDV), Condição (PDV), Identificador (PDV), Maquininha (PDV), Taxa da maquininha (PDV)" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="financeiro-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="financeiro-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="financeiro-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,298.0 138.0,254.0" marker-end="url(#financeiro-pdv-d2-ah)"/>
+<polyline class="d-edge" points="770.0,247.0 770.0,203.0" marker-end="url(#financeiro-pdv-d2-ah)"/>
+<polyline class="d-edge" points="648.0,277.0 592.0,277.0 592.0,42.0 276.0,42.0 276.0,328.0 260.0,328.0" marker-end="url(#financeiro-pdv-d2-ah)"/>
+<rect class="d-box" x="16" y="84" width="244" height="170" rx="8"/>
+<text class="d-title" x="28" y="103">Banco (PDV)</text>
+<text class="d-table" x="28" y="118">bancos · PDV</text>
+<line class="d-div" x1="16" y1="126" x2="260" y2="126"/>
+<text class="d-col" x="28" y="142">id</text>
+<text class="d-col" x="28" y="159">uuid</text>
+<text class="d-col" x="28" y="176">nome</text>
+<text class="d-col" x="28" y="193">codigo_bancario</text>
+<text class="d-col" x="28" y="210">agencia</text>
+<text class="d-col" x="28" y="227">conta</text>
+<text class="d-col" x="28" y="244">ativo</text>
+<rect class="d-box" x="16" y="298" width="244" height="204" rx="8"/>
+<text class="d-title" x="28" y="317">Forma de pagamento (PDV)</text>
+<text class="d-table" x="28" y="332">formas_pagamento · PDV</text>
+<line class="d-div" x1="16" y1="340" x2="260" y2="340"/>
+<text class="d-col" x="28" y="356">id</text>
+<text class="d-col" x="28" y="373">banco_id → Banco (PDV)</text>
+<text class="d-col" x="28" y="390">uuid</text>
+<text class="d-col" x="28" y="407">nome</text>
+<text class="d-col" x="28" y="424">categoria</text>
+<text class="d-col" x="28" y="441">taxa</text>
+<text class="d-col" x="28" y="458">ativo</text>
+<text class="d-col" x="28" y="475">permite_parcelamento</text>
+<text class="d-col" x="28" y="492">sefaz_tpag</text>
+<rect class="d-box" x="332" y="84" width="244" height="136" rx="8"/>
+<text class="d-title" x="344" y="103">Condição (PDV)</text>
+<text class="d-table" x="344" y="118">condicoes_pagamento · PDV</text>
+<line class="d-div" x1="332" y1="126" x2="576" y2="126"/>
+<text class="d-col" x="344" y="142">id</text>
+<text class="d-col" x="344" y="159">uuid</text>
+<text class="d-col" x="344" y="176">nome</text>
+<text class="d-col" x="344" y="193">qtd_parcelas</text>
+<text class="d-col" x="344" y="210">ativo</text>
+<rect class="d-box" x="332" y="264" width="244" height="136" rx="8"/>
+<text class="d-title" x="344" y="283">Identificador (PDV)</text>
+<text class="d-table" x="344" y="298">identificadores · PDV</text>
+<line class="d-div" x1="332" y1="306" x2="576" y2="306"/>
+<text class="d-col" x="344" y="322">id</text>
+<text class="d-col" x="344" y="339">uuid</text>
+<text class="d-col" x="344" y="356">tipo</text>
+<text class="d-col" x="344" y="373">nome</text>
+<text class="d-col" x="344" y="390">ativo</text>
+<rect class="d-box" x="648" y="84" width="244" height="119" rx="8"/>
+<text class="d-title" x="660" y="103">Maquininha (PDV)</text>
+<text class="d-table" x="660" y="118">maquininhas · PDV</text>
+<line class="d-div" x1="648" y1="126" x2="892" y2="126"/>
+<text class="d-col" x="660" y="142">id</text>
+<text class="d-col" x="660" y="159">uuid</text>
+<text class="d-col" x="660" y="176">nome</text>
+<text class="d-col" x="660" y="193">ativo</text>
+<rect class="d-box" x="648" y="247" width="244" height="153" rx="8"/>
+<text class="d-title" x="660" y="266">Taxa da maquininha (PDV)</text>
+<text class="d-table" x="660" y="281">maquininha_taxas · PDV</text>
+<line class="d-div" x1="648" y1="289" x2="892" y2="289"/>
+<text class="d-col" x="660" y="305">id</text>
+<text class="d-col" x="660" y="322">maquininha_id → Maquininha (PDV)</text>
+<text class="d-col" x="660" y="339">forma_pagamento_id → Forma de p…</text>
+<text class="d-col" x="660" y="356">uuid</text>
+<text class="d-col" x="660" y="373">parcelas</text>
+<text class="d-col" x="660" y="390">taxa_percentual</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+<figcaption>O PDV baixa estas tabelas da nuvem a cada ciclo (configuração financeira).</figcaption>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Lançamento financeiro</h4><span class="mono">transactions · nuvem · 23 colunas</span></div><dl><dt>O que é</dt><dd>Receita ou despesa, com vencimento, conta, setor, fornecedor, parcelamento e, quando vem da conferência, o caixa de origem.</dd><dt>Quem grava</dt><dd>Web (financeiro), conferência de caixa, ordens de serviço, faturas do cartão.</dd></dl></article><article class="card"><div class="card-head"><h4>Conta</h4><span class="mono">accounts · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Conta bancária ou de caixa (inclusive o Caixa Central, que recebe o dinheiro conferido).</dd></dl></article><article class="card"><div class="card-head"><h4>Cartão de crédito</h4><span class="mono">credit_cards · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Cartão da empresa, com limite, fechamento e vencimento da fatura.</dd></dl></article><article class="card"><div class="card-head"><h4>Ajuste de saldo</h4><span class="mono">account_adjustments · nuvem · 6 colunas</span></div><dl><dt>O que é</dt><dd>Correção manual do saldo de uma conta.</dd></dl></article><article class="card"><div class="card-head"><h4>Parcelamento / recorrência</h4><span class="mono">transaction_groups · nuvem · 6 colunas</span></div><dl><dt>O que é</dt><dd>Agrupa os lançamentos de uma compra parcelada ou recorrente (quantidade de parcelas e frequência).</dd></dl></article><article class="card"><div class="card-head"><h4>Transferência</h4><span class="mono">transfer_transactions · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Liga o lançamento de saída e o de entrada de uma transferência entre contas.</dd></dl></article><article class="card"><div class="card-head"><h4>Setor (centro de custo)</h4><span class="mono">sectors · nuvem · 6 colunas</span></div><dl><dt>O que é</dt><dd>Classificação de despesas e receitas.</dd></dl></article><article class="card"><div class="card-head"><h4>Forma de pagamento</h4><span class="mono">payments · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>Dinheiro, Pix, cartões, a prazo…, com limite de parcelas e conta de destino.</dd></dl><p class="mirror">Espelho: Forma de pagamento (PDV) <span class="mono">formas_pagamento</span></p></article><article class="card"><div class="card-head"><h4>Parcela</h4><span class="mono">installment_payments · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Liga a forma de pagamento ao lançamento de cada parcela.</dd></dl></article><article class="card"><div class="card-head"><h4>Identificador</h4><span class="mono">payment_identifiers · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Subtipo de uma forma de pagamento; pode marcar dívida de correntista ou evasão de estoque.</dd></dl><p class="mirror">Espelho: Identificador (PDV) <span class="mono">identificadores</span></p></article><article class="card"><div class="card-head"><h4>Condição de pagamento</h4><span class="mono">payment_conditions · nuvem · 6 colunas</span></div><dl><dt>O que é</dt><dd>Número de parcelas aceito.</dd></dl><p class="mirror">Espelho: Condição (PDV) <span class="mono">condicoes_pagamento</span></p></article><article class="card"><div class="card-head"><h4>Maquininha</h4><span class="mono">pos_machines · nuvem · 6 colunas</span></div><dl><dt>O que é</dt><dd>Maquininha de cartão.</dd></dl><p class="mirror">Espelho: Maquininha (PDV) <span class="mono">maquininhas</span></p></article><article class="card"><div class="card-head"><h4>Taxa da maquininha</h4><span class="mono">pos_machine_rates · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Taxa e prazo de recebimento por forma e parcelas.</dd></dl><p class="mirror">Espelho: Taxa da maquininha (PDV) <span class="mono">maquininha_taxas</span></p></article><article class="card"><div class="card-head"><h4>Banco (PDV)</h4><span class="mono">bancos · PDV · 7 colunas</span></div><dl><dt>O que é</dt><dd>Conta de destino da forma de pagamento no PDV.</dd></dl></article><article class="card"><div class="card-head"><h4>Forma de pagamento (PDV)</h4><span class="mono">formas_pagamento · PDV · 9 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local, com a categoria que decide o troco (só Dinheiro dá troco).</dd></dl><p class="mirror">Espelho: Forma de pagamento <span class="mono">payments</span></p></article><article class="card"><div class="card-head"><h4>Condição (PDV)</h4><span class="mono">condicoes_pagamento · PDV · 5 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local.</dd></dl><p class="mirror">Espelho: Condição de pagamento <span class="mono">payment_conditions</span></p></article><article class="card"><div class="card-head"><h4>Identificador (PDV)</h4><span class="mono">identificadores · PDV · 5 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local.</dd></dl><p class="mirror">Espelho: Identificador <span class="mono">payment_identifiers</span></p></article><article class="card"><div class="card-head"><h4>Maquininha (PDV)</h4><span class="mono">maquininhas · PDV · 4 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local.</dd></dl><p class="mirror">Espelho: Maquininha <span class="mono">pos_machines</span></p></article><article class="card"><div class="card-head"><h4>Taxa da maquininha (PDV)</h4><span class="mono">maquininha_taxas · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local.</dd></dl><p class="mirror">Espelho: Taxa da maquininha <span class="mono">pos_machine_rates</span></p></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Forma de pagamento (PDV) (formas_pagamento)</td><td>Forma de pagamento (payments)</td><td>Baixado a cada ciclo.</td></tr><tr><td>Condição (PDV) (condicoes_pagamento)</td><td>Condição de pagamento (payment_conditions)</td><td>Baixado a cada ciclo.</td></tr><tr><td>Identificador (PDV) (identificadores)</td><td>Identificador (payment_identifiers)</td><td>Baixado a cada ciclo.</td></tr><tr><td>Maquininha (PDV) (maquininhas)</td><td>Maquininha (pos_machines)</td><td>Baixado a cada ciclo.</td></tr><tr><td>Taxa da maquininha (PDV) (maquininha_taxas)</td><td>Taxa da maquininha (pos_machine_rates)</td><td>Baixado a cada ciclo.</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>Lançamento financeiro <span class=mono>cashier_session_id</span> → Caixa <span class=muted>(Caixa e vendas)</span></li><li>Lançamento financeiro <span class=mono>supplier_id</span> → Fornecedor <span class=muted>(Estoque e compras)</span></li><li>Lançamento financeiro <span class=mono>treatment_id</span> → Ordem de serviço <span class=muted>(Ordens de serviço)</span></li></ul></div>
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Evasão de estoque (PDV) <span class=muted>(Estoque e compras)</span> <span class=mono>identificador_id</span> → Identificador (PDV)</li><li>Lançamento de folha <span class=muted>(RH e ponto)</span> <span class=mono>transaction_id</span> → Lançamento financeiro</li><li>O.S. × lançamento <span class=muted>(Ordens de serviço)</span> <span class=mono>transaction_id</span> → Lançamento financeiro</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>condicao_pagamento_id</span> → Condição (PDV)</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>forma_pagamento_id</span> → Forma de pagamento (PDV)</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>identificador_id</span> → Identificador (PDV)</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>maquininha_id</span> → Maquininha (PDV)</li><li>Pagamento da O.S. <span class=muted>(Ordens de serviço)</span> <span class=mono>payment_id</span> → Forma de pagamento</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>A maquininha usada na venda do PDV não chega ao lançamento do caixa (sem taxa e sem banco na conferência).</li></ul>
+</section>
+<section class="modulo" id="clientes">
+<div class="mod-head"><p class="eyebrow">Módulo · 3 na nuvem · 2 no PDV</p><h2>Clientes</h2>
+<p class="prose">Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 592 547" role="img" aria-label="Tabelas do módulo Clientes (Na nuvem (metrics-node)): Grupo de clientes, Cliente, Endereço" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="clientes-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="clientes-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="clientes-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="332.0,122.0 260.0,122.0" marker-end="url(#clientes-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,302.0 454.0,258.0" marker-end="url(#clientes-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="136" rx="8"/>
+<text class="d-title" x="28" y="73">Grupo de clientes</text>
+<text class="d-table" x="28" y="88">client_groups</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">name</text>
+<text class="d-col" x="28" y="146">description</text>
+<text class="d-col" x="28" y="163">headscale_user</text>
+<text class="d-col" x="28" y="180">vpn_preauth_key</text>
+<rect class="d-box" x="332" y="54" width="244" height="204" rx="8"/>
+<text class="d-title" x="344" y="73">Cliente</text>
+<text class="d-table" x="344" y="88">clients</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">group_id → Grupo de clientes</text>
+<text class="d-col" x="344" y="146">name</text>
+<text class="d-col" x="344" y="163">identification</text>
+<text class="d-col" x="344" y="180">phone</text>
+<text class="d-col" x="344" y="197">email</text>
+<text class="d-col" x="344" y="214">contract</text>
+<text class="d-col" x="344" y="231">contact</text>
+<text class="d-col" x="344" y="248">isEnterprise</text>
+<rect class="d-box" x="332" y="302" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="321">Endereço</text>
+<text class="d-table" x="344" y="336">addresses</text>
+<line class="d-div" x1="332" y1="344" x2="576" y2="344"/>
+<text class="d-col" x="344" y="360">id</text>
+<text class="d-col" x="344" y="377">client_id → Cliente</text>
+<text class="d-col" x="344" y="394">street</text>
+<text class="d-col" x="344" y="411">number</text>
+<text class="d-col" x="344" y="428">neighborhood</text>
+<text class="d-col" x="344" y="445">city</text>
+<text class="d-col" x="344" y="462">state</text>
+<text class="d-col" x="344" y="479">zipcode</text>
+<text class="d-col" x="344" y="496">complement</text>
+<text class="d-col" x="344" y="513">is_main</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 276 564" role="img" aria-label="Tabelas do módulo Clientes (No PDV (banco local)): Cliente (PDV), Endereço (PDV)" style="min-width:276px;max-width:276px">
+<defs>
+<marker id="clientes-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="clientes-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="clientes-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,275.0 138.0,319.0" marker-end="url(#clientes-pdv-d2-ah)"/>
+<polyline class="d-edge" points="164.0,319.0 164.0,275.0" marker-end="url(#clientes-pdv-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Cliente (PDV)</text>
+<text class="d-table" x="28" y="88">clientes · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">endereco_principal_id → Endereç…</text>
+<text class="d-col" x="28" y="146">uuid</text>
+<text class="d-col" x="28" y="163">telefone</text>
+<text class="d-col" x="28" y="180">nome</text>
+<text class="d-col" x="28" y="197">data_cadastro</text>
+<text class="d-col" x="28" y="214">cpf_cnpj</text>
+<text class="d-col" x="28" y="231">email</text>
+<text class="d-col" x="28" y="248">sincronizado_web</text>
+<text class="d-more" x="28" y="265">… mais 2 coluna(s)</text>
+<rect class="d-box" x="16" y="319" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="338">Endereço (PDV)</text>
+<text class="d-table" x="28" y="353">enderecos_cliente · PDV</text>
+<line class="d-div" x1="16" y1="361" x2="260" y2="361"/>
+<text class="d-col" x="28" y="377">id</text>
+<text class="d-col" x="28" y="394">cliente_id → Cliente (PDV)</text>
+<text class="d-col" x="28" y="411">uuid</text>
+<text class="d-col" x="28" y="428">logradouro</text>
+<text class="d-col" x="28" y="445">numero</text>
+<text class="d-col" x="28" y="462">bairro</text>
+<text class="d-col" x="28" y="479">complemento</text>
+<text class="d-col" x="28" y="496">cidade</text>
+<text class="d-col" x="28" y="513">estado</text>
+<text class="d-more" x="28" y="530">… mais 3 coluna(s)</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Cliente</h4><span class="mono">clients · nuvem · 11 colunas</span></div><dl><dt>O que é</dt><dd>Cadastro do cliente (nome, telefone, documento, e-mail).</dd></dl><p class="mirror">Espelho: Cliente (PDV) <span class="mono">clientes</span></p></article><article class="card"><div class="card-head"><h4>Endereço</h4><span class="mono">addresses · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Endereços do cliente, com o principal marcado.</dd></dl><p class="mirror">Espelho: Endereço (PDV) <span class="mono">enderecos_cliente</span></p></article><article class="card"><div class="card-head"><h4>Grupo de clientes</h4><span class="mono">client_groups · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Agrupamento de clientes com usuário e chave de VPN (Headscale).</dd></dl><div class=chips><span class="chip warn">A confirmar: parece do suporte remoto (Windy), não do restaurante.</span></div></article><article class="card"><div class="card-head"><h4>Cliente (PDV)</h4><span class="mono">clientes · PDV · 11 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local, mais o saldo devedor do fiado e o limite de crédito. Cliente cadastrado no PDV sobe para a nuvem (voltou a subir no 2.4.19.0).</dd></dl><p class="mirror">Espelho: Cliente <span class="mono">clients</span></p></article><article class="card"><div class="card-head"><h4>Endereço (PDV)</h4><span class="mono">enderecos_cliente · PDV · 12 colunas</span></div><dl><dt>O que é</dt><dd>Endereços do cliente no PDV.</dd></dl><p class="mirror">Espelho: Endereço <span class="mono">addresses</span></p></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Cliente (PDV) (clientes)</td><td>Cliente (clients)</td><td>Mesmo código; sobe e desce a cada ciclo (o download sobrescreve o saldo devedor local).</td></tr><tr><td>Endereço (PDV) (enderecos_cliente)</td><td>Endereço (addresses)</td><td>Sobe junto com o cliente (só o principal).</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Equipamento <span class=muted>(Ordens de serviço)</span> <span class=mono>client_id</span> → Cliente</li><li>Fiado <span class=muted>(Caixa e vendas)</span> <span class=mono>client_id</span> → Cliente</li><li>Lançamento do caixa <span class=muted>(Caixa e vendas)</span> <span class=mono>client_id</span> → Cliente</li><li>Ordem de serviço <span class=muted>(Ordens de serviço)</span> <span class=mono>client_id</span> → Cliente</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>cliente_id</span> → Cliente (PDV)</li><li>Pedido (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>cliente_id</span> → Cliente (PDV)</li><li>Pedido (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>endereco_entrega_id</span> → Endereço (PDV)</li></ul></div>
+</div>
+</section>
+<section class="modulo" id="servicos">
+<div class="mod-head"><p class="eyebrow">Módulo · 7 na nuvem</p><h2>Ordens de serviço</h2>
+<p class="prose">Atendimento técnico: a ordem de serviço de um equipamento do cliente, os itens e serviços usados, o andamento e o pagamento.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 908 625" role="img" aria-label="Tabelas do módulo Ordens de serviço (Na nuvem (metrics-node)): Item da O.S., Serviço, Ordem de serviço, Pagamento da O.S., Equipamento, Andamento, O.S. × lançamento" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="servicos-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="servicos-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="servicos-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="138.0,275.0 138.0,319.0" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="260.0,164.5 332.0,164.5" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,164.5 648.0,164.5" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,319.0 454.0,275.0" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="648.0,349.0 592.0,349.0 592.0,84.0 576.0,84.0" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="648.0,529.0 602.0,529.0 602.0,99.0 576.0,99.0" marker-end="url(#servicos-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Item da O.S.</text>
+<text class="d-table" x="28" y="88">treatment_items</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">treatment_id → Ordem de serviço</text>
+<text class="d-col" x="28" y="146">stock_id → Movimento de estoque</text>
+<text class="d-col" x="28" y="163">product_id → Produto</text>
+<text class="d-col" x="28" y="180">service_id → Serviço</text>
+<text class="d-col" x="28" y="197">supply_id → Insumo</text>
+<text class="d-col" x="28" y="214">quantity</text>
+<text class="d-col" x="28" y="231">salesValue</text>
+<text class="d-col" x="28" y="248">discount</text>
+<text class="d-col" x="28" y="265">observations</text>
+<rect class="d-box" x="16" y="319" width="244" height="187" rx="8"/>
+<text class="d-title" x="28" y="338">Serviço</text>
+<text class="d-table" x="28" y="353">services</text>
+<line class="d-div" x1="16" y1="361" x2="260" y2="361"/>
+<text class="d-col" x="28" y="377">id</text>
+<text class="d-col" x="28" y="394">display_id</text>
+<text class="d-col" x="28" y="411">price</text>
+<text class="d-col" x="28" y="428">estimated_time</text>
+<text class="d-col" x="28" y="445">active</text>
+<text class="d-col" x="28" y="462">category</text>
+<text class="d-col" x="28" y="479">description</text>
+<text class="d-col" x="28" y="496">name</text>
+<rect class="d-box" x="332" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="73">Ordem de serviço</text>
+<text class="d-table" x="344" y="88">treatments</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">user_id → Usuário</text>
+<text class="d-col" x="344" y="146">client_id → Cliente</text>
+<text class="d-col" x="344" y="163">equipment_id → Equipamento</text>
+<text class="d-col" x="344" y="180">opening_date</text>
+<text class="d-col" x="344" y="197">ending_date</text>
+<text class="d-col" x="344" y="214">contact</text>
+<text class="d-col" x="344" y="231">request</text>
+<text class="d-col" x="344" y="248">status</text>
+<text class="d-col" x="344" y="265">observations</text>
+<rect class="d-box" x="332" y="319" width="244" height="136" rx="8"/>
+<text class="d-title" x="344" y="338">Pagamento da O.S.</text>
+<text class="d-table" x="344" y="353">payment_entries</text>
+<line class="d-div" x1="332" y1="361" x2="576" y2="361"/>
+<text class="d-col" x="344" y="377">id</text>
+<text class="d-col" x="344" y="394">payment_id → Forma de pagamento</text>
+<text class="d-col" x="344" y="411">treatment_id → Ordem de serviço</text>
+<text class="d-col" x="344" y="428">occurrences</text>
+<text class="d-col" x="344" y="445">amount</text>
+<rect class="d-box" x="648" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="660" y="73">Equipamento</text>
+<text class="d-table" x="660" y="88">equipments</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">client_id → Cliente</text>
+<text class="d-col" x="660" y="146">type</text>
+<text class="d-col" x="660" y="163">brand</text>
+<text class="d-col" x="660" y="180">identification</text>
+<text class="d-col" x="660" y="197">details</text>
+<text class="d-col" x="660" y="214">entry</text>
+<text class="d-col" x="660" y="231">last_telemetry</text>
+<text class="d-col" x="660" y="248">is_online</text>
+<text class="d-col" x="660" y="265">last_seen_at</text>
+<rect class="d-box" x="648" y="319" width="244" height="136" rx="8"/>
+<text class="d-title" x="660" y="338">Andamento</text>
+<text class="d-table" x="660" y="353">interactions</text>
+<line class="d-div" x1="648" y1="361" x2="892" y2="361"/>
+<text class="d-col" x="660" y="377">id</text>
+<text class="d-col" x="660" y="394">user_id → Usuário</text>
+<text class="d-col" x="660" y="411">treatment_id → Ordem de serviço</text>
+<text class="d-col" x="660" y="428">date</text>
+<text class="d-col" x="660" y="445">description</text>
+<rect class="d-box" x="648" y="499" width="244" height="102" rx="8"/>
+<text class="d-title" x="660" y="518">O.S. × lançamento</text>
+<text class="d-table" x="660" y="533">treatment_transactions</text>
+<line class="d-div" x1="648" y1="541" x2="892" y2="541"/>
+<text class="d-col" x="660" y="557">id</text>
+<text class="d-col" x="660" y="574">treatment_id → Ordem de serviço</text>
+<text class="d-col" x="660" y="591">transaction_id → Lançamento fin…</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Ordem de serviço</h4><span class="mono">treatments · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Atendimento técnico de um cliente, ligado a um equipamento e a um responsável.</dd></dl></article><article class="card"><div class="card-head"><h4>Item da O.S.</h4><span class="mono">treatment_items · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Produto, insumo ou serviço usado na ordem de serviço (baixa estoque).</dd></dl></article><article class="card"><div class="card-head"><h4>Serviço</h4><span class="mono">services · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Serviço cobrado (mão de obra).</dd></dl></article><article class="card"><div class="card-head"><h4>Equipamento</h4><span class="mono">equipments · nuvem · 12 colunas</span></div><dl><dt>O que é</dt><dd>Equipamento do cliente atendido.</dd></dl></article><article class="card"><div class="card-head"><h4>Andamento</h4><span class="mono">interactions · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Registro do andamento da ordem de serviço, por usuário.</dd></dl></article><article class="card"><div class="card-head"><h4>O.S. × lançamento</h4><span class="mono">treatment_transactions · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Liga a ordem de serviço aos lançamentos financeiros que ela gerou.</dd></dl></article><article class="card"><div class="card-head"><h4>Pagamento da O.S.</h4><span class="mono">payment_entries · nuvem · 5 colunas</span></div><dl><dt>O que é</dt><dd>Forma de pagamento, parcelas e valor pagos na ordem de serviço.</dd></dl></article></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>Andamento <span class=mono>user_id</span> → Usuário <span class=muted>(Empresa, usuários e configuração)</span></li><li>Equipamento <span class=mono>client_id</span> → Cliente <span class=muted>(Clientes)</span></li><li>Item da O.S. <span class=mono>product_id</span> → Produto <span class=muted>(Cardápio e produtos)</span></li><li>Item da O.S. <span class=mono>stock_id</span> → Movimento de estoque <span class=muted>(Estoque e compras)</span></li><li>Item da O.S. <span class=mono>supply_id</span> → Insumo <span class=muted>(Estoque e compras)</span></li><li>O.S. × lançamento <span class=mono>transaction_id</span> → Lançamento financeiro <span class=muted>(Financeiro)</span></li><li>Ordem de serviço <span class=mono>client_id</span> → Cliente <span class=muted>(Clientes)</span></li><li>Ordem de serviço <span class=mono>user_id</span> → Usuário <span class=muted>(Empresa, usuários e configuração)</span></li><li>Pagamento da O.S. <span class=mono>payment_id</span> → Forma de pagamento <span class=muted>(Financeiro)</span></li></ul></div>
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Ficha técnica <span class=muted>(Estoque e compras)</span> <span class=mono>service_id</span> → Serviço</li><li>Item vendido <span class=muted>(Caixa e vendas)</span> <span class=mono>service_id</span> → Serviço</li><li>Lançamento financeiro <span class=muted>(Financeiro)</span> <span class=mono>treatment_id</span> → Ordem de serviço</li><li>Venda <span class=muted>(Caixa e vendas)</span> <span class=mono>treatment_id</span> → Ordem de serviço</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Descrições tiradas dos nomes e das ligações: confirmar com quem usa o módulo.</li></ul>
+</section>
+<section class="modulo" id="rh">
+<div class="mod-head"><p class="eyebrow">Módulo · 6 na nuvem</p><h2>RH e ponto</h2>
+<p class="prose">Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 908 530" role="img" aria-label="Tabelas do módulo RH e ponto (Na nuvem (metrics-node)): Batida de ponto, Pontuação do funcionário, Funcionário, Lançamento de folha, Regras de hora extra, Feriado" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="rh-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="rh-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="rh-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="260.0,164.5 332.0,164.5" marker-end="url(#rh-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="260.0,349.0 276.0,349.0 276.0,84.0 332.0,84.0" marker-end="url(#rh-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="454.0,319.0 454.0,275.0" marker-end="url(#rh-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Batida de ponto</text>
+<text class="d-table" x="28" y="88">time_clocks</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">employee_id → Funcionário</text>
+<text class="d-col" x="28" y="146">date</text>
+<text class="d-col" x="28" y="163">clockIn</text>
+<text class="d-col" x="28" y="180">breakStart</text>
+<text class="d-col" x="28" y="197">breakEnd</text>
+<text class="d-col" x="28" y="214">clockOut</text>
+<text class="d-col" x="28" y="231">isExtraDay</text>
+<text class="d-col" x="28" y="248">negotiatedValue</text>
+<text class="d-more" x="28" y="265">… mais 6 coluna(s)</text>
+<rect class="d-box" x="16" y="319" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="338">Pontuação do funcionário</text>
+<text class="d-table" x="28" y="353">employee_point_snapshots</text>
+<line class="d-div" x1="16" y1="361" x2="260" y2="361"/>
+<text class="d-col" x="28" y="377">id</text>
+<text class="d-col" x="28" y="394">employee_id → Funcionário</text>
+<text class="d-col" x="28" y="411">snapshotDate</text>
+<text class="d-col" x="28" y="428">points</text>
+<text class="d-col" x="28" y="445">pointValue</text>
+<text class="d-col" x="28" y="462">totalAmount</text>
+<rect class="d-box" x="332" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="344" y="73">Funcionário</text>
+<text class="d-table" x="344" y="88">employees</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">name</text>
+<text class="d-col" x="344" y="146">role</text>
+<text class="d-col" x="344" y="163">user_id → Usuário</text>
+<text class="d-col" x="344" y="180">isRegistered</text>
+<text class="d-col" x="344" y="197">salary</text>
+<text class="d-col" x="344" y="214">pin</text>
+<text class="d-col" x="344" y="231">allow_term_sales</text>
+<text class="d-col" x="344" y="248">term_credit_limit</text>
+<text class="d-more" x="344" y="265">… mais 10 coluna(s)</text>
+<rect class="d-box" x="332" y="319" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="338">Lançamento de folha</text>
+<text class="d-table" x="344" y="353">payroll_entries</text>
+<line class="d-div" x1="332" y1="361" x2="576" y2="361"/>
+<text class="d-col" x="344" y="377">id</text>
+<text class="d-col" x="344" y="394">employee_id → Funcionário</text>
+<text class="d-col" x="344" y="411">transaction_id → Lançamento fin…</text>
+<text class="d-col" x="344" y="428">description</text>
+<text class="d-col" x="344" y="445">amount</text>
+<text class="d-col" x="344" y="462">type</text>
+<text class="d-col" x="344" y="479">referenceDate</text>
+<text class="d-col" x="344" y="496">status</text>
+<rect class="d-box" x="648" y="54" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="73">Regras de hora extra</text>
+<text class="d-table" x="660" y="88">hr_rule_histories</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">valid_from</text>
+<text class="d-col" x="660" y="146">he_divisor</text>
+<text class="d-col" x="660" y="163">he_multiplier_standard</text>
+<text class="d-col" x="660" y="180">he_multiplier_special</text>
+<text class="d-col" x="660" y="197">daily_workload_minutes</text>
+<text class="d-col" x="660" y="214">tolerance_minutes</text>
+<rect class="d-box" x="648" y="268" width="244" height="119" rx="8"/>
+<text class="d-title" x="660" y="287">Feriado</text>
+<text class="d-table" x="660" y="302">holidays</text>
+<line class="d-div" x1="648" y1="310" x2="892" y2="310"/>
+<text class="d-col" x="660" y="326">id</text>
+<text class="d-col" x="660" y="343">date</text>
+<text class="d-col" x="660" y="360">name</text>
+<text class="d-col" x="660" y="377">type</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Funcionário</h4><span class="mono">employees · nuvem · 19 colunas</span></div><dl><dt>O que é</dt><dd>Funcionário do RH, com salário, forma de registro, PIN do ponto e limite de compra a prazo. Pode estar ligado a um usuário do sistema.</dd></dl></article><article class="card"><div class="card-head"><h4>Batida de ponto</h4><span class="mono">time_clocks · nuvem · 17 colunas</span></div><dl><dt>O que é</dt><dd>Entrada, intervalo e saída de um dia de trabalho. O dia é o de competência: batida antes das 07:00 conta para o dia anterior.</dd><dt>Quem grava</dt><dd>App Metrics.Ponto (online e sincronização offline) e ajustes do administrador.</dd><dt>Cresce</dt><dd>Uma linha por funcionário por dia.</dd></dl></article><article class="card"><div class="card-head"><h4>Pontuação do funcionário</h4><span class="mono">employee_point_snapshots · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Foto da pontuação e do valor do ponto em uma data.</dd></dl></article><article class="card"><div class="card-head"><h4>Lançamento de folha</h4><span class="mono">payroll_entries · nuvem · 10 colunas</span></div><dl><dt>O que é</dt><dd>Vale, salário, benefício, consumo e outros lançamentos da folha do funcionário.</dd><dt>Quem grava</dt><dd>Web (RH), conferência de caixa (vales) e sincronia de vendas do PDV (consumo de funcionário).</dd></dl></article><article class="card"><div class="card-head"><h4>Regras de hora extra</h4><span class="mono">hr_rule_histories · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Divisor, multiplicadores e jornada diária, com data de início de vigência.</dd></dl></article><article class="card"><div class="card-head"><h4>Feriado</h4><span class="mono">holidays · nuvem · 5 colunas</span></div><dl><dt>O que é</dt><dd>Feriados usados no cálculo de horas.</dd></dl></article></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Este módulo aponta para</p><ul class="plain"><li>Funcionário <span class=mono>user_id</span> → Usuário <span class=muted>(Empresa, usuários e configuração)</span></li><li>Lançamento de folha <span class=mono>transaction_id</span> → Lançamento financeiro <span class=muted>(Financeiro)</span></li></ul></div>
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Lançamento do caixa <span class=muted>(Caixa e vendas)</span> <span class=mono>employee_id</span> → Funcionário</li></ul></div>
+</div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4).</li></ul>
+</section>
+<section class="modulo" id="fiscal">
+<div class="mod-head"><p class="eyebrow">Módulo · 3 no PDV</p><h2>Fiscal (NFC-e)</h2>
+<p class="prose">A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numeração e a tabela do IBPT (valor aproximado dos tributos) ficam no banco local. Os dados fiscais do produto (NCM, CFOP, CSOSN) ficam no cardápio.</p>
+</div>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 908 299" role="img" aria-label="Tabelas do módulo Fiscal (NFC-e) (No PDV (banco local)): XML da NFC-e, Inutilização, Tabela do IBPT" style="min-width:908px;max-width:908px">
+<defs>
+<marker id="fiscal-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="fiscal-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="fiscal-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<rect class="d-box" x="16" y="54" width="244" height="170" rx="8"/>
+<text class="d-title" x="28" y="73">XML da NFC-e</text>
+<text class="d-table" x="28" y="88">nfce_documentos · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">pedido_id</text>
+<text class="d-col" x="28" y="146">chave</text>
+<text class="d-col" x="28" y="163">tipo</text>
+<text class="d-col" x="28" y="180">ambiente</text>
+<text class="d-col" x="28" y="197">xml</text>
+<text class="d-col" x="28" y="214">criado_em</text>
+<rect class="d-box" x="332" y="54" width="244" height="187" rx="8"/>
+<text class="d-title" x="344" y="73">Inutilização</text>
+<text class="d-table" x="344" y="88">nfce_inutilizacoes · PDV</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">ambiente</text>
+<text class="d-col" x="344" y="146">serie</text>
+<text class="d-col" x="344" y="163">numero_inicial</text>
+<text class="d-col" x="344" y="180">numero_final</text>
+<text class="d-col" x="344" y="197">justificativa</text>
+<text class="d-col" x="344" y="214">protocolo</text>
+<text class="d-col" x="344" y="231">criado_em</text>
+<rect class="d-box" x="648" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="660" y="73">Tabela do IBPT</text>
+<text class="d-table" x="660" y="88">ibpt_tabela · PDV</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">ncm</text>
+<text class="d-col" x="660" y="146">ex</text>
+<text class="d-col" x="660" y="163">tipo</text>
+<text class="d-col" x="660" y="180">descricao</text>
+<text class="d-col" x="660" y="197">nacional_federal</text>
+<text class="d-col" x="660" y="214">importado_federal</text>
+<text class="d-col" x="660" y="231">estadual</text>
+<text class="d-col" x="660" y="248">municipal</text>
+<text class="d-more" x="660" y="265">… mais 4 coluna(s)</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>XML da NFC-e</h4><span class="mono">nfce_documentos · PDV · 7 colunas</span></div><dl><dt>O que é</dt><dd>Cópia do XML de cada nota (autorizada, contingência, cancelamento). O arquivo também fica em C:\ProgramData\Metrics.PDV\nfce.</dd><dt>Quem lê</dt><dd>Reimpressão, ZIP para o contador.</dd></dl></article><article class="card"><div class="card-head"><h4>Inutilização</h4><span class="mono">nfce_inutilizacoes · PDV · 8 colunas</span></div><dl><dt>O que é</dt><dd>Faixas de numeração da NFC-e inutilizadas na SEFAZ.</dd></dl></article><article class="card"><div class="card-head"><h4>Tabela do IBPT</h4><span class="mono">ibpt_tabela · PDV · 13 colunas</span></div><dl><dt>O que é</dt><dd>Percentual aproximado de tributos por NCM, importado do CSV oficial do IBPT (um por estado). Cada importação troca a tabela inteira.</dd><dt>Cresce</dt><dd>Milhares de linhas, substituídas a cada importação.</dd></dl></article></div>
+<h3>Pendências e decisões</h3><ul class="plain"><li>A nota não sobe para a nuvem: a venda da nuvem não guarda chave nem número da NFC-e.</li></ul>
+</section>
+<section class="modulo" id="empresa">
+<div class="mod-head"><p class="eyebrow">Módulo · 6 na nuvem · 2 no PDV</p><h2>Empresa, usuários e configuração</h2>
+<p class="prose">Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.</p>
+</div>
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1540 360" role="img" aria-label="Tabelas do módulo Empresa, usuários e configuração (Na nuvem (metrics-node)): Módulo liberado, Usuário × módulo, Usuário, Perfil da empresa, Horário de funcionamento, Configuração do sistema" style="min-width:1100px;max-width:1540px">
+<defs>
+<marker id="empresa-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="empresa-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="empresa-nuvem-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<polyline class="d-edge" points="332.0,105.0 260.0,105.0" marker-end="url(#empresa-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="576.0,105.0 648.0,105.0" marker-end="url(#empresa-nuvem-d2-ah)"/>
+<polyline class="d-edge" points="1086.0,183.0 1086.0,139.0" marker-end="url(#empresa-nuvem-d2-ah)"/>
+<rect class="d-box" x="16" y="54" width="244" height="119" rx="8"/>
+<text class="d-title" x="28" y="73">Módulo liberado</text>
+<text class="d-table" x="28" y="88">modules</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">name</text>
+<text class="d-col" x="28" y="146">slug</text>
+<text class="d-col" x="28" y="163">description</text>
+<rect class="d-box" x="332" y="54" width="244" height="102" rx="8"/>
+<text class="d-title" x="344" y="73">Usuário × módulo</text>
+<text class="d-table" x="344" y="88">user_modules</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">user_id → Usuário</text>
+<text class="d-col" x="344" y="146">module_id → Módulo liberado</text>
+<rect class="d-box" x="648" y="54" width="244" height="170" rx="8"/>
+<text class="d-title" x="660" y="73">Usuário</text>
+<text class="d-table" x="660" y="88">users</text>
+<line class="d-div" x1="648" y1="96" x2="892" y2="96"/>
+<text class="d-col" x="660" y="112">id</text>
+<text class="d-col" x="660" y="129">name</text>
+<text class="d-col" x="660" y="146">role</text>
+<text class="d-col" x="660" y="163">email</text>
+<text class="d-col" x="660" y="180">password_hash</text>
+<text class="d-col" x="660" y="197">pin_hash</text>
+<text class="d-col" x="660" y="214">introduction</text>
+<rect class="d-box" x="964" y="54" width="244" height="85" rx="8"/>
+<text class="d-title" x="976" y="73">Perfil da empresa</text>
+<text class="d-table" x="976" y="88">company_profiles</text>
+<line class="d-div" x1="964" y1="96" x2="1208" y2="96"/>
+<text class="d-col" x="976" y="112">id</text>
+<text class="d-more" x="976" y="129">… mais 30 coluna(s)</text>
+<rect class="d-box" x="964" y="183" width="244" height="153" rx="8"/>
+<text class="d-title" x="976" y="202">Horário de funcionamento</text>
+<text class="d-table" x="976" y="217">business_hours</text>
+<line class="d-div" x1="964" y1="225" x2="1208" y2="225"/>
+<text class="d-col" x="976" y="241">id</text>
+<text class="d-col" x="976" y="258">company_profile_id → Perfil da …</text>
+<text class="d-col" x="976" y="275">dayOfWeek</text>
+<text class="d-col" x="976" y="292">openTime</text>
+<text class="d-col" x="976" y="309">closeTime</text>
+<text class="d-col" x="976" y="326">isOpen</text>
+<rect class="d-box" x="1280" y="54" width="244" height="187" rx="8"/>
+<text class="d-title" x="1292" y="73">Configuração do sistema</text>
+<text class="d-table" x="1292" y="88">system_configs</text>
+<line class="d-div" x1="1280" y1="96" x2="1524" y2="96"/>
+<text class="d-col" x="1292" y="112">id</text>
+<text class="d-col" x="1292" y="129">cashier_module</text>
+<text class="d-col" x="1292" y="146">blind_cashier_closure</text>
+<text class="d-col" x="1292" y="163">financial_module</text>
+<text class="d-col" x="1292" y="180">hr_module</text>
+<text class="d-col" x="1292" y="197">stock_control_module</text>
+<text class="d-col" x="1292" y="214">auto_nfe_mapping</text>
+<text class="d-more" x="1292" y="231">… mais 9 coluna(s)</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<figure><h3>No PDV (banco local)</h3><div class="canvas"><svg viewBox="0 0 592 231" role="img" aria-label="Tabelas do módulo Empresa, usuários e configuração (No PDV (banco local)): Usuário (PDV), Configuração (PDV)" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="empresa-pdv-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="empresa-pdv-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="empresa-pdv-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<rect class="d-box" x="16" y="54" width="244" height="153" rx="8"/>
+<text class="d-title" x="28" y="73">Usuário (PDV)</text>
+<text class="d-table" x="28" y="88">users · PDV</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">name</text>
+<text class="d-col" x="28" y="146">email</text>
+<text class="d-col" x="28" y="163">password_hash</text>
+<text class="d-col" x="28" y="180">pin_hash</text>
+<text class="d-col" x="28" y="197">role</text>
+<rect class="d-box" x="332" y="54" width="244" height="102" rx="8"/>
+<text class="d-title" x="344" y="73">Configuração (PDV)</text>
+<text class="d-table" x="344" y="88">configuracoes · PDV</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">chave</text>
+<text class="d-col" x="344" y="146">valor</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Usuário</h4><span class="mono">users · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Quem faz login no sistema (web, PDV, app), com papel (ADMIN…).</dd></dl><p class="mirror">Espelho: Usuário (PDV) <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Módulo liberado</h4><span class="mono">modules · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Módulo do sistema que pode ser liberado para um usuário.</dd></dl></article><article class="card"><div class="card-head"><h4>Usuário × módulo</h4><span class="mono">user_modules · nuvem · 3 colunas</span></div><dl><dt>O que é</dt><dd>Quais módulos cada usuário acessa.</dd></dl></article><article class="card"><div class="card-head"><h4>Perfil da empresa</h4><span class="mono">company_profiles · nuvem · 31 colunas</span></div><dl><dt>O que é</dt><dd>Nome, contato, White Label do cardápio (tema, bairros, Pix), integrações.</dd></dl><div class=chips><span class="chip warn">Coluna nova aqui quebra o tenant que não rodou a migration (o Prisma lê todas as colunas).</span></div></article><article class="card"><div class="card-head"><h4>Horário de funcionamento</h4><span class="mono">business_hours · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Horários do cardápio online por dia da semana.</dd></dl></article><article class="card"><div class="card-head"><h4>Configuração do sistema</h4><span class="mono">system_configs · nuvem · 16 colunas</span></div><dl><dt>O que é</dt><dd>Módulos ligados, fechamento cego, perfil financeiro, cartões do painel e integrações.</dd></dl><div class=chips><span class="chip warn">Guarda uma chave de API em texto (gemini_api_key).</span></div></article><article class="card"><div class="card-head"><h4>Usuário (PDV)</h4><span class="mono">users · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).</dd></dl><p class="mirror">Espelho: Usuário <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Configuração (PDV)</h4><span class="mono">configuracoes · PDV · 3 colunas</span></div><dl><dt>O que é</dt><dd>Chave e valor das configurações do terminal (ex.: Fiscal.ValidacaoRigorosa, total de mesas).</dd></dl></article></div>
+<h3>Do PDV para a nuvem</h3>
+<div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Usuário (PDV) (users)</td><td>Usuário (users)</td><td>Mesmo código; baixado a cada ciclo.</td></tr></tbody></table></div>
+<h3>Ligações com outros módulos</h3><div class="cols2">
+<div><p class="eyebrow">Apontam para este módulo</p><ul class="plain"><li>Andamento <span class=muted>(Ordens de serviço)</span> <span class=mono>user_id</span> → Usuário</li><li>Evasão de estoque (PDV) <span class=muted>(Estoque e compras)</span> <span class=mono>usuario_id</span> → Usuário (PDV)</li><li>Funcionário <span class=muted>(RH e ponto)</span> <span class=mono>user_id</span> → Usuário</li><li>Ordem de serviço <span class=muted>(Ordens de serviço)</span> <span class=mono>user_id</span> → Usuário</li><li>Pagamento (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>colaborador_id</span> → Usuário (PDV)</li><li>Pedido (PDV) <span class=muted>(Caixa e vendas)</span> <span class=mono>usuario_id</span> → Usuário (PDV)</li></ul></div>
+</div>
+</section>
+<section class="modulo" id="saas">
+<div class="mod-head"><p class="eyebrow">Módulo · 2 no SaaS (master)</p><h2>SaaS (banco master)</h2>
+<p class="prose">O banco master do SaaS Admin: cada cliente do Metrics (tenant) com seu domínio e o nome do banco próprio, e as credenciais globais de integração (iFood).</p>
+</div>
+<figure><h3>No banco master (metrics-saas-admin)</h3><div class="canvas"><svg viewBox="0 0 592 299" role="img" aria-label="Tabelas do módulo SaaS (banco master) (No banco master (metrics-saas-admin)): Cliente do Metrics (tenant), Credencial global de integração" style="min-width:592px;max-width:592px">
+<defs>
+<marker id="saas-saas-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
+<marker id="saas-saas-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
+<marker id="saas-saas-d2-ah-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-new"/></marker>
+</defs>
+<rect class="d-box" x="16" y="54" width="244" height="221" rx="8"/>
+<text class="d-title" x="28" y="73">Cliente do Metrics (tenant)</text>
+<text class="d-table" x="28" y="88">Tenant · SaaS (master)</text>
+<line class="d-div" x1="16" y1="96" x2="260" y2="96"/>
+<text class="d-col" x="28" y="112">id</text>
+<text class="d-col" x="28" y="129">name</text>
+<text class="d-col" x="28" y="146">domain</text>
+<text class="d-col" x="28" y="163">dbName</text>
+<text class="d-col" x="28" y="180">code</text>
+<text class="d-col" x="28" y="197">schemaVersion</text>
+<text class="d-col" x="28" y="214">dbSyncedAt</text>
+<text class="d-col" x="28" y="231">status</text>
+<text class="d-col" x="28" y="248">landingPageType</text>
+<text class="d-col" x="28" y="265">landingPageSlug</text>
+<rect class="d-box" x="332" y="54" width="244" height="119" rx="8"/>
+<text class="d-title" x="344" y="73">Credencial global de integraç…</text>
+<text class="d-table" x="344" y="88">SaaSIntegrationConfig · SaaS (mas…</text>
+<line class="d-div" x1="332" y1="96" x2="576" y2="96"/>
+<text class="d-col" x="344" y="112">id</text>
+<text class="d-col" x="344" y="129">provider</text>
+<text class="d-col" x="344" y="146">clientId</text>
+<text class="d-col" x="344" y="163">clientSecret</text>
+</svg></div><div class="legend" aria-label="Legenda">
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
+<span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-new"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-new"/></svg>proposta</span>
+<span><b class="newcol">+ coluna</b>coluna nova proposta</span>
+</div>
+</figure>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Cliente do Metrics (tenant)</h4><span class="mono">Tenant · SaaS (master) · 12 colunas</span></div><dl><dt>O que é</dt><dd>Cada restaurante cliente: domínio, código, nome do banco próprio, versão do schema e tipo de página do cardápio.</dd><dt>Quem lê</dt><dd>metrics-node, para descobrir o banco de cada requisição pelo domínio (x-tenant-domain).</dd></dl></article><article class="card"><div class="card-head"><h4>Credencial global de integração</h4><span class="mono">SaaSIntegrationConfig · SaaS (master) · 5 colunas</span></div><dl><dt>O que é</dt><dd>Credenciais de integração que valem para todos os clientes (ex.: app do iFood). Têm prioridade sobre as variáveis de ambiente do backend.</dd></dl></article></div>
+</section>
+<footer>Gerado por atlas.py (skill metrics-atlas). Dados em _dados/atlas-dados.json.</footer></main>

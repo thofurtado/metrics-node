@@ -1,0 +1,68 @@
+{
+  "id": "mesas",
+  "nome": "Mesas e salão",
+  "apelido": "mesa, comanda",
+  "mapa": { "col": 1, "linha": 2 },
+  "resumo": "Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem existe só uma foto ao vivo das mesas abertas, sem ligação com venda ou caixa. Quando a mesa é paga, sai da foto e vira venda (módulo Caixa e vendas).",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (foto ao vivo)",
+      "tabelas": {
+        "nuvem:ActiveTable": { "col": 1, "linha": 1 },
+        "nuvem:ActiveTableItem": { "col": 2, "linha": 1 }
+      },
+      "zonas": [{ "titulo": "FOTO AO VIVO · SEM LIGAÇÃO COM VENDA OU CAIXA", "tabelas": ["nuvem:ActiveTable", "nuvem:ActiveTableItem"] }]
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:Atendimento": { "col": 1, "linha": 1 },
+        "pdv:LogTransferencia": { "col": 1, "linha": 2 },
+        "pdv:Pedido": { "col": 2, "linha": 1 }
+      },
+      "legenda": "Pedido é do módulo Caixa e vendas: a mesa (atendimento) tem pedidos, e a transferência registra o pedido de origem e o de destino."
+    }
+  ],
+  "tabelas": {
+    "nuvem:ActiveTable": {
+      "nome": "Mesa aberta",
+      "o_que_e": "A foto das mesas e comandas abertas agora.",
+      "quem_grava": "O PDV, a cada ciclo de 5 minutos (a mesa fechada sai da foto). O garçom no modo pela internet também abre mesa aqui.",
+      "quem_le": "O garçom pela internet. O painel de mesas da web lê uma cópia em memória do mesmo envio do PDV, não esta tabela.",
+      "cresce": "Não cresce: no máximo o número de mesas abertas.",
+      "espelho": "pdv:Atendimento",
+      "notas_campos": { "identifier": "Mesa 07 (único)", "type": "MESA | COMANDA" }
+    },
+    "nuvem:ActiveTableItem": {
+      "nome": "Item na mesa",
+      "o_que_e": "Os itens de cada mesa aberta, na foto.",
+      "quem_grava": "O PDV (apaga e recria os itens de cada mesa a cada envio) e o garçom pela internet.",
+      "alertas": ["A confirmar: item lançado pelo garçom pela internet pode ser apagado pela foto seguinte do PDV."]
+    },
+    "pdv:Atendimento": {
+      "nome": "Atendimento (mesa/comanda)",
+      "o_que_e": "A mesa ou comanda aberta no PDV, com a situação (Em consumo, Ociosa, Conta, Livre) e o número de pessoas. Tem os pedidos da mesa.",
+      "espelho": "nuvem:ActiveTable",
+      "notas_campos": { "identificador": "Mesa 07" }
+    },
+    "pdv:LogTransferencia": {
+      "nome": "Transferência (PDV)",
+      "o_que_e": "Registro de cada transferência de item ou de mesa inteira: origem, destino, item, valor, motivo e operador.",
+      "quem_grava": "MesasView, na mesma gravação da transferência (tudo ou nada, desde o PDV 2.4.17.2).",
+      "quem_le": "Ninguém ainda: não há tela e não sobe para a nuvem.",
+      "mostrar": ["id", "tipo", "origem", "destino", "pedido_origem_id", "pedido_destino_id", "produto_nome", "quantidade", "valor_total", "motivo", "usuario_nome"]
+    }
+  },
+  "ligacoes": [
+    { "de": "pdv:LogTransferencia", "para": "pdv:Pedido", "tipo": "texto", "rotulo": "pedido_origem_id / destino" }
+  ],
+  "espelhos": [
+    { "pdv": "pdv:Atendimento", "nuvem": "nuvem:ActiveTable", "como": "Pelo nome da mesa (identificador), só enquanto está aberta." }
+  ],
+  "pendencias": [
+    "Confirmar se o garçom pela internet é usado; se for, o envio de mesas do PDV não pode apagar os itens dele.",
+    "A venda não guarda de que mesa veio (proposta sales.origin_identifier, módulo Caixa e vendas)."
+  ]
+}

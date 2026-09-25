@@ -1,0 +1,52 @@
+{
+  "id": "empresa",
+  "nome": "Empresa, usuários e configuração",
+  "apelido": "perfil, usuário, módulos",
+  "mapa": { "col": 4, "linha": 1 },
+  "resumo": "Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:Module": { "col": 1, "linha": 1 },
+        "nuvem:UserModule": { "col": 2, "linha": 1 },
+        "nuvem:User": { "col": 3, "linha": 1 },
+        "nuvem:CompanyProfile": { "col": 4, "linha": 1 },
+        "nuvem:BusinessHour": { "col": 4, "linha": 2 },
+        "nuvem:SystemConfig": { "col": 5, "linha": 1 }
+      }
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:User": { "col": 1, "linha": 1 },
+        "pdv:Configuracao": { "col": 2, "linha": 1 }
+      }
+    }
+  ],
+  "tabelas": {
+    "nuvem:User": { "nome": "Usuário", "o_que_e": "Quem faz login no sistema (web, PDV, app), com papel (ADMIN…).", "espelho": "pdv:User" },
+    "nuvem:Module": { "nome": "Módulo liberado", "o_que_e": "Módulo do sistema que pode ser liberado para um usuário." },
+    "nuvem:UserModule": { "nome": "Usuário × módulo", "o_que_e": "Quais módulos cada usuário acessa." },
+    "nuvem:CompanyProfile": {
+      "nome": "Perfil da empresa",
+      "o_que_e": "Nome, contato, White Label do cardápio (tema, bairros, Pix), integrações.",
+      "alertas": ["Coluna nova aqui quebra o tenant que não rodou a migration (o Prisma lê todas as colunas)."],
+      "mostrar": ["id"]
+    },
+    "nuvem:BusinessHour": { "nome": "Horário de funcionamento", "o_que_e": "Horários do cardápio online por dia da semana." },
+    "nuvem:SystemConfig": {
+      "nome": "Configuração do sistema",
+      "o_que_e": "Módulos ligados, fechamento cego, perfil financeiro, cartões do painel e integrações.",
+      "alertas": ["Guarda uma chave de API em texto (gemini_api_key)."],
+      "mostrar": ["id", "cashier_module", "blind_cashier_closure", "financial_module", "hr_module", "stock_control_module", "auto_nfe_mapping"]
+    },
+    "pdv:User": { "nome": "Usuário (PDV)", "o_que_e": "Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).", "espelho": "nuvem:User" },
+    "pdv:Configuracao": { "nome": "Configuração (PDV)", "o_que_e": "Chave e valor das configurações do terminal (ex.: Fiscal.ValidacaoRigorosa, total de mesas)." }
+  },
+  "espelhos": [
+    { "pdv": "pdv:User", "nuvem": "nuvem:User", "como": "Mesmo código; baixado a cada ciclo." }
+  ]
+}

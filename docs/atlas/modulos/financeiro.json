@@ -1,0 +1,75 @@
+{
+  "id": "financeiro",
+  "nome": "Financeiro",
+  "apelido": "contas, lançamentos, formas de pagamento",
+  "mapa": { "col": 3, "linha": 1 },
+  "resumo": "Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.",
+  "diagramas": [
+    {
+      "id": "nuvem",
+      "titulo": "Na nuvem (metrics-node)",
+      "tabelas": {
+        "nuvem:Sector": { "col": 1, "linha": 1 },
+        "nuvem:TransactionGroup": { "col": 1, "linha": 2 },
+        "nuvem:TransferTransaction": { "col": 1, "linha": 3 },
+        "nuvem:Transaction": { "col": 2, "linha": 1 },
+        "nuvem:InstallmentPayment": { "col": 2, "linha": 2 },
+        "nuvem:Account": { "col": 3, "linha": 1 },
+        "nuvem:CreditCard": { "col": 3, "linha": 2 },
+        "nuvem:AccountAdjustment": { "col": 3, "linha": 3 },
+        "nuvem:Payment": { "col": 4, "linha": 1 },
+        "nuvem:PaymentIdentifier": { "col": 4, "linha": 2 },
+        "nuvem:PaymentCondition": { "col": 4, "linha": 3 },
+        "nuvem:POSMachine": { "col": 5, "linha": 1 },
+        "nuvem:POSMachineRate": { "col": 5, "linha": 2 }
+      }
+    },
+    {
+      "id": "pdv",
+      "titulo": "No PDV (banco local)",
+      "tabelas": {
+        "pdv:Banco": { "col": 1, "linha": 1 },
+        "pdv:FormaPagamento": { "col": 1, "linha": 2 },
+        "pdv:CondicaoPagamento": { "col": 2, "linha": 1 },
+        "pdv:Identificador": { "col": 2, "linha": 2 },
+        "pdv:Maquininha": { "col": 3, "linha": 1 },
+        "pdv:MaquininhaTaxa": { "col": 3, "linha": 2 }
+      },
+      "legenda": "O PDV baixa estas tabelas da nuvem a cada ciclo (configuração financeira)."
+    }
+  ],
+  "tabelas": {
+    "nuvem:Transaction": {
+      "nome": "Lançamento financeiro",
+      "o_que_e": "Receita ou despesa, com vencimento, conta, setor, fornecedor, parcelamento e, quando vem da conferência, o caixa de origem.",
+      "quem_grava": "Web (financeiro), conferência de caixa, ordens de serviço, faturas do cartão.",
+      "mostrar": ["id", "operation", "amount", "data_vencimento", "account_id", "sector_id", "credit_card_id", "transaction_group_id", "cashier_session_id", "confirmed", "payment_method"]
+    },
+    "nuvem:Account": { "nome": "Conta", "o_que_e": "Conta bancária ou de caixa (inclusive o Caixa Central, que recebe o dinheiro conferido)." },
+    "nuvem:CreditCard": { "nome": "Cartão de crédito", "o_que_e": "Cartão da empresa, com limite, fechamento e vencimento da fatura." },
+    "nuvem:AccountAdjustment": { "nome": "Ajuste de saldo", "o_que_e": "Correção manual do saldo de uma conta." },
+    "nuvem:TransactionGroup": { "nome": "Parcelamento / recorrência", "o_que_e": "Agrupa os lançamentos de uma compra parcelada ou recorrente (quantidade de parcelas e frequência)." },
+    "nuvem:TransferTransaction": { "nome": "Transferência", "o_que_e": "Liga o lançamento de saída e o de entrada de uma transferência entre contas." },
+    "nuvem:Sector": { "nome": "Setor (centro de custo)", "o_que_e": "Classificação de despesas e receitas." },
+    "nuvem:Payment": { "nome": "Forma de pagamento", "o_que_e": "Dinheiro, Pix, cartões, a prazo…, com limite de parcelas e conta de destino.", "espelho": "pdv:FormaPagamento" },
+    "nuvem:InstallmentPayment": { "nome": "Parcela", "o_que_e": "Liga a forma de pagamento ao lançamento de cada parcela." },
+    "nuvem:PaymentIdentifier": { "nome": "Identificador", "o_que_e": "Subtipo de uma forma de pagamento; pode marcar dívida de correntista ou evasão de estoque.", "espelho": "pdv:Identificador" },
+    "nuvem:PaymentCondition": { "nome": "Condição de pagamento", "o_que_e": "Número de parcelas aceito.", "espelho": "pdv:CondicaoPagamento" },
+    "nuvem:POSMachine": { "nome": "Maquininha", "o_que_e": "Maquininha de cartão.", "espelho": "pdv:Maquininha" },
+    "nuvem:POSMachineRate": { "nome": "Taxa da maquininha", "o_que_e": "Taxa e prazo de recebimento por forma e parcelas.", "espelho": "pdv:MaquininhaTaxa" },
+    "pdv:Banco": { "nome": "Banco (PDV)", "o_que_e": "Conta de destino da forma de pagamento no PDV." },
+    "pdv:FormaPagamento": { "nome": "Forma de pagamento (PDV)", "o_que_e": "Cópia local, com a categoria que decide o troco (só Dinheiro dá troco).", "espelho": "nuvem:Payment" },
+    "pdv:CondicaoPagamento": { "nome": "Condição (PDV)", "o_que_e": "Cópia local.", "espelho": "nuvem:PaymentCondition" },
+    "pdv:Identificador": { "nome": "Identificador (PDV)", "o_que_e": "Cópia local.", "espelho": "nuvem:PaymentIdentifier" },
+    "pdv:Maquininha": { "nome": "Maquininha (PDV)", "o_que_e": "Cópia local.", "espelho": "nuvem:POSMachine" },
+    "pdv:MaquininhaTaxa": { "nome": "Taxa da maquininha (PDV)", "o_que_e": "Cópia local.", "espelho": "nuvem:POSMachineRate" }
+  },
+  "espelhos": [
+    { "pdv": "pdv:FormaPagamento", "nuvem": "nuvem:Payment", "como": "Baixado a cada ciclo." },
+    { "pdv": "pdv:CondicaoPagamento", "nuvem": "nuvem:PaymentCondition", "como": "Baixado a cada ciclo." },
+    { "pdv": "pdv:Identificador", "nuvem": "nuvem:PaymentIdentifier", "como": "Baixado a cada ciclo." },
+    { "pdv": "pdv:Maquininha", "nuvem": "nuvem:POSMachine", "como": "Baixado a cada ciclo." },
+    { "pdv": "pdv:MaquininhaTaxa", "nuvem": "nuvem:POSMachineRate", "como": "Baixado a cada ciclo." }
+  ],
+  "pendencias": ["A maquininha usada na venda do PDV não chega ao lançamento do caixa (sem taxa e sem banco na conferência)."]
+}

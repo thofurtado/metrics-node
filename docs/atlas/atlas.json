@@ -1,0 +1,18 @@
+{
+  "titulo": "Atlas do Metrics",
+  "resumo": "Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.",
+  "ordem": [
+    "caixa-vendas",
+    "mesas",
+    "delivery",
+    "cardapio",
+    "estoque",
+    "financeiro",
+    "clientes",
+    "servicos",
+    "rh",
+    "fiscal",
+    "empresa",
+    "saas"
+  ]
+}
