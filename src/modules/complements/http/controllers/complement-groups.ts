@@ -180,9 +180,13 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
             data: {
               name: opt.name,
               price: opt.price,
-              linked_product_id: opt.linked_product_id || null,
+              // Campo que a tela não mandou fica como está: antes, salvar o grupo pela aba "Adicionais & Opcionais"
+              // (que não mandava esses campos) apagava o produto ligado e o consumo por porção do insumo.
+              ...(opt.linked_product_id !== undefined ? { linked_product_id: opt.linked_product_id || null } : {}),
               linked_supply_id: opt.linked_supply_id || null,
-              supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
+              ...(opt.supply_quantity !== undefined
+                ? { supply_quantity: opt.supply_quantity !== null ? Number(opt.supply_quantity) : null }
+                : {}),
               active: opt.active !== undefined ? opt.active : true,
             },
           })
