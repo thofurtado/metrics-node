@@ -14,7 +14,8 @@
         "nuvem:User": { "col": 3, "linha": 1 },
         "nuvem:CompanyProfile": { "col": 4, "linha": 1 },
         "nuvem:BusinessHour": { "col": 4, "linha": 2 },
-        "nuvem:SystemConfig": { "col": 5, "linha": 1 }
+        "nuvem:SystemConfig": { "col": 5, "linha": 1 },
+        "nuvem:TenantIntegration": { "col": 5, "linha": 2 }
       }
     },
     {
@@ -42,6 +43,14 @@
       "o_que_e": "Módulos ligados, fechamento cego, perfil financeiro, cartões do painel e integrações.",
       "alertas": ["Guarda uma chave de API em texto (gemini_api_key)."],
       "mostrar": ["id", "cashier_module", "blind_cashier_closure", "financial_module", "hr_module", "stock_control_module", "auto_nfe_mapping"]
+    },
+    "nuvem:TenantIntegration": {
+      "nome": "Integrações do cliente",
+      "o_que_e": "Uma linha por serviço de fora ligado pelo cliente em Configurações > Integrações: De Olho no Imposto (IBPT: token e CNPJ da empresa) e 99Food (id da loja). Criada em 25/09/2026.",
+      "quem_grava": "Web → Configurações > Integrações (o token do IBPT é testado no IBPT antes de salvar).",
+      "quem_le": "PDV, pela rota /api/pdv/sync/ibpt (o backend consulta o IBPT com o token; o token nunca vai ao PDV) e a entrada de pedidos da 99Food (de qual cliente é a loja).",
+      "cresce": "Uma linha por serviço: poucas linhas por cliente.",
+      "alertas": ["Guarda o token do De Olho no Imposto em texto (coluna secret); a tela só o mostra mascarado."]
     },
     "pdv:User": { "nome": "Usuário (PDV)", "o_que_e": "Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).", "espelho": "nuvem:User" },
     "pdv:Configuracao": { "nome": "Configuração (PDV)", "o_que_e": "Chave e valor das configurações do terminal (ex.: Fiscal.ValidacaoRigorosa, total de mesas)." }

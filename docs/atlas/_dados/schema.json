@@ -1,19 +1,19 @@
 {
- "gerado_em": "2026-09-25T12:09:24",
+ "gerado_em": "2026-09-25T22:51:31",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "37b5f12 2026-09-25",
-   "tabelas": 62
+   "versao": "c6dfb15 2026-09-25",
+   "tabelas": 63
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "5e0d7cb 2026-09-14",
+   "versao": "6ca429f 2026-09-25",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "7405c85 2026-09-25",
+   "versao": "a4acf92 2026-09-25",
    "tabelas": 34
   }
  },
@@ -9499,6 +9499,91 @@
      "nome": null
     }
    ]
+  },
+  "nuvem:TenantIntegration": {
+   "origem": "nuvem",
+   "modelo": "TenantIntegration",
+   "tabela": "tenant_integrations",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": "uuid()",
+     "comentario": null
+    },
+    {
+     "nome": "provider",
+     "coluna": "provider",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": true,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "enabled",
+     "coluna": "enabled",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "true",
+     "comentario": null
+    },
+    {
+     "nome": "settings",
+     "coluna": "settings",
+     "tipo": "Json",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "secret",
+     "coluna": "secret",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": []
   },
   "saas:SaaSIntegrationConfig": {
    "origem": "saas",

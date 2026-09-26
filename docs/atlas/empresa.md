@@ -120,6 +120,24 @@ Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label
 | `gemini_model` | String | sim |  |  |
 | `auto_nfe_mapping` | Boolean | sim |  |  |
 
+## Integrações do cliente · `tenant_integrations` (nuvem)
+
+- **O que é:** Uma linha por serviço de fora ligado pelo cliente em Configurações > Integrações: De Olho no Imposto (IBPT: token e CNPJ da empresa) e 99Food (id da loja). Criada em 25/09/2026.
+- **Quem grava:** Web → Configurações > Integrações (o token do IBPT é testado no IBPT antes de salvar).
+- **Quem lê:** PDV, pela rota /api/pdv/sync/ibpt (o backend consulta o IBPT com o token; o token nunca vai ao PDV) e a entrada de pedidos da 99Food (de qual cliente é a loja).
+- **Cresce:** Uma linha por serviço: poucas linhas por cliente.
+- **Atenção:** Guarda o token do De Olho no Imposto em texto (coluna secret); a tela só o mostra mascarado.
+
+| Coluna | Tipo | Obrigatória | Liga com | Nota |
+|---|---|---|---|---|
+| `id` | String (chave) | sim |  |  |
+| `provider` | String (único) | sim |  |  |
+| `enabled` | Boolean | sim |  |  |
+| `settings` | Json | não |  |  |
+| `secret` | String | não |  |  |
+| `created_at` | DateTime | sim |  |  |
+| `updated_at` | DateTime | sim |  |  |
+
 ## Usuário (PDV) · `users` (PDV)
 
 - **O que é:** Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).

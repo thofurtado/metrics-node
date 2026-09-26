@@ -16,7 +16,7 @@ Gerado em 25/09/2026. Abra `atlas.html` no navegador para ver os desenhos.
 | Ordens de serviço | 7 | [servicos.md](servicos.md) |
 | RH e ponto | 6 | [rh.md](rh.md) |
 | Fiscal (NFC-e) | 3 | [fiscal.md](fiscal.md) |
-| Empresa, usuários e configuração | 8 | [empresa.md](empresa.md) |
+| Empresa, usuários e configuração | 9 | [empresa.md](empresa.md) |
 | SaaS (banco master) | 2 | [saas.md](saas.md) |
 
 ## Ligações entre módulos (por chave)

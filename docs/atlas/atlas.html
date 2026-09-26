@@ -121,7 +121,7 @@ footer { color: var(--muted); font-size: 13.5px; }
 <main>
 <header><p class="eyebrow">Metrics · gerado em 25/09/2026</p><h1>Atlas do Metrics</h1>
 <p class="lede prose">Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.</p>
-<p class="note">98 tabelas em 12 módulos. 0 ainda sem descrição. Fontes: nuvem: metrics-node/prisma/schema.prisma (37b5f12 2026-09-25) · saas: metrics-saas-admin/prisma/schema.prisma (5e0d7cb 2026-09-14) · pdv: Metrics.PDV/Metrics.Shared/Models (7405c85 2026-09-25).</p>
+<p class="note">99 tabelas em 12 módulos. 0 ainda sem descrição. Fontes: nuvem: metrics-node/prisma/schema.prisma (c6dfb15 2026-09-25) · saas: metrics-saas-admin/prisma/schema.prisma (6ca429f 2026-09-25) · pdv: Metrics.PDV/Metrics.Shared/Models (a4acf92 2026-09-25).</p>
 <nav class="nav" aria-label="Módulos"><a class="navchip" href="#caixa-vendas">Caixa e vendas</a><a class="navchip" href="#mesas">Mesas e salão</a><a class="navchip" href="#delivery">Delivery e pedidos online</a><a class="navchip" href="#cardapio">Cardápio e produtos</a><a class="navchip" href="#estoque">Estoque e compras</a><a class="navchip" href="#financeiro">Financeiro</a><a class="navchip" href="#clientes">Clientes</a><a class="navchip" href="#servicos">Ordens de serviço</a><a class="navchip" href="#rh">RH e ponto</a><a class="navchip" href="#fiscal">Fiscal (NFC-e)</a><a class="navchip" href="#empresa">Empresa, usuários e configuração</a><a class="navchip" href="#saas">SaaS (banco master)</a></nav></header>
 <section id="mapa"><h2>Mapa dos módulos</h2>
 <p class="prose">Cada caixa é um módulo. As setas contam quantas ligações por chave vão de um módulo para outro: são as costuras que precisariam de cuidado se um módulo virasse um sistema separado.</p>
@@ -294,14 +294,14 @@ footer { color: var(--muted); font-size: 13.5px; }
 <text class="d-title" x="976" y="199">Empresa, usuários e configura…</text>
 <text class="d-table" x="976" y="214">perfil, usuário, módulos</text>
 <line class="d-div" x1="964" y1="222" x2="1208" y2="222"/>
-<text class="d-col" x="976" y="238">6 tabela(s) na nuvem</text>
+<text class="d-col" x="976" y="238">7 tabela(s) na nuvem</text>
 <text class="d-col" x="976" y="255">2 tabela(s) no PDV</text>
 <text class="d-more" x="976" y="272">· Usuário</text>
 <text class="d-more" x="976" y="289">· Módulo liberado</text>
 <text class="d-more" x="976" y="306">· Usuário × módulo</text>
 <text class="d-more" x="976" y="323">· Perfil da empresa</text>
 <text class="d-more" x="976" y="340">· Horário de funcionamento</text>
-<text class="d-more" x="976" y="357">· e mais 3</text>
+<text class="d-more" x="976" y="357">· e mais 4</text>
 <rect class="d-box" x="964" y="625" width="244" height="102" rx="8"/>
 <text class="d-title" x="976" y="644">SaaS (banco master)</text>
 <text class="d-table" x="976" y="659">clientes do Metrics</text>
@@ -1879,10 +1879,10 @@ footer { color: var(--muted); font-size: 13.5px; }
 <h3>Pendências e decisões</h3><ul class="plain"><li>A nota não sobe para a nuvem: a venda da nuvem não guarda chave nem número da NFC-e.</li></ul>
 </section>
 <section class="modulo" id="empresa">
-<div class="mod-head"><p class="eyebrow">Módulo · 6 na nuvem · 2 no PDV</p><h2>Empresa, usuários e configuração</h2>
+<div class="mod-head"><p class="eyebrow">Módulo · 7 na nuvem · 2 no PDV</p><h2>Empresa, usuários e configuração</h2>
 <p class="prose">Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.</p>
 </div>
-<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1540 360" role="img" aria-label="Tabelas do módulo Empresa, usuários e configuração (Na nuvem (metrics-node)): Módulo liberado, Usuário × módulo, Usuário, Perfil da empresa, Horário de funcionamento, Configuração do sistema" style="min-width:1100px;max-width:1540px">
+<figure><h3>Na nuvem (metrics-node)</h3><div class="canvas"><svg viewBox="0 0 1540 445" role="img" aria-label="Tabelas do módulo Empresa, usuários e configuração (Na nuvem (metrics-node)): Módulo liberado, Usuário × módulo, Usuário, Perfil da empresa, Horário de funcionamento, Configuração do sistema, Integrações do cliente" style="min-width:1100px;max-width:1540px">
 <defs>
 <marker id="empresa-nuvem-d2-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah"/></marker>
 <marker id="empresa-nuvem-d2-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-ah-muted"/></marker>
@@ -1945,6 +1945,15 @@ footer { color: var(--muted); font-size: 13.5px; }
 <text class="d-col" x="1292" y="197">stock_control_module</text>
 <text class="d-col" x="1292" y="214">auto_nfe_mapping</text>
 <text class="d-more" x="1292" y="231">… mais 9 coluna(s)</text>
+<rect class="d-box" x="1280" y="285" width="244" height="136" rx="8"/>
+<text class="d-title" x="1292" y="304">Integrações do cliente</text>
+<text class="d-table" x="1292" y="319">tenant_integrations</text>
+<line class="d-div" x1="1280" y1="327" x2="1524" y2="327"/>
+<text class="d-col" x="1292" y="343">id</text>
+<text class="d-col" x="1292" y="360">provider</text>
+<text class="d-col" x="1292" y="377">enabled</text>
+<text class="d-col" x="1292" y="394">settings</text>
+<text class="d-col" x="1292" y="411">secret</text>
 </svg></div><div class="legend" aria-label="Legenda">
 <span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge"/><path d="M34,1 L43,6 L34,11 z" class="d-ah"/></svg>pertence a (chave: o banco garante)</span>
 <span><svg viewBox="0 0 44 12" aria-hidden="true"><line x1="2" y1="6" x2="34" y2="6" class="d-edge-text"/><path d="M34,1 L43,6 L34,11 z" class="d-ah-muted"/></svg>ligação só por texto ou código igual</span>
@@ -1982,7 +1991,7 @@ footer { color: var(--muted); font-size: 13.5px; }
 <span><b class="newcol">+ coluna</b>coluna nova proposta</span>
 </div>
 </figure>
-<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Usuário</h4><span class="mono">users · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Quem faz login no sistema (web, PDV, app), com papel (ADMIN…).</dd></dl><p class="mirror">Espelho: Usuário (PDV) <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Módulo liberado</h4><span class="mono">modules · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Módulo do sistema que pode ser liberado para um usuário.</dd></dl></article><article class="card"><div class="card-head"><h4>Usuário × módulo</h4><span class="mono">user_modules · nuvem · 3 colunas</span></div><dl><dt>O que é</dt><dd>Quais módulos cada usuário acessa.</dd></dl></article><article class="card"><div class="card-head"><h4>Perfil da empresa</h4><span class="mono">company_profiles · nuvem · 31 colunas</span></div><dl><dt>O que é</dt><dd>Nome, contato, White Label do cardápio (tema, bairros, Pix), integrações.</dd></dl><div class=chips><span class="chip warn">Coluna nova aqui quebra o tenant que não rodou a migration (o Prisma lê todas as colunas).</span></div></article><article class="card"><div class="card-head"><h4>Horário de funcionamento</h4><span class="mono">business_hours · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Horários do cardápio online por dia da semana.</dd></dl></article><article class="card"><div class="card-head"><h4>Configuração do sistema</h4><span class="mono">system_configs · nuvem · 16 colunas</span></div><dl><dt>O que é</dt><dd>Módulos ligados, fechamento cego, perfil financeiro, cartões do painel e integrações.</dd></dl><div class=chips><span class="chip warn">Guarda uma chave de API em texto (gemini_api_key).</span></div></article><article class="card"><div class="card-head"><h4>Usuário (PDV)</h4><span class="mono">users · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).</dd></dl><p class="mirror">Espelho: Usuário <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Configuração (PDV)</h4><span class="mono">configuracoes · PDV · 3 colunas</span></div><dl><dt>O que é</dt><dd>Chave e valor das configurações do terminal (ex.: Fiscal.ValidacaoRigorosa, total de mesas).</dd></dl></article></div>
+<h3>O que cada tabela guarda</h3><div class="cards"><article class="card"><div class="card-head"><h4>Usuário</h4><span class="mono">users · nuvem · 9 colunas</span></div><dl><dt>O que é</dt><dd>Quem faz login no sistema (web, PDV, app), com papel (ADMIN…).</dd></dl><p class="mirror">Espelho: Usuário (PDV) <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Módulo liberado</h4><span class="mono">modules · nuvem · 4 colunas</span></div><dl><dt>O que é</dt><dd>Módulo do sistema que pode ser liberado para um usuário.</dd></dl></article><article class="card"><div class="card-head"><h4>Usuário × módulo</h4><span class="mono">user_modules · nuvem · 3 colunas</span></div><dl><dt>O que é</dt><dd>Quais módulos cada usuário acessa.</dd></dl></article><article class="card"><div class="card-head"><h4>Perfil da empresa</h4><span class="mono">company_profiles · nuvem · 31 colunas</span></div><dl><dt>O que é</dt><dd>Nome, contato, White Label do cardápio (tema, bairros, Pix), integrações.</dd></dl><div class=chips><span class="chip warn">Coluna nova aqui quebra o tenant que não rodou a migration (o Prisma lê todas as colunas).</span></div></article><article class="card"><div class="card-head"><h4>Horário de funcionamento</h4><span class="mono">business_hours · nuvem · 8 colunas</span></div><dl><dt>O que é</dt><dd>Horários do cardápio online por dia da semana.</dd></dl></article><article class="card"><div class="card-head"><h4>Configuração do sistema</h4><span class="mono">system_configs · nuvem · 16 colunas</span></div><dl><dt>O que é</dt><dd>Módulos ligados, fechamento cego, perfil financeiro, cartões do painel e integrações.</dd></dl><div class=chips><span class="chip warn">Guarda uma chave de API em texto (gemini_api_key).</span></div></article><article class="card"><div class="card-head"><h4>Integrações do cliente</h4><span class="mono">tenant_integrations · nuvem · 7 colunas</span></div><dl><dt>O que é</dt><dd>Uma linha por serviço de fora ligado pelo cliente em Configurações &gt; Integrações: De Olho no Imposto (IBPT: token e CNPJ da empresa) e 99Food (id da loja). Criada em 25/09/2026.</dd><dt>Quem grava</dt><dd>Web → Configurações &gt; Integrações (o token do IBPT é testado no IBPT antes de salvar).</dd><dt>Quem lê</dt><dd>PDV, pela rota /api/pdv/sync/ibpt (o backend consulta o IBPT com o token; o token nunca vai ao PDV) e a entrada de pedidos da 99Food (de qual cliente é a loja).</dd><dt>Cresce</dt><dd>Uma linha por serviço: poucas linhas por cliente.</dd></dl><div class=chips><span class="chip warn">Guarda o token do De Olho no Imposto em texto (coluna secret); a tela só o mostra mascarado.</span></div></article><article class="card"><div class="card-head"><h4>Usuário (PDV)</h4><span class="mono">users · PDV · 6 colunas</span></div><dl><dt>O que é</dt><dd>Cópia local dos usuários, baixada a cada ciclo (usuário que sumiu da nuvem é apagado do PDV).</dd></dl><p class="mirror">Espelho: Usuário <span class="mono">users</span></p></article><article class="card"><div class="card-head"><h4>Configuração (PDV)</h4><span class="mono">configuracoes · PDV · 3 colunas</span></div><dl><dt>O que é</dt><dd>Chave e valor das configurações do terminal (ex.: Fiscal.ValidacaoRigorosa, total de mesas).</dd></dl></article></div>
 <h3>Do PDV para a nuvem</h3>
 <div class="tablewrap"><table><thead><tr><th>No PDV</th><th>Na nuvem</th><th>Como se ligam</th></tr></thead><tbody><tr><td>Usuário (PDV) (users)</td><td>Usuário (users)</td><td>Mesmo código; baixado a cada ciclo.</td></tr></tbody></table></div>
 <h3>Ligações com outros módulos</h3><div class="cols2">

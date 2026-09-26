@@ -939,6 +939,10 @@
       "nuvem:SystemConfig": {
        "col": 5,
        "linha": 1
+      },
+      "nuvem:TenantIntegration": {
+       "col": 5,
+       "linha": 2
       }
      }
     },
@@ -999,6 +1003,16 @@
       "hr_module",
       "stock_control_module",
       "auto_nfe_mapping"
+     ]
+    },
+    "nuvem:TenantIntegration": {
+     "nome": "Integrações do cliente",
+     "o_que_e": "Uma linha por serviço de fora ligado pelo cliente em Configurações > Integrações: De Olho no Imposto (IBPT: token e CNPJ da empresa) e 99Food (id da loja). Criada em 25/09/2026.",
+     "quem_grava": "Web → Configurações > Integrações (o token do IBPT é testado no IBPT antes de salvar).",
+     "quem_le": "PDV, pela rota /api/pdv/sync/ibpt (o backend consulta o IBPT com o token; o token nunca vai ao PDV) e a entrada de pedidos da 99Food (de qual cliente é a loja).",
+     "cresce": "Uma linha por serviço: poucas linhas por cliente.",
+     "alertas": [
+      "Guarda o token do De Olho no Imposto em texto (coluna secret); a tela só o mostra mascarado."
      ]
     },
     "pdv:User": {
@@ -1907,21 +1921,21 @@
   }
  ],
  "schema": {
-  "gerado_em": "2026-09-25T12:09:24",
+  "gerado_em": "2026-09-25T22:51:31",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "37b5f12 2026-09-25",
-    "tabelas": 62
+    "versao": "c6dfb15 2026-09-25",
+    "tabelas": 63
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "5e0d7cb 2026-09-14",
+    "versao": "6ca429f 2026-09-25",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "7405c85 2026-09-25",
+    "versao": "a4acf92 2026-09-25",
     "tabelas": 34
    }
   },
@@ -11407,6 +11421,91 @@
       "nome": null
      }
     ]
+   },
+   "nuvem:TenantIntegration": {
+    "origem": "nuvem",
+    "modelo": "TenantIntegration",
+    "tabela": "tenant_integrations",
+    "campos": [
+     {
+      "nome": "id",
+      "coluna": "id",
+      "tipo": "String",
+      "enum": false,
+      "opcional": false,
+      "chave": true,
+      "unico": false,
+      "padrao": "uuid()",
+      "comentario": null
+     },
+     {
+      "nome": "provider",
+      "coluna": "provider",
+      "tipo": "String",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": true,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "enabled",
+      "coluna": "enabled",
+      "tipo": "Boolean",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": "true",
+      "comentario": null
+     },
+     {
+      "nome": "settings",
+      "coluna": "settings",
+      "tipo": "Json",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "secret",
+      "coluna": "secret",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "created_at",
+      "coluna": "created_at",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": "now()",
+      "comentario": null
+     },
+     {
+      "nome": "updated_at",
+      "coluna": "updated_at",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": "now()",
+      "comentario": null
+     }
+    ],
+    "relacoes": []
    },
    "saas:SaaSIntegrationConfig": {
     "origem": "saas",
