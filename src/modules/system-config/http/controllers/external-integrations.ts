@@ -5,6 +5,7 @@ import { consultarNcm, limparCacheIbpt, mascararToken, normalizarCnpj, normaliza
 import {
   lerIntegracao, salvarIntegracao, TabelaDeIntegracoesAusente, PROVEDOR_FOOD99, PROVEDOR_IBPT,
 } from '../../services/tenant-integrations'
+import { limparCacheDeLojas } from '@/modules/delivery/services/delivery-tenant-resolver'
 
 // Aba "Integrações" das Configurações da web (25/09/2026): iFood, 99Food e De Olho no Imposto (IBPT).
 // Cada serviço salva só o que é dele. Não usar PUT /settings/company-profile aqui: ele regrava bairros e setores.
@@ -115,6 +116,7 @@ export async function updateIfoodMerchant(request: FastifyRequest, reply: Fastif
   const empresa = await perfil()
   if (!empresa) return reply.status(400).send({ message: 'Salve antes os dados da loja em "Meu Cardápio (White Label)".' })
   await prisma.companyProfile.update({ where: { id: empresa.id }, data: { ifoodMerchantId: merchantId?.trim() || null } })
+  limparCacheDeLojas() // pedidos novos já procuram a loja com o ID novo
   return reply.send({ message: 'ID da loja no iFood salvo.', merchantId: merchantId?.trim() || '' })
 }
 
@@ -123,6 +125,7 @@ export async function updateFood99Shop(request: FastifyRequest, reply: FastifyRe
   try {
     const valor = shopId?.trim() || ''
     await salvarIntegracao(prisma, PROVEDOR_FOOD99, { enabled: Boolean(valor), settings: { shopId: valor } })
+    limparCacheDeLojas()
     return reply.send({ message: 'ID da loja na 99Food salvo.', shopId: valor })
   } catch (err) {
     if (err instanceof TabelaDeIntegracoesAusente) return reply.status(503).send({ message: err.message })

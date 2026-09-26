@@ -1,6 +1,6 @@
 import { sseManager } from '@/lib/sse-manager'
 import { ifoodApi } from './ifood-api.service'
-import { resolveTenantForMerchant } from './delivery-tenant-resolver'
+import { localizarTenantDaLoja } from './delivery-tenant-resolver'
 import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 
 /**
@@ -143,13 +143,15 @@ export async function processCancellationEvent(event: any, token: string | undef
         event?.metadata?.CANCEL_REASON ||
         'Cancelado no iFood',
     )
-    const merchantId = String(event?.merchantId || event?.merchant_id || '4107174')
-    const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+    const merchantId = String(event?.merchantId || event?.merchant_id || '')
+    // Loja sem cliente cadastrado: procura o pedido em todos os clientes (ele só existe onde foi gravado).
+    const dono = await localizarTenantDaLoja(merchantId, 'IFOOD')
+    const tenantDbName = dono?.dbName ?? ''
 
-    let targetPrisma: any = prisma
+    let targetPrisma: any = dono?.prisma ?? null
     let targetDbName = tenantDbName
     const where = { observacao: { contains: `[iFood:${orderId}]` } }
-    let order = await (prisma as any).pedido.findFirst({ where })
+    let order = dono ? await (dono.prisma as any).pedido.findFirst({ where }) : null
 
     if (!order) {
       for (const otherDb of await getActiveTenantDbNames()) {

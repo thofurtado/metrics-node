@@ -1,6 +1,5 @@
 import crypto from 'crypto'
 import { ifoodApi } from './ifood-api.service'
-import { resolveTenantForMerchant } from './delivery-tenant-resolver'
 import { sseManager } from '@/lib/sse-manager'
 import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
@@ -235,7 +234,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         try {
           console.log(`[iFood Polling] Processando novo pedido PLC (${event.orderId})...`)
           {
-            const { prisma: prismaDup } = await resolveTenantForMerchant(String(event.merchantId || '4107174'), 'IFOOD')
+            // O evento veio com a autorização DESTE cliente: o pedido é dele (não precisa procurar pelo ID da loja).
+            const prismaDup = await getPrismaForDb(dbName)
             const jaExiste = await (prismaDup as any).pedido.findFirst({
               where: { observacao: { contains: `[iFood:${event.orderId}]` } },
               select: { id: true },
@@ -261,9 +261,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             }
           }
 
-          // 1. Resolver o tenant (Mapeia 4107174 e UUID para db_restaurante)
-          const merchantId = String(event.merchantId || order.merchant?.id || '4107174')
-          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          // 1. Cliente: o que está sendo consultado (a autorização do iFood é por loja/cliente). Antes procurava de
+          // novo pelo ID da loja e, com a busca quebrada, tudo caía no banco de teste.
+          const tenantDbName = dbName
+          const prisma = await getPrismaForDb(dbName)
 
           // 2. Extrair ou criar cliente
           const clientName = String(order.customer?.name || 'Cliente iFood')
@@ -469,8 +470,8 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
       if ((event.code === 'CON' || event.code === 'CONCLUDED') && event.orderId) {
         try {
           console.log(`[iFood Polling] Processando evento CON/CONCLUDED (${event.orderId})...`)
-          const merchantId = String(event.merchantId || '4107174')
-          const { dbName: tenantDbName, prisma } = await resolveTenantForMerchant(merchantId, 'IFOOD')
+          const tenantDbName = dbName
+          const prisma = await getPrismaForDb(dbName)
 
           const order = await (prisma as any).pedido.findFirst({
             where: { observacao: { contains: event.orderId } }
