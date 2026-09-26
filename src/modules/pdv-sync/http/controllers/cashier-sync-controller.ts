@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import {
     SESSION_CHECKED,
     SESSION_OPEN,
@@ -67,11 +68,8 @@ export async function postCashierOpenSync(request: FastifyRequest, reply: Fastif
         return reply.status(400).send({ message: 'Nenhum usuário disponível para vincular ao caixa.' })
     }
 
-    // Auto-gerar sequence_number para o dia
-    const dayStart = new Date(openedAt)
-    dayStart.setHours(0, 0, 0, 0)
-    const dayEnd = new Date(dayStart)
-    dayEnd.setDate(dayEnd.getDate() + 1)
+    // Auto-gerar sequence_number do dia operacional (vira às 05:00 de Brasília; antes recomeçava à meia-noite)
+    const { inicio: dayStart, fim: dayEnd } = intervaloDoDiaOperacional(openedAt)
 
     const countToday = await prisma.cashierSession.count({
         where: {

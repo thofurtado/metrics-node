@@ -4,6 +4,7 @@ import { resolveTenantForMerchant } from '../../services/delivery-tenant-resolve
 import { writeJournal } from '../../services/ifood-events.service'
 import { sseManager } from '@/lib/sse-manager'
 import { env } from '@/env'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 export interface DeliveryEventLog {
   id: string
@@ -177,8 +178,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       }
 
       // Display ID diário
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const today = intervaloDoDiaOperacional().inicio // dia operacional: vira às 05:00
       const countToday = await (prisma as any).pedido.count({
         where: { data_abertura: { gte: today } }
       })

@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 export async function ordersStream(request: FastifyRequest, reply: FastifyReply) {
     const queryTenant = (request.query as { tenant?: string })?.tenant;
@@ -27,8 +28,8 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
     const prisma = requestContext.get('prisma')
     if (prisma) {
         try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // Dia operacional (vira às 05:00): um PDV que reconecta depois da meia-noite recebe os pendentes da noite
+            const today = intervaloDoDiaOperacional().inicio;
 
             const pendingPedidos = await prisma.pedido.findMany({
                 where: {

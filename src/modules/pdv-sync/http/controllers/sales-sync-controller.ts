@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
+import { dataDoDiaOperacional } from '@/lib/dia-operacional'
 import { buildItemCost } from '../../services/item-cost-loader'
 import {
     SyncRejection,
@@ -236,7 +237,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                                 employee_id: targetEmployeeId,
                                 type: 'VALE',
                                 amount: pay.Amount,
-                                referenceDate: saleCreatedAt,
+                                referenceDate: dataDoDiaOperacional(saleCreatedAt), // dia operacional da venda
                                 description: `Consumo PDV - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Colaborador'})`,
                                 status: 'PENDING'
                             }

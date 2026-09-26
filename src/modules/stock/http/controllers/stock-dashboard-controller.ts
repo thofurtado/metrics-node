@@ -2,17 +2,17 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { StockOperation, StockReason } from '@prisma/client'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 // Helper para calcular data de início conforme período
 function getStartDateForPeriod(period?: string): Date | undefined {
     const now = new Date()
+    // "Hoje" e "ontem" são dias operacionais (viram às 05:00 de Brasília), como o caixa
     if (period === 'today') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-        return start
+        return intervaloDoDiaOperacional(now).inicio
     }
     if (period === 'yesterday') {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0)
-        return start
+        return new Date(intervaloDoDiaOperacional(now).inicio.getTime() - 24 * 60 * 60 * 1000)
     }
     if (period === '7days') {
         const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -23,6 +23,11 @@ function getStartDateForPeriod(period?: string): Date | undefined {
         return start
     }
     return undefined
+}
+
+// Fim do período (exclusivo). Só "ontem" tem fim: termina onde começa hoje (antes não tinha fim e incluía hoje).
+function getEndDateForPeriod(period?: string): Date | undefined {
+    return period === 'yesterday' ? intervaloDoDiaOperacional().inicio : undefined
 }
 
 // 1. Visão Geral / Estoque Atual (Posição de Estoque)
@@ -407,6 +412,7 @@ export async function getRecipeConsumption(request: FastifyRequest, reply: Fasti
 
     const { period, category } = querySchema.parse(request.query)
     const startDate = getStartDateForPeriod(period)
+    const endDate = getEndDateForPeriod(period)
 
     // Busca insumos vinculados a composições (fichas técnicas ativas)
     const suppliesWithCompositions = await prisma.supply.findMany({
@@ -440,7 +446,7 @@ export async function getRecipeConsumption(request: FastifyRequest, reply: Fasti
         where: {
             pedido: {
                 status: { in: ['FINALIZADO', 'ENTREGUE', 'FECHADO', 'PAGO', 'CONCLUIDO'] },
-                ...(startDate ? { data_criacao: { gte: startDate } } : {})
+                ...(startDate ? { data_criacao: { gte: startDate, ...(endDate ? { lt: endDate } : {}) } } : {})
             }
         }
     }).catch(() => [])
@@ -535,10 +541,11 @@ export async function getStockMovements(request: FastifyRequest, reply: FastifyR
 
     const { period, eventType, query, page, perPage } = querySchema.parse(request.query)
     const startDate = getStartDateForPeriod(period)
+    const endDate = getEndDateForPeriod(period)
 
     const where: any = {}
     if (startDate) {
-        where.created_at = { gte: startDate }
+        where.created_at = { gte: startDate, ...(endDate ? { lt: endDate } : {}) }
     }
 
     if (eventType && eventType !== 'ALL' && eventType !== 'Todos') {
@@ -577,7 +584,7 @@ export async function getStockMovements(request: FastifyRequest, reply: FastifyR
 
     // Cálculo dos totais de entradas e saídas no período
     const allMovementsInPeriod = await prisma.stock.findMany({
-        where: startDate ? { created_at: { gte: startDate } } : {},
+        where: startDate ? { created_at: { gte: startDate, ...(endDate ? { lt: endDate } : {}) } } : {},
         select: {
             operation: true,
             quantity: true,

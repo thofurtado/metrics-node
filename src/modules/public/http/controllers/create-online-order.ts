@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager } from '@/lib/sse-manager'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -226,8 +227,8 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             })
         }
 
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+        // Número do dia: conta desde as 05:00 de Brasília (dia operacional), não desde a meia-noite
+        const today = intervaloDoDiaOperacional().inicio
         const countToday = await prisma.pedido.count({
             where: {
                 data_abertura: { gte: today }

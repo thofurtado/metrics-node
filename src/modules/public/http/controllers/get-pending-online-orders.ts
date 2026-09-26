@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
+import { diaOperacional, inicioDoDiaOperacional } from '@/lib/dia-operacional'
 
 export async function getPendingOnlineOrders(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -9,16 +10,16 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
 
     try {
         // 1. HorÃ¡rio de corte oficial: fuso horÃ¡rio de BrasÃ­lia (UTC-3)
-        const now = new Date();
-        const spDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // 'YYYY-MM-DD'
-        const todayStart = new Date(spDateStr + 'T00:00:00.000-03:00');
+        // Dia operacional (vira às 05:00 de Brasília): um caixa que passa da meia-noite continua vendo os
+        // pedidos da madrugada. Antes a janela era o dia do calendário (00:00 às 23:59) e eles sumiam da barra.
+        const spDateStr = diaOperacional(new Date()); // 'YYYY-MM-DD'
 
                 const { date, includeCancelled } = (request.query as { date?: string; includeCancelled?: string }) || {};
         // O PDV pede os cancelados (includeCancelled=1) para descobrir pedidos que o iFood cancelou sozinho; o web não.
         const withCancelled = includeCancelled === '1' || includeCancelled === 'true';
         const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? date! : spDateStr;
-        const requestedDayStart = new Date(`${requestedDate}T00:00:00.000-03:00`);
-        const requestedDayEnd = new Date(`${requestedDate}T23:59:59.999-03:00`);
+        const requestedDayStart = inicioDoDiaOperacional(requestedDate);
+        const requestedDayEnd = new Date(requestedDayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
         const allowedOrigins = ['Delivery', 'Balcão', 'Balcao', 'BalcÃ£o', 'Retirada', 'Takeout', 'iFood', '99Food', 'PDV'];
 

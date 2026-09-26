@@ -4,6 +4,7 @@ import { sseManager } from '@/lib/sse-manager'
 import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
 import { isCancellationRelatedEvent, journalEvent, processCancellationEvent } from './ifood-events.service'
+import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 interface TokenStore {
   accessToken: string
@@ -306,8 +307,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           }
 
           // 4. Display ID Diário
-          const today = new Date()
-          today.setHours(0, 0, 0, 0)
+          const today = intervaloDoDiaOperacional().inicio // dia operacional: vira às 05:00
           const countToday = await (prisma as any).pedido.count({
             where: { data_abertura: { gte: today } },
           })

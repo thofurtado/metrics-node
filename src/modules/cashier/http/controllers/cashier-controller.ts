@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
+import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { z } from 'zod'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
@@ -20,12 +21,10 @@ export async function openCashierSession(request: FastifyRequest, reply: Fastify
         }
     }
 
-    // Auto-gerar sequence_number para o dia
+    // Auto-gerar sequence_number do dia operacional (vira às 05:00 de Brasília). Antes contava desde a meia-noite:
+    // o "Turno 01" recomeçava no meio do expediente.
     const openedAt = data.opened_at ? new Date(data.opened_at) : new Date()
-    const dayStart = new Date(openedAt)
-    dayStart.setHours(0, 0, 0, 0)
-    const dayEnd = new Date(dayStart)
-    dayEnd.setDate(dayEnd.getDate() + 1)
+    const { inicio: dayStart, fim: dayEnd } = intervaloDoDiaOperacional(openedAt)
 
     const countToday = await prisma.cashierSession.count({
         where: {
@@ -531,7 +530,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                             amount: amount,
                             type: 'VALE',
                             description: `Vale Sangria Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                            referenceDate: new Date(session.opened_at),
+                            referenceDate: dataDoDiaOperacional(new Date(session.opened_at)), // dia operacional do caixa
                             status: 'PENDING'
                         }
                     })
@@ -588,7 +587,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         amount: amount,
                         type: 'VALE',
                         description: `Consumo/Vale Caixa ${session.period} - ${entry.identification || 'Funcionário'} (Caixa ${session.id})`,
-                        referenceDate: new Date(session.opened_at),
+                        referenceDate: dataDoDiaOperacional(new Date(session.opened_at)), // dia operacional do caixa
                         status: 'PENDING'
                     }
                 })
