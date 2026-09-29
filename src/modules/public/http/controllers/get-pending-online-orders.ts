@@ -130,6 +130,8 @@ export async function getPendingOnlineOrders(request: FastifyRequest, reply: Fas
                     raw_status: p.status || 'Aberto',
                     client_name: client?.name || 'Cliente',
                     client_phone: client?.phone || '',
+                    // CPF/CNPJ na nota (iFood: o que o cliente informou no app), para a NFC-e do delivery no PDV
+                    client_document: p.cpf_na_nota || null,
                     address: address,
                     neighborhood: neighborhood,
                     city: city,

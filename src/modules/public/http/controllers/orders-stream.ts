@@ -66,6 +66,7 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
                     display_id: p.display_id,
                     client_name: client?.name || 'Cliente',
                     client_phone: client?.phone || '',
+                    client_document: p.cpf_na_nota || null,
                     address: address,
                     total_amount: p.valor_final,
                     observations: p.observacao || '',

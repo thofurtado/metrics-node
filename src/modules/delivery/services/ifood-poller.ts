@@ -5,6 +5,7 @@ import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
 import { isCancellationRelatedEvent, journalEvent, processCancellationEvent } from './ifood-events.service'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
+import { documentoDoCliente, observacaoDoPedidoIfood } from './ifood-nota'
 
 interface TokenStore {
   accessToken: string
@@ -406,7 +407,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               valor_troco: 0,
               status: 'Aberto',
               status_delivery: 'Pendente',
-              observacao: `[iFood:${event.orderId}] Pedido #${order.displayId || event.orderId} | Pagamento via iFood`,
+              // CPF/CNPJ que o cliente informou no iFood para a nota (antes era descartado) e a forma de pagamento de verdade:
+              // pago no app ou "Pagar na entrega" (antes todo pedido virava "Pagamento via iFood"), com o código da loja
+              cpf_na_nota: documentoDoCliente(order.customer),
+              observacao: observacaoDoPedidoIfood(event.orderId, order.displayId || event.orderId, order),
               sincronizado_web: true,
               itens: {
                 create: itemsToCreate,
@@ -426,6 +430,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               display_id: pedido.display_id,
               client_name: client.name,
               client_phone: client.phone,
+              client_document: pedido.cpf_na_nota || null,
               address: delAddr?.formattedAddress || 'Endereço iFood',
               neighborhood: delAddr?.district || 'Centro',
               city: delAddr?.city || 'Caraguatatuba',
