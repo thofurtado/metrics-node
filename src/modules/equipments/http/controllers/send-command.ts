@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { connectionManager } from '../../ws/connection-manager'
+import { prisma } from '@/lib/prisma'
 
 export async function sendCommand(
   request: FastifyRequest,
@@ -16,6 +17,14 @@ export async function sendCommand(
 
   const { id } = sendCommandParamsSchema.parse(request.params)
   const { command } = sendCommandBodySchema.parse(request.body)
+
+  const equipment = await prisma.equipment.findUnique({
+    where: { id },
+  })
+
+  if (!equipment) {
+    return reply.status(404).send({ message: 'Equipamento não encontrado' })
+  }
 
   const sent = connectionManager.sendCommand(id, command)
 

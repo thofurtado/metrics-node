@@ -1,4 +1,4 @@
-import { sseManager } from '@/lib/sse-manager'
+
 import { authorizeReleaseUpload, sha256File } from '@/lib/release-auth'
 ﻿import { FastifyRequest, FastifyReply } from 'fastify'
 import fs from 'fs'
@@ -83,33 +83,70 @@ export async function uploadPdvRelease(request: FastifyRequest, reply: FastifyRe
         }
 
         const version = (data.fields.version as any)?.value || '2.4.0'
+        const cleanVersion = String(version).replace(/^[vV]/, '').trim()
         const targetFile = path.join(DOWNLOADS_DIR, 'Instalar_MetricsPDV.exe')
+        const tempFile = path.join(DOWNLOADS_DIR, `Instalar_MetricsPDV.exe.tmp-${Date.now()}`)
 
-        await pipeline(data.file, fs.createWriteStream(targetFile))
-        const sha256 = await sha256File(targetFile)
+        // 1. Gravar no arquivo temporário primeiro (upload atômico)
+        await pipeline(data.file, fs.createWriteStream(tempFile))
+        const sha256 = await sha256File(tempFile)
+        const sizeBytes = fs.statSync(tempFile).size
 
+        // 2. Antes de trocar, guardar o instalador anterior como Instalar_MetricsPDV_<versão-anterior>.exe (manter os 3 últimos)
+        if (fs.existsSync(targetFile)) {
+            let oldVersion = 'anterior'
+            if (fs.existsSync(VERSION_FILE)) {
+                try {
+                    const oldData = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'))
+                    if (oldData.version) {
+                        oldVersion = String(oldData.version).replace(/^[vV]/, '').trim()
+                    }
+                } catch { }
+            }
+
+            const backupFile = path.join(DOWNLOADS_DIR, `Instalar_MetricsPDV_${oldVersion}.exe`)
+            try {
+                fs.copyFileSync(targetFile, backupFile)
+            } catch (copyErr) {
+                console.error('[PDV Release] Erro ao criar backup do instalador anterior:', copyErr)
+            }
+
+            // Manter os 3 últimos backups
+            try {
+                const files = fs.readdirSync(DOWNLOADS_DIR)
+                const backups = files
+                    .filter(f => f.startsWith('Instalar_MetricsPDV_') && f.endsWith('.exe') && f !== 'Instalar_MetricsPDV.exe')
+                    .map(f => {
+                        const p = path.join(DOWNLOADS_DIR, f)
+                        return { name: f, path: p, mtime: fs.statSync(p).mtimeMs }
+                    })
+                    .sort((a, b) => b.mtime - a.mtime)
+
+                if (backups.length > 3) {
+                    for (const b of backups.slice(3)) {
+                        try { fs.unlinkSync(b.path) } catch { }
+                    }
+                }
+            } catch (cleanErr) {
+                console.error('[PDV Release] Erro ao limpar backups antigos:', cleanErr)
+            }
+        }
+
+        // 3. Renomear o temporário para o oficial (atômico)
+        fs.renameSync(tempFile, targetFile)
+
+        // 4. Gravar o manifesto da versão APÓS a troca bem sucedida
         const versionData = {
-            version,
+            version: cleanVersion,
             sha256,
             fileName: 'Instalar_MetricsPDV.exe',
             updatedAt: new Date().toISOString(),
-            sizeBytes: fs.statSync(targetFile).size
+            sizeBytes
         }
 
         fs.writeFileSync(VERSION_FILE, JSON.stringify(versionData, null, 2), 'utf8')
 
-        // Dispara comando de atualização remota via Broadcast SSE para todos os PDVs conectados
-        try {
-            sseManager.broadcast('remote_update', {
-                version: versionData.version,
-                downloadUrl: 'https://api.metrics.dev.br/api/public/pdv/download',
-                mandatory: true,
-                updatedAt: versionData.updatedAt
-            })
-            console.log(`[PDV Release] Broadcast remote_update enviado para todos os clientes online (v${versionData.version})!`)
-        } catch (sseErr: any) {
-            console.error('[PDV Release SSE Broadcast Error]:', sseErr.message)
-        }
+        // U0: Removido o disparo automático de remote_update para evitar derrubar clientes em operação
 
         return reply.status(200).send({
             message: 'Release do Metrics PDV atualizada com sucesso!',

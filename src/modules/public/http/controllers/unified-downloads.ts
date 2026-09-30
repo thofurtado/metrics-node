@@ -215,10 +215,13 @@ export async function uploadAppRelease(request: FastifyRequest<{ Params: { app: 
         const cleanVersion = versionField.replace(/^[vV]/, '').trim()
 
         const targetFile = path.join(DOWNLOADS_DIR, cfg.fileName)
-        await pipeline(data.file, fs.createWriteStream(targetFile))
+        const tempFile = path.join(DOWNLOADS_DIR, `${cfg.fileName}.tmp-${Date.now()}`)
 
-        const sizeBytes = fs.statSync(targetFile).size
-        const sha256 = await sha256File(targetFile)
+        // 1. Gravar no arquivo temporário primeiro (upload atômico)
+        await pipeline(data.file, fs.createWriteStream(tempFile))
+
+        const sizeBytes = fs.statSync(tempFile).size
+        const sha256 = await sha256File(tempFile)
         const versionData = {
             id: cfg.id,
             key: cfg.key,
@@ -233,19 +236,58 @@ export async function uploadAppRelease(request: FastifyRequest<{ Params: { app: 
         }
 
         const versionFile = path.join(DOWNLOADS_DIR, `${cfg.key}-version.json`)
+
+        // 2. Antes de trocar, guardar versão anterior (manter os 3 últimos)
+        if (fs.existsSync(targetFile)) {
+            let oldVersion = 'anterior'
+            if (fs.existsSync(versionFile)) {
+                try {
+                    const oldData = JSON.parse(fs.readFileSync(versionFile, 'utf8'))
+                    if (oldData.version) {
+                        oldVersion = String(oldData.version).replace(/^[vV]/, '').trim()
+                    }
+                } catch { }
+            }
+
+            const ext = path.extname(cfg.fileName)
+            const base = path.basename(cfg.fileName, ext)
+            const backupFileName = `${base}_${oldVersion}${ext}`
+            const backupFilePath = path.join(DOWNLOADS_DIR, backupFileName)
+            try {
+                fs.copyFileSync(targetFile, backupFilePath)
+            } catch (copyErr) {
+                console.error(`[Unified Release] Erro ao criar backup de ${cfg.name}:`, copyErr)
+            }
+
+            // Manter os 3 últimos
+            try {
+                const prefix = `${base}_`
+                const files = fs.readdirSync(DOWNLOADS_DIR)
+                const backups = files
+                    .filter(f => f.startsWith(prefix) && f.endsWith(ext) && f !== cfg.fileName)
+                    .map(f => {
+                        const p = path.join(DOWNLOADS_DIR, f)
+                        return { name: f, path: p, mtime: fs.statSync(p).mtimeMs }
+                    })
+                    .sort((a, b) => b.mtime - a.mtime)
+
+                if (backups.length > 3) {
+                    for (const b of backups.slice(3)) {
+                        try { fs.unlinkSync(b.path) } catch { }
+                    }
+                }
+            } catch (cleanErr) {
+                console.error(`[Unified Release] Erro ao limpar backups antigos de ${cfg.name}:`, cleanErr)
+            }
+        }
+
+        // 3. Renomear o temporário para o oficial (atômico)
+        fs.renameSync(tempFile, targetFile)
+
+        // 4. Gravar arquivo de versão
         fs.writeFileSync(versionFile, JSON.stringify(versionData, null, 2), 'utf8')
 
-        // Se for PDV, dispara evento SSE para auto-update dos caixas conectados
-        if (cfg.key === 'pdv') {
-            try {
-                sseManager.broadcast('remote_update', {
-                    version: versionData.version,
-                    downloadUrl: versionData.downloadUrl,
-                    mandatory: true,
-                    updatedAt: versionData.updatedAt
-                })
-            } catch { }
-        }
+        // U0: Removido o disparo de SSE remote_update para o PDV
 
         return reply.status(200).send({
             message: `Release de ${cfg.name} (v${cleanVersion}) publicada com sucesso!`,
