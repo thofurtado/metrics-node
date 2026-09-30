@@ -1,0 +1,110 @@
+[
+  {
+    "termo": "Caixinha / Gorjeta",
+    "significado": "Valor pago voluntariamente pelo cliente além do total da conta (excedente). Não pertence à empresa e não sai da gaveta física na hora da venda: vira crédito do colaborador no RH para compras no restaurante ou repasse financeiro.",
+    "exemplo": "Conta de R$ 182,00 paga com R$ 200,00 no cartão. A caixinha é exatamente R$ 18,00.",
+    "modulos": [
+      "caixa-vendas",
+      "rh",
+      "financeiro"
+    ]
+  },
+  {
+    "termo": "Serviço 10%",
+    "significado": "Taxa facultativa sugerida pelo restaurante sobre o valor consumido em atendimento de salão/mesas. Compõe a conta do restaurante, entra na base de cálculo da nota fiscal (NFC-e) e tem destinação regulamentada pela legislação.",
+    "exemplo": "Mesa consumiu R$ 100,00 de itens; a taxa de serviço sugerida de R$ 10,00 eleva o total da conta para R$ 110,00.",
+    "modulos": [
+      "caixa-vendas",
+      "mesas",
+      "fiscal"
+    ]
+  },
+  {
+    "termo": "Couvert Artístico",
+    "significado": "Valor cobrado por pessoa pela apresentação de música ao vivo ou entretenimento. Entra no caixa na mesma forma em que foi pago e só se torna despesa quando for efetivamente repassado ao artista.",
+    "exemplo": "R$ 15,00 por cliente em noite com show acústico.",
+    "modulos": [
+      "caixa-vendas",
+      "mesas",
+      "financeiro"
+    ]
+  },
+  {
+    "termo": "Dia Operacional",
+    "significado": "Horário de corte e virada do expediente contábil do estabelecimento. No Metrics, a virada ocorre às 05:00 da manhã para que turnos noturnos não sejam divididos em duas datas civis.",
+    "exemplo": "Venda realizada às 02:30 da madrugada de sábado pertence ao dia operacional de sexta-feira.",
+    "modulos": [
+      "caixa-vendas",
+      "rh",
+      "financeiro"
+    ]
+  },
+  {
+    "termo": "Fundo de Troco",
+    "significado": "Valor em cédulas e moedas colocado na gaveta do caixa no momento da abertura para possibilitar o troco aos clientes durante o expediente.",
+    "exemplo": "Abertura com R$ 150,00 em moedas e notas miúdas.",
+    "modulos": [
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Sangria",
+    "significado": "Retirada de dinheiro físico da gaveta do caixa durante o turno para despesas operacionais emergenciais, recolhimento para cofre central ou vale de funcionário.",
+    "exemplo": "Retirada de R$ 80,00 para compra de gelo no comércio vizinho com comprovante.",
+    "modulos": [
+      "caixa-vendas",
+      "financeiro"
+    ]
+  },
+  {
+    "termo": "Suprimento",
+    "significado": "Aporte adicional de dinheiro físico na gaveta do caixa para recomposição de troco no decorrer do expediente.",
+    "exemplo": "Aporte de R$ 100,00 em notas de R$ 5,00 para atender movimento do almoço.",
+    "modulos": [
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Conta da Casa / Consumo Interno",
+    "significado": "Modalidade de venda sem cobrança imediata em dinheiro ou cartão, debitada na conta de sócios, funcionários (para desconto em folha) ou parceiros em permuta.",
+    "exemplo": "Almoço do garçom no valor de R$ 25,00 lançado na sua conta de colaborador.",
+    "modulos": [
+      "caixa-vendas",
+      "rh"
+    ]
+  },
+  {
+    "termo": "Fechamento Cego",
+    "significado": "Modalidade de fechamento de caixa na qual o operador declara as cédulas e moedas sem saber previamente o valor esperado pelo sistema, coibindo conferências viciadas.",
+    "exemplo": "O operador digita que contou R$ 840,00 sem que a tela mostre se o esperado era R$ 850,00.",
+    "modulos": [
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Contingência Offline",
+    "significado": "Estado operacional no qual o PDV emite documentos fiscais (NFC-e) mesmo sem conexão de internet, enfileirando os XMLs assinados para transmissão posterior à SEFAZ.",
+    "exemplo": "Queda do link de internet da operadora durante o horário de pico.",
+    "modulos": [
+      "fiscal",
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Comanda / Mesa Ociosa",
+    "significado": "Mesa ou comanda aberta no salão sem novos lançamentos de pedidos por período prolongado, sinalizando possível abandono ou cliente aguardando atendimento.",
+    "exemplo": "Mesa aberta há mais de 45 minutos sem nenhum item lançado.",
+    "modulos": [
+      "mesas"
+    ]
+  },
+  {
+    "termo": "Conferência de Caixa",
+    "significado": "Etapa de auditoria realizada pelo gestor no SaaS Admin ou painel web, validando o fechamento do operador, confrontando maquininhas e travando o caixa no status CHECKED.",
+    "exemplo": "Conferência matinal dos 3 caixas do dia anterior antes da liberação contábil.",
+    "modulos": [
+      "caixa-vendas",
+      "financeiro"
+    ]
+  }
+]

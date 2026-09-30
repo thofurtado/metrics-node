@@ -125,5 +125,8 @@
   "pendencias": [
     "Custo médio (CMP) na entrada de nota ainda substitui o custo em vez de fazer a média ponderada.",
     "Cancelamento depois da sincronia: o estoque segue a escolha do operador (decisão de 25/09, backend 2.6.89)."
-  ]
+  ],
+  "paraQueServe": "Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).",
+  "regras": [],
+  "funcoes": []
 }

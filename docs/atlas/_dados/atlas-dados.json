@@ -1,5 +1,5 @@
 {
- "gerado_em": "25/09/2026",
+ "gerado_em": "29/09/2026",
  "atlas": {
   "titulo": "Atlas do Metrics",
   "resumo": "Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.",
@@ -113,6 +113,14 @@
       "pdv:ItemCancelado": {
        "col": 3,
        "linha": 3
+      },
+      "pdv:PagamentoAlteracao": {
+       "col": 2,
+       "linha": 3
+      },
+      "pdv:VendaGuardada": {
+       "col": 1,
+       "linha": 2
       }
      },
      "legenda": "No PDV, Pedido é a venda de qualquer origem (balcão, mesa, delivery). Ela sobe para a nuvem como Venda quando fecha."
@@ -324,6 +332,36 @@
       "motivo",
       "sincronizado_web"
      ]
+    },
+    "pdv:PagamentoAlteracao": {
+     "nome": "Alteração de Pagamento",
+     "o_que_e": "Auditoria de troca de forma de pagamento realizada após a finalização de uma venda no PDV. Registra a forma anterior, a nova forma, o motivo e o operador responsável, prevenindo fraudes na conferência do caixa.",
+     "quem_grava": "Metrics.PDV ao editar pagamento de venda já finalizada",
+     "quem_le": "Metrics.PDV na consulta de vendas e relatórios de auditoria",
+     "cresce": "Por evento de alteração de pagamento",
+     "mostrar": [
+      "pedido_id",
+      "antes",
+      "depois",
+      "motivo",
+      "usuario_nome",
+      "alterado_em"
+     ]
+    },
+    "pdv:VendaGuardada": {
+     "nome": "Venda Guardada",
+     "o_que_e": "Venda pausada/estacionada no balcão do PDV (ex.: cliente foi ao carro buscar a carteira ou esqueceu algo). Permite liberar o caixa para o próximo cliente da fila e recuperar os itens depois.",
+     "quem_grava": "Metrics.PDV ao acionar o botão 'Guardar Venda' no balcão",
+     "quem_le": "Metrics.PDV ao listar e recuperar vendas guardadas para finalização",
+     "cresce": "Temporária: registros são removidos ou limpos ao recuperar a venda",
+     "mostrar": [
+      "terminal_id",
+      "guardada_em",
+      "total",
+      "quantidade_itens",
+      "resumo",
+      "itens_json"
+     ]
     }
    },
    "ligacoes": [
@@ -444,6 +482,396 @@
     "Rodar npm run migrate:all antes de publicar o backend 2.6.89.",
     "Vendas e baixas de estoque recebidas antes do 2.6.89 não têm sale_item_id: o estorno do cancelamento só vale para as novas.",
     "Fiado (pergunta 5) e vale do funcionário (pergunta 4)."
+   ],
+   "paraQueServe": "O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante. Ele controla todo o fluxo de dinheiro que entra e sai do estabelecimento: a abertura do turno com o fundo de troco na gaveta, os registros de pagamentos dos clientes em todas as modalidades (dinheiro, cartões, Pix, vales, conta de funcionário), o tratamento correto das caixinhas da equipe (como crédito de funcionário) e das taxas de serviço, as retiradas imediatas para compras e despesas (sangrias), os aportes de troco (suprimentos), e a conferência final do turno confrontando o esperado pelo sistema com a contagem física do operador. Além disso, ele mantém a sincronização perfeita entre o PDV local (que opera offline no balcão) e a nuvem, garantindo que cada venda fique atrelada ao seu caixa legítimo sem misturar operadores.",
+   "regras": [
+    {
+     "id": "regra-caixinha-excedente",
+     "titulo": "Caixinha é estritamente o excedente do pagamento",
+     "regra": "Quando uma conta de R$ 182,00 é passada no débito ou dinheiro como R$ 200,00, a caixinha é apenas o excedente de R$ 18,00, e NUNCA o total da venda (R$ 200,00).",
+     "porque": "A caixinha não pertence ao restaurante e não sai da gaveta física no momento da venda. Ela permanece no caixa/banco da empresa e vira um crédito do funcionário/garçom no RH, podendo ser descontada em compras no restaurante ou paga no repasse periódico.",
+     "decididoPor": "Thomás Furtado",
+     "data": "29/09/2026",
+     "ondeNoCodigo": [
+      "metrics/src/utils/cashier/caixinha.ts",
+      "metrics/src/utils/cashier/exportGeralPDF.ts",
+      "metrics/src/utils/cashier/exportGeralCSV.ts",
+      "metrics/src/utils/cashier/exportPDF.ts",
+      "metrics/src/pages/app/cashier/session/[id]/index.tsx"
+     ]
+    },
+    {
+     "id": "regra-servico-nao-e-caixinha",
+     "titulo": "Serviço 10% NÃO é caixinha e compõe a nota fiscal",
+     "regra": "A taxa de serviço facultativa de 10% cobrada nas mesas é parte integrante da conta do restaurante e vai destacada no cupom/NFC-e. Ela nunca é somada no total das caixinhas.",
+     "porque": "Exigência fiscal e contábil: a taxa de serviço é faturamento da empresa com destinação legal regulamentada (Lei da Gorjeta), enquanto a caixinha voluntária é excedente espontâneo de repasse direto.",
+     "decididoPor": "Thomás Furtado",
+     "data": "29/09/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts",
+      "metrics/src/utils/cashier/caixinha.ts"
+     ]
+    },
+    {
+     "id": "regra-dia-operacional-05h",
+     "titulo": "O Dia Operacional do Caixa vira às 05:00 da manhã",
+     "regra": "Caixas abertos durante a noite ou madrugada pertencem à competência do dia operacional anterior até as 05:00 da manhã.",
+     "porque": "Bares e restaurantes operam rotineiramente pela madrugada. Virar o dia à meia-noite (00:00) dividiria artificialmente o mesmo turno de trabalho em duas datas civis, corrompendo a conferência física e o faturamento do expediente.",
+     "decididoPor": "Thomás Furtado",
+     "data": "24/09/2026",
+     "ondeNoCodigo": [
+      "metrics/src/utils/get-periodo-brt.ts",
+      "metrics-node/src/utils/get-competence-date.ts"
+     ]
+    },
+    {
+     "id": "regra-caixa-fechado-somente-consulta",
+     "titulo": "Caixa Fechado opera em modo somente consulta",
+     "regra": "Um caixa encerrado não recebe novas vendas, não permite cancelamentos e não aceita troca de pagamentos. Permite apenas reimpressão de comprovantes e conferência.",
+     "porque": "Segurança contra fraudes após a contagem física das cédulas pelo operador. Qualquer ajuste posterior deve ser feito pelo gestor no SaaS Admin ou mediante reabertura autorizada.",
+     "decididoPor": "Thomás Furtado",
+     "data": "20/09/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaFechamentoCaixaWindow.xaml.cs",
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts"
+     ]
+    },
+    {
+     "id": "regra-nuvem-nunca-escolhe-caixa",
+     "titulo": "A nuvem nunca altera o caixa de uma venda por conta própria",
+     "regra": "Vendas do PDV ficam vinculadas ao caixa original onde foram abertas. Se o caixa for desconhecido ou já conferido (CHECKED), a sincronização rejeita com código 409 em português.",
+     "porque": "Evitar furos de caixa entre operadores: antes da regra, vendas com problemas caíam no caixa aberto mais recente de outro terminal, gerando quebras inexplicáveis para o operador inocente.",
+     "decididoPor": "Thomás Furtado",
+     "data": "25/09/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts"
+     ]
+    },
+    {
+     "id": "regra-saldo-gaveta-fisica",
+     "titulo": "Saldo da Gaveta = Abertura + Entradas em Dinheiro - Sangrias",
+     "regra": "O valor esperado na gaveta física é composto por todo o dinheiro que entrou (inclusive excedente de caixinha pago em cédula), subtraído das retiradas físicas (sangrias).",
+     "porque": "O dinheiro da caixinha em cédula física entra de fato na gaveta e não sai dela no momento do pagamento. Subtrair a caixinha geraria uma falta de dinheiro fictícia na contagem do operador.",
+     "decididoPor": "Thomás Furtado",
+     "data": "29/09/2026",
+     "ondeNoCodigo": [
+      "metrics/src/utils/cashier/exportGeralPDF.ts",
+      "metrics/src/utils/cashier/exportPDF.ts"
+     ]
+    },
+    {
+     "id": "regra-venda-cancelada-excluida",
+     "titulo": "Venda cancelada é removida de faturamento e conferência",
+     "regra": "Vendas canceladas têm seus lançamentos de pagamento anulados no caixa e não pontuam no faturamento do expediente.",
+     "porque": "Valores estornados ou vendas desfeitas não podem ser exigidos na contagem do operador nem constar como receita real do estabelecimento.",
+     "decididoPor": "Thomás Furtado",
+     "data": "25/09/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts",
+      "metrics/src/pages/app/cashier/session/[id]/index.tsx"
+     ]
+    },
+    {
+     "id": "regra-consumo-funcionario-debito-rh",
+     "titulo": "Consumo de funcionário vira débito na conta corrente do colaborador",
+     "regra": "Vendas lançadas como 'Conta Casa / Funcionário' exigem identificação de funcionário ativo e geram saldo devedor na ficha do colaborador no RH.",
+     "porque": "Permite que a empresa desconte refeições na folha de pagamento ou abata dos créditos de caixinha acumulados pelo colaborador.",
+     "decididoPor": "Thomás Furtado",
+     "data": "25/09/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts",
+      "metrics/src/pages/hr/employees/debt-management-dialog.tsx"
+     ]
+    },
+    {
+     "id": "regra-rateio-desconto-maior-item",
+     "titulo": "Diferença de centavos no rateio de desconto vai para o maior item",
+     "regra": "Quando um desconto global é rateado entre os itens da venda, as sobras de arredondamento de centavos são atribuídas ao item de maior valor.",
+     "porque": "Exigência da SEFAZ: a soma dos descontos dos itens (vDesc) deve bater com precisão cirúrgica de centavos com o desconto totalizador da NFC-e para evitar rejeição.",
+     "decididoPor": "Thomás Furtado",
+     "data": "23/09/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/CalculoDescontoService.cs"
+     ]
+    },
+    {
+     "id": "regra-fechamento-cego-configuravel",
+     "titulo": "Fechamento cego é opcional por loja (Padrão = Completo)",
+     "regra": "A opção de o operador contar valores sem visualizar os esperados é configurável por tenant. O padrão é o fechamento completo onde o operador confere os valores.",
+     "porque": "Flexibilidade operacional: estabelecimentos familiares preferem conferência transparente e rápida, enquanto operações de grande porte usam o fechamento cego para prevenir fraudes.",
+     "decididoPor": "Thomás Furtado",
+     "data": "27/09/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaFechamentoCaixaWindow.xaml.cs"
+     ]
+    }
+   ],
+   "funcoes": [
+    {
+     "nome": "AbrirTurnoCaixa",
+     "oQueFaz": "Inicia o expediente do caixa registrando o operador responsável, data/hora e o fundo de troco inicial em dinheiro.",
+     "entradas": [
+      "operador_id",
+      "terminal_id",
+      "fundo_inicial_dinheiro",
+      "periodo"
+     ],
+     "saidas": [
+      "sessao_caixa_id",
+      "status: OPEN"
+     ],
+     "motivo": "Isolar as movimentações físicas de dinheiro por turno e operador, garantindo auditoria de saldo inicial.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaAberturaCaixaWindow.xaml.cs",
+      "metrics/src/pages/app/cashier/dashboard/index.tsx"
+     ],
+     "usadaPor": [
+      "Operador de Caixa"
+     ],
+     "tabelas": [
+      "nuvem:CashierSession",
+      "pdv:CaixaAberturaFechamento"
+     ]
+    },
+    {
+     "nome": "RegistrarPagamentoVenda",
+     "oQueFaz": "Recebe os pagamentos divididos por meio (Dinheiro, Débito, Crédito, Pix, Voucher, Conta Casa) e conclui a venda.",
+     "entradas": [
+      "venda_id",
+      "pagamentos: [{ forma, valor, bandeira, cliente_id, colaborador_id }]"
+     ],
+     "saidas": [
+      "lancamentos_caixa_ids",
+      "venda_status: COMPLETED",
+      "troco"
+     ],
+     "motivo": "Baixar o débito do cliente, alimentar os saldos da gaveta e dos bancos correspondentes.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaPagamentoWindow.xaml.cs",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts"
+     ],
+     "usadaPor": [
+      "Caixa do Balcão",
+      "Garçom"
+     ],
+     "tabelas": [
+      "nuvem:Sale",
+      "nuvem:CashierEntry",
+      "pdv:Pedido",
+      "pdv:PagamentoPedido"
+     ]
+    },
+    {
+     "nome": "CalcularExcedenteCaixinha",
+     "oQueFaz": "Extrai o valor pago a mais pelo cliente além do total da conta e destina como crédito de caixinha da equipe/funcionário.",
+     "entradas": [
+      "total_conta",
+      "total_pago",
+      "funcionario_destinatario"
+     ],
+     "saidas": [
+      "valor_caixinha_excedente",
+      "identificacao_marcada"
+     ],
+     "motivo": "Separar a gorjeta voluntária do faturamento do restaurante, sem tributação indevida e sem saída física imediata da gaveta.",
+     "ondeNoCodigo": [
+      "metrics/src/utils/cashier/caixinha.ts",
+      "metrics/src/pages/app/cashier/session/[id]/index.tsx"
+     ],
+     "usadaPor": [
+      "Conferência de Caixa",
+      "Fechamento de Turno"
+     ],
+     "tabelas": [
+      "nuvem:CashierEntry"
+     ]
+    },
+    {
+     "nome": "RealizarSangria",
+     "oQueFaz": "Registra uma saída de dinheiro físico da gaveta categorizada (despesa operacional, recolhimento para cofre ou vale de funcionário).",
+     "entradas": [
+      "sessao_caixa_id",
+      "valor",
+      "tipo_sangria",
+      "motivo",
+      "favorecido"
+     ],
+     "saidas": [
+      "registro_sangria_id",
+      "saldo_gaveta_atualizado"
+     ],
+     "motivo": "Evitar excesso de dinheiro no caixa e justificar saídas físicas imediatas sem provocar furos na contagem final.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaMovimentoCaixaWindow.xaml.cs",
+      "metrics/src/pages/app/cashier/components/TransactionForm.tsx"
+     ],
+     "usadaPor": [
+      "Operador de Caixa",
+      "Gerente de Turno"
+     ],
+     "tabelas": [
+      "nuvem:CashierEntry",
+      "pdv:MovimentoCaixa"
+     ]
+    },
+    {
+     "nome": "RealizarSuprimento",
+     "oQueFaz": "Registra um aporte de dinheiro físico na gaveta para recomposição de troco durante o turno.",
+     "entradas": [
+      "sessao_caixa_id",
+      "valor",
+      "motivo"
+     ],
+     "saidas": [
+      "registro_suprimento_id",
+      "saldo_gaveta_atualizado"
+     ],
+     "motivo": "Injetar dinheiro miúdo e moedas na gaveta sem misturar aporte financeiro com faturamento de vendas.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaMovimentoCaixaWindow.xaml.cs",
+      "metrics/src/pages/app/cashier/components/TransactionForm.tsx"
+     ],
+     "usadaPor": [
+      "Operador de Caixa",
+      "Gerente"
+     ],
+     "tabelas": [
+      "nuvem:CashierEntry",
+      "pdv:MovimentoCaixa"
+     ]
+    },
+    {
+     "nome": "DividirContaMesa",
+     "oQueFaz": "Permite que uma mesa pague frações da conta por pessoa ou selecionando itens específicos consumidos.",
+     "entradas": [
+      "comanda_id",
+      "itens_ou_valor_por_pessoa",
+      "formas_pagamento"
+     ],
+     "saidas": [
+      "pagamentos_registrados",
+      "saldo_restante_mesa"
+     ],
+     "motivo": "Atender ao hábito essencial de clientes em bares e restaurantes que dividem despesas em grupos.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaPagamentoWindow.xaml.cs",
+      "Metrics.PDV/ViewModels/PagamentoViewModel.cs"
+     ],
+     "usadaPor": [
+      "Operador de Caixa",
+      "Garçom"
+     ],
+     "tabelas": [
+      "pdv:Pedido",
+      "pdv:PagamentoPedido",
+      "nuvem:Sale"
+     ]
+    },
+    {
+     "nome": "FecharTurnoCaixa",
+     "oQueFaz": "Encerra o turno de caixa. O operador declara os valores contados e o sistema calcula sobra ou quebra de caixa.",
+     "entradas": [
+      "sessao_caixa_id",
+      "valores_contados_por_forma"
+     ],
+     "saidas": [
+      "relatorio_fechamento",
+      "diferenca_sobra_quebra",
+      "status: PENDING_AUDIT"
+     ],
+     "motivo": "Confrontar a contagem real com o fluxo sistêmico e auditar a responsabilidade financeira do operador.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaFechamentoCaixaWindow.xaml.cs",
+      "metrics/src/pages/app/cashier/dashboard/index.tsx"
+     ],
+     "usadaPor": [
+      "Operador de Caixa",
+      "Conferente"
+     ],
+     "tabelas": [
+      "nuvem:CashierSession",
+      "pdv:CaixaAberturaFechamento"
+     ]
+    },
+    {
+     "nome": "CancelarVendaTurno",
+     "oQueFaz": "Cancela uma venda no caixa aberto, anula pagamentos, retorna itens ao estoque e cancela a NFC-e na SEFAZ.",
+     "entradas": [
+      "venda_id",
+      "motivo_cancelamento",
+      "senha_gerente"
+     ],
+     "saidas": [
+      "venda_status: CANCELLED",
+      "status_nfce: CANCELADA",
+      "estorno_financeiro"
+     ],
+     "motivo": "Permitir correção de erros de lançamento ou desistência do cliente mantendo rastro fiscal e auditoria.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaCancelarVendaWindow.xaml.cs",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts"
+     ],
+     "usadaPor": [
+      "Gerente de Loja",
+      "Caixa autorizado"
+     ],
+     "tabelas": [
+      "nuvem:Sale",
+      "nuvem:CashierEntry",
+      "pdv:Pedido"
+     ]
+    },
+    {
+     "nome": "AlterarFormaPagamento",
+     "oQueFaz": "Altera a forma de pagamento de uma venda já concluída sem cancelar a nota nem mexer nos itens vendidos.",
+     "entradas": [
+      "venda_id",
+      "novos_pagamentos"
+     ],
+     "saidas": [
+      "lancamentos_atualizados",
+      "reenvio_sync_pendente"
+     ],
+     "motivo": "Corrigir enganos de digitação na maquininha sem a burocracia de cancelamento fiscal de mercadorias.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Views/JanelaAlterarPagamentoWindow.xaml.cs",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts"
+     ],
+     "usadaPor": [
+      "Operador de Caixa",
+      "Gerente"
+     ],
+     "tabelas": [
+      "nuvem:Sale",
+      "nuvem:CashierEntry",
+      "pdv:PagamentoPedido"
+     ]
+    },
+    {
+     "nome": "ConferirCaixaNoAdmin",
+     "oQueFaz": "O gestor audita o turno do caixa, valida os comprovantes e marca o caixa como auditado (CHECKED), travando edições.",
+     "entradas": [
+      "sessao_caixa_id",
+      "observacoes_auditoria"
+     ],
+     "saidas": [
+      "sessao_status: CHECKED",
+      "liberado_financeiro: true"
+     ],
+     "motivo": "Encerrar o ciclo contábil do restaurante, garantindo que caixas já conferidos não sofram alterações posteriores por sincronia.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/cashier/session/[id]/index.tsx",
+      "metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts"
+     ],
+     "usadaPor": [
+      "Gestor Financeiro",
+      "Dono do Restaurante"
+     ],
+     "tabelas": [
+      "nuvem:CashierSession",
+      "nuvem:CashierEntry"
+     ]
+    }
    ]
   },
   "cardapio": {
@@ -681,6 +1109,9 @@
    "pendencias": [
     "Confirmar se Setor e Grupo do PDV correspondem a Categoria e Subcategoria da nuvem."
    ],
+   "paraQueServe": "Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de impressão (para onde cada produto vai na cozinha). A nuvem é a fonte: o PDV baixa o cardápio a cada ciclo.",
+   "regras": [],
+   "funcoes": [],
    "fluxos": [],
    "notas": []
   },
@@ -768,6 +1199,9 @@
      "como": "Sobe junto com o cliente (só o principal)."
     }
    ],
+   "paraQueServe": "Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "fluxos": [],
    "notas": [],
@@ -898,6 +1332,9 @@
    "pendencias": [
     "Decisão R2/R3: o delivery com PDV vira venda do caixa que deu a baixa, e a Conferência não pode contá-lo duas vezes."
    ],
+   "paraQueServe": "Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do PDV, o vínculo dos itens das plataformas com os produtos do Metrics e o diário de eventos do iFood. Pela decisão R2/R3, com PDV o delivery sobe como venda do caixa que deu a baixa.",
+   "regras": [],
+   "funcoes": [],
    "espelhos": [],
    "fluxos": [],
    "notas": []
@@ -1032,6 +1469,9 @@
      "como": "Mesmo código; baixado a cada ciclo."
     }
    ],
+   "paraQueServe": "Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "fluxos": [],
    "notas": [],
@@ -1165,6 +1605,9 @@
     "Custo médio (CMP) na entrada de nota ainda substitui o custo em vez de fazer a média ponderada.",
     "Cancelamento depois da sincronia: o estoque segue a escolha do operador (decisão de 25/09, backend 2.6.89)."
    ],
+   "paraQueServe": "Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -1402,6 +1845,9 @@
    "pendencias": [
     "A maquininha usada na venda do PDV não chega ao lançamento do caixa (sem taxa e sem banco na conferência)."
    ],
+   "paraQueServe": "Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "fluxos": [],
    "notas": []
@@ -1454,6 +1900,9 @@
    "pendencias": [
     "A nota não sobe para a nuvem: a venda da nuvem não guarda chave nem número da NFC-e."
    ],
+   "paraQueServe": "A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numeração e a tabela do IBPT (valor aproximado dos tributos) ficam no banco local. Os dados fiscais do produto (NCM, CFOP, CSOSN) ficam no cardápio.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -1580,6 +2029,9 @@
     "Confirmar se o garçom pela internet é usado; se for, o envio de mesas do PDV não pode apagar os itens dele.",
     "A venda não guarda de que mesa veio (proposta sales.origin_identifier, módulo Caixa e vendas)."
    ],
+   "paraQueServe": "Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem existe só uma foto ao vivo das mesas abertas, sem ligação com venda ou caixa. Quando a mesa é paga, sai da foto e vira venda (módulo Caixa e vendas).",
+   "regras": [],
+   "funcoes": [],
    "fluxos": [],
    "notas": []
   },
@@ -1667,6 +2119,9 @@
    "pendencias": [
     "Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4)."
    ],
+   "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -1708,6 +2163,9 @@
      "o_que_e": "Credenciais de integração que valem para todos os clientes (ex.: app do iFood). Têm prioridade sobre as variáveis de ambiente do backend."
     }
    },
+   "paraQueServe": "O banco master do SaaS Admin: cada cliente do Metrics (tenant) com seu domínio e o nome do banco próprio, e as credenciais globais de integração (iFood).",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -1792,151 +2250,33 @@
    "pendencias": [
     "Descrições tiradas dos nomes e das ligações: confirmar com quem usa o módulo."
    ],
+   "paraQueServe": "Atendimento técnico: a ordem de serviço de um equipamento do cliente, os itens e serviços usados, o andamento e o pagamento.",
+   "regras": [],
+   "funcoes": [],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
    "notas": []
   }
  },
- "ligacoes_entre_modulos": [
-  {
-   "de": "servicos",
-   "para": "clientes",
-   "quantidade": 2
-  },
-  {
-   "de": "servicos",
-   "para": "empresa",
-   "quantidade": 2
-  },
-  {
-   "de": "servicos",
-   "para": "cardapio",
-   "quantidade": 1
-  },
-  {
-   "de": "servicos",
-   "para": "estoque",
-   "quantidade": 2
-  },
-  {
-   "de": "estoque",
-   "para": "cardapio",
-   "quantidade": 6
-  },
-  {
-   "de": "estoque",
-   "para": "servicos",
-   "quantidade": 1
-  },
-  {
-   "de": "estoque",
-   "para": "caixa-vendas",
-   "quantidade": 1
-  },
-  {
-   "de": "servicos",
-   "para": "financeiro",
-   "quantidade": 2
-  },
-  {
-   "de": "financeiro",
-   "para": "servicos",
-   "quantidade": 1
-  },
-  {
-   "de": "financeiro",
-   "para": "estoque",
-   "quantidade": 1
-  },
-  {
-   "de": "financeiro",
-   "para": "caixa-vendas",
-   "quantidade": 1
-  },
-  {
-   "de": "rh",
-   "para": "empresa",
-   "quantidade": 1
-  },
-  {
-   "de": "rh",
-   "para": "financeiro",
-   "quantidade": 1
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "servicos",
-   "quantidade": 2
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "cardapio",
-   "quantidade": 2
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "estoque",
-   "quantidade": 1
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "clientes",
-   "quantidade": 5
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "rh",
-   "quantidade": 1
-  },
-  {
-   "de": "delivery",
-   "para": "cardapio",
-   "quantidade": 1
-  },
-  {
-   "de": "estoque",
-   "para": "financeiro",
-   "quantidade": 1
-  },
-  {
-   "de": "estoque",
-   "para": "empresa",
-   "quantidade": 1
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "mesas",
-   "quantidade": 1
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "empresa",
-   "quantidade": 2
-  },
-  {
-   "de": "caixa-vendas",
-   "para": "financeiro",
-   "quantidade": 4
-  }
- ],
+ "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-09-25T22:51:31",
+  "gerado_em": "2026-09-29T22:21:08",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "c6dfb15 2026-09-25",
+    "versao": "c649825 2026-09-29",
     "tabelas": 63
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "6ca429f 2026-09-25",
+    "versao": "e0aac19 2026-09-25",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "a4acf92 2026-09-25",
-    "tabelas": 34
+    "versao": "5a28e6e 2026-09-29",
+    "tabelas": 36
    }
   },
   "tabelas": {
@@ -11835,6 +12175,17 @@
       "unico": false,
       "padrao": null,
       "comentario": null
+     },
+     {
+      "nome": "ContaPedidaEm",
+      "coluna": "conta_pedida_em",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
      }
     ],
     "relacoes": [
@@ -14617,6 +14968,125 @@
     ],
     "arquivo": "OpcaoComplemento.cs"
    },
+   "pdv:PagamentoAlteracao": {
+    "origem": "pdv",
+    "modelo": "PagamentoAlteracao",
+    "tabela": "pagamento_alteracoes",
+    "campos": [
+     {
+      "nome": "Id",
+      "coluna": "id",
+      "tipo": "int",
+      "enum": false,
+      "opcional": false,
+      "chave": true,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Uuid",
+      "coluna": "uuid",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "PedidoId",
+      "coluna": "pedido_id",
+      "tipo": "int",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Antes",
+      "coluna": "antes",
+      "tipo": "string",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Depois",
+      "coluna": "depois",
+      "tipo": "string",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Motivo",
+      "coluna": "motivo",
+      "tipo": "string",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Observacao",
+      "coluna": "observacao",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "UsuarioId",
+      "coluna": "usuario_id",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "UsuarioNome",
+      "coluna": "usuario_nome",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "AlteradoEm",
+      "coluna": "alterado_em",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     }
+    ],
+    "relacoes": [],
+    "arquivo": "PagamentoAlteracao.cs"
+   },
    "pdv:Pedido": {
     "origem": "pdv",
     "modelo": "Pedido",
@@ -14832,11 +15302,44 @@
       "comentario": null
      },
      {
+      "nome": "CanceladoPor",
+      "coluna": "cancelado_por",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "CanceladoEm",
+      "coluna": "cancelado_em",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
       "nome": "CpfNaNota",
       "coluna": "cpf_na_nota",
       "tipo": "string",
       "enum": false,
       "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "ParaViagem",
+      "coluna": "para_viagem",
+      "tipo": "bool",
+      "enum": false,
+      "opcional": false,
       "chave": false,
       "unico": false,
       "padrao": null,
@@ -14999,6 +15502,17 @@
      {
       "nome": "StatusNfce",
       "coluna": "status_nfce",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "NfceRecusa",
+      "coluna": "nfce_recusa",
       "tipo": "string",
       "enum": false,
       "opcional": true,
@@ -15264,6 +15778,17 @@
      {
       "nome": "ComplementosJson",
       "coluna": "complementos_json",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Descricao",
+      "coluna": "descricao",
       "tipo": "string",
       "enum": false,
       "opcional": true,
@@ -16292,6 +16817,136 @@
     ],
     "relacoes": [],
     "arquivo": "User.cs"
+   },
+   "pdv:VendaGuardada": {
+    "origem": "pdv",
+    "modelo": "VendaGuardada",
+    "tabela": "vendas_guardadas",
+    "campos": [
+     {
+      "nome": "Id",
+      "coluna": "id",
+      "tipo": "int",
+      "enum": false,
+      "opcional": false,
+      "chave": true,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Uuid",
+      "coluna": "uuid",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "TerminalId",
+      "coluna": "terminal_id",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "GuardadaEm",
+      "coluna": "guardada_em",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Total",
+      "coluna": "total",
+      "tipo": "decimal",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "QuantidadeItens",
+      "coluna": "quantidade_itens",
+      "tipo": "int",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "Resumo",
+      "coluna": "resumo",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "ItensJson",
+      "coluna": "itens_json",
+      "tipo": "string",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "ClienteId",
+      "coluna": "cliente_id",
+      "tipo": "int",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "ParaViagem",
+      "coluna": "para_viagem",
+      "tipo": "bool",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "UsuarioId",
+      "coluna": "usuario_id",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     }
+    ],
+    "relacoes": [],
+    "arquivo": "VendaGuardada.cs"
    }
   },
   "enums": {
@@ -16333,5 +16988,115 @@
     "VALE_TRANSPORTE"
    ]
   }
- }
+ },
+ "glossario": [
+  {
+   "termo": "Caixinha / Gorjeta",
+   "significado": "Valor pago voluntariamente pelo cliente além do total da conta (excedente). Não pertence à empresa e não sai da gaveta física na hora da venda: vira crédito do colaborador no RH para compras no restaurante ou repasse financeiro.",
+   "exemplo": "Conta de R$ 182,00 paga com R$ 200,00 no cartão. A caixinha é exatamente R$ 18,00.",
+   "modulos": [
+    "caixa-vendas",
+    "rh",
+    "financeiro"
+   ]
+  },
+  {
+   "termo": "Serviço 10%",
+   "significado": "Taxa facultativa sugerida pelo restaurante sobre o valor consumido em atendimento de salão/mesas. Compõe a conta do restaurante, entra na base de cálculo da nota fiscal (NFC-e) e tem destinação regulamentada pela legislação.",
+   "exemplo": "Mesa consumiu R$ 100,00 de itens; a taxa de serviço sugerida de R$ 10,00 eleva o total da conta para R$ 110,00.",
+   "modulos": [
+    "caixa-vendas",
+    "mesas",
+    "fiscal"
+   ]
+  },
+  {
+   "termo": "Couvert Artístico",
+   "significado": "Valor cobrado por pessoa pela apresentação de música ao vivo ou entretenimento. Entra no caixa na mesma forma em que foi pago e só se torna despesa quando for efetivamente repassado ao artista.",
+   "exemplo": "R$ 15,00 por cliente em noite com show acústico.",
+   "modulos": [
+    "caixa-vendas",
+    "mesas",
+    "financeiro"
+   ]
+  },
+  {
+   "termo": "Dia Operacional",
+   "significado": "Horário de corte e virada do expediente contábil do estabelecimento. No Metrics, a virada ocorre às 05:00 da manhã para que turnos noturnos não sejam divididos em duas datas civis.",
+   "exemplo": "Venda realizada às 02:30 da madrugada de sábado pertence ao dia operacional de sexta-feira.",
+   "modulos": [
+    "caixa-vendas",
+    "rh",
+    "financeiro"
+   ]
+  },
+  {
+   "termo": "Fundo de Troco",
+   "significado": "Valor em cédulas e moedas colocado na gaveta do caixa no momento da abertura para possibilitar o troco aos clientes durante o expediente.",
+   "exemplo": "Abertura com R$ 150,00 em moedas e notas miúdas.",
+   "modulos": [
+    "caixa-vendas"
+   ]
+  },
+  {
+   "termo": "Sangria",
+   "significado": "Retirada de dinheiro físico da gaveta do caixa durante o turno para despesas operacionais emergenciais, recolhimento para cofre central ou vale de funcionário.",
+   "exemplo": "Retirada de R$ 80,00 para compra de gelo no comércio vizinho com comprovante.",
+   "modulos": [
+    "caixa-vendas",
+    "financeiro"
+   ]
+  },
+  {
+   "termo": "Suprimento",
+   "significado": "Aporte adicional de dinheiro físico na gaveta do caixa para recomposição de troco no decorrer do expediente.",
+   "exemplo": "Aporte de R$ 100,00 em notas de R$ 5,00 para atender movimento do almoço.",
+   "modulos": [
+    "caixa-vendas"
+   ]
+  },
+  {
+   "termo": "Conta da Casa / Consumo Interno",
+   "significado": "Modalidade de venda sem cobrança imediata em dinheiro ou cartão, debitada na conta de sócios, funcionários (para desconto em folha) ou parceiros em permuta.",
+   "exemplo": "Almoço do garçom no valor de R$ 25,00 lançado na sua conta de colaborador.",
+   "modulos": [
+    "caixa-vendas",
+    "rh"
+   ]
+  },
+  {
+   "termo": "Fechamento Cego",
+   "significado": "Modalidade de fechamento de caixa na qual o operador declara as cédulas e moedas sem saber previamente o valor esperado pelo sistema, coibindo conferências viciadas.",
+   "exemplo": "O operador digita que contou R$ 840,00 sem que a tela mostre se o esperado era R$ 850,00.",
+   "modulos": [
+    "caixa-vendas"
+   ]
+  },
+  {
+   "termo": "Contingência Offline",
+   "significado": "Estado operacional no qual o PDV emite documentos fiscais (NFC-e) mesmo sem conexão de internet, enfileirando os XMLs assinados para transmissão posterior à SEFAZ.",
+   "exemplo": "Queda do link de internet da operadora durante o horário de pico.",
+   "modulos": [
+    "fiscal",
+    "caixa-vendas"
+   ]
+  },
+  {
+   "termo": "Comanda / Mesa Ociosa",
+   "significado": "Mesa ou comanda aberta no salão sem novos lançamentos de pedidos por período prolongado, sinalizando possível abandono ou cliente aguardando atendimento.",
+   "exemplo": "Mesa aberta há mais de 45 minutos sem nenhum item lançado.",
+   "modulos": [
+    "mesas"
+   ]
+  },
+  {
+   "termo": "Conferência de Caixa",
+   "significado": "Etapa de auditoria realizada pelo gestor no SaaS Admin ou painel web, validando o fechamento do operador, confrontando maquininhas e travando o caixa no status CHECKED.",
+   "exemplo": "Conferência matinal dos 3 caixas do dia anterior antes da liberação contábil.",
+   "modulos": [
+    "caixa-vendas",
+    "financeiro"
+   ]
+  }
+ ]
 }

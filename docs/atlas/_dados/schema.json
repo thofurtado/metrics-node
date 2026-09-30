@@ -1,20 +1,20 @@
 {
- "gerado_em": "2026-09-25T22:51:31",
+ "gerado_em": "2026-09-29T22:21:08",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "c6dfb15 2026-09-25",
+   "versao": "c649825 2026-09-29",
    "tabelas": 63
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "6ca429f 2026-09-25",
+   "versao": "e0aac19 2026-09-25",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "a4acf92 2026-09-25",
-   "tabelas": 34
+   "versao": "5a28e6e 2026-09-29",
+   "tabelas": 36
   }
  },
  "tabelas": {
@@ -9913,6 +9913,17 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "ContaPedidaEm",
+     "coluna": "conta_pedida_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -12695,6 +12706,125 @@
    ],
    "arquivo": "OpcaoComplemento.cs"
   },
+  "pdv:PagamentoAlteracao": {
+   "origem": "pdv",
+   "modelo": "PagamentoAlteracao",
+   "tabela": "pagamento_alteracoes",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Uuid",
+     "coluna": "uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PedidoId",
+     "coluna": "pedido_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Antes",
+     "coluna": "antes",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Depois",
+     "coluna": "depois",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Motivo",
+     "coluna": "motivo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Observacao",
+     "coluna": "observacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UsuarioId",
+     "coluna": "usuario_id",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UsuarioNome",
+     "coluna": "usuario_nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AlteradoEm",
+     "coluna": "alterado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "PagamentoAlteracao.cs"
+  },
   "pdv:Pedido": {
    "origem": "pdv",
    "modelo": "Pedido",
@@ -12910,11 +13040,44 @@
      "comentario": null
     },
     {
+     "nome": "CanceladoPor",
+     "coluna": "cancelado_por",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CanceladoEm",
+     "coluna": "cancelado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "CpfNaNota",
      "coluna": "cpf_na_nota",
      "tipo": "string",
      "enum": false,
      "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ParaViagem",
+     "coluna": "para_viagem",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
      "chave": false,
      "unico": false,
      "padrao": null,
@@ -13077,6 +13240,17 @@
     {
      "nome": "StatusNfce",
      "coluna": "status_nfce",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "NfceRecusa",
+     "coluna": "nfce_recusa",
      "tipo": "string",
      "enum": false,
      "opcional": true,
@@ -13342,6 +13516,17 @@
     {
      "nome": "ComplementosJson",
      "coluna": "complementos_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Descricao",
+     "coluna": "descricao",
      "tipo": "string",
      "enum": false,
      "opcional": true,
@@ -14370,6 +14555,136 @@
    ],
    "relacoes": [],
    "arquivo": "User.cs"
+  },
+  "pdv:VendaGuardada": {
+   "origem": "pdv",
+   "modelo": "VendaGuardada",
+   "tabela": "vendas_guardadas",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Uuid",
+     "coluna": "uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TerminalId",
+     "coluna": "terminal_id",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "GuardadaEm",
+     "coluna": "guardada_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Total",
+     "coluna": "total",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "QuantidadeItens",
+     "coluna": "quantidade_itens",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Resumo",
+     "coluna": "resumo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ItensJson",
+     "coluna": "itens_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ClienteId",
+     "coluna": "cliente_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ParaViagem",
+     "coluna": "para_viagem",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UsuarioId",
+     "coluna": "usuario_id",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "VendaGuardada.cs"
   }
  },
  "enums": {
