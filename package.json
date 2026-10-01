@@ -1,6 +1,6 @@
 {
   "name": "metrics",
-  "version": "2.6.101",
+  "version": "2.6.101.1",
   "description": "",
   "main": "index.js",
   "scripts": {

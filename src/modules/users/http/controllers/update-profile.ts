@@ -10,7 +10,7 @@ export async function updateProfile(request: FastifyRequest, reply: FastifyReply
 
     const updateProfileBodySchema = z.object({
         name: z.string().nullish(),
-        password: z.string().min(6).nullish(),
+        password: z.string().min(4).nullish(),
         introduction: z.string().nullish(),
     })
 

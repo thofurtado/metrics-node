@@ -14,10 +14,13 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
     const createUserBodySchema = z.object({
         name: z.string(),
         email: z.string().email(),
-        password: z.string().min(6),
+        password: z.string().min(4, 'A senha deve conter no mínimo 4 caracteres.').optional().nullable().or(z.literal('')),
         pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable().or(z.literal('')),
         role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER']).default('MEMBER'),
         modules: z.array(z.string()).default([]),
+    }).refine((data) => (data.password && data.password.trim().length >= 4) || (data.pin && data.pin.trim().length >= 4), {
+        message: 'Defina ao menos uma Senha de acesso (mín. 4 caracteres) ou um PIN (4 a 6 dígitos).',
+        path: ['password']
     })
 
     const { name, email, password, pin, role, modules } = createUserBodySchema.parse(request.body)
@@ -30,7 +33,14 @@ export async function createUser(request: FastifyRequest, reply: FastifyReply) {
         return reply.status(409).send({ message: 'E-mail já está em uso.' })
     }
 
-    const password_hash = await hash(password, 6)
+    let password_hash: string
+    if (password && password.trim().length >= 4) {
+        password_hash = await hash(password.trim(), 6)
+    } else if (pin && pin.trim().length >= 4) {
+        password_hash = await hash(pin.trim(), 6)
+    } else {
+        password_hash = await hash('1234', 6)
+    }
     let pin_hash: string | undefined
     if (pin && pin.trim().length >= 4) {
         pin_hash = await hash(pin.trim(), 6)
@@ -79,7 +89,7 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
     const updateUserBodySchema = z.object({
         name: z.string().optional(),
         email: z.string().email().optional(),
-        password: z.string().min(6).optional().nullable().or(z.literal('')),
+        password: z.string().min(4, 'A senha deve conter no mínimo 4 caracteres.').optional().nullable().or(z.literal('')),
         pin: z.string().regex(/^\d{4,6}$/, 'O PIN deve conter de 4 a 6 dígitos numéricos.').optional().nullable().or(z.literal('')),
         role: z.enum(['ADMIN', 'MEMBER', 'TECHNICIAN', 'CASHIER', 'admin', 'member', 'technician', 'cashier']).optional(),
         modules: z.array(z.string()).optional(),
@@ -96,7 +106,7 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
     }
 
     let password_hash: string | undefined
-    if (password && password.trim().length >= 6) {
+    if (password && password.trim().length >= 4) {
         password_hash = await hash(password.trim(), 6)
     }
 
