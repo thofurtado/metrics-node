@@ -2,6 +2,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { MakeTransactionUseCase } from '@/modules/financial/use-cases/factories/make-transaction-use-case'
+import { ComprovanteReservado, ComprovanteJaUsadoError, NomeDeComprovanteInvalidoError } from '@/modules/uploads/comprovante-pendente'
+import { pastaDeComprovantes, anexoDaDespesa } from '@/modules/uploads/http/controllers/upload'
 
 
 
@@ -33,6 +35,8 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         discount: z.number().nullish(),
         totalValue: z.number().nullish(),
         credit_card_id: z.string().uuid().nullish(),
+        // Comprovante da lista "Comprovantes" que vira esta despesa (01/10/2026): reservado antes de criar, anexado no mesmo envio
+        receipt_filename: z.string().nullish(),
     })
 
     // console.log('Payload Recebido:', JSON.stringify(request.body, null, 2))
@@ -58,6 +62,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         discount,
         totalValue,
         credit_card_id,
+        receipt_filename,
     } = registerBodySchema.parse(request.body)
 
     const effectiveDestinationAccountId = destination_account_id || (destination_account as string) || null
@@ -68,6 +73,18 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         }
         if (effectiveDestinationAccountId === account_id) {
             return reply.status(400).send({ message: 'A conta de destino deve ser diferente da conta de origem.' })
+        }
+    }
+
+    // O comprovante sai da lista ANTES de a despesa existir. Já usado (outra tela, clique duplo): a despesa nem é criada.
+    let reserva: ComprovanteReservado | null = null
+    if (receipt_filename) {
+        try {
+            reserva = await ComprovanteReservado.reservar(pastaDeComprovantes(), receipt_filename)
+        } catch (err) {
+            if (err instanceof ComprovanteJaUsadoError) return reply.status(409).send({ message: err.message })
+            if (err instanceof NomeDeComprovanteInvalidoError) return reply.status(400).send({ message: err.message })
+            throw err
         }
     }
 
@@ -98,6 +115,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
             credit_card_id: credit_card_id || null,
         })
     } catch (err) {
+        await reserva?.devolver() // a despesa não foi criada: o comprovante volta para a lista
 
         if (err instanceof Error) {
             console.error(err)
@@ -106,6 +124,21 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
 
         throw err
 
+    }
+
+    if (reserva) {
+        try {
+            await reserva.anexarA(transaction.transaction.id, anexoDaDespesa())
+            return reply.status(200).send({ ...transaction, receipt_linked: true })
+        } catch (err) {
+            // Rara: despesa criada, mas o anexo falhou. O comprovante volta para a lista (a foto não se perde) e a tela avisa.
+            console.error('[comprovante] despesa criada sem o anexo:', err)
+            return reply.status(200).send({
+                ...transaction,
+                receipt_linked: false,
+                receipt_error: 'A despesa foi salva, mas o comprovante não foi anexado. Ele continua na lista: use "Vincular a existente".',
+            })
+        }
     }
     return reply.status(200).send(transaction)
 }

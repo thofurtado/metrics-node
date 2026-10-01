@@ -5,6 +5,9 @@ import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
 import { requestContext } from '@fastify/request-context';
+import {
+  ComprovanteReservado, ComprovanteJaUsadoError, NomeDeComprovanteInvalidoError, validarNomeDoComprovante,
+} from '@/modules/uploads/comprovante-pendente';
 
 // const prisma = new PrismaClient();
 const getPrisma = () => requestContext.get('prisma') as unknown as PrismaClient;
@@ -377,6 +380,11 @@ export async function deleteStandaloneReceipt(request: FastifyRequest, reply: Fa
   });
 
   const { filename } = deleteParamsSchema.parse(request.params);
+  try {
+    validarNomeDoComprovante(filename);
+  } catch {
+    return reply.status(400).send({ message: 'Nome de comprovante inválido.' });
+  }
 
   const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
@@ -411,35 +419,35 @@ export async function linkReceiptToTransaction(request: FastifyRequest, reply: F
     return reply.status(404).send({ message: 'Transação não encontrada' });
   }
 
+  // O comprovante sai da lista ANTES de tudo (01/10/2026): antes copiava, gravava e só no fim tentava apagar, engolindo o
+  // erro; se falhasse, o comprovante continuava na lista e podia virar outra despesa (caso Marujo).
+  try {
+    const reserva = await ComprovanteReservado.reservar(pastaDeComprovantes(), filename);
+    const attachmentUrl = await reserva.anexarA(transactionId, anexoDaDespesa());
+    return reply.status(200).send({ transaction_id: transactionId, attachment_url: attachmentUrl });
+  } catch (err) {
+    if (err instanceof NomeDeComprovanteInvalidoError) return reply.status(400).send({ message: err.message });
+    if (err instanceof ComprovanteJaUsadoError) return reply.status(409).send({ message: err.message });
+    throw err;
+  }
+}
+
+/** Pasta dos comprovantes avulsos da loja atual (uploads/<loja>/receipts). */
+export function pastaDeComprovantes() {
   const tenant = requestContext.get('tenant') || 'default';
   const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-  const sourcePath = path.join(baseDir, tenant, 'receipts', filename);
+  return path.join(baseDir, tenant, 'receipts');
+}
 
-  try {
-    await fs.access(sourcePath);
-  } catch {
-    return reply.status(404).send({ message: 'Comprovante avulso não encontrado' });
-  }
-
-  const fileBuffer = await fs.readFile(sourcePath);
-  const ext = filename.substring(filename.lastIndexOf('.'));
-
-  const relativeUrl = await storage.save(fileBuffer, 'transactions', ext);
-
-  if (transaction.attachment_url) {
-    await storage.delete(transaction.attachment_url).catch(console.error);
-  }
-
-  const updatedTransaction = await getPrisma().transaction.update({
-    where: { id: transactionId },
-    data: { attachment_url: relativeUrl }
-  });
-
-  await fs.unlink(sourcePath).catch(console.error);
-
-  return reply.status(200).send({
-    transaction_id: updatedTransaction.id,
-    attachment_url: updatedTransaction.attachment_url
-  });
+/** Como a despesa guarda o anexo (banco da loja atual). */
+export function anexoDaDespesa() {
+  return {
+    storage,
+    buscarAnexoAtual: async (id: string) =>
+      (await getPrisma().transaction.findUnique({ where: { id }, select: { attachment_url: true } }))?.attachment_url,
+    gravarAnexo: async (id: string, url: string) => {
+      await getPrisma().transaction.update({ where: { id }, data: { attachment_url: url } });
+    },
+  };
 }
 
