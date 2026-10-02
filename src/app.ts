@@ -1,4 +1,4 @@
-﻿import { stockAdvancedRoutes } from '@/modules/stock/http/controllers/routes'
+import { stockAdvancedRoutes } from '@/modules/stock/http/controllers/routes'
 import fastifyWebsocket from '@fastify/websocket'
 import fastify from 'fastify'
 import { usersRoutes } from '@/modules/users/http/controllers/routes'

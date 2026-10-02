@@ -1,4 +1,4 @@
-﻿import { getAppsCatalog, getAppLatestVersion, downloadApp, uploadAppRelease } from './unified-downloads'
+import { getAppsCatalog, getAppLatestVersion, downloadApp, uploadAppRelease } from './unified-downloads'
 import { FastifyInstance } from 'fastify'
 import { getMenu } from './get-menu'
 import { getClientByPhone } from './get-client-by-phone'

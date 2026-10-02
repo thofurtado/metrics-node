@@ -77,6 +77,15 @@ export const OFFICIAL_APPS: Record<string, AppReleaseConfig> = {
         defaultVersion: '2.0.0',
         contentType: 'application/vnd.android.package-archive',
         aliases: ['metricsgarcom', 'metrics-garcom']
+    },
+    rustdesk: {
+        id: 'metrics-rustdesk',
+        key: 'rustdesk',
+        name: 'Suporte Remoto Metrics (RustDesk)',
+        fileName: 'Instalador_Suporte_Metrics.exe',
+        defaultVersion: '1.3.7.1',
+        contentType: 'application/octet-stream',
+        aliases: ['metricsrustdesk', 'metrics-rustdesk', 'suporte', 'support']
     }
 }
 
