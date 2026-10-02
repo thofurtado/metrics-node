@@ -114,4 +114,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/downloads/Instalador-MetricsPonto.exe', (req, rep) => downloadApp({ ...req, params: { app: 'ponto' } } as any, rep))
     app.get('/downloads/metrics-mobile.apk', (req, rep) => downloadApp({ ...req, params: { app: 'mobile' } } as any, rep))
     app.get('/downloads/metrics-garcom.apk', (req, rep) => downloadApp({ ...req, params: { app: 'garcom' } } as any, rep))
+    app.get('/downloads/Instalador_Suporte_Metrics.exe', (req, rep) => downloadApp({ ...req, params: { app: 'rustdesk' } } as any, rep))
+    app.get('/downloads/Instalador-Suporte-Metrics.exe', (req, rep) => downloadApp({ ...req, params: { app: 'rustdesk' } } as any, rep))
+    app.get('/downloads/rustdesk.exe', (req, rep) => downloadApp({ ...req, params: { app: 'rustdesk' } } as any, rep))
 }
