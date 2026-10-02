@@ -21,6 +21,7 @@ import { getIbptSync } from './ibpt-sync-controller'
 import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync, getOpenCashierSessions } from './cashier-sync-controller'
+import { postClusterVivo } from './cluster-controller'
 import {
     getGarcomCardapio,
     getGarcomMesas,
@@ -93,6 +94,9 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/pdv/sync/tables', getTablesTelemetry)
     app.get('/pdv/sync/tables/snapshot', getTablesTelemetry)
     app.get('/api/pdv/sync/tables/snapshot', getTablesTelemetry)
+
+    // Troca automática de servidor do PDV (02/10/2026): "estou vivo" de cada computador da ordem e juiz contra dois servidores
+    app.post('/api/pdv/cluster/vivo', postClusterVivo)
 
     // Sessões de Caixa
     app.post('/api/pdv/sync/cashier/open', postCashierOpenSync)
