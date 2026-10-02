@@ -457,6 +457,7 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         products: z.array(
             z.object({
                 externalId: z.string().nullable().optional(),
+                displayId: z.number().int().positive().nullable().optional(),
                 name: z.string(),
                 price: z.number(),
                 cost: z.number().nullable().optional(),
@@ -539,7 +540,19 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         })
 
         if (existing) {
+            let displayIdToUpdate: number | undefined = undefined
+            if (p.displayId && existing.display_id !== p.displayId) {
+                const conflict = await prisma.product.findUnique({
+                    where: { display_id: p.displayId }
+                })
+                if (!conflict) {
+                    displayIdToUpdate = p.displayId
+                    currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
+                }
+            }
+
             const hasChanged = 
+                (displayIdToUpdate !== undefined) ||
                 existing.price !== p.price ||
                 (p.cost !== undefined && p.cost !== null && existing.cost !== p.cost) ||
                 (p.stock !== undefined && p.stock !== null && existing.stock !== p.stock) ||
@@ -552,6 +565,7 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 await prisma.product.update({
                     where: { id: existing.id },
                     data: {
+                        ...(displayIdToUpdate !== undefined ? { display_id: displayIdToUpdate } : {}),
                         name,
                         price: p.price,
                         cost: p.cost !== undefined && p.cost !== null ? p.cost : existing.cost,
@@ -579,7 +593,24 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 unchanged++
             }
         } else {
-            currentMaxDisplayId++
+            let targetDisplayId: number
+            if (p.displayId) {
+                const conflict = await prisma.product.findUnique({
+                    where: { display_id: p.displayId }
+                })
+                if (!conflict) {
+                    targetDisplayId = p.displayId
+                } else {
+                    currentMaxDisplayId++
+                    targetDisplayId = currentMaxDisplayId
+                }
+            } else {
+                currentMaxDisplayId++
+                targetDisplayId = currentMaxDisplayId
+            }
+
+            currentMaxDisplayId = Math.max(currentMaxDisplayId, targetDisplayId)
+
             await prisma.product.create({
                 data: {
                     name,
@@ -602,7 +633,7 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                     subcategory_id: subcategoryId,
                     active: p.active !== undefined && p.active !== null ? p.active : true,
                     description: p.description || null,
-                    display_id: currentMaxDisplayId
+                    display_id: targetDisplayId
                 }
             })
             created++
