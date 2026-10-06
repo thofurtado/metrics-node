@@ -1,11 +1,14 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { prisma } from "../../../../lib/prisma"
+import { resolverGrupoDoFuncionario } from "./employee-groups"
 
 // Shared schema for create/update validation logic
 const employeeBodySchema = z.object({
     name: z.string(),
     role: z.string(),
+    // Grupo escolhido na lista (06/10/2026); sem ele, vale o cargo digitado (vira o grupo de mesmo nome)
+    groupId: z.string().min(1).nullable().optional(),
     registrationType: z.enum(["REGISTERED", "UNREGISTERED", "DAILY", "HOURLY"]).default("REGISTERED"),
     isRegistered: z.boolean().default(true),
     admissionDate: z.string().transform((str) => new Date(str)),
@@ -74,12 +77,16 @@ export async function createEmployee(request: FastifyRequest, reply: FastifyRepl
         return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
     }
 
+    const grupo = await resolverGrupoDoFuncionario(data.groupId, data.role)
+    if ("erro" in grupo) return reply.status(400).send({ message: grupo.erro })
+
     let employee
     try {
         employee = await prisma.employee.create({
             data: {
                 name: data.name,
-                role: data.role,
+                role: grupo.cargo,
+                group_id: grupo.grupoId,
                 registrationType: data.registrationType,
                 isRegistered: data.isRegistered,
                 admissionDate: data.admissionDate,
@@ -98,7 +105,7 @@ export async function createEmployee(request: FastifyRequest, reply: FastifyRepl
             employee = await prisma.employee.create({
                 data: {
                     name: data.name,
-                    role: data.role,
+                    role: grupo.cargo,
                     registrationType: data.registrationType,
                     isRegistered: data.isRegistered,
                     admissionDate: data.admissionDate,
@@ -147,13 +154,17 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
         return reply.status(409).send({ message: "PIN_ALREADY_EXISTS" })
     }
 
+    const grupo = await resolverGrupoDoFuncionario(data.groupId, data.role)
+    if ("erro" in grupo) return reply.status(400).send({ message: grupo.erro })
+
     let employee
     try {
         employee = await prisma.employee.update({
             where: { id },
             data: {
                 name: data.name,
-                role: data.role,
+                role: grupo.cargo,
+                group_id: grupo.grupoId,
                 registrationType: data.registrationType,
                 isRegistered: data.isRegistered,
                 admissionDate: data.admissionDate,
@@ -173,7 +184,7 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
                 where: { id },
                 data: {
                     name: data.name,
-                    role: data.role,
+                    role: grupo.cargo,
                     registrationType: data.registrationType,
                     isRegistered: data.isRegistered,
                     admissionDate: data.admissionDate,
@@ -229,6 +240,9 @@ export async function listEmployees(request: FastifyRequest, reply: FastifyReply
                 where,
                 take: limit,
                 skip,
+                include: {
+                    group: { select: { id: true, name: true, can_use_waiter_app: true, can_use_pdv: true } },
+                },
                 orderBy: {
                     name: "asc",
                 },
@@ -237,7 +251,7 @@ export async function listEmployees(request: FastifyRequest, reply: FastifyReply
         count = c
         employees = emps
     } catch (err: any) {
-        if (err?.code === 'P2022' || err?.message?.includes('allow_term_sales')) {
+        if (err?.code === 'P2022' || err?.code === 'P2021' || err?.message?.includes('allow_term_sales')) {
             const [c, emps] = await Promise.all([
                 prisma.employee.count({ where }),
                 prisma.employee.findMany({

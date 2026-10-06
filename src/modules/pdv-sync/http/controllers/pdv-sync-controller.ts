@@ -4,6 +4,9 @@ import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
 import { splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
+import { funcionarioEntraNoPdv, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
+import { hash } from 'bcryptjs'
+import { randomBytes } from 'node:crypto'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
@@ -67,16 +70,28 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
         }
     })
 
-    const formatted = users.map(u => ({
-        Uuid: u.id,
-        Name: u.name,
-        Email: u.email,
-        PasswordHash: u.password_hash,
-        PinHash: u.pin_hash,
-        Role: u.role,
-        Active: true, // Backend C# pode precisar
-        CreatedAt: u.created_at
-    }))
+    const formatted = users.map(usuarioParaPdv)
+
+    // Funcionários do RH que o grupo libera para o PDV e/ou o app do garçom (etapa 1.5, 06/10/2026). Só para o PDV que
+    // pede (2.5.8 em diante): o PDV antigo não sabe separar "só o app do garçom" e mostraria o garçom no login do caixa.
+    const { incluirFuncionarios } = (request.query ?? {}) as { incluirFuncionarios?: string }
+    if (incluirFuncionarios === '1') {
+        try {
+            const funcionarios = await prisma.employee.findMany({
+                where: { isRegistered: true, user_id: null, group: { OR: [{ can_use_pdv: true }, { can_use_waiter_app: true }] } },
+                select: {
+                    id: true, name: true, pin: true, isRegistered: true, user_id: true, created_at: true,
+                    group: { select: { name: true, can_use_waiter_app: true, can_use_pdv: true } },
+                },
+            })
+            for (const f of funcionarios.filter(funcionarioEntraNoPdv)) {
+                formatted.push(await funcionarioParaPdv(f, (texto) => hash(texto, 6), () => randomBytes(24).toString('hex')))
+            }
+        } catch (err) {
+            // Banco desta loja ainda sem os grupos (sincronização pendente no SaaS Admin): vão só os usuários, como antes
+            request.log.warn({ err }, '[pdv-sync] funcionários fora da lista de usuários (grupos ainda não criados neste banco)')
+        }
+    }
 
     return reply.status(200).send(formatted)
 }

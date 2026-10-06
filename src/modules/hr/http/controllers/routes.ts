@@ -4,6 +4,7 @@ import { listTimeClocks, updateTimeClock, upsertTimeClock, bulkUpsertTimeClocks 
 import { createEmployee, listEmployees, updateEmployee, getEmployeeSummary, syncEmployees } from "./employees"
 import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBatch, deletePayrollBatch, getPayrollPreview, getEmployeePayrollEntries, listPendingDebts, updatePayrollEntry, calculateRateioExtras, getPayrollHistory, cancelPayrollEntry } from "./payroll"
 import { listHolidays, createCustomHoliday, removeHoliday } from "./holidays"
+import { listEmployeeGroups, createEmployeeGroup, updateEmployeeGroup, deleteEmployeeGroup } from "./employee-groups"
 
 // Rotas do Quiosque (Electron) - autenticadas via x-api-key
 export async function kioskRoutes(app: FastifyInstance) {
@@ -24,6 +25,12 @@ export async function hrAdminRoutes(app: FastifyInstance) {
     app.get("/hr/employees/summary", getEmployeeSummary)
     app.post("/hr/employees", createEmployee)
     app.put("/hr/employees/:id", updateEmployee)
+
+    // Grupos de funcionários (o cargo virou cadastro; o grupo libera o app do garçom e/ou o PDV)
+    app.get("/hr/employee-groups", listEmployeeGroups)
+    app.post("/hr/employee-groups", createEmployeeGroup)
+    app.put("/hr/employee-groups/:id", updateEmployeeGroup)
+    app.delete("/hr/employee-groups/:id", deleteEmployeeGroup)
 
     app.post("/hr/payroll/rateio", calculateRateio)
     app.get("/hr/payroll/extras-preview", calculateRateioExtras)

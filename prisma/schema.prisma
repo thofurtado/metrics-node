@@ -508,6 +508,8 @@ model Employee {
   photo_url          String?
   allow_term_sales   Boolean                 @default(false)
   term_credit_limit  Decimal?                @default(0)
+  group_id           String?
+  group              EmployeeGroup?          @relation(fields: [group_id], references: [id], onDelete: SetNull)
   pointSnapshots     EmployeePointSnapshot[]
   user               User?                   @relation(fields: [user_id], references: [id])
   payrollEntries     PayrollEntry[]
@@ -515,6 +517,19 @@ model Employee {
   cashierEntries     CashierEntry[]
 
   @@map("employees")
+}
+
+/// Grupos de funcionários (06/10/2026): o cargo virou cadastro; o grupo libera o app do garçom e/ou o PDV (login pelo PIN do ponto).
+model EmployeeGroup {
+  id                 String     @id @default(uuid())
+  name               String     @unique
+  can_use_waiter_app Boolean    @default(false)
+  can_use_pdv        Boolean    @default(false)
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @default(now()) @updatedAt
+  employees          Employee[]
+
+  @@map("employee_groups")
 }
 
 model TimeClock {
