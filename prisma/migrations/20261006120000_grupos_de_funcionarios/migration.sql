@@ -25,31 +25,39 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Os grupos nascem dos cargos que já existem (um por nome, sem diferenciar maiúsculas). Acesso inicial pelo nome do cargo,
---    como o Thomás exemplificou: garçom, maître, atendente e cumim usam o app do garçom; caixa e operador usam o PDV. O resto
---    nasce sem acesso; o gerente ajusta em RH > Configurações > Grupos.
+-- 3. Os grupos nascem dos cargos que já existem: um por nome, sem diferenciar maiúscula nem acento ("maitrê" = "Maître"; mesma
+--    chave de chaveDoGrupo em equipe-do-pdv.ts). Acesso inicial pelo nome do cargo, como o Thomás exemplificou: garçom (também
+--    "garçon"/"garcom"), garçonete, maître, atendente e cumim usam o app do garçom; caixa e operador usam o PDV. O resto nasce sem
+--    acesso; o gerente ajusta em RH > Configurações > Grupos. (Conferido em 06/10/2026 nos cargos reais das lojas: no Marujo,
+--    "garçon" e "maitrê" ficavam sem acesso com a regra anterior.)
 INSERT INTO "employee_groups" ("id", "name", "can_use_waiter_app", "can_use_pdv", "updated_at")
 SELECT md5(random()::text || clock_timestamp()::text || c.chave)::uuid::text,
        c.nome,
-       c.chave ~ '(gar[cç]om|gar[cç]onete|ma[iî]tre|atendente|cumim|commis)',
+       c.chave ~ '(garcom|garcon|maitre|atendente|cumim|commis)',
        c.chave ~ '(caixa|operador)',
        CURRENT_TIMESTAMP
 FROM (
-    -- Um grupo por nome sem diferenciar maiúsculas; a grafia escolhida é a com inicial maiúscula e, entre elas, a mais usada
-    SELECT lower(n.nome) AS chave,
+    -- A grafia escolhida é a com inicial maiúscula e, entre elas, a mais usada
+    SELECT n.chave,
            (array_agg(n.nome ORDER BY (n.nome ~ '^[[:upper:]]') DESC, n.qtd DESC, n.nome))[1] AS nome
     FROM (
-        SELECT regexp_replace(trim("role"), '\s+', ' ', 'g') AS nome, count(*) AS qtd
+        SELECT regexp_replace(trim("role"), '\s+', ' ', 'g') AS nome,
+               lower(translate(regexp_replace(trim("role"), '\s+', ' ', 'g'), 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC')) AS chave,
+               count(*) AS qtd
         FROM "employees"
         WHERE trim(coalesce("role", '')) <> ''
-        GROUP BY regexp_replace(trim("role"), '\s+', ' ', 'g')
+        GROUP BY 1, 2
     ) n
-    GROUP BY lower(n.nome)
+    GROUP BY n.chave
 ) c
-WHERE NOT EXISTS (SELECT 1 FROM "employee_groups" g WHERE lower(g."name") = c.chave);
+WHERE NOT EXISTS (
+    SELECT 1 FROM "employee_groups" g
+    WHERE lower(translate(g."name", 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC')) = c.chave
+);
 
 UPDATE "employees" e
 SET "group_id" = g."id"
 FROM "employee_groups" g
 WHERE e."group_id" IS NULL
-  AND lower(regexp_replace(trim(e."role"), '\s+', ' ', 'g')) = lower(g."name");
+  AND lower(translate(regexp_replace(trim(e."role"), '\s+', ' ', 'g'), 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC'))
+    = lower(translate(g."name", 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC'));

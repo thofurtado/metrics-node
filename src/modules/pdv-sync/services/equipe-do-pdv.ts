@@ -112,3 +112,12 @@ export async function funcionarioParaPdv(
 export function normalizarNomeDoGrupo(texto: string | null | undefined): string {
     return (texto ?? '').trim().replace(/\s+/g, ' ')
 }
+
+/**
+ * Chave para comparar nomes de grupo: sem acento, sem diferença de maiúscula e com um espaço só ("Maitrê" = "maitre",
+ * "GARÇOM" = "garcom"). Igual à da migração 20261006120000_grupos_de_funcionarios (06/10/2026: no Marujo havia "maitrê" e
+ * "garçon", que viravam grupos sem acesso ao app).
+ */
+export function chaveDoGrupo(texto: string | null | undefined): string {
+    return normalizarNomeDoGrupo(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}

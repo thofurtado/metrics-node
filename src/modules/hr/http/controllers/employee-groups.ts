@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { prisma } from "../../../../lib/prisma"
-import { normalizarNomeDoGrupo } from "../../../pdv-sync/services/equipe-do-pdv"
+import { chaveDoGrupo, normalizarNomeDoGrupo } from "../../../pdv-sync/services/equipe-do-pdv"
 
 /**
  * Grupos de funcionários (etapa 1.5, 06/10/2026, decisão B5): o cargo virou cadastro. Cada grupo diz se quem está nele
@@ -16,12 +16,15 @@ const grupoBodySchema = z.object({
 
 const idParamsSchema = z.object({ id: z.string().min(1) })
 
+/** O grupo com o mesmo nome sem olhar acento nem maiúscula ("Maitrê" = "maitre"); são poucos grupos por loja. */
+async function acharGrupoPeloNome(nome: string, ignorarId?: string) {
+    const chave = chaveDoGrupo(nome)
+    const grupos = await prisma.employeeGroup.findMany()
+    return grupos.find((g) => g.id !== ignorarId && chaveDoGrupo(g.name) === chave) ?? null
+}
+
 async function nomeJaUsado(nome: string, ignorarId?: string) {
-    const existente = await prisma.employeeGroup.findFirst({
-        where: { name: { equals: nome, mode: "insensitive" }, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
-        select: { id: true },
-    })
-    return !!existente
+    return !!(await acharGrupoPeloNome(nome, ignorarId))
 }
 
 export async function listEmployeeGroups(_request: FastifyRequest, reply: FastifyReply) {
@@ -73,7 +76,7 @@ export async function resolverGrupoDoFuncionario(groupId: string | null | undefi
     }
     const nome = normalizarNomeDoGrupo(cargoDigitado)
     if (!nome) return { grupoId: null, cargo: cargoDigitado }
-    const acharPeloNome = () => prisma.employeeGroup.findFirst({ where: { name: { equals: nome, mode: "insensitive" } } })
+    const acharPeloNome = () => acharGrupoPeloNome(nome)
     const existente = await acharPeloNome()
     if (existente) return { grupoId: existente.id, cargo: existente.name }
     try {

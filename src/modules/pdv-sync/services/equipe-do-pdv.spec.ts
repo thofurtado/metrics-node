@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { compare, hash } from 'bcryptjs'
 import {
+    chaveDoGrupo,
     emailDoFuncionario,
     funcionarioEntraNoPdv,
     funcionarioParaPdv,
@@ -71,5 +72,12 @@ describe('equipe que entra no PDV e no app do garçom', () => {
     it('nome do grupo sem espaços sobrando', () => {
         expect(normalizarNomeDoGrupo('  Garçom   de  salão ')).toBe('Garçom de salão')
         expect(normalizarNomeDoGrupo(null)).toBe('')
+    })
+
+    it('mesmo grupo sem olhar acento nem maiúscula (cargos reais do Marujo: "maitrê", "MAITRE ")', () => {
+        expect(chaveDoGrupo('maitrê')).toBe(chaveDoGrupo('MAITRE '))
+        expect(chaveDoGrupo('Garçom')).toBe('garcom')
+        expect(chaveDoGrupo('  Atendente   de  Salão ')).toBe('atendente de salao')
+        expect(chaveDoGrupo('Garçom')).not.toBe(chaveDoGrupo('Garçonete'))
     })
 })
