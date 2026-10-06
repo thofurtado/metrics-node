@@ -31,6 +31,7 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
             display_id: true,
             updated_at: true,
             image_url: true,
+            measureUnit: true,
             category: {
                 select: {
                     name: true
@@ -51,7 +52,9 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         CategoryId: p.category_id,
         CategoryName: p.category?.name || "Geral",
         UpdatedAt: p.updated_at,
-        ImageUrl: p.image_url
+        ImageUrl: p.image_url,
+        // UNITARY ou FRACTIONAL (por peso): o Caixa do PDV pede a quantidade em kg com vírgula (06/10/2026)
+        MeasureUnit: p.measureUnit
     }))
 
     return reply.status(200).send(formatted)
