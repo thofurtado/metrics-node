@@ -49,6 +49,8 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                         }
                     },
                     complementGroups: {
+                        // Grupo desativado não aparece (antes seguia no cardápio online e no PDV), 06/10/2026
+                        where: { group: { active: true } },
                         select: {
                             order: true,
                             group: {
@@ -106,6 +108,13 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                             price: true,
                         },
                         orderBy: { name: 'asc' }
+                    },
+                    // Produtos ligados ao grupo, inclusive os fora do cardápio online: o PDV liga produto e grupo por aqui
+                    products: {
+                        select: {
+                            product_id: true,
+                            order: true,
+                        }
                     }
                 }
             }),
@@ -172,6 +181,10 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                     id: opt.id,
                     name: opt.name,
                     price: opt.price,
+                })),
+                products: cg.products.map(p => ({
+                    product_id: p.product_id,
+                    order: p.order,
                 }))
             })),
             subcategories: subcategories.map(sub => ({
