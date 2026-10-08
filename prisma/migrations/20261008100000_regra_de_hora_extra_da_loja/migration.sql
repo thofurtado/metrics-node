@@ -15,6 +15,30 @@ ALTER TABLE "hr_rule_histories" ADD COLUMN IF NOT EXISTS "daily_rate_minutes" IN
 ALTER TABLE "hr_rule_histories" ADD COLUMN IF NOT EXISTS "daily_workers_overtime" BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE "hr_rule_histories" ADD COLUMN IF NOT EXISTS "notes" TEXT;
 
+-- As 3 lojas que usam o ponto em 08/10/2026 já começam com a regra delas, sem precisar mexer em nada (decisão D19 do Thomás,
+-- autorizada por ele em 08/10/2026): a mesma conta do espelho de hoje (7h20 por dia, tolerância de 10 min, domingo com o
+-- excedente a 100%, feriado o dia todo a 100%, sem adicional noturno, sem a conta da semana, diarista sem valor de hora extra),
+-- só com o percentual da hora extra que cada uma paga: Marujo 60%, Giardinetto 70%, Katatau 50%. Vale desde o início do ponto.
+-- Cada linha só entra no banco da própria loja (pelo nome do banco) e só se a loja ainda não tiver nenhuma regra; nas outras
+-- lojas este comando não faz nada.
+INSERT INTO "hr_rule_histories" (
+    "id", "valid_from", "he_divisor", "he_multiplier_standard", "he_multiplier_special", "daily_workload_minutes",
+    "tolerance_minutes", "model_key", "weekly_workload_minutes", "count_weekly", "sunday_mode", "holiday_mode",
+    "night_enabled", "night_additional", "night_reduced_hour", "daily_rate_minutes", "daily_workers_overtime", "notes",
+    "created_at", "updated_at"
+)
+SELECT md5(random()::text || clock_timestamp()::text)::uuid::text, TIMESTAMP '2000-01-01 00:00:00', 220, l."extra", 2.0, 440,
+       10, 'PERSONALIZADO', 2640, false, 'EXCEDENTE_100', 'DIA_TODO_100',
+       false, 0.2, true, 440, false, l."nota",
+       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('db_marujo', 1.6, 'Regra da loja configurada pela Metrics em 08/10/2026: a conta do espelho de hoje, com a hora extra a 60%.'),
+    ('db_giardinetto', 1.7, 'Regra da loja configurada pela Metrics em 08/10/2026: a conta do espelho de hoje, com a hora extra a 70%.'),
+    ('db_katatau', 1.5, 'Regra da loja configurada pela Metrics em 08/10/2026: a conta do espelho de hoje, com a hora extra a 50%.')
+) AS l("banco", "extra", "nota")
+WHERE l."banco" = current_database()
+  AND NOT EXISTS (SELECT 1 FROM "hr_rule_histories");
+
 -- A loja que já usa o ponto e nunca gravou regra ganha a "regra antiga" como a primeira: é a conta que o espelho da web fazia até
 -- a versão 2.6.22 (7h20 por dia, tolerância de 10 min, 60%, domingo com o excedente a 100%, feriado o dia todo a 100%, sem
 -- noturno, diarista sem valor de hora extra). Assim nada muda de surpresa no dia da troca (D18 e D19): a loja passa para a regra
