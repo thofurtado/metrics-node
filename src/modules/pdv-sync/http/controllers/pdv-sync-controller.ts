@@ -563,10 +563,15 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 const conflict = await prisma.product.findUnique({
                     where: { display_id: p.displayId }
                 })
-                if (!conflict) {
-                    displayIdToUpdate = p.displayId
-                    currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
+                if (conflict && conflict.id !== existing.id) {
+                    currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
+                    await prisma.product.update({
+                        where: { id: conflict.id },
+                        data: { display_id: currentMaxDisplayId }
+                    })
                 }
+                displayIdToUpdate = p.displayId
+                currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
             }
 
             const hasChanged = 
@@ -616,12 +621,14 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 const conflict = await prisma.product.findUnique({
                     where: { display_id: p.displayId }
                 })
-                if (!conflict) {
-                    targetDisplayId = p.displayId
-                } else {
-                    currentMaxDisplayId++
-                    targetDisplayId = currentMaxDisplayId
+                if (conflict) {
+                    currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
+                    await prisma.product.update({
+                        where: { id: conflict.id },
+                        data: { display_id: currentMaxDisplayId }
+                    })
                 }
+                targetDisplayId = p.displayId
             } else {
                 currentMaxDisplayId++
                 targetDisplayId = currentMaxDisplayId
