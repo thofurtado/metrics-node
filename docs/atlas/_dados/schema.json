@@ -1,20 +1,20 @@
 {
- "gerado_em": "2026-09-29T22:21:08",
+ "gerado_em": "2026-10-08T00:46:21",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "c649825 2026-09-29",
-   "tabelas": 63
+   "versao": "a6b7a20 2026-10-08",
+   "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "e0aac19 2026-09-25",
+   "versao": "76914db 2026-09-29",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "5a28e6e 2026-09-29",
-   "tabelas": 36
+   "versao": "8577902 2026-10-08",
+   "tabelas": 42
   }
  },
  "tabelas": {
@@ -4299,9 +4299,34 @@
      "unico": false,
      "padrao": "0",
      "comentario": null
+    },
+    {
+     "nome": "group_id",
+     "coluna": "group_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
+    {
+     "campo": "group",
+     "alvo": "nuvem:EmployeeGroup",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "group_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    },
     {
      "campo": "pointSnapshots",
      "alvo": "nuvem:EmployeePointSnapshot",
@@ -4349,6 +4374,91 @@
     {
      "campo": "cashierEntries",
      "alvo": "nuvem:CashierEntry",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    }
+   ]
+  },
+  "nuvem:EmployeeGroup": {
+   "origem": "nuvem",
+   "modelo": "EmployeeGroup",
+   "tabela": "employee_groups",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": "uuid()",
+     "comentario": null
+    },
+    {
+     "nome": "name",
+     "coluna": "name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": true,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "can_use_waiter_app",
+     "coluna": "can_use_waiter_app",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": null
+    },
+    {
+     "nome": "can_use_pdv",
+     "coluna": "can_use_pdv",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": [
+    {
+     "campo": "employees",
+     "alvo": "nuvem:Employee",
      "lista": true,
      "opcional": false,
      "fks": [],
@@ -5028,6 +5138,149 @@
      "chave": false,
      "unico": false,
      "padrao": "10",
+     "comentario": null
+    },
+    {
+     "nome": "model_key",
+     "coluna": "model_key",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"PERSONALIZADO\"",
+     "comentario": "CLT, SP_BARES_RESTAURANTES, LITORAL_NORTE, PERSONALIZADO ou LEGADO (a conta que o espelho fazia até a web 2.6.22)"
+    },
+    {
+     "nome": "weekly_workload_minutes",
+     "coluna": "weekly_workload_minutes",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "2640",
+     "comentario": null
+    },
+    {
+     "nome": "count_weekly",
+     "coluna": "count_weekly",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": null
+    },
+    {
+     "nome": "second_tier_after_minutes",
+     "coluna": "second_tier_after_minutes",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "he_multiplier_second_tier",
+     "coluna": "he_multiplier_second_tier",
+     "tipo": "Decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "sunday_mode",
+     "coluna": "sunday_mode",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"EXCEDENTE_100\"",
+     "comentario": "EXCEDENTE_100, NORMAL ou DIA_TODO_100"
+    },
+    {
+     "nome": "holiday_mode",
+     "coluna": "holiday_mode",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"DIA_TODO_100\"",
+     "comentario": "DIA_TODO_100 ou EXCEDENTE_100"
+    },
+    {
+     "nome": "night_enabled",
+     "coluna": "night_enabled",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": null
+    },
+    {
+     "nome": "night_additional",
+     "coluna": "night_additional",
+     "tipo": "Decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0.2",
+     "comentario": null
+    },
+    {
+     "nome": "night_reduced_hour",
+     "coluna": "night_reduced_hour",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "true",
+     "comentario": null
+    },
+    {
+     "nome": "daily_rate_minutes",
+     "coluna": "daily_rate_minutes",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "480",
+     "comentario": "Horas padrão da diária, em minutos"
+    },
+    {
+     "nome": "daily_workers_overtime",
+     "coluna": "daily_workers_overtime",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "true",
+     "comentario": null
+    },
+    {
+     "nome": "notes",
+     "coluna": "notes",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
      "comentario": null
     },
     {
@@ -9915,6 +10168,17 @@
      "comentario": null
     },
     {
+     "nome": "NomeCliente",
+     "coluna": "nome_cliente",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "ContaPedidaEm",
      "coluna": "conta_pedida_em",
      "tipo": "DateTime",
@@ -10671,6 +10935,101 @@
    "relacoes": [],
    "arquivo": "Configuracao.cs"
   },
+  "pdv:ContadorNfce": {
+   "origem": "pdv",
+   "modelo": "ContadorNfce",
+   "tabela": "contador_nfce",
+   "campos": [
+    {
+     "nome": "Ambiente",
+     "coluna": "ambiente",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Serie",
+     "coluna": "serie",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UltimoNumero",
+     "coluna": "ultimo_numero",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtualizadoEm",
+     "coluna": "atualizado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "ContadorNfce.cs"
+  },
+  "pdv:ContadorSenhaDiaria": {
+   "origem": "pdv",
+   "modelo": "ContadorSenhaDiaria",
+   "tabela": "contador_senhas_diarias",
+   "campos": [
+    {
+     "nome": "DataOperacional",
+     "coluna": "data_operacional",
+     "tipo": "DateOnly",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UltimoNumero",
+     "coluna": "ultimo_numero",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtualizadoEm",
+     "coluna": "atualizado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "ContadorSenhaDiaria.cs"
+  },
   "pdv:DepartamentoImpressao": {
    "origem": "pdv",
    "modelo": "DepartamentoImpressao",
@@ -11267,6 +11626,59 @@
    ],
    "arquivo": "FormaPagamento.cs"
   },
+  "pdv:GarcomIdempotencia": {
+   "origem": "pdv",
+   "modelo": "GarcomIdempotencia",
+   "tabela": "garcom_idempotencia",
+   "campos": [
+    {
+     "nome": "Chave",
+     "coluna": "chave",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "RespostaJson",
+     "coluna": "resposta_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CriadaEm",
+     "coluna": "criada_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtendimentoId",
+     "coluna": "atendimento_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "GarcomIdempotencia.cs"
+  },
   "pdv:Grupo": {
    "origem": "pdv",
    "modelo": "Grupo",
@@ -11679,6 +12091,288 @@
    "relacoes": [],
    "arquivo": "Identificador.cs"
   },
+  "pdv:ImpressaoItem": {
+   "origem": "pdv",
+   "modelo": "ImpressaoItem",
+   "tabela": "impressoes_item",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PedidoItemId",
+     "coluna": "pedido_item_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DepartamentoUuid",
+     "coluna": "departamento_uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Situacao",
+     "coluna": "situacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Tentativas",
+     "coluna": "tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UltimoErro",
+     "coluna": "ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Impressora",
+     "coluna": "impressora",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ImpressoEm",
+     "coluna": "impresso_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtualizadoEm",
+     "coluna": "atualizado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Reimprimir",
+     "coluna": "reimprimir",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "ImpressaoItem.cs"
+  },
+  "pdv:ImpressoraEstado": {
+   "origem": "pdv",
+   "modelo": "ImpressoraEstado",
+   "tabela": "impressoras_estado",
+   "campos": [
+    {
+     "nome": "Chave",
+     "coluna": "chave",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DepartamentoUuid",
+     "coluna": "departamento_uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Nome",
+     "coluna": "nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Endereco",
+     "coluna": "endereco",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Situacao",
+     "coluna": "situacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Detalhe",
+     "coluna": "detalhe",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Desde",
+     "coluna": "desde",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "VerificadoEm",
+     "coluna": "verificado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ItensEsperando",
+     "coluna": "itens_esperando",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DesvioPara",
+     "coluna": "desvio_para",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DesvioNome",
+     "coluna": "desvio_nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DesvioAte",
+     "coluna": "desvio_ate",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DesvioPor",
+     "coluna": "desvio_por",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "VoltouEm",
+     "coluna": "voltou_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "ImpressoraEstado.cs"
+  },
   "pdv:ItemCancelado": {
    "origem": "pdv",
    "modelo": "ItemCancelado",
@@ -11940,6 +12634,39 @@
     {
      "nome": "SyncProximaTentativa",
      "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ImprimirCancelamento",
+     "coluna": "imprimir_cancelamento",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CancelamentoImpresso",
+     "coluna": "cancelamento_impresso",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CancelamentoEmImpressaoEm",
+     "coluna": "cancelamento_em_impressao_em",
      "tipo": "DateTime",
      "enum": false,
      "opcional": true,
@@ -13150,6 +13877,17 @@
      "comentario": null
     },
     {
+     "nome": "TerminalId",
+     "coluna": "terminal_id",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "UsuarioId",
      "coluna": "usuario_id",
      "tipo": "Guid",
@@ -13307,6 +14045,94 @@
      "nome": "AmbienteNfce",
      "coluna": "ambiente_nfce",
      "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SerieNfce",
+     "coluna": "serie_nfce",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ContaLetra",
+     "coluna": "conta_letra",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ContaNome",
+     "coluna": "conta_nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ContaPessoas",
+     "coluna": "conta_pessoas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ContaSituacao",
+     "coluna": "conta_situacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AvisoSistema",
+     "coluna": "aviso_sistema",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CobrarServico",
+     "coluna": "cobrar_servico",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CobrarCouvert",
+     "coluna": "cobrar_couvert",
+     "tipo": "bool",
      "enum": false,
      "opcional": true,
      "chave": false,
@@ -13514,6 +14340,17 @@
      "comentario": null
     },
     {
+     "nome": "ItemOrigemUuid",
+     "coluna": "item_origem_uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "ComplementosJson",
      "coluna": "complementos_json",
      "tipo": "string",
@@ -13572,6 +14409,50 @@
      "nome": "DataLancamento",
      "coluna": "data_lancamento",
      "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "EmImpressaoEm",
+     "coluna": "em_impressao_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ProcessoImpressao",
+     "coluna": "processo_impressao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SituacaoImpressao",
+     "coluna": "situacao_impressao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ImpressaoConfira",
+     "coluna": "impressao_confira",
+     "tipo": "bool",
      "enum": false,
      "opcional": false,
      "chave": false,
@@ -13978,6 +14859,17 @@
      "comentario": null
     },
     {
+     "nome": "Fracionado",
+     "coluna": "fracionado",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "GerenciaEstoque",
      "coluna": "gerencia_estoque",
      "tipo": "bool",
@@ -14321,6 +15213,103 @@
    ],
    "arquivo": "ProdutoGrupoComplemento.cs"
   },
+  "pdv:RegistroOperacao": {
+   "origem": "pdv",
+   "modelo": "RegistroOperacao",
+   "tabela": "registro_operacoes",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CriadoEm",
+     "coluna": "criado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Tipo",
+     "coluna": "tipo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Descricao",
+     "coluna": "descricao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtendimentoId",
+     "coluna": "atendimento_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PedidoItemId",
+     "coluna": "pedido_item_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Aparelho",
+     "coluna": "aparelho",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Usuario",
+     "coluna": "usuario",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "RegistroOperacao.cs"
+  },
   "pdv:Setor": {
    "origem": "pdv",
    "modelo": "Setor",
@@ -14545,6 +15534,61 @@
      "nome": "Role",
      "coluna": "role",
      "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Ativo",
+     "coluna": "ativo",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Origem",
+     "coluna": "origem",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Grupo",
+     "coluna": "grupo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PodePdv",
+     "coluna": "pode_pdv",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PodeAppGarcom",
+     "coluna": "pode_app_garcom",
+     "tipo": "bool",
      "enum": false,
      "opcional": false,
      "chave": false,
