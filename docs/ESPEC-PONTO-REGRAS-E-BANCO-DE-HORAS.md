@@ -32,6 +32,9 @@ pergunta por vez; cada resposta entra aqui com a data e o porquê dito pelo Thom
 | D19 | **As 3 lojas de hoje começam com a regra que já usam** (substitui a D2 para elas; a CLT continua como padrão da loja nova). O Thomás ajuda a configurar, sem dar trabalho aos clientes. Hora extra normal: **Marujo 60%** ("acho que está errado, mas deixe assim"), **Giardinetto 70%** ("acho que estão corretos"), **Katatau 50%**. **Domingo e feriado: quando for hora extra, 100% para todos.** A confirmar na configuração com ele: jornada do dia (hoje o espelho usa 7h20), noturno (Marujo não paga) e extra dos diaristas do Marujo (ele acha que o Marujo não paga). | "eu não quero dar trabalho para meus clientes, o marujo usa na hora extra normal 60% [...] o giardinetto utiliza 70% [...] a katatau utiliza 50% [...] domingo e feriado quando for hora extra é 100% para todos, mas vou precisar que me ajude a configurar tudo isso" |
 | D20 | **Tela nova de "horários combinados" (passo 3) entra no plano.** Requisitos dele: <br>- um **modelo de horário** aceito por vários funcionários (começa tal hora, vai até tal hora, almoço de tanto tempo começando tal hora...); <br>- fácil de cadastrar **individual ou em grupo** e fácil de **ajustar por funcionário**; <br>- **sem gerar dados desnecessários** no sistema; <br>- sem quebrar nada. | "uma tela que facilite e pode gerar um padrão que pode ser aceito por mais de um funcionário [...] que não gere muitos dados desnecessários [...] fácil de cadastrar ou individual ou em grupo e bom de ajustar por funcionário, sem quebrar nada" |
 | D21 | **Aviso de domingos das mulheres** (CLT, art. 386: revezamento quinzenal que favoreça o domingo de folga): aparece como aviso, **não obriga e não exagera**. Hoje nenhuma das 3 lojas dá 2 domingos no mês às mulheres. Precisa de um campo no cadastro do funcionário para saber a quem o aviso se aplica. | "nenhum dos 3 dá 2 domingos por mês para as mulheres, isso vai ser avisado, mas não obrigado, e nem exagerado" |
+| D22 | **Escalas que existem**: folga fixa na semana (no Marujo a loja inteira folga na quarta, confirmado no banco: nenhuma batida em quarta em 90 dias), com trocas pontuais. **Ninguém trabalha 12x36** e não há folga que roda: o modelo é semanal. Katatau, pelo banco: segunda a sábado, das 8h às 16h, almoço ao meio-dia, folga no domingo. Giardinetto trabalha todos os dias, com horários variados: confirmar com a loja. | "tanto o marujo quanto o giardinetto têm um dia de folga para todo mundo, no marujo é às quartas [...] ninguém trabalha 12x36 no comércio" |
+| D23 | **Diarista: o modelo diz as horas, os dias variam.** O modelo do diarista tem só o horário do dia em que ele trabalha e a duração padrão da diária; dia sem batida não vira falta nem aviso. Para o registrado, o modelo diz também os dias e a folga. | Escolheu a opção recomendada. |
+| D24 | **Com horário combinado, a hora extra conta a partir do combinado de cada dia** (pela lei, extra é o que passa da jornada contratada) e também acima de 44h na semana. Quem não tem horário combinado continua pela jornada da regra da loja. | Escolheu a opção recomendada. |
 | D5 | Fazer a entrevista (este documento) antes de construir. Depois dos passos 1 e 2, outra entrevista para o passo 3 (horário de trabalho). | "ok podemos fazer essa entrevista" |
 
 ### Sobre a D4: é plausível? Sim, é o modelo da lei
@@ -117,31 +120,77 @@ convenção. O Marujo pode ficar no "personalizado" (D12) se quiser manter o jei
 
 ---
 
+## Passo 3: horários combinados (D20 a D24)
+
+**Como fica, sem gerar dados desnecessários:**
+- **Modelo de horário da loja**: nome e, para cada dia da semana, entrada, saída, início e duração do intervalo, ou "folga". O
+  modelo do diarista (D23) tem só o horário do dia e a duração da diária, sem dias fixos.
+- **No funcionário**: o modelo e, só se precisar, **os ajustes no que for diferente** (ex.: entra 19h em vez de 18h; folga na
+  terça). O que é igual ao modelo não se repete.
+- **Nada é gerado dia a dia**: o combinado de cada dia é calculado na hora a partir do modelo. Só uma exceção (troca de folga numa
+  semana, horário diferente num dia) vira registro.
+- **Em grupo**: marcar vários funcionários, ou um grupo do RH, e aplicar o modelo de uma vez. Trocar o modelo de alguém vale a
+  partir de uma data (o passado fica com o modelo antigo).
+- **Sugestão a partir das batidas** (proposta, para não dar trabalho a ninguém): o sistema olha as últimas semanas e propõe o
+  modelo de cada funcionário ou grupo (ex.: Katatau, segunda a sábado das 8h às 16h, almoço ao meio-dia). Quem configura só
+  confere e aceita.
+- **Cadastro do funcionário**: campo opcional "sexo", que só serve para o aviso dos domingos (D21).
+
+**O que o horário combinado traz** (tudo como aviso, D18):
+- atraso e saída antes da hora, com a tolerância da regra;
+- falta x folga de verdade (hoje todo dia sem batida vira "FOLGA"); para o diarista, dia sem batida não é nada (D23);
+- hora extra a partir do combinado do dia (D24);
+- avisos: dia acima de 10 horas, intervalo menor que 1 hora, domingos seguidos das mulheres (art. 386), menos de 11 horas entre
+  uma jornada e outra.
+
+**Onde os avisos aparecem, sem exagero (D18):** um quadro "Avisos do mês" no resumo do mês, com um número pequeno no menu do
+ponto. Nada de janela pulando, nada que impeça fechar o mês ou pagar.
+
+**Telas afetadas:** RH > Configurações (regra da loja e "Horários combinados"), cadastro do funcionário (modelo, ajustes, campo de
+valor único, valor da hora extra, sexo), espelho (o combinado do dia ao lado das batidas), resumo do mês (com a jornada de cada
+pessoa e o quadro de avisos), PDF do espelho. A aba de banco de horas vem depois, com a conta corrente (D8).
+
+---
+
 ## Resumo para aprovação
 
-**Será feito (passos 1 e 2):**
-1. Uma conta só no servidor (horas, extra pelo dia e pela semana, 2ª faixa opcional, domingo, feriado, noturno com hora reduzida,
-   tolerância), usada pelo espelho, pelo resumo do mês, pelo PDF e pela folha. Testes automáticos com casos reais, inclusive os
-   padrões dos três clientes. Corrige a segunda-feira tratada como domingo.
-2. Tela "Regra de hora extra" no RH > Configurações, com perguntas guiadas e modelos (D10): CLT (padrão, D2), bares e restaurantes
-   de SP (Sindresbar), Litoral Norte (SinHoRes x SECHSAR, depois de lida a convenção) e personalizado. Com data de vigência;
-   meses passados preservados. Aviso nas telas do ponto até a loja confirmar a regra.
-3. Horas padrão da diária (D14), campo único de valor no cadastro (D16) e valor da hora extra de cada funcionário com o
-   calculado à vista e troca livre (D15). Extra do diarista soma; dobra substitui (D17).
-4. Espelho, resumo do mês e PDF mostrando as horas por tipo (normal, extra 1ª faixa, extra 2ª faixa, domingo e feriado,
-   noturno), com os percentuais da regra (sai o "60%" fixo).
-5. Avisos: dia acima de 10 horas; intervalo menor que 1 hora (permitido só com a adesão ao REPIS ou à convenção que o preveja).
+**Será feito, nesta ordem:**
+1. **Uma conta só no servidor**, usada pelo espelho, pelo resumo do mês, pelo PDF e pela folha. Ela calcula:
+   - horas trabalhadas e hora extra pelo combinado do dia ou pela jornada da regra, e pela semana;
+   - a 2ª faixa opcional;
+   - domingo e feriado;
+   - noturno com a hora reduzida;
+   - tolerância.
 
-**Não será feito agora:** horário de trabalho por funcionário (passo 3, com entrevista própria), conta corrente/banco de horas
-(D8), hora extra entrando sozinha na folha (depende do motor de pagamento), arquivos da Portaria 671 (passo 4).
+   Testes automáticos com os padrões reais das três lojas. Corrige a segunda-feira tratada como domingo.
+2. **Tela "Regra de hora extra"** (RH > Configurações), com perguntas guiadas e modelos (D10):
+   - CLT, que é o padrão da loja nova;
+   - bares e restaurantes de SP;
+   - Litoral Norte (depois de lida a convenção);
+   - personalizado.
+
+   Ao lado de cada campo, o que a lei ou a convenção pede, só como sugestão (D18). Vale a partir de uma data; os meses passados
+   ficam como estavam.
+3. **As 3 lojas já configuradas com o que usam hoje** (D19): Marujo 60%, Giardinetto 70%, Katatau 50%; domingo e feriado 100%.
+   Os detalhes (jornada, noturno, diaristas) são conferidos com o Thomás antes.
+4. **Diarista**: horas padrão da diária (D14), campo único de valor no cadastro (D16), valor da hora extra de cada funcionário,
+   calculado e editável (D15). O extra soma e a dobra substitui (D17).
+5. **Horários combinados** (passo 3 acima): modelos da loja, ajustes por funcionário, aplicação em grupo, sugestão a partir das
+   batidas, exceções só quando houver.
+6. **Espelho, resumo do mês e PDF** com as horas por tipo, o combinado do dia e o quadro "Avisos do mês".
+
+**Não será feito agora:**
+- conta corrente / banco de horas (D8);
+- hora extra entrando sozinha na folha (depende do motor de pagamento);
+- arquivos da Portaria 671 (passo 4).
 
 **Riscos:**
-- os números do espelho mudam nas três lojas (de 60%/7h20 para CLT, mais o noturno);
-- a nuvem e a web vão juntas (a tela nova depende do servidor novo);
+- a nuvem e a web vão juntas (as telas novas dependem do servidor novo);
+- os números do espelho só mudam onde a regra configurada de cada loja for diferente do que a tela calcula hoje;
 - o cálculo da folha não muda nesta etapa.
 
-**Ordem de publicação:** nuvem (servidor) primeiro, depois a web; nenhuma migration destrutiva (a tabela de regras já existe; as
-colunas novas são acrescentadas com IF NOT EXISTS).
+**Ordem de publicação:** nuvem (servidor) primeiro, depois a web; só tabelas e colunas novas, criadas com IF NOT EXISTS (nada é
+apagado nem reescrito nos bancos das lojas).
 
 ---
 
