@@ -23,6 +23,10 @@
         "pdv:IbptTabela": {
           "col": 3,
           "linha": 1
+        },
+        "pdv:ContadorNfce": {
+          "col": 2,
+          "linha": 2
         }
       }
     }
@@ -41,6 +45,17 @@
       "nome": "Tabela do IBPT",
       "o_que_e": "Percentual aproximado de tributos por NCM, importado do CSV oficial do IBPT (um por estado). Cada importação troca a tabela inteira.",
       "cresce": "Milhares de linhas, substituídas a cada importação."
+    },
+    "pdv:ContadorNfce": {
+      "nome": "Contador da NFC-e",
+      "o_que_e": "O último número de NFC-e usado, uma linha por ambiente (P = produção, H = homologação) e série. Cada venda que vai virar nota pega o próximo número daqui, na mesma transação que grava o número no pedido: nenhum número se repete nem fica pulado quando a gravação falha (era o problema da sequência antiga do PostgreSQL).",
+      "quem_grava": "PDV, ao reservar o número da nota da venda (NfceNumeracao). O preparo do banco do servidor cria a tabela; na troca de servidor, o resgate das vendas leva o maior número para o servidor novo (nunca volta atrás).",
+      "quem_le": "PDV, ao emitir a NFC-e e ao conferir a numeração.",
+      "cresce": "Não cresce: 1 a 2 linhas (produção e homologação, série 1).",
+      "notas_campos": {
+        "ambiente": "P ou H",
+        "ultimo_numero": "o próximo é este + 1"
+      }
     }
   },
   "pendencias": [

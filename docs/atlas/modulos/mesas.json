@@ -46,6 +46,10 @@
         "pdv:Pedido": {
           "col": 2,
           "linha": 1
+        },
+        "pdv:GarcomIdempotencia": {
+          "col": 2,
+          "linha": 2
         }
       },
       "legenda": "Pedido é do módulo Caixa e vendas: a mesa (atendimento) tem pedidos, e a transferência registra o pedido de origem e o de destino."
@@ -98,6 +102,18 @@
         "motivo",
         "usuario_nome"
       ]
+    },
+    "pdv:GarcomIdempotencia": {
+      "nome": "Lançamento do garçom já recebido",
+      "o_que_e": "Cada lançamento do app do garçom chega com uma chave criada no celular. A primeira vez lança os itens e guarda a resposta aqui; se o celular reenviar (internet caiu no meio, toque duplo), o servidor devolve a resposta guardada e não lança de novo. A mesma chave numa mesa diferente é recusada.",
+      "quem_grava": "Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom).",
+      "quem_le": "O mesmo serviço, a cada lançamento, para saber se aquela chave já chegou.",
+      "cresce": "Uma linha por lançamento do app; o servidor apaga as de mais de 2 dias (limpeza automática).",
+      "mostrar": [
+        "chave",
+        "atendimento_id",
+        "criada_em"
+      ]
     }
   },
   "ligacoes": [
@@ -106,6 +122,12 @@
       "para": "pdv:Pedido",
       "tipo": "texto",
       "rotulo": "pedido_origem_id / destino"
+    },
+    {
+      "de": "pdv:GarcomIdempotencia",
+      "para": "pdv:Atendimento",
+      "tipo": "texto",
+      "rotulo": "atendimento_id sem chave"
     }
   ],
   "espelhos": [

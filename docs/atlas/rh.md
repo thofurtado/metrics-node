@@ -4,7 +4,7 @@
 
 ## Para que serve
 
-Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.
+Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.
 
 ## Regras de Negócio e Porquês
 

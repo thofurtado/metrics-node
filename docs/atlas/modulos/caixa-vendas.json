@@ -86,6 +86,10 @@
         "pdv:VendaGuardada": {
           "col": 1,
           "linha": 2
+        },
+        "pdv:ContadorSenhaDiaria": {
+          "col": 1,
+          "linha": 3
         }
       },
       "legenda": "No PDV, Pedido é a venda de qualquer origem (balcão, mesa, delivery). Ela sobe para a nuvem como Venda quando fecha."
@@ -327,6 +331,13 @@
         "resumo",
         "itens_json"
       ]
+    },
+    "pdv:ContadorSenhaDiaria": {
+      "nome": "Contador da senha do dia",
+      "o_que_e": "A última senha usada em cada dia operacional (o dia vira às 05:00): é o número do pedido de balcão e de delivery (NumeroDiario do pedido). O próximo número é sempre maior que o maior pedido do dia, para a senha do balcão não repetir o número de um pedido online (cardápio, iFood, 99Food) nem duplicar com dois caixas ao mesmo tempo.",
+      "quem_grava": "PDV, ao abrir um pedido de balcão ou delivery (SenhaDiariaService); na troca de servidor, o resgate das vendas leva o maior número para o servidor novo.",
+      "quem_le": "PDV, ao dar a senha do pedido.",
+      "cresce": "Uma linha por dia operacional (cerca de 365 por ano)."
     }
   },
   "ligacoes": [

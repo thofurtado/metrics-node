@@ -14,6 +14,7 @@
    "servicos",
    "rh",
    "fiscal",
+   "impressao",
    "empresa",
    "saas"
   ]
@@ -29,6 +30,7 @@
   "servicos",
   "rh",
   "fiscal",
+  "impressao",
   "empresa",
   "saas"
  ],
@@ -121,6 +123,10 @@
       "pdv:VendaGuardada": {
        "col": 1,
        "linha": 2
+      },
+      "pdv:ContadorSenhaDiaria": {
+       "col": 1,
+       "linha": 3
       }
      },
      "legenda": "No PDV, Pedido é a venda de qualquer origem (balcão, mesa, delivery). Ela sobe para a nuvem como Venda quando fecha."
@@ -362,6 +368,13 @@
       "resumo",
       "itens_json"
      ]
+    },
+    "pdv:ContadorSenhaDiaria": {
+     "nome": "Contador da senha do dia",
+     "o_que_e": "A última senha usada em cada dia operacional (o dia vira às 05:00): é o número do pedido de balcão e de delivery (NumeroDiario do pedido). O próximo número é sempre maior que o maior pedido do dia, para a senha do balcão não repetir o número de um pedido online (cardápio, iFood, 99Food) nem duplicar com dois caixas ao mesmo tempo.",
+     "quem_grava": "PDV, ao abrir um pedido de balcão ou delivery (SenhaDiariaService); na troca de servidor, o resgate das vendas leva o maior número para o servidor novo.",
+     "quem_le": "PDV, ao dar a senha do pedido.",
+     "cresce": "Uma linha por dia operacional (cerca de 365 por ano)."
     }
    },
    "ligacoes": [
@@ -1877,6 +1890,10 @@
       "pdv:IbptTabela": {
        "col": 3,
        "linha": 1
+      },
+      "pdv:ContadorNfce": {
+       "col": 2,
+       "linha": 2
       }
      }
     }
@@ -1895,6 +1912,17 @@
      "nome": "Tabela do IBPT",
      "o_que_e": "Percentual aproximado de tributos por NCM, importado do CSV oficial do IBPT (um por estado). Cada importação troca a tabela inteira.",
      "cresce": "Milhares de linhas, substituídas a cada importação."
+    },
+    "pdv:ContadorNfce": {
+     "nome": "Contador da NFC-e",
+     "o_que_e": "O último número de NFC-e usado, uma linha por ambiente (P = produção, H = homologação) e série. Cada venda que vai virar nota pega o próximo número daqui, na mesma transação que grava o número no pedido: nenhum número se repete nem fica pulado quando a gravação falha (era o problema da sequência antiga do PostgreSQL).",
+     "quem_grava": "PDV, ao reservar o número da nota da venda (NfceNumeracao). O preparo do banco do servidor cria a tabela; na troca de servidor, o resgate das vendas leva o maior número para o servidor novo (nunca volta atrás).",
+     "quem_le": "PDV, ao emitir a NFC-e e ao conferir a numeração.",
+     "cresce": "Não cresce: 1 a 2 linhas (produção e homologação, série 1).",
+     "notas_campos": {
+      "ambiente": "P ou H",
+      "ultimo_numero": "o próximo é este + 1"
+     }
     }
    },
    "pendencias": [
@@ -1907,6 +1935,144 @@
    "espelhos": [],
    "fluxos": [],
    "notas": []
+  },
+  "impressao": {
+   "id": "impressao",
+   "nome": "Impressão e registro da operação",
+   "apelido": "comanda, impressora, quem fez o quê",
+   "mapa": {
+    "col": 1,
+    "linha": 4
+   },
+   "resumo": "Para onde foi o papel de cada item (cozinha, bar), a situação de cada impressora e o registro das movimentações que alguém precisa conferir depois. Nasceu da impressão visível de 06/10/2026: comanda que não saiu aparece na tela, e nada para.",
+   "paraQueServe": "Fica no banco do servidor da loja (PDV). O vigia das impressoras confere cada uma a cada 15 segundos; a comanda de cada item é registrada por departamento, para a falha do bar não reimprimir o papel da cozinha; e quem reimprime, desvia a impressora ou marca \"já resolvi à mão\" fica registrado. Nada disso vai para a nuvem.",
+   "diagramas": [
+    {
+     "id": "pdv",
+     "titulo": "No PDV (banco do servidor da loja)",
+     "tabelas": {
+      "pdv:ImpressaoItem": {
+       "col": 1,
+       "linha": 1
+      },
+      "pdv:ImpressoraEstado": {
+       "col": 1,
+       "linha": 2
+      },
+      "pdv:RegistroOperacao": {
+       "col": 1,
+       "linha": 3
+      },
+      "pdv:PedidoItem": {
+       "col": 2,
+       "linha": 1
+      },
+      "pdv:DepartamentoImpressao": {
+       "col": 2,
+       "linha": 2
+      },
+      "pdv:Atendimento": {
+       "col": 2,
+       "linha": 3
+      }
+     },
+     "legenda": "Nenhuma destas ligações tem chave no banco: o item e a mesa são achados pelo número, e o departamento pelo código (uuid). Item e departamento vêm de Caixa e vendas e do Cardápio; a mesa, de Mesas e salão."
+    }
+   ],
+   "tabelas": {
+    "pdv:ImpressaoItem": {
+     "nome": "Comanda do item por departamento",
+     "o_que_e": "A situação do papel de UM item em UM departamento: impresso, falhou, sem impressora, resolvido à mão ou pedido de reimpressão. Com cozinha e bar no mesmo pedido, cada papel que saiu fica registrado aqui e não é impresso outra vez quando o outro falha.",
+     "quem_grava": "Serviço de impressão do servidor, a cada papel que sai ou falha; PDV na janela da comanda do item (Reimprimir, Já resolvi à mão).",
+     "quem_le": "Salão, Dashboard e a janela da comanda do item (sinal de impresso, na fila ou alerta), o vigia das impressoras (itens esperando) e o app do garçom (situação de cada item).",
+     "cresce": "Uma linha por item por departamento que imprime (ex.: 300 itens por dia que vão à cozinha = 300 linhas por dia). Não há limpeza automática.",
+     "mostrar": [
+      "pedido_item_id",
+      "departamento_uuid",
+      "situacao",
+      "tentativas",
+      "impresso_em",
+      "reimprimir"
+     ]
+    },
+    "pdv:ImpressoraEstado": {
+     "nome": "Situação da impressora",
+     "o_que_e": "Uma linha por departamento com impressora: pronta, sem papel, tampa aberta, desligada; desde quando; quantos itens estão esperando; e o desvio ativo para outra impressora (até a virada do dia, às 05:00).",
+     "quem_grava": "Vigia das impressoras, no serviço do servidor, a cada 15 segundos e antes de cada comanda; PDV do servidor na janela Impressoras (desviar e voltar).",
+     "quem_le": "Todos os PDVs (faixa de aviso no alto da tela, conferência da abertura, janela Impressoras) e o app do garçom pela rota do serviço.",
+     "cresce": "Não cresce: uma linha por departamento de impressão.",
+     "mostrar": [
+      "chave",
+      "nome",
+      "situacao",
+      "desde",
+      "itens_esperando",
+      "desvio_para",
+      "desvio_ate"
+     ]
+    },
+    "pdv:RegistroOperacao": {
+     "nome": "Registro de operações",
+     "o_que_e": "Quem fez, quando e em qual aparelho as movimentações que alguém precisa conferir depois (decisão do Thomás de 05/10/2026): mesa reaberta por lançamento atrasado, lançamento entregue depois com o servidor fora, reimpressão, já resolvi à mão, desvio e volta de impressora, fila limpa.",
+     "quem_grava": "Serviço do servidor (lançamento do app do garçom) e PDV (janela da comanda do item e janela Impressoras).",
+     "quem_le": "Ainda nenhuma tela: o registro é gravado para conferência.",
+     "cresce": "Só as exceções: algumas linhas por dia. Não há limpeza automática.",
+     "mostrar": [
+      "criado_em",
+      "tipo",
+      "descricao",
+      "atendimento_id",
+      "aparelho",
+      "usuario"
+     ],
+     "alertas": [
+      "Nenhuma tela mostra este registro ainda: para conferir, é preciso consultar o banco."
+     ]
+    }
+   },
+   "ligacoes": [
+    {
+     "de": "pdv:ImpressaoItem",
+     "para": "pdv:PedidoItem",
+     "tipo": "texto",
+     "rotulo": "pedido_item_id sem chave"
+    },
+    {
+     "de": "pdv:ImpressaoItem",
+     "para": "pdv:DepartamentoImpressao",
+     "tipo": "codigo",
+     "rotulo": "departamento_uuid = uuid"
+    },
+    {
+     "de": "pdv:ImpressoraEstado",
+     "para": "pdv:DepartamentoImpressao",
+     "tipo": "codigo",
+     "rotulo": "departamento_uuid = uuid"
+    },
+    {
+     "de": "pdv:RegistroOperacao",
+     "para": "pdv:Atendimento",
+     "tipo": "texto",
+     "rotulo": "atendimento_id sem chave"
+    },
+    {
+     "de": "pdv:RegistroOperacao",
+     "para": "pdv:PedidoItem",
+     "tipo": "texto",
+     "rotulo": "pedido_item_id sem chave"
+    }
+   ],
+   "pendencias": [
+    "Tela para ver o registro de operações (hoje só no banco).",
+    "Limpeza das comandas por item antigas (a tabela cresce com cada item impresso)."
+   ],
+   "notas": [
+    "Como se ligam (nenhuma ligação tem chave no banco): a comanda do item acha o item do pedido pelo número (pedido_item_id) e o departamento de impressão pelo código (departamento_uuid); a situação da impressora acha o departamento pelo código; o registro de operações aponta a mesa ou comanda (atendimento_id) e, quando é de um item, o item (pedido_item_id). Um item apagado não apaga essas linhas."
+   ],
+   "espelhos": [],
+   "fluxos": [],
+   "regras": [],
+   "funcoes": []
   },
   "mesas": {
    "id": "mesas",
@@ -1956,6 +2122,10 @@
       "pdv:Pedido": {
        "col": 2,
        "linha": 1
+      },
+      "pdv:GarcomIdempotencia": {
+       "col": 2,
+       "linha": 2
       }
      },
      "legenda": "Pedido é do módulo Caixa e vendas: a mesa (atendimento) tem pedidos, e a transferência registra o pedido de origem e o de destino."
@@ -2008,6 +2178,18 @@
       "motivo",
       "usuario_nome"
      ]
+    },
+    "pdv:GarcomIdempotencia": {
+     "nome": "Lançamento do garçom já recebido",
+     "o_que_e": "Cada lançamento do app do garçom chega com uma chave criada no celular. A primeira vez lança os itens e guarda a resposta aqui; se o celular reenviar (internet caiu no meio, toque duplo), o servidor devolve a resposta guardada e não lança de novo. A mesma chave numa mesa diferente é recusada.",
+     "quem_grava": "Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom).",
+     "quem_le": "O mesmo serviço, a cada lançamento, para saber se aquela chave já chegou.",
+     "cresce": "Uma linha por lançamento do app; o servidor apaga as de mais de 2 dias (limpeza automática).",
+     "mostrar": [
+      "chave",
+      "atendimento_id",
+      "criada_em"
+     ]
     }
    },
    "ligacoes": [
@@ -2016,6 +2198,12 @@
      "para": "pdv:Pedido",
      "tipo": "texto",
      "rotulo": "pedido_origem_id / destino"
+    },
+    {
+     "de": "pdv:GarcomIdempotencia",
+     "para": "pdv:Atendimento",
+     "tipo": "texto",
+     "rotulo": "atendimento_id sem chave"
     }
    ],
    "espelhos": [
@@ -2043,7 +2231,7 @@
     "col": 4,
     "linha": 2
    },
-   "resumo": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+   "resumo": "Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
    "diagramas": [
     {
      "id": "nuvem",
@@ -2136,7 +2324,7 @@
     "Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4).",
     "Ponto: configurar a regra das 3 lojas com o Thomás (Marujo 60%, Giardinetto 70%, Katatau 50%, domingo e feriado 100%) e os horários combinados (passo 3 da ESPEC do ponto)."
    ],
-   "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+   "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
    "regras": [
     {
      "id": "regra-ponto-conta-unica",
@@ -2382,21 +2570,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-08T00:46:21",
+  "gerado_em": "2026-10-08T00:55:24",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "a6b7a20 2026-10-08",
+    "versao": "c112b46 2026-10-08",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "76914db 2026-09-29",
+    "versao": "e2b629e 2026-10-08",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "8577902 2026-10-08",
+    "versao": "dc14f5a 2026-10-08",
     "tabelas": 42
    }
   },

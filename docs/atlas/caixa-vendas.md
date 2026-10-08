@@ -258,6 +258,14 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Quem lê:** Metrics.PDV ao listar e recuperar vendas guardadas para finalização
 - **Cresce:** Temporária: registros são removidos ou limpos ao recuperar a venda
 
+### Contador da senha do dia (`contador_senhas_diarias`)
+
+- **Origem:** PDV local (Metrics.PDV)
+- **O que é:** A última senha usada em cada dia operacional (o dia vira às 05:00): é o número do pedido de balcão e de delivery (NumeroDiario do pedido). O próximo número é sempre maior que o maior pedido do dia, para a senha do balcão não repetir o número de um pedido online (cardápio, iFood, 99Food) nem duplicar com dois caixas ao mesmo tempo.
+- **Quem grava:** PDV, ao abrir um pedido de balcão ou delivery (SenhaDiariaService); na troca de servidor, o resgate das vendas leva o maior número para o servidor novo.
+- **Quem lê:** PDV, ao dar a senha do pedido.
+- **Cresce:** Uma linha por dia operacional (cerca de 365 por ano).
+
 ## Do PDV para a nuvem
 
 | No PDV | Na nuvem | Como se ligam |

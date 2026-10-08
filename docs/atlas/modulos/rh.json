@@ -6,7 +6,7 @@
     "col": 4,
     "linha": 2
   },
-  "resumo": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+  "resumo": "Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
   "diagramas": [
     {
       "id": "nuvem",
@@ -99,7 +99,7 @@
     "Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4).",
     "Ponto: configurar a regra das 3 lojas com o Thomás (Marujo 60%, Giardinetto 70%, Katatau 50%, domingo e feriado 100%) e os horários combinados (passo 3 da ESPEC do ponto)."
   ],
-  "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 07:00 no backend), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
+  "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
   "regras": [
     {
       "id": "regra-ponto-conta-unica",

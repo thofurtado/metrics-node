@@ -6,8 +6,8 @@ Gerado em 08/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o ma
 
 | Módulo | Tabelas | Arquivo |
 |---|---|---|
-| Caixa e vendas | 14 | [caixa-vendas.md](caixa-vendas.md) |
-| Mesas e salão | 4 | [mesas.md](mesas.md) |
+| Caixa e vendas | 15 | [caixa-vendas.md](caixa-vendas.md) |
+| Mesas e salão | 5 | [mesas.md](mesas.md) |
 | Delivery e pedidos online | 6 | [delivery.md](delivery.md) |
 | Cardápio e produtos | 16 | [cardapio.md](cardapio.md) |
 | Estoque e compras | 10 | [estoque.md](estoque.md) |
@@ -15,7 +15,8 @@ Gerado em 08/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o ma
 | Clientes | 5 | [clientes.md](clientes.md) |
 | Ordens de serviço | 7 | [servicos.md](servicos.md) |
 | RH e ponto | 7 | [rh.md](rh.md) |
-| Fiscal (NFC-e) | 3 | [fiscal.md](fiscal.md) |
+| Fiscal (NFC-e) | 4 | [fiscal.md](fiscal.md) |
+| Impressão e registro da operação | 3 | [impressao.md](impressao.md) |
 | Empresa, usuários e configuração | 9 | [empresa.md](empresa.md) |
 | SaaS (banco master) | 2 | [saas.md](saas.md) |
 
@@ -27,7 +28,3 @@ Gerado em 08/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o ma
 1. Mudou tabela ou coluna no código: rode `atlas.py tudo` (skill metrics-atlas).
 2. Aprendeu algo sobre uma tabela, regra ou função: edite `modulos/<id>.json` e rode `atlas.py gerar`.
 3. Não edite `atlas.html`, `README.md` nem os `.md` dos módulos à mão: são gerados.
-
-## O que falta no atlas e manual
-
-- **6 tabela(s) sem módulo: pdv:ContadorNfce, pdv:ContadorSenhaDiaria, pdv:GarcomIdempotencia, pdv:ImpressaoItem, pdv:ImpressoraEstado, pdv:RegistroOperacao**

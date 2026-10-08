@@ -36,6 +36,14 @@ Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem ex
 - **Quem grava:** MesasView, na mesma gravação da transferência (tudo ou nada, desde o PDV 2.4.17.2).
 - **Quem lê:** Ninguém ainda: não há tela e não sobe para a nuvem.
 
+### Lançamento do garçom já recebido (`garcom_idempotencia`)
+
+- **Origem:** PDV local (Metrics.PDV)
+- **O que é:** Cada lançamento do app do garçom chega com uma chave criada no celular. A primeira vez lança os itens e guarda a resposta aqui; se o celular reenviar (internet caiu no meio, toque duplo), o servidor devolve a resposta guardada e não lança de novo. A mesma chave numa mesa diferente é recusada.
+- **Quem grava:** Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom).
+- **Quem lê:** O mesmo serviço, a cada lançamento, para saber se aquela chave já chegou.
+- **Cresce:** Uma linha por lançamento do app; o servidor apaga as de mais de 2 dias (limpeza automática).
+
 ## Do PDV para a nuvem
 
 | No PDV | Na nuvem | Como se ligam |
