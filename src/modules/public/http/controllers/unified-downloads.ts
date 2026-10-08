@@ -103,7 +103,7 @@ function resolveAppConfig(param: string): AppReleaseConfig | null {
     return null
 }
 
-function getAppVersionInfo(cfg: AppReleaseConfig) {
+export function getAppVersionInfo(cfg: AppReleaseConfig) {
     ensureDir(DOWNLOADS_DIR)
     const versionFile = path.join(DOWNLOADS_DIR, `${cfg.key}-version.json`)
     let info = {
@@ -114,6 +114,9 @@ function getAppVersionInfo(cfg: AppReleaseConfig) {
         fileName: cfg.fileName,
         downloadUrl: `https://api.metrics.dev.br/api/public/${cfg.key}/download`,
         updatedAt: new Date().toISOString(),
+        // Quando esta versão foi publicada na Central (08/10/2026, pedido do Thomás: a página de downloads mostra a data).
+        // null = nunca publicada pelo envio oficial (o "updatedAt" acima vira a hora da consulta, que não é data de nada).
+        publicadoEm: null as string | null,
         fileSizeBytes: 0,
         formattedSize: ''
     }
@@ -121,7 +124,9 @@ function getAppVersionInfo(cfg: AppReleaseConfig) {
     if (fs.existsSync(versionFile)) {
         try {
             const raw = fs.readFileSync(versionFile, 'utf8')
-            info = { ...info, ...JSON.parse(raw) }
+            const gravado = JSON.parse(raw)
+            info = { ...info, ...gravado }
+            info.publicadoEm = typeof gravado?.updatedAt === 'string' ? gravado.updatedAt : null
         } catch { }
     }
 
