@@ -159,6 +159,9 @@ describe('conta única do ponto', () => {
     const semExtra = apurarPeriodo({ funcionario: diarista, dias, feriados: [], regras: clt({ diaristaRecebeExtra: false }), inicio: '2026-10-05', fim: '2026-10-05' })
     expect(semExtra.totais.extraMin).toBe(60)
     expect(semExtra.totais.valorExtra).toBe(0)
+    // Combinado com a pessoa no cadastro: vale mesmo com a loja desligada
+    const combinado = apurarPeriodo({ funcionario: { ...diarista, valorHoraExtra: 20 }, dias, feriados: [], regras: clt({ diaristaRecebeExtra: false }), inicio: '2026-10-05', fim: '2026-10-05' })
+    expect(combinado.totais.valorExtra).toBe(20)
   })
 
   it('valor de hora extra combinado no cadastro manda na conta (domingo na mesma proporção)', () => {

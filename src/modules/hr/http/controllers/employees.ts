@@ -23,6 +23,12 @@ const employeeBodySchema = z.object({
         if (val === undefined) return undefined
         return Number(val)
     }, z.number().nullable().optional()),
+    // Valor da hora extra combinado com a pessoa (D15, 08/10/2026). 0 ou vazio = pela regra da loja; sem o campo = não muda
+    overtimeValue: z.preprocess((val) => {
+        if (val === '' || val === null) return 0
+        if (val === undefined) return undefined
+        return Number(val)
+    }, z.number().min(0).optional()),
     points: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     transportAllowance: z.preprocess((val) => val === undefined ? undefined : Number(val), z.number().min(0).default(0)),
     hasCestaBasica: z.boolean().default(false),
@@ -93,6 +99,7 @@ export async function createEmployee(request: FastifyRequest, reply: FastifyRepl
                 pin: data.pin,
                 salary: data.salary ? Number(data.salary) : null,
                 dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                overtimeValue: data.overtimeValue ?? 0,
                 points: Number(data.points),
                 transportAllowance: Number(data.transportAllowance),
                 hasCestaBasica: data.hasCestaBasica,
@@ -171,6 +178,7 @@ export async function updateEmployee(request: FastifyRequest, reply: FastifyRepl
                 pin: data.pin,
                 salary: data.salary ? Number(data.salary) : null,
                 dailyRate: data.dailyRate ? Number(data.dailyRate) : null,
+                ...(data.overtimeValue !== undefined ? { overtimeValue: data.overtimeValue } : {}),
                 points: Number(data.points),
                 transportAllowance: Number(data.transportAllowance),
                 hasCestaBasica: data.hasCestaBasica,

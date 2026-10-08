@@ -194,6 +194,43 @@ apagado nem reescrito nos bancos das lojas).
 
 ---
 
+## Andamento (08/10/2026, nada publicado)
+
+**Feito (commits locais: nuvem 2.6.104.0 e 2.6.105.0, web 2.6.23.0):**
+- Item 1, a conta única no servidor (`src/modules/hr/ponto`): espelho, resumo do mês e PDF usam a mesma conta. 22 testes
+  automáticos. Batida fora de ordem (ex.: entrada 17:02 e saída do intervalo 17:00) não vira mais 24 horas: o trecho sai da
+  conta e aparece o aviso "Batida fora de ordem".
+- Item 2, a tela "Regra de hora extra da loja" (RH > Configurações), com a pergunta da convenção, os modelos, a sugestão da lei
+  ao lado de cada campo e a lista de versões.
+- Item 4, o cadastro do funcionário: um campo de valor com o nome do tipo (salário mensal, valor da hora ou valor da diária) e o
+  "Valor da hora extra", que mostra o valor pela regra da loja e aceita o combinado com a pessoa (vazio = pela regra).
+- Item 6, sem o "combinado do dia" (que depende do item 5): espelho com as horas por tipo dia a dia, o selo "Horas extras e
+  noturno" com a conta explicada, o selo de avisos, o PDF com as colunas Horas, H. Extras e Noturno, e o resumo do mês com as
+  colunas Noturno e Avisos.
+- Conferido com os dados reais de setembro das 3 lojas (só leitura) e numa prévia da web com dados fictícios: claro e escuro,
+  computador e celular.
+
+**Decidido durante a obra (o Thomás pode mudar):**
+- D25. **O valor de hora extra combinado com um diarista vale mesmo com a loja em "Diarista recebe hora extra" desligado.** É um
+  acordo com aquela pessoa; sem isso, o dono digitaria o valor e nada aconteceria.
+- D26. **Para quem não é diarista, o antigo campo "Valor da diária" virou "Valor da dobra"**: é o que ele já fazia (preenche
+  sozinho o dia de dobra no espelho, e o rateio usa esse valor na dobra sem valor). No Marujo, 1 funcionário ativo sem registro
+  tem esse valor; ele continua lá.
+- Em 08/10/2026 nenhum funcionário das 3 lojas tem valor de hora extra gravado (todos zero = pela regra), então o campo novo não
+  muda conta nenhuma até alguém preencher.
+
+**Atenção:** a conta de extras do **rateio** (`use-cases/payroll/calculate-extras.ts`) já usava o valor da hora extra do
+cadastro quando ele é maior que zero. Preencher o campo novo muda também o que sai do rateio para aquela pessoa. A folha e o
+rateio não foram mexidos nesta etapa (como combinado).
+
+**Falta:**
+- Item 3: configurar as 3 lojas com o Thomás (grava em produção: só com o pedido dele, de preferência à noite).
+- Item 5: horários combinados (passo 3), e com ele o "combinado do dia" no espelho.
+- Publicar: nuvem primeiro (com a migration `20261008100000_regra_de_hora_extra_da_loja`, aplicada pelo SaaS Admin →
+  Sincronizar), depois a web.
+
+---
+
 ## Simulação: setembro/2026 nas 3 lojas, conta de hoje x conta nova (padrão CLT)
 
 Consulta só de leitura, totais da loja. "Hoje" = a conta do espelho da web (7h20 por dia, 60%, domingo com o excedente a 100%,

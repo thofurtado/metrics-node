@@ -385,7 +385,8 @@ export function apurarPeriodo(entrada: EntradaDaApuracao): ResultadoDaApuracao {
     // Hora extra comum: o valor combinado do funcionário (D15) ou a hora × o adicional da regra
     const horaExtra = combinado > 0 ? new Decimal(combinado) : hora.times(regra.multiplicadorExtra)
     const proporcao = (m: number) => (combinado > 0 ? horaExtra.times(m).div(regra.multiplicadorExtra) : hora.times(m))
-    const pagaExtra = funcionario.tipo !== 'DAILY' || regra.diaristaRecebeExtra
+    // Diarista: a loja diz se paga; um valor combinado com a pessoa no cadastro (D15) vale mesmo com a loja desligada
+    const pagaExtra = funcionario.tipo !== 'DAILY' || regra.diaristaRecebeExtra || combinado > 0
 
     const vNormal = pagaExtra ? horaExtra.times(d.extraMin + d.extraSemanaMin).div(60) : new Decimal(0)
     const vSegunda = pagaExtra && regra.multiplicadorSegundaFaixa !== null
