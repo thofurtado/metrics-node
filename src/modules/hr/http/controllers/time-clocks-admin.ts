@@ -177,6 +177,17 @@ export async function updateTimeClock(request: FastifyRequest, reply: FastifyRep
     return reply.status(200).send(timeClock)
 }
 
+/**
+ * O dia da batida do jeito que a coluna DATE guarda (meia-noite UTC de "2026-10-02"). Antes a busca usava new Date(a, m, d) no
+ * fuso do servidor; com o servidor no horário de Brasília (desde 23/09/2026, 2.6.76) a busca do dia 02 pegava também o dia 03:
+ * o salvar gravava o 02 POR CIMA da linha do 03 (que voltava ao certo logo depois, se estava no mesmo salvar) e o dia 02 nunca era
+ * criado. Caso do Marujo em 08/10/2026: "salvou e o horário sumiu". A busca agora é pelo dia exato (pessoa + dia é único).
+ */
+export function diaDoPonto(data: string): Date {
+    const [yyyy, mm, dd] = data.substring(0, 10).split('-').map(Number)
+    return new Date(Date.UTC(yyyy, mm - 1, dd))
+}
+
 export async function upsertTimeClock(request: FastifyRequest, reply: FastifyReply) {
     const bodySchema = z.object({
         employee_id: z.string().uuid(),
@@ -197,19 +208,10 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
 
     const { employee_id, date, ...data } = bodySchema.parse(request.body)
 
-    // Normalize date to start of day for search
-    const [yyyy, mm, dd] = date.substring(0, 10).split('-').map(Number);
-    const startOfDay = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
-    const endOfDay = new Date(yyyy, mm - 1, dd, 23, 59, 59, 999);
-
-    const existing = await prisma.timeClock.findFirst({
-        where: {
-            employee_id,
-            date: {
-                gte: startOfDay,
-                lte: endOfDay
-            }
-        }
+    // O dia exato (ver diaDoPonto): nunca uma faixa de horas no fuso do servidor
+    const dia = diaDoPonto(date)
+    const existing = await prisma.timeClock.findUnique({
+        where: { employee_id_date: { employee_id, date: dia } }
     })
 
     const transformDate = (s: string | null | undefined) => s ? new Date(s) : s === null ? null : undefined
@@ -239,7 +241,7 @@ export async function upsertTimeClock(request: FastifyRequest, reply: FastifyRep
         result = await prisma.timeClock.create({
             data: {
                 employee_id,
-                date: new Date(date),
+                date: dia,
                 ...payload
             }
         })
@@ -278,20 +280,10 @@ export async function bulkUpsertTimeClocks(request: FastifyRequest, reply: Fasti
         for (const entry of entries) {
             const { employee_id, date, ...data } = entry
 
-            // Normalize date
-            // Fix: ensure correct date parsing if simple YYYY-MM-DD string is passed without timezone
-            const [yyyy, mm, dd] = date.substring(0, 10).split('-').map(Number);
-            const startOfDay = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
-            const endOfDay = new Date(yyyy, mm - 1, dd, 23, 59, 59, 999);
-
-            const existing = await tx.timeClock.findFirst({
-                where: {
-                    employee_id,
-                    date: {
-                        gte: startOfDay,
-                        lte: endOfDay
-                    }
-                }
+            // O dia exato (ver diaDoPonto): com a faixa no fuso de Brasília, o dia D gravava por cima da linha do dia D+1
+            const dia = diaDoPonto(date)
+            const existing = await tx.timeClock.findUnique({
+                where: { employee_id_date: { employee_id, date: dia } }
             })
 
             const payload = {
@@ -318,7 +310,7 @@ export async function bulkUpsertTimeClocks(request: FastifyRequest, reply: Fasti
                 await tx.timeClock.create({
                     data: {
                         employee_id,
-                        date: new Date(date),
+                        date: dia,
                         ...payload
                     }
                 })
