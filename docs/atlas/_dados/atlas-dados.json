@@ -2570,21 +2570,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-08T09:11:33",
+  "gerado_em": "2026-10-08T15:39:59",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "b0b0a6c 2026-10-08",
+    "versao": "e48e222 2026-10-08",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "d67eb24 2026-10-08",
+    "versao": "84a43fa 2026-10-08",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "dc14f5a 2026-10-08",
+    "versao": "1e1cfee 2026-10-08",
     "tabelas": 42
    }
   },
@@ -13046,6 +13046,17 @@
       "nome": "DiferencaFechamento",
       "coluna": "diferenca_fechamento",
       "tipo": "decimal",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "ModoFinalizacao",
+      "coluna": "modo_finalizacao",
+      "tipo": "string",
       "enum": false,
       "opcional": true,
       "chave": false,
