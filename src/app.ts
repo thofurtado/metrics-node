@@ -52,7 +52,10 @@ import path from 'path'
 import { fastifyRequestContext, requestContext } from '@fastify/request-context'
 import { getPrismaForDomain, getDbNameForDomain } from '@/lib/tenant-manager'
 
-export const app = fastify({ logger: true })
+export const app = fastify({
+    logger: true,
+    bodyLimit: 30 * 1024 * 1024, // 30 MB (permite uploads e sincronizações em lote)
+})
 
 app.register(fastifyRequestContext)
 
