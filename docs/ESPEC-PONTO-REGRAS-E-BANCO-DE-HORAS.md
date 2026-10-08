@@ -223,8 +223,24 @@ apagado nem reescrito nos bancos das lojas).
 cadastro quando ele é maior que zero. Preencher o campo novo muda também o que sai do rateio para aquela pessoa. A folha e o
 rateio não foram mexidos nesta etapa (como combinado).
 
+**Item 3 resolvido na própria atualização do banco (08/10/2026, manhã, autorizado pelo Thomás; nuvem 2.6.105.2):** a migration
+grava, só no banco de cada loja e só se ela ainda não tiver regra, a conta do espelho de hoje com o percentual de cada uma:
+Marujo 60%, Giardinetto 70%, Katatau 50%, desde o início (respostas dele: "Sim, no Sincronizar" e "Desde o início"). Ninguém nas
+lojas precisa mexer; o aviso de "escolha a regra" não aparece para elas. Setembro: Marujo R$ 3.790 (igual), Giardinetto
+R$ 3.232 → R$ 3.343, Katatau R$ 577 → R$ 558. Testado no PostgreSQL local com tabelas temporárias e ROLLBACK.
+- **Feriado**: continua o dia todo a 100% (como o espelho já fazia). O Thomás pediu que o sistema mostre o correto e o RH tenha
+  liberdade de mudar: a tela da regra já deixa trocar para "só o excedente".
+- **Proteção da publicação (2.6.105.1)**: entre publicar o servidor e o Sincronizar, a conta segue com a regra antiga em vez de
+  dar erro no espelho que está no ar.
+
+**Proposta em aberto (D27, pedido do Thomás em 08/10/2026: "não quero impedir eles de trabalhar, mas também não tenho como criar
+uma regra para cada um")**: domingos de folga como AVISO, com um número só na regra de cada loja: "pelo menos 1 domingo de folga a
+cada N semanas" (sugestão ao lado: o que a convenção ou a lei pede; ele diz que a convenção pede 1 a cada 3) e "mulheres: 1 a cada
+2 semanas" (CLT art. 386). O espelho e o resumo do mês avisam quem passou disso, contando os domingos com batida; nada bloqueia.
+Precisa do campo "sexo" no cadastro (D21). Hoje: Marujo dá 1 domingo por mês; Katatau parece dar 1; nenhuma dá a folga
+quinzenal às mulheres.
+
 **Falta:**
-- Item 3: configurar as 3 lojas com o Thomás (grava em produção: só com o pedido dele, de preferência à noite).
 - Item 5: horários combinados (passo 3), e com ele o "combinado do dia" no espelho.
 - Publicar: nuvem primeiro (com a migration `20261008100000_regra_de_hora_extra_da_loja`, aplicada pelo SaaS Admin →
   Sincronizar), depois a web.

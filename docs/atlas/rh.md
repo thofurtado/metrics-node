@@ -15,7 +15,7 @@ Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), po
 - **Onde no código:** `metrics-node/src/modules/hr/ponto/apuracao.ts`, `metrics-node/src/modules/hr/ponto/regra.ts`, `metrics-node/src/modules/hr/ponto/servico.ts`, `metrics-node/src/modules/hr/http/controllers/ponto.ts`, `metrics-node/docs/ESPEC-PONTO-REGRAS-E-BANCO-DE-HORAS.md`
 
 ### Cada loja tem a sua regra de hora extra, com data de início, e o sistema só sugere (`regra-ponto-regra-da-loja`)
-- **Regra:** A loja escolhe a regra (CLT, convenção de bares e restaurantes de SP, Litoral Norte ou personalizada) a partir de uma data; os dias antes continuam com a regra anterior. Ao lado de cada campo aparece o que a lei pede, só como aviso: nada bloqueia. Sem regra, vale a CLT; as lojas que já usavam o ponto começam com a Conta antiga do espelho (7h20, 60%, sem noturno) até escolherem.
+- **Regra:** A loja escolhe a regra (CLT, convenção de bares e restaurantes de SP, Litoral Norte ou personalizada) a partir de uma data; os dias antes continuam com a regra anterior. Ao lado de cada campo aparece o que a lei pede, só como aviso: nada bloqueia. Sem regra, vale a CLT; Marujo, Giardinetto e Katatau começam com a conta do espelho de hoje e o percentual de cada uma (60%, 70% e 50%, desde o início, gravado pela migration só no banco de cada uma); outra loja que já usava o ponto começa com a Conta antiga do espelho (7h20, 60%, sem noturno) até escolher.
 - **Por que é assim:** O sistema é para ser sugestivo: há lojas que pagam diferente da lei e precisam operar sem bloqueio (D12, D18). A data de início protege os meses já fechados. As lojas de hoje não podem ver os números mudarem sozinhos (D19).
 - **Decisão:** 07/10/2026 por Thomás Furtado
 - **Onde no código:** `metrics-node/src/modules/hr/ponto/regra.ts`, `metrics-node/src/modules/hr/ponto/modelos.ts`, `metrics/src/pages/hr/settings/regra-hora-extra-settings.tsx`, `metrics/src/components/hr/aviso-regra-do-ponto.tsx`, `metrics-node/prisma/migrations/20261008100000_regra_de_hora_extra_da_loja/migration.sql`
@@ -105,4 +105,4 @@ Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), po
 ## Pendências e decisões
 
 - Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4).
-- Ponto: configurar a regra das 3 lojas com o Thomás (Marujo 60%, Giardinetto 70%, Katatau 50%, domingo e feriado 100%) e os horários combinados (passo 3 da ESPEC do ponto).
+- Ponto: horários combinados (passo 3 da ESPEC do ponto) e o aviso de domingos de folga (D27, proposta). A regra das 3 lojas (Marujo 60%, Giardinetto 70%, Katatau 50%) entra sozinha no Sincronizar (migration 20261008100000).

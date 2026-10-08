@@ -2322,7 +2322,7 @@
    },
    "pendencias": [
     "Vale e consumo lançados no PDV usam usuário do sistema, não funcionário do RH (pergunta 4).",
-    "Ponto: configurar a regra das 3 lojas com o Thomás (Marujo 60%, Giardinetto 70%, Katatau 50%, domingo e feriado 100%) e os horários combinados (passo 3 da ESPEC do ponto)."
+    "Ponto: horários combinados (passo 3 da ESPEC do ponto) e o aviso de domingos de folga (D27, proposta). A regra das 3 lojas (Marujo 60%, Giardinetto 70%, Katatau 50%) entra sozinha no Sincronizar (migration 20261008100000)."
    ],
    "paraQueServe": "Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), pontuação, lançamentos de folha (vale, salário, consumo) e regras de hora extra.",
    "regras": [
@@ -2344,7 +2344,7 @@
     {
      "id": "regra-ponto-regra-da-loja",
      "titulo": "Cada loja tem a sua regra de hora extra, com data de início, e o sistema só sugere",
-     "regra": "A loja escolhe a regra (CLT, convenção de bares e restaurantes de SP, Litoral Norte ou personalizada) a partir de uma data; os dias antes continuam com a regra anterior. Ao lado de cada campo aparece o que a lei pede, só como aviso: nada bloqueia. Sem regra, vale a CLT; as lojas que já usavam o ponto começam com a Conta antiga do espelho (7h20, 60%, sem noturno) até escolherem.",
+     "regra": "A loja escolhe a regra (CLT, convenção de bares e restaurantes de SP, Litoral Norte ou personalizada) a partir de uma data; os dias antes continuam com a regra anterior. Ao lado de cada campo aparece o que a lei pede, só como aviso: nada bloqueia. Sem regra, vale a CLT; Marujo, Giardinetto e Katatau começam com a conta do espelho de hoje e o percentual de cada uma (60%, 70% e 50%, desde o início, gravado pela migration só no banco de cada uma); outra loja que já usava o ponto começa com a Conta antiga do espelho (7h20, 60%, sem noturno) até escolher.",
      "porque": "O sistema é para ser sugestivo: há lojas que pagam diferente da lei e precisam operar sem bloqueio (D12, D18). A data de início protege os meses já fechados. As lojas de hoje não podem ver os números mudarem sozinhos (D19).",
      "decididoPor": "Thomás Furtado",
      "data": "07/10/2026",
@@ -2570,16 +2570,16 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-08T00:55:24",
+  "gerado_em": "2026-10-08T09:11:33",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "c112b46 2026-10-08",
+    "versao": "b0b0a6c 2026-10-08",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "e2b629e 2026-10-08",
+    "versao": "d67eb24 2026-10-08",
     "tabelas": 2
    },
    "pdv": {

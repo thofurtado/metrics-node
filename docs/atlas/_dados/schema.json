@@ -1,14 +1,14 @@
 {
- "gerado_em": "2026-10-08T00:55:24",
+ "gerado_em": "2026-10-08T09:11:33",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "c112b46 2026-10-08",
+   "versao": "b0b0a6c 2026-10-08",
    "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "e2b629e 2026-10-08",
+   "versao": "d67eb24 2026-10-08",
    "tabelas": 2
   },
   "pdv": {
