@@ -138,3 +138,27 @@ convenção. O Marujo pode ficar no "personalizado" (D12) se quiser manter o jei
 
 **Ordem de publicação:** nuvem (servidor) primeiro, depois a web; nenhuma migration destrutiva (a tabela de regras já existe; as
 colunas novas são acrescentadas com IF NOT EXISTS).
+
+---
+
+## Simulação: setembro/2026 nas 3 lojas, conta de hoje x conta nova (padrão CLT)
+
+Consulta só de leitura, totais da loja. "Hoje" = a conta do espelho da web (7h20 por dia, 60%, domingo com o excedente a 100%,
+feriado o dia todo a 100%; diarista sem salário = R$ 0). "Nova" = CLT (8h por dia e 44h por semana, 50%, domingo e feriado como
+hoje, noturno de 20% com a hora de 52min30s; diarista com a hora = diária ÷ 8). Dobras fora das duas. Valores são estimativas do
+que o espelho mostra; a folha não muda nesta etapa.
+
+| | Marujo | Giardinetto | Katatau |
+|---|---|---|---|
+| Pessoas que bateram ponto / horas trabalhadas | 18 / 1.789 h | 8 / 1.207 h | 2 / 305 h |
+| **Hoje**: horas extras a 60% / a 100% | 143,6 h / 103,9 h | 106,5 h / 60,2 h | 21,7 h / 13,8 h |
+| **Hoje**: valor das extras | R$ 3.793 (diaristas: R$ 0) | R$ 3.012 | R$ 567 |
+| **Nova**: extras a 50% (pelo dia + pela semana) / a 100% | 106,3 + 5,9 h / 93,2 h | 59,4 + 2,4 h / 56,9 h | 9,6 + 9,7 h / 13,6 h |
+| **Nova**: horas entre 22h e 5h (relógio) | 228,5 h | 56,3 h | 0 |
+| **Nova**: valor das extras + noturno | R$ 4.449 + R$ 561 = **R$ 5.010** (R$ 1.651 dos diaristas) | R$ 2.154 + R$ 135 = **R$ 2.289** | **R$ 510** |
+
+Leitura:
+- **Marujo sobe**, porque os diaristas passam a ter hora extra e entra o noturno.
+- **Giardinetto e Katatau descem**, porque a extra começa depois de 8h e não de 7h20, e o adicional cai de 60% para 50%.
+- Risco: se a convenção do Litoral Norte pagar mais que a CLT, o padrão CLT mostra menos do que a loja deve. Por isso o modelo
+  "Litoral Norte" deve estar pronto antes de a versão chegar às três lojas (D11).
