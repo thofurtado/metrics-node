@@ -1,9 +1,9 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { prisma } from "../../../../lib/prisma"
-import { calculateOvertime } from "../../services/overtime-calculator"
-import { calculateWorkedMinutes } from "../../services/time-calculator-utils"
-import { holidayService } from "../../services/holiday-service"
+import { apurarPeriodo } from "../../ponto/apuracao"
+import { diaDoBanco, carregarFeriados, carregarRegras, funcionarioDoBanco } from "../../ponto/servico"
+import { regraDoDia } from "../../ponto/regra"
 export async function listTimeClocks(request: FastifyRequest, reply: FastifyReply) {
     const listQuerySchema = z.object({
         employee_id: z.string().optional(),
@@ -57,7 +57,10 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
                     select: {
                         name: true,
                         role: true,
-                        salary: true
+                        salary: true,
+                        dailyRate: true,
+                        overtimeValue: true,
+                        registrationType: true
                     }
                 }
             },
@@ -70,117 +73,66 @@ export async function listTimeClocks(request: FastifyRequest, reply: FastifyRepl
         prisma.timeClock.count({ where: whereClause })
     ])
 
-    const hrRule = await prisma.hrRuleHistory.findFirst({
-        orderBy: { valid_from: 'desc' }
+    // Conta única do ponto (08/10/2026): a mesma do espelho, do resumo do mês e do PDF (src/modules/hr/ponto/apuracao.ts).
+    // Antes esta rota tinha a sua própria conta (e tratava segunda-feira como domingo).
+    const datas = timeClocks.map(tc => tc.date.toISOString().substring(0, 10)).sort()
+    const [regras, feriados] = datas.length > 0
+        ? await Promise.all([carregarRegras(), carregarFeriados(datas[0], datas[datas.length - 1])])
+        : [[], []]
+
+    const porFuncionario = new Map<string, typeof timeClocks>()
+    timeClocks.forEach(tc => {
+        const lista = porFuncionario.get(tc.employee_id) ?? []
+        lista.push(tc)
+        porFuncionario.set(tc.employee_id, lista)
     })
 
-    // Sincroniza feriados se necessário (baseado no ano da primeira data ou ano atual)
-    const yearToSync = timeClocks.length > 0 ? timeClocks[0].date.getFullYear() : new Date().getFullYear();
-    await holidayService.syncHolidays(yearToSync);
-
-    const holidays = await prisma.holiday.findMany({
-        where: whereClause.date ? { date: whereClause.date } : undefined
-    });
-
-    // Pré-processamento: Regra do Último Domingo
-    // Se o funcionário trabalhou TODOS os domingos no intervalo buscado (mínimo 4), o último domingo vira 100% integral.
-    const employeeSundaysMap = new Map<string, { date: Date, workedMinutes: number }[]>();
-    
-    timeClocks.forEach(tc => {
-        const isSunday = tc.date.getUTCDay() === 0 || tc.date.getDay() === 0;
-        if (isSunday) {
-            const workedMinutes = calculateWorkedMinutes(tc);
-            if (!employeeSundaysMap.has(tc.employee_id)) {
-                employeeSundaysMap.set(tc.employee_id, []);
-            }
-            employeeSundaysMap.get(tc.employee_id)!.push({ date: tc.date, workedMinutes });
-        }
-    });
-
-    const employeesWithFullSundays = new Set<string>();
-    const lastSundayDatesByEmployee = new Map<string, string>();
-
-    employeeSundaysMap.forEach((sundays, empId) => {
-        sundays.sort((a, b) => a.date.getTime() - b.date.getTime());
-        const workedAll = sundays.length > 0 && sundays.every(s => s.workedMinutes > 0);
-        
-        if (workedAll && sundays.length >= 4) {
-            employeesWithFullSundays.add(empId);
-            const lastSunday = sundays[sundays.length - 1];
-            lastSundayDatesByEmployee.set(empId, lastSunday.date.toISOString().substring(0, 10));
-        }
-    });
+    const apuracaoDoDia = new Map<string, { minutos: number; valor: number; especial: boolean; dia: any }>()
+    let summary = {
+        totalOvertimeMinutes60: 0,
+        totalOvertimeValue60: 0,
+        totalOvertimeMinutes100: 0,
+        totalOvertimeValue100: 0,
+    }
+    porFuncionario.forEach((lista, employeeId) => {
+        const datasDele = lista.map(tc => tc.date.toISOString().substring(0, 10)).sort()
+        const r = apurarPeriodo({
+            funcionario: funcionarioDoBanco(lista[0].employee as any),
+            dias: lista.map(diaDoBanco),
+            feriados,
+            regras,
+            inicio: datasDele[0],
+            fim: datasDele[datasDele.length - 1],
+        })
+        r.dias.forEach(d => apuracaoDoDia.set(`${employeeId}|${d.data}`, {
+            minutos: d.extraMin + d.extraSegundaFaixaMin + d.extraEspecialMin + d.extraSemanaMin,
+            valor: d.valorExtra,
+            especial: d.extraEspecialMin > 0,
+            dia: d,
+        }))
+        summary.totalOvertimeMinutes60 += r.totais.extraMin + r.totais.extraSegundaFaixaMin + r.totais.extraSemanaMin
+        summary.totalOvertimeValue60 += r.totais.valorExtraNormal + r.totais.valorExtraSegundaFaixa
+        summary.totalOvertimeMinutes100 += r.totais.extraEspecialMin
+        summary.totalOvertimeValue100 += r.totais.valorExtraEspecial
+    })
 
     const processedTimeClocks = timeClocks.map(tc => {
-        let overtimeData = {
-            overtimeMinutes: 0,
-            overtimeValue: 0,
-            calculation_memory: null
-        }
-
-        if (hrRule && tc.employee.salary) {
-            const workedMinutes = calculateWorkedMinutes(tc)
-            
-            let forceFullOvertime = false;
-            if (employeesWithFullSundays.has(tc.employee_id)) {
-                const isSunday = tc.date.getUTCDay() === 0 || tc.date.getDay() === 0;
-                if (isSunday) {
-                    const tcDateStr = tc.date.toISOString().substring(0, 10);
-                    if (lastSundayDatesByEmployee.get(tc.employee_id) === tcDateStr) {
-                        forceFullOvertime = true;
-                    }
-                }
-            }
-
-            const calc = calculateOvertime({
-                baseSalary: Number(tc.employee.salary),
-                workedMinutes,
-                date: tc.date,
-                holidays,
-                hrRule: {
-                    he_divisor: hrRule.he_divisor,
-                    he_multiplier_standard: hrRule.he_multiplier_standard,
-                    he_multiplier_special: hrRule.he_multiplier_special,
-                    daily_workload_minutes: hrRule.daily_workload_minutes,
-                    tolerance_minutes: hrRule.tolerance_minutes
-                },
-                forceFullOvertime
-            })
-
-            overtimeData = {
-                overtimeMinutes: calc.total_minutes,
-                overtimeValue: calc.calculated_value,
-                calculation_memory: calc.calculation_memory as any
-            }
-        }
-
+        const data = tc.date.toISOString().substring(0, 10)
+        const a = apuracaoDoDia.get(`${tc.employee_id}|${data}`)
+        const regra = regraDoDia(regras, data)
         return {
             ...tc,
-            ...overtimeData
+            overtimeMinutes: a?.minutos ?? 0,
+            overtimeValue: a?.valor ?? 0,
+            calculation_memory: a && a.minutos > 0 ? {
+                divisor: regra.divisor,
+                multiplier: a.especial ? regra.multiplicadorEspecial : regra.multiplicadorExtra,
+                multiplier_reason: a.especial ? 'Domingo ou feriado' : 'Hora extra',
+                workload_minutes: a.dia.jornadaMin,
+                apuracao: a.dia,
+            } : null,
         }
     })
-
-    let summary = {
-        totalOvertimeMinutes60: hrRule ? 0 : undefined,
-        totalOvertimeValue60: hrRule ? 0 : undefined,
-        totalOvertimeMinutes100: hrRule ? 0 : undefined,
-        totalOvertimeValue100: hrRule ? 0 : undefined,
-    }
-
-    if (hrRule) {
-        processedTimeClocks.forEach(tc => {
-            if (tc.calculation_memory && tc.overtimeMinutes > 0) {
-                const mem = tc.calculation_memory as any;
-                if (mem.multiplier === 2) {
-                    summary.totalOvertimeMinutes100! += tc.overtimeMinutes;
-                    summary.totalOvertimeValue100! += tc.overtimeValue;
-                } else {
-                    summary.totalOvertimeMinutes60! += tc.overtimeMinutes;
-                    summary.totalOvertimeValue60! += tc.overtimeValue;
-                }
-            }
-        })
-    }
 
     return reply.status(200).send({
         timeClocks: processedTimeClocks,

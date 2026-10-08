@@ -5,6 +5,7 @@ import { createEmployee, listEmployees, updateEmployee, getEmployeeSummary, sync
 import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBatch, deletePayrollBatch, getPayrollPreview, getEmployeePayrollEntries, listPendingDebts, updatePayrollEntry, calculateRateioExtras, getPayrollHistory, cancelPayrollEntry } from "./payroll"
 import { listHolidays, createCustomHoliday, removeHoliday } from "./holidays"
 import { listEmployeeGroups, createEmployeeGroup, updateEmployeeGroup, deleteEmployeeGroup } from "./employee-groups"
+import { apurar, obterRegra, resumo, salvarRegra } from "./ponto"
 
 // Rotas do Quiosque (Electron) - autenticadas via x-api-key
 export async function kioskRoutes(app: FastifyInstance) {
@@ -44,6 +45,12 @@ export async function hrAdminRoutes(app: FastifyInstance) {
     app.get("/hr/employees/:id/payroll", getEmployeePayrollEntries)
     app.get("/hr/employees/:id/pending-debts", listPendingDebts)
     app.delete("/hr/payroll/entries/:id", cancelPayrollEntry)
+
+    // Conta única do ponto e regra de hora extra da loja (08/10/2026)
+    app.get("/hr/ponto/regra", obterRegra)
+    app.post("/hr/ponto/regra", salvarRegra)
+    app.post("/hr/ponto/apurar", apurar)
+    app.get("/hr/ponto/resumo", resumo)
 
     // Feriados
     app.get("/hr/holidays", listHolidays)

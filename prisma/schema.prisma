@@ -607,16 +607,35 @@ model UserModule {
   @@map("user_modules")
 }
 
+/// Regra de hora extra da loja, com data de vigência (07/10/2026: ESPEC-PONTO-REGRAS-E-BANCO-DE-HORAS.md). Uma linha por versão;
+/// a conta usa a mais recente com valid_from até o dia. Sem nenhuma linha, vale a CLT (src/modules/hr/ponto/regra.ts).
 model HrRuleHistory {
-  id                     String   @id @default(uuid())
-  valid_from             DateTime @default(now())
-  he_divisor             Int      @default(220)
-  he_multiplier_standard Decimal  @default(1.6)
-  he_multiplier_special  Decimal  @default(2.0)
-  daily_workload_minutes Int      @default(500)
-  tolerance_minutes      Int      @default(10)
-  created_at             DateTime @default(now())
-  updated_at             DateTime @default(now()) @updatedAt
+  id                        String   @id @default(uuid())
+  valid_from                DateTime @default(now())
+  he_divisor                Int      @default(220)
+  he_multiplier_standard    Decimal  @default(1.6)
+  he_multiplier_special     Decimal  @default(2.0)
+  daily_workload_minutes    Int      @default(500)
+  tolerance_minutes         Int      @default(10)
+  /// CLT, SP_BARES_RESTAURANTES, LITORAL_NORTE, PERSONALIZADO ou LEGADO (a conta que o espelho fazia até a web 2.6.22)
+  model_key                 String   @default("PERSONALIZADO")
+  weekly_workload_minutes   Int      @default(2640)
+  count_weekly              Boolean  @default(false)
+  second_tier_after_minutes Int?
+  he_multiplier_second_tier Decimal?
+  /// EXCEDENTE_100, NORMAL ou DIA_TODO_100
+  sunday_mode               String   @default("EXCEDENTE_100")
+  /// DIA_TODO_100 ou EXCEDENTE_100
+  holiday_mode              String   @default("DIA_TODO_100")
+  night_enabled             Boolean  @default(false)
+  night_additional          Decimal  @default(0.2)
+  night_reduced_hour        Boolean  @default(true)
+  /// Horas padrão da diária, em minutos
+  daily_rate_minutes        Int      @default(480)
+  daily_workers_overtime    Boolean  @default(true)
+  notes                     String?
+  created_at                DateTime @default(now())
+  updated_at                DateTime @default(now()) @updatedAt
 
   @@map("hr_rule_histories")
 }
