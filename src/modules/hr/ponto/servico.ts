@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 
 import { holidayService } from '../services/holiday-service'
 import { apurarPeriodo, DiaDePonto, FuncionarioDaConta, ResultadoDaApuracao } from './apuracao'
-import { RegraDaLoja, regraDoBanco } from './regra'
+import { REGRA_LEGADO, RegraDaLoja, regraDoBanco } from './regra'
 
 const paraData = (iso: string) => new Date(`${iso}T00:00:00.000Z`)
 
@@ -18,9 +18,25 @@ export function inicioDaBusca(inicio: string): string {
   return d.toISOString().substring(0, 10)
 }
 
+/** O banco ainda não tem as colunas novas da regra (erro P2022 do Prisma, "column ... does not exist") */
+export function faltamColunasDaRegra(err: unknown): boolean {
+  const e = err as { code?: string; message?: string } | null
+  return e?.code === 'P2022' || /hr_rule_histories.*does not exist|does not exist.*hr_rule_histories/is.test(e?.message ?? '')
+}
+
+/**
+ * As versões da regra da loja, da mais antiga para a mais nova. Entre a publicação do servidor e o "Sincronizar" do SaaS Admin
+ * (que cria as colunas novas), a leitura falha: a conta segue com a regra antiga (a mesma do espelho até a web 2.6.22), para o
+ * ponto não parar nesse intervalo.
+ */
 export async function carregarRegras(): Promise<RegraDaLoja[]> {
-  const linhas = await prisma.hrRuleHistory.findMany({ orderBy: { valid_from: 'asc' } })
-  return linhas.map(regraDoBanco)
+  try {
+    const linhas = await prisma.hrRuleHistory.findMany({ orderBy: { valid_from: 'asc' } })
+    return linhas.map(regraDoBanco)
+  } catch (err) {
+    if (!faltamColunasDaRegra(err)) throw err
+    return [{ ...REGRA_LEGADO }]
+  }
 }
 
 export async function carregarFeriados(inicio: string, fim: string): Promise<string[]> {

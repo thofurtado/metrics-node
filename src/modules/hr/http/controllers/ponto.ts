@@ -7,7 +7,7 @@ import { prisma } from '../../../../lib/prisma'
 import { DiaDePonto } from '../../ponto/apuracao'
 import { MODELOS } from '../../ponto/modelos'
 import { abaixoDaLei, REGRA_CLT, RegraDaLoja, regraDoBanco, regraDoDia, regraParaBanco } from '../../ponto/regra'
-import { apurarFuncionario, carregarRegras, resumoDaLoja } from '../../ponto/servico'
+import { apurarFuncionario, carregarRegras, faltamColunasDaRegra, resumoDaLoja } from '../../ponto/servico'
 
 const dataIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data no formato AAAA-MM-DD')
 
@@ -16,8 +16,7 @@ const hojeEmBrasilia = () =>
 
 /** A regra que vale hoje, o histórico, os modelos e o que fica abaixo da lei (só sugestão, D18) */
 export async function obterRegra(_request: FastifyRequest, reply: FastifyReply) {
-  const linhas = await prisma.hrRuleHistory.findMany({ orderBy: { valid_from: 'desc' } })
-  const regras = linhas.map(regraDoBanco)
+  const regras = (await carregarRegras()).reverse()
   const atual = regraDoDia(regras, hojeEmBrasilia())
   return reply.send({
     atual,
@@ -68,10 +67,16 @@ export async function salvarRegra(request: FastifyRequest, reply: FastifyReply) 
   }
   // Mesma data de vigência: a nova substitui a anterior daquele dia (corrigir um erro de digitação não cria duas regras)
   const dados = regraParaBanco(regra)
-  const existente = await prisma.hrRuleHistory.findFirst({ where: { valid_from: dados.valid_from } })
-  const linha = existente
-    ? await prisma.hrRuleHistory.update({ where: { id: existente.id }, data: dados })
-    : await prisma.hrRuleHistory.create({ data: dados })
+  let linha
+  try {
+    const existente = await prisma.hrRuleHistory.findFirst({ where: { valid_from: dados.valid_from } })
+    linha = existente
+      ? await prisma.hrRuleHistory.update({ where: { id: existente.id }, data: dados })
+      : await prisma.hrRuleHistory.create({ data: dados })
+  } catch (err) {
+    if (!faltamColunasDaRegra(err)) throw err
+    return reply.status(503).send({ message: 'O banco desta loja ainda não recebeu a atualização da regra. Tente de novo em alguns minutos.' })
+  }
   const salva = regraDoBanco(linha)
   return reply.status(201).send({ regra: salva, abaixoDaLei: abaixoDaLei(salva) })
 }
