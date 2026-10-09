@@ -20,19 +20,20 @@
     },
     {
       "id": "srv-checagem-coolify",
-      "nome": "Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis, coolify-realtime)",
+      "nome": "Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis)",
       "ondeRoda": "Servidor (Docker)",
-      "frequencia": "a cada 5 s, em 4 contêineres",
-      "segundos": 5,
-      "faz": "4 processos novos a cada 5 s (48 por minuto).",
+      "frequencia": "a cada 60 s (rápida só na partida), desde 09/10/2026",
+      "segundos": 60,
+      "faz": "3 checagens por minuto no total. Até 08/10 eram 4 contêineres a cada 5 s (48 por minuto); na versão 4.4.3 o coolify-realtime entrou dentro do contêiner coolify.",
       "porque": "O Coolify sabe se as peças dele estão de pé (painel, banco, fila, tempo real).",
       "seEspacar": "Depois de atualizar o Coolify, ele demora mais para se declarar saudável, a não ser com uma checagem rápida só na partida (start_interval, Docker 25 ou mais novo: conferir com docker version).",
-      "situacao": "excessivo",
-      "proposta": "60 s pelo docker-compose.custom.yml (sobrevive às atualizações do Coolify).",
+      "situacao": "ok",
+      "proposta": "",
       "ondeNoCodigo": [
-        "/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)",
-        "/data/coolify/source/docker-compose.custom.yml (onde ajustar)"
-      ]
+        "/data/coolify/source/docker-compose.custom.yml (60 s; vale a cada atualização do Coolify)",
+        "/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)"
+      ],
+      "desde": "09/10/2026, com a atualização manual do Coolify para 4.4.3 (arquivo docker-compose.custom.yml)"
     },
     {
       "id": "srv-checagem-postgres-lojas",
@@ -84,15 +85,15 @@
       "nome": "Coolify Sentinel (coleta de métricas)",
       "ondeRoda": "Servidor (Docker)",
       "chama": "API do Docker",
-      "frequencia": "checagem a cada 10 s + coleta contínua",
-      "segundos": 10,
-      "faz": "Consulta o Docker sem parar. Parado à mão, o Coolify religa sozinho.",
+      "frequencia": "coleta a cada 60 s e envio a cada 300 s (desde 09/10/2026; eram 10 s e 60 s); checagem a cada 10 s",
+      "segundos": 60,
+      "faz": "Consulta o Docker para os gráficos do Coolify. Nesta versão não há botão de desligar; parado à mão, o Coolify religa.",
       "porque": "Gráficos de CPU e memória dentro do Coolify.",
       "seEspacar": "O Netdata já mede tudo isso.",
-      "situacao": "excessivo",
-      "proposta": "Desligar em Servers › localhost › Sentinel.",
+      "situacao": "atencao",
+      "proposta": "Medir quando o limite da Hostinger sair; se ainda pesar, procurar como desligar de vez.",
       "ondeNoCodigo": [
-        "Coolify › Servers › localhost › Sentinel"
+        "Coolify › Servers › localhost › Sentinel › Configuration (Collection rate, Push interval)"
       ]
     },
     {
@@ -169,16 +170,16 @@
       "nome": "Atualização automática do Coolify",
       "ondeRoda": "Servidor (Coolify)",
       "chama": "baixa a versão nova e recria os contêineres do próprio Coolify",
-      "frequencia": "toda noite, à meia-noite UTC (21:00 de Brasília)",
-      "segundos": 86400,
-      "faz": "Cada noite guarda uma cópia do .env e um log de atualização em /data/coolify/source. Em 08/10 às 21:02 (Brasília) reescreveu o docker-compose.prod.yml, mas os contêineres seguiram com a checagem antiga: a atualização provavelmente não terminou por causa do limite de CPU.",
+      "frequencia": "desligada desde 09/10/2026 (era toda noite à meia-noite UTC); a checagem de versão nova segue de hora em hora",
+      "segundos": null,
+      "faz": "Em 08/10 às 21:02 a atualização automática baixou a 4.4.3 e parou no meio por causa do limite de CPU. Em 09/10 ~01:10 foi feita à mão (Settings › Updates › Upgrade Now): durante a troca o painel mostrou erro 500 por alguns minutos (tabela oauth_identities ainda não criada) e voltou sozinho; as lojas não pararam.",
       "porque": "Manter o Coolify atualizado sem ninguém lembrar.",
       "seEspacar": "Desligada, a atualização vira manual (botão Upgrade no painel), feita quando o servidor estiver folgado.",
-      "situacao": "atencao",
-      "proposta": "Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite.",
+      "situacao": "ok",
+      "proposta": "Atualizar à mão, de noite, com a CPU normal e uma cópia do Coolify feita antes (Settings › Backup).",
       "ondeNoCodigo": [
-        "/data/coolify/source/upgrade-*.log",
-        "Coolify › Settings › Auto Update"
+        "Coolify › Settings › Updates",
+        "/data/coolify/source/upgrade-*.log"
       ]
     }
   ],

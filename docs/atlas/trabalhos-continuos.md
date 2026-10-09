@@ -1,6 +1,6 @@
 # Trabalhos que rodam o tempo todo
 
-> Gerado por `atlas.py` em 08/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
+> Gerado por `atlas.py` em 09/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
 
 Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens (perguntar de tantos em tantos segundos), conexões ao vivo, sincronias e tarefas agendadas. Cada ficha diz onde roda, o que chama, de quanto em quanto tempo, quantas cópias rodam juntas, o que custa, por que existe e o que acontece se espaçar. Numa crise de CPU da nuvem, olhe nesta ordem: (1) o servidor, que gasta CPU sem ninguém ver; (2) o que chama a nuvem com intervalo curto e se multiplica por loja e por aba; (3) o que fica só na rede da loja não pesa no servidor da nuvem. Levantamento de 08/10/2026; toda mudança nesses trabalhos atualiza esta lista na mesma tarefa.
 
@@ -17,11 +17,9 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Excessivo | **Barra de entregas do caixa na web** (Delivery e pedidos online) | Navegador, tela do caixa (/cashier/session/:id) → `Nuvem: GET /public/orders/pending?date=… e o canal ao vivo /public/orders/stream` | a cada 3 s (20 por minuto) com a aba visível, mesmo sem foco | 1 por aba de caixa aberta, inclusive caixa FECHADO ou CONFERIDO, datas passadas e loja sem delivery | Só com caixa ABERTO e do dia; 30-60 s com o canal ao vivo ligado e 10-15 s se ele cair; juntar avisos em rajada. |
 | Excessivo | **Checagem de saúde da porta de entrada (coolify-proxy, Traefik)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `wget /ping dentro do contêiner` | a cada 4 s |  | 60 s. |
 | Excessivo | **Atualização da tela Delivery do PDV** (Delivery e pedidos online) | PDV com a tela Delivery aberta (servidor E terminal) → `Nuvem: GET /api/pdv/orders/pending?includeCancelled=1 (mais os reenvios abaixo)` | a cada 4 s (15 por minuto) enquanto a tela está visível | 1 por tela Delivery aberta, também no terminal | Ler só o banco local; o terminal nunca chama a nuvem. |
-| Excessivo | **Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis, coolify-realtime)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | a cada 5 s, em 4 contêineres |  | 60 s pelo docker-compose.custom.yml (sobrevive às atualizações do Coolify). |
 | Excessivo | **Checagem de saúde do Postgres das lojas** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `psql -U postgres -d db_marujo -c 'SELECT 1'` | a cada 5 s |  | 60 s; trocar por pg_isready (não faz login completo). |
 | Excessivo | **Checagem de saúde do proxy da porta pública do banco** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `stat nginx.conf` | a cada 5 s |  | 60 s. Decidir depois: fechar a porta 5432 a quem não for o escritório (firewall da Hostinger). |
 | Excessivo | **Checagem de saúde do Mongo** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `echo ok` | a cada 5 s |  | 60 s, ou desligar se ninguém usa. |
-| Excessivo | **Coolify Sentinel (coleta de métricas)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `API do Docker` | checagem a cada 10 s + coleta contínua |  | Desligar em Servers › localhost › Sentinel. |
 | Excessivo | **Equipamentos e telemetria na web** (Ordens de serviço) | Navegador, /clients-equipments e aba Equipamentos de /treatments → `Nuvem: GET /clients (todos os clientes com todos os equipamentos) e /equipments/orphans` | 2 consultas a cada 10 s com a aba visível | 1 por aba da equipe interna | 30-60 s. |
 | Excessivo | **Teste "Internet e nuvem" do PDV** (Empresa, usuários e configuração) | Todo PDV aberto (servidor e terminal) → `Nuvem: GET https://api.metrics.dev.br/health; também TCP com 1.1.1.1/8.8.8.8 e 256 KB da Cloudflare a cada 5 min` | ~20 s na janela principal, 12 s na tela de entrada | 1 por PDV aberto | Usar /public/health a cada 60 s. |
 | Excessivo | **Cardápio completo e complementos (PDV)** (Cardápio e produtos) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /public/menu` | a cada 5 min (sincronia geral do PDV), SEMPRE tudo | 1 por loja | Obedecer ao carimbo de última mudança, como os produtos já fazem. |
@@ -36,6 +34,7 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Atenção | **"Estou vivo" da troca automática de servidor** (Empresa, usuários e configuração) | Core Service de todo computador da loja → `Nuvem: POST /api/pdv/cluster/vivo (só memória)` | a cada 15 s (ciclo de 10 s) | Todo computador, só se a "ordem dos servidores" estiver configurada (inclusive terminal fora da ordem) | Terminal fora da ordem não chamar. |
 | Atenção | **Consulta de eventos do iFood (polling)** (Delivery e pedidos online) | Nuvem (metrics-node), dentro do processo da API → `iFood (events:polling) e o banco de cada loja` | a cada 30 s | Percorre todas as lojas ativas (~14), uma de cada vez | Pular lojas sem token; limpeza do diário (ex.: 30 dias), mantendo os eventos de cancelamento da homologação; não ligar fora do servidor de produção. |
 | Atenção | **Posição de estoque na web** (Estoque e compras) | Navegador, /stock aba 1 → `Nuvem: GET /api/stock/overview` | a cada 30 s com a aba visível | 1 por aba aberta | Tirar a atualização automática ou passar a 5 min. |
+| Atenção | **Coolify Sentinel (coleta de métricas)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `API do Docker` | coleta a cada 60 s e envio a cada 300 s (desde 09/10/2026; eram 10 s e 60 s); checagem a cada 10 s |  | Medir quando o limite da Hostinger sair; se ainda pesar, procurar como desligar de vez. |
 | Atenção | **Consultas ao Docker com tamanho dos contêineres** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | ~1 por minuto |  | Medir de novo depois de desligar o Sentinel e do teste de parar o Coolify por 10 min. |
 | Atenção | **Windy: telemetria do computador** (Ordens de serviço) | Computador da loja com o Windy → `Nuvem: POST /equipments/{id}/telemetry (~2-4 KB)` | a cada 2 min, mais a cada reabertura da conexão e ao abrir o painel | 1 por computador | 5-10 min. |
 | Atenção | **Retrato das mesas abertas para a nuvem** (Mesas e salão) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: POST /api/pdv/sync/tables` | a cada 5 min (sincronia geral do PDV), sempre (mesmo sem mesa aberta) | 1 por loja | Pular quando nada mudou desde o último envio. |
@@ -44,7 +43,6 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Atenção | **Departamentos de impressão (PDV)** (Impressão e registro da operação) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/print-departments` | a cada 5 min (sincronia geral do PDV) |  | 30 min ou carimbo de mudança. |
 | Atenção | **Configurações da loja (PDV)** (Empresa, usuários e configuração) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/config` | a cada 5 min (sincronia geral do PDV) |  | 30 min. |
 | Atenção | **Backup do Postgres das lojas pelo Coolify** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `pg_dumpall + pigz + mc` | de hora em hora |  | 1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 "backups"; depois ensaiar a restauração. |
-| Atenção | **Atualização automática do Coolify** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify` | toda noite, à meia-noite UTC (21:00 de Brasília) |  | Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite. |
 | Atenção | **Relay do Syncthing (strelaysrv)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor | sempre ligado |  | Identificar quem o inicia e remover. |
 | Atenção | **Moodle e MariaDB** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | parados em 08/10/2026 |  | Decidir se voltam (docker start nos dois) ou se saem de vez. |
 | Atenção | **Avisos ao vivo de pedido (nuvem → PDVs e caixas da web)** (Delivery e pedidos online) | Nuvem (metrics-node) → `Conexões ao vivo abertas (PDVs e abas de caixa)` | a cada evento (pedido novo, status, cancelamento, exclusão) | Só a loja do pedido (desde a nuvem 2.6.106.2, ainda não publicada) | Publicar a nuvem 2.6.106.2 (corrigido em 08/10/2026, commit 02134ee). |
@@ -73,6 +71,7 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Ok | **Salão do PDV (mesas ociosas e recarga)** (Mesas e salão) | PDV com o Salão aberto → `Banco da loja (não chama a nuvem)` | a cada 20 s | 1 por Salão aberto |  |
 | Ok | **Relógio de ponto: envio de batidas** (RH e ponto) | Computador do Metrics.Ponto → `Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)` | a cada 30 s, só se houver batida não enviada |  |  |
 | Ok | **Contingência da NFC-e** (Fiscal (NFC-e)) | Core Service do servidor da loja → `Banco da loja; SEFAZ só com pendência` | a cada 30 s; SEFAZ só se houver nota pendente |  |  |
+| Ok | **Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | a cada 60 s (rápida só na partida), desde 09/10/2026 |  |  |
 | Ok | **App do garçom: lista de servidores da loja** (Mesas e salão) | Celular do garçom → `Core Service da loja: /api/cluster/servidores` | a cada 60 s | 1 por celular |  |
 | Ok | **Publicação dos dados da loja** (Empresa, usuários e configuração) | Core Service do servidor → `Banco da loja` | a cada 1 min |  |  |
 | Ok | **Envio de vendas, caixas e cancelamentos para a nuvem** (Caixa e vendas) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open\|movements\|close, /sync/cancellations` | venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência | 1 por loja |  |
@@ -81,6 +80,7 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Ok | **Procura de atualização do PDV** (Empresa, usuários e configuração) | Core Service de todo computador → `Nuvem: GET /api/public/pdv/latest` | a cada 30 min |  |  |
 | Ok | **Limpeza das marcas de "já recebido"** (Empresa, usuários e configuração) | Core Service do servidor → `Banco da loja` | a cada 1 h |  |  |
 | Ok | **Tabela de impostos aproximados (IBPT)** (Fiscal (NFC-e)) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/sync/ibpt (lotes de 100)` | no máximo a cada 6 h (30 min se faltar algum NCM) |  |  |
+| Ok | **Atualização automática do Coolify** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify` | desligada desde 09/10/2026 (era toda noite à meia-noite UTC); a checagem de versão nova segue de hora em hora |  | Atualizar à mão, de noite, com a CPU normal e uma cópia do Coolify feita antes (Settings › Backup). |
 | Ok | **Canal ao vivo de pedidos no PDV (SSE)** (Delivery e pedidos online) | PDV aberto no computador servidor da loja → `Nuvem: /api/pdv/orders/stream` | conexão sempre aberta; se cair, tenta de novo a cada 5 s | 1 por PDV servidor (protegido contra duplicar) |  |
 
 ## Servidor da nuvem (Hostinger + Coolify)
@@ -95,15 +95,6 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Se espaçar:** Se o Traefik cair, o painel leva até ~3 min para mostrar (60 s × 3 tentativas). As lojas não dependem desta checagem.
 - **Proposta:** 60 s.
 - **Onde no código:** `Coolify › Servers › localhost › Proxy (docker-compose do Traefik)`
-
-### Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis, coolify-realtime) — Excessivo
-- **Frequência:** a cada 5 s, em 4 contêineres
-- **Onde roda:** Servidor (Docker)
-- **A cada vez:** 4 processos novos a cada 5 s (48 por minuto).
-- **Por que existe:** O Coolify sabe se as peças dele estão de pé (painel, banco, fila, tempo real).
-- **Se espaçar:** Depois de atualizar o Coolify, ele demora mais para se declarar saudável, a não ser com uma checagem rápida só na partida (start_interval, Docker 25 ou mais novo: conferir com docker version).
-- **Proposta:** 60 s pelo docker-compose.custom.yml (sobrevive às atualizações do Coolify).
-- **Onde no código:** `/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)`, `/data/coolify/source/docker-compose.custom.yml (onde ajustar)`
 
 ### Checagem de saúde do Postgres das lojas — Excessivo
 - **Frequência:** a cada 5 s
@@ -129,15 +120,6 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Proposta:** 60 s, ou desligar se ninguém usa.
 - **Onde no código:** `Coolify › recurso do Mongo › Healthcheck`
 
-### Coolify Sentinel (coleta de métricas) — Excessivo
-- **Frequência:** checagem a cada 10 s + coleta contínua
-- **Onde roda:** Servidor (Docker) → `API do Docker`
-- **A cada vez:** Consulta o Docker sem parar. Parado à mão, o Coolify religa sozinho.
-- **Por que existe:** Gráficos de CPU e memória dentro do Coolify.
-- **Se espaçar:** O Netdata já mede tudo isso.
-- **Proposta:** Desligar em Servers › localhost › Sentinel.
-- **Onde no código:** `Coolify › Servers › localhost › Sentinel`
-
 ### Netdata (monitor do servidor) — Atenção
 - **Frequência:** coleta a cada 1 s
 - **Onde roda:** Servidor
@@ -145,6 +127,15 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Por que existe:** Ver CPU, memória e processos do servidor (foi o que achou a causa em 08/10).
 - **Proposta:** Fechar a 19999 no firewall da Hostinger e usar o Netdata Cloud com alerta de CPU acima de 30% na média de 1 h.
 - **Onde no código:** `Serviço netdata, porta 19999`
+
+### Coolify Sentinel (coleta de métricas) — Atenção
+- **Frequência:** coleta a cada 60 s e envio a cada 300 s (desde 09/10/2026; eram 10 s e 60 s); checagem a cada 10 s
+- **Onde roda:** Servidor (Docker) → `API do Docker`
+- **A cada vez:** Consulta o Docker para os gráficos do Coolify. Nesta versão não há botão de desligar; parado à mão, o Coolify religa.
+- **Por que existe:** Gráficos de CPU e memória dentro do Coolify.
+- **Se espaçar:** O Netdata já mede tudo isso.
+- **Proposta:** Medir quando o limite da Hostinger sair; se ainda pesar, procurar como desligar de vez.
+- **Onde no código:** `Coolify › Servers › localhost › Sentinel › Configuration (Collection rate, Push interval)`
 
 ### Consultas ao Docker com tamanho dos contêineres — Atenção
 - **Frequência:** ~1 por minuto
@@ -162,15 +153,6 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Proposta:** 1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 "backups"; depois ensaiar a restauração.
 - **Onde no código:** `Coolify › banco das lojas › Backups`
 
-### Atualização automática do Coolify — Atenção
-- **Frequência:** toda noite, à meia-noite UTC (21:00 de Brasília)
-- **Onde roda:** Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify`
-- **A cada vez:** Cada noite guarda uma cópia do .env e um log de atualização em /data/coolify/source. Em 08/10 às 21:02 (Brasília) reescreveu o docker-compose.prod.yml, mas os contêineres seguiram com a checagem antiga: a atualização provavelmente não terminou por causa do limite de CPU.
-- **Por que existe:** Manter o Coolify atualizado sem ninguém lembrar.
-- **Se espaçar:** Desligada, a atualização vira manual (botão Upgrade no painel), feita quando o servidor estiver folgado.
-- **Proposta:** Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite.
-- **Onde no código:** `/data/coolify/source/upgrade-*.log`, `Coolify › Settings › Auto Update`
-
 ### Relay do Syncthing (strelaysrv) — Atenção
 - **Frequência:** sempre ligado
 - **Onde roda:** Servidor
@@ -184,6 +166,24 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Por que existe:** Plataforma de cursos instalada no servidor.
 - **Proposta:** Decidir se voltam (docker start nos dois) ou se saem de vez.
 - **Onde no código:** `contêineres moodle-9aj5… e mariadb-9aj5…`
+
+### Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis) — Ok
+- **Frequência:** a cada 60 s (rápida só na partida), desde 09/10/2026
+- **Onde roda:** Servidor (Docker)
+- **A cada vez:** 3 checagens por minuto no total. Até 08/10 eram 4 contêineres a cada 5 s (48 por minuto); na versão 4.4.3 o coolify-realtime entrou dentro do contêiner coolify.
+- **Por que existe:** O Coolify sabe se as peças dele estão de pé (painel, banco, fila, tempo real).
+- **Se espaçar:** Depois de atualizar o Coolify, ele demora mais para se declarar saudável, a não ser com uma checagem rápida só na partida (start_interval, Docker 25 ou mais novo: conferir com docker version).
+- **Desde:** 09/10/2026, com a atualização manual do Coolify para 4.4.3 (arquivo docker-compose.custom.yml)
+- **Onde no código:** `/data/coolify/source/docker-compose.custom.yml (60 s; vale a cada atualização do Coolify)`, `/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)`
+
+### Atualização automática do Coolify — Ok
+- **Frequência:** desligada desde 09/10/2026 (era toda noite à meia-noite UTC); a checagem de versão nova segue de hora em hora
+- **Onde roda:** Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify`
+- **A cada vez:** Em 08/10 às 21:02 a atualização automática baixou a 4.4.3 e parou no meio por causa do limite de CPU. Em 09/10 ~01:10 foi feita à mão (Settings › Updates › Upgrade Now): durante a troca o painel mostrou erro 500 por alguns minutos (tabela oauth_identities ainda não criada) e voltou sozinho; as lojas não pararam.
+- **Por que existe:** Manter o Coolify atualizado sem ninguém lembrar.
+- **Se espaçar:** Desligada, a atualização vira manual (botão Upgrade no painel), feita quando o servidor estiver folgado.
+- **Proposta:** Atualizar à mão, de noite, com a CPU normal e uma cópia do Coolify feita antes (Settings › Backup).
+- **Onde no código:** `Coolify › Settings › Updates`, `/data/coolify/source/upgrade-*.log`
 
 Como medir numa crise: (1) hPanel da Hostinger › CPU (a linha de 30% é o limite dos créditos); (2) Netdata › Applications: dockerd e containerd altos = checagens de saúde ou consultas ao Docker; node alto = API; postgres alto = consultas das lojas; (3) no terminal do servidor, docker inspect --format "{{json .Config.Healthcheck}}" <contêiner> mostra a checagem de cada contêiner e docker events --filter event=exec_start mostra cada checagem acontecendo.
 

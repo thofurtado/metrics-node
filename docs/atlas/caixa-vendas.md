@@ -1,6 +1,6 @@
 # Caixa e vendas
 
-> Gerado por `atlas.py` em 08/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 09/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
