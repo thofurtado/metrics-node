@@ -14,7 +14,6 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Defeito | **Vigia de pedidos online do PDV (reserva do canal ao vivo)** (Delivery e pedidos online) | PDV aberto no computador servidor da loja → `Nuvem: GET /api/pdv/orders/pending duas vezes (uma com includeCancelled=1)` | a cada 5 s, 2 chamadas (24 por minuto) | 1 por PDV servidor aberto, em toda loja, tenha delivery ou não. Cada "Bloquear sessão" liga mais um sem desligar o anterior (+24 por minuto até fechar o PDV) e duplica os avisos de pedido novo. | Voltar a 60 s (o próprio comentário do código diz 60), uma chamada só, desligar ao fechar a janela, não sobrepor chamadas; depois, a nuvem devolver só o que mudou. |
 | Defeito | **Mesas ao vivo na web (aba Mesas do caixa)** (Mesas e salão) | Navegador, /cashier aba Mesas → `Nuvem: GET /pdv/sync/tables/snapshot` | a cada 10 s com a aba visível | 1 por aba aberta | Consertar a autorização, passar a 30 s (ou receber pelo canal ao vivo) e tirar as mesas de exemplo. |
 | Defeito | **Windy: conexão ao vivo (comandos remotos)** (Ordens de serviço) | Computador da loja com o Windy → `Nuvem: WS /equipments/{id}/ws` | conexão sempre aberta; provavelmente cai e reabre a cada ~155 s | 1 por computador com Windy | Tirar o prazo de 150 s ou a nuvem mandar uma mensagem de vida. |
-| Defeito | **Avisos ao vivo de pedido (nuvem → PDVs e caixas da web)** (Delivery e pedidos online) | Nuvem (metrics-node) → `Conexões ao vivo abertas (PDVs e abas de caixa)` | a cada evento (pedido novo, status, cancelamento, exclusão) | Hoje: TODAS as lojas conectadas | Mandar só para a loja do pedido, tirar o envio fixo para db_restaurante e casar a loja pelo nome exato. |
 | Excessivo | **Barra de entregas do caixa na web** (Delivery e pedidos online) | Navegador, tela do caixa (/cashier/session/:id) → `Nuvem: GET /public/orders/pending?date=… e o canal ao vivo /public/orders/stream` | a cada 3 s (20 por minuto) com a aba visível, mesmo sem foco | 1 por aba de caixa aberta, inclusive caixa FECHADO ou CONFERIDO, datas passadas e loja sem delivery | Só com caixa ABERTO e do dia; 30-60 s com o canal ao vivo ligado e 10-15 s se ele cair; juntar avisos em rajada. |
 | Excessivo | **Checagem de saúde da porta de entrada (coolify-proxy, Traefik)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `wget /ping dentro do contêiner` | a cada 4 s |  | 60 s. |
 | Excessivo | **Atualização da tela Delivery do PDV** (Delivery e pedidos online) | PDV com a tela Delivery aberta (servidor E terminal) → `Nuvem: GET /api/pdv/orders/pending?includeCancelled=1 (mais os reenvios abaixo)` | a cada 4 s (15 por minuto) enquanto a tela está visível | 1 por tela Delivery aberta, também no terminal | Ler só o banco local; o terminal nunca chama a nuvem. |
@@ -45,8 +44,10 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Atenção | **Departamentos de impressão (PDV)** (Impressão e registro da operação) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/print-departments` | a cada 5 min (sincronia geral do PDV) |  | 30 min ou carimbo de mudança. |
 | Atenção | **Configurações da loja (PDV)** (Empresa, usuários e configuração) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/config` | a cada 5 min (sincronia geral do PDV) |  | 30 min. |
 | Atenção | **Backup do Postgres das lojas pelo Coolify** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) → `pg_dumpall + pigz + mc` | de hora em hora |  | 1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 "backups"; depois ensaiar a restauração. |
+| Atenção | **Atualização automática do Coolify** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify` | toda noite, à meia-noite UTC (21:00 de Brasília) |  | Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite. |
 | Atenção | **Relay do Syncthing (strelaysrv)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor | sempre ligado |  | Identificar quem o inicia e remover. |
 | Atenção | **Moodle e MariaDB** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | parados em 08/10/2026 |  | Decidir se voltam (docker start nos dois) ou se saem de vez. |
+| Atenção | **Avisos ao vivo de pedido (nuvem → PDVs e caixas da web)** (Delivery e pedidos online) | Nuvem (metrics-node) → `Conexões ao vivo abertas (PDVs e abas de caixa)` | a cada evento (pedido novo, status, cancelamento, exclusão) | Só a loja do pedido (desde a nuvem 2.6.106.2, ainda não publicada) | Publicar a nuvem 2.6.106.2 (corrigido em 08/10/2026, commit 02134ee). |
 | Atenção | **Descobrir de qual loja é um evento do iFood ou da 99** (Delivery e pedidos online) | Nuvem (metrics-node) | a cada evento; memória de 10 min | Por evento | Guardar também o "não achei" por alguns minutos. |
 | Atenção | **Registro (log) de toda requisição** (SaaS (banco master)) | Nuvem (metrics-node) | 2 linhas por requisição |  | Registrar só avisos e erros (nível warn), mantendo os erros completos. |
 | Atenção | **Motores do Prisma (um processo por banco de loja)** (SaaS (banco master)) | Nuvem (metrics-node) | sempre ligados | ~14-16 processos query-engine (1 por banco), nunca fechados; o polling do iFood mantém todos acordados | Ensaio com o motor padrão (library) e medir; descobrir por que "binary" foi escolhido (arquivos travados no Windows?). |
@@ -160,6 +161,15 @@ Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a A
 - **Por que existe:** Cópia de segurança de todas as lojas.
 - **Proposta:** 1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 "backups"; depois ensaiar a restauração.
 - **Onde no código:** `Coolify › banco das lojas › Backups`
+
+### Atualização automática do Coolify — Atenção
+- **Frequência:** toda noite, à meia-noite UTC (21:00 de Brasília)
+- **Onde roda:** Servidor (Coolify) → `baixa a versão nova e recria os contêineres do próprio Coolify`
+- **A cada vez:** Cada noite guarda uma cópia do .env e um log de atualização em /data/coolify/source. Em 08/10 às 21:02 (Brasília) reescreveu o docker-compose.prod.yml, mas os contêineres seguiram com a checagem antiga: a atualização provavelmente não terminou por causa do limite de CPU.
+- **Por que existe:** Manter o Coolify atualizado sem ninguém lembrar.
+- **Se espaçar:** Desligada, a atualização vira manual (botão Upgrade no painel), feita quando o servidor estiver folgado.
+- **Proposta:** Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite.
+- **Onde no código:** `/data/coolify/source/upgrade-*.log`, `Coolify › Settings › Auto Update`
 
 ### Relay do Syncthing (strelaysrv) — Atenção
 - **Frequência:** sempre ligado

@@ -163,6 +163,23 @@
       "ondeNoCodigo": [
         "contêineres moodle-9aj5… e mariadb-9aj5…"
       ]
+    },
+    {
+      "id": "srv-coolify-autoatualizacao",
+      "nome": "Atualização automática do Coolify",
+      "ondeRoda": "Servidor (Coolify)",
+      "chama": "baixa a versão nova e recria os contêineres do próprio Coolify",
+      "frequencia": "toda noite, à meia-noite UTC (21:00 de Brasília)",
+      "segundos": 86400,
+      "faz": "Cada noite guarda uma cópia do .env e um log de atualização em /data/coolify/source. Em 08/10 às 21:02 (Brasília) reescreveu o docker-compose.prod.yml, mas os contêineres seguiram com a checagem antiga: a atualização provavelmente não terminou por causa do limite de CPU.",
+      "porque": "Manter o Coolify atualizado sem ninguém lembrar.",
+      "seEspacar": "Desligada, a atualização vira manual (botão Upgrade no painel), feita quando o servidor estiver folgado.",
+      "situacao": "atencao",
+      "proposta": "Desligar a atualização automática enquanto o servidor estiver limitado e atualizar à mão, à noite.",
+      "ondeNoCodigo": [
+        "/data/coolify/source/upgrade-*.log",
+        "Coolify › Settings › Auto Update"
+      ]
     }
   ],
   "notas": [

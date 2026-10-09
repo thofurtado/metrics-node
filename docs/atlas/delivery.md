@@ -19,16 +19,6 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Desde:** 05/09/2026: o commit b555038 trocou 60 s por 5 s junto com "correções da entrada de pedidos online" (o motivo não foi escrito)
 - **Onde no código:** `Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:291`, `Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:307`, `Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:671`, `metrics-node/src/modules/public/http/controllers/get-pending-online-orders.ts:28`
 
-### Avisos ao vivo de pedido (nuvem → PDVs e caixas da web) — Defeito
-- **Frequência:** a cada evento (pedido novo, status, cancelamento, exclusão)
-- **Onde roda:** Nuvem (metrics-node) → `Conexões ao vivo abertas (PDVs e abas de caixa)`
-- **Quantos:** Hoje: TODAS as lojas conectadas
-- **A cada vez:** DEFEITO GRAVE (LGPD): os avisos do iFood e da 99 saem sem a loja (broadcast) e vão para as conexões de todas as lojas, com nome, telefone, CPF e endereço do cliente; todo pedido do iFood também vai para a loja de teste (db_restaurante). O casamento da loja é por "contém" e pode errar de loja. Cada caixa da web de cada loja refaz a consulta de pedidos ao receber.
-- **Por que existe:** Avisar na hora o PDV e o caixa da web da loja do pedido.
-- **Se espaçar:** Não é de tempo: é de destino.
-- **Proposta:** Mandar só para a loja do pedido, tirar o envio fixo para db_restaurante e casar a loja pelo nome exato.
-- **Onde no código:** `metrics-node/src/lib/sse-manager.ts:65`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:450`, `metrics-node/src/modules/delivery/services/ifood-events.service.ts:133`, `metrics-node/src/modules/delivery/http/controllers/webhook-99food.ts:312`, `metrics-node/src/modules/cashier/http/controllers/delete-online-order.ts:77`
-
 ### Barra de entregas do caixa na web — Excessivo
 - **Frequência:** a cada 3 s (20 por minuto) com a aba visível, mesmo sem foco
 - **Onde roda:** Navegador, tela do caixa (/cashier/session/:id) → `Nuvem: GET /public/orders/pending?date=… e o canal ao vivo /public/orders/stream`
@@ -68,6 +58,17 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Se espaçar:** NÃO pode espaçar para loja com iFood.
 - **Proposta:** Pular lojas sem token; limpeza do diário (ex.: 30 dias), mantendo os eventos de cancelamento da homologação; não ligar fora do servidor de produção.
 - **Onde no código:** `metrics-node/src/modules/delivery/services/ifood-poller.ts:536`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:61`, `metrics-node/src/modules/delivery/services/ifood-api.service.ts:109`
+
+### Avisos ao vivo de pedido (nuvem → PDVs e caixas da web) — Atenção
+- **Frequência:** a cada evento (pedido novo, status, cancelamento, exclusão)
+- **Onde roda:** Nuvem (metrics-node) → `Conexões ao vivo abertas (PDVs e abas de caixa)`
+- **Quantos:** Só a loja do pedido (desde a nuvem 2.6.106.2, ainda não publicada)
+- **A cada vez:** Cada conexão do canal ao vivo fica guardada pelo banco da loja, e o aviso vai só para esse banco, por nome exato. Até a 2.6.106.1 os avisos do iFood e da 99 saíam sem a loja e iam para TODAS as lojas conectadas, com nome, telefone, CPF e endereço do cliente, e também para a loja de teste (db_restaurante).
+- **Por que existe:** Avisar na hora o PDV e o caixa da web da loja do pedido.
+- **Se espaçar:** Não é de tempo: é de destino.
+- **Proposta:** Publicar a nuvem 2.6.106.2 (corrigido em 08/10/2026, commit 02134ee).
+- **Desde:** Corrigido em 08/10/2026 (2.6.106.2, local)
+- **Onde no código:** `metrics-node/src/lib/sse-manager.ts`, `metrics-node/src/lib/sse-manager.spec.ts`, `metrics-node/src/modules/public/http/controllers/orders-stream.ts`
 
 ### Descobrir de qual loja é um evento do iFood ou da 99 — Atenção
 - **Frequência:** a cada evento; memória de 10 min
