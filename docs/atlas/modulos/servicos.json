@@ -78,5 +78,71 @@
   ],
   "paraQueServe": "Atendimento técnico: a ordem de serviço de um equipamento do cliente, os itens e serviços usados, o andamento e o pagamento.",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "windy-conexao-ao-vivo",
+      "nome": "Windy: conexão ao vivo (comandos remotos)",
+      "ondeRoda": "Computador da loja com o Windy",
+      "chama": "Nuvem: WS /equipments/{id}/ws",
+      "frequencia": "conexão sempre aberta; provavelmente cai e reabre a cada ~155 s",
+      "segundos": 155,
+      "quantos": "1 por computador com Windy",
+      "faz": "O Windy desiste depois de 150 s sem mensagem; a nuvem só manda \"ping\" a cada 120 s, e o ping não conta como mensagem. Cada reabertura grava \"online\" no banco, lê ao fechar e manda uma telemetria extra. A confirmar no windy_ws_log.txt (\"WS Connected\" a cada ~2,5 min).",
+      "porque": "Receber comandos do suporte (atualizar, reiniciar, acesso remoto) na hora.",
+      "situacao": "defeito",
+      "proposta": "Tirar o prazo de 150 s ou a nuvem mandar uma mensagem de vida.",
+      "ondeNoCodigo": [
+        "Metrics.Windy/Services/TelemetryService.cs:377",
+        "Metrics.Windy/Services/TelemetryService.cs:410",
+        "metrics-node/src/modules/equipments/http/controllers/routes.ts:48"
+      ]
+    },
+    {
+      "id": "windy-telemetria",
+      "nome": "Windy: telemetria do computador",
+      "ondeRoda": "Computador da loja com o Windy",
+      "chama": "Nuvem: POST /equipments/{id}/telemetry (~2-4 KB)",
+      "frequencia": "a cada 2 min, mais a cada reabertura da conexão e ao abrir o painel",
+      "segundos": 120,
+      "quantos": "1 por computador",
+      "porque": "Suporte ver CPU, memória, discos e RustDesk de cada computador da loja.",
+      "situacao": "atencao",
+      "proposta": "5-10 min.",
+      "ondeNoCodigo": [
+        "Metrics.Windy/Services/TelemetryService.cs:271"
+      ]
+    },
+    {
+      "id": "web-equipamentos",
+      "nome": "Equipamentos e telemetria na web",
+      "ondeRoda": "Navegador, /clients-equipments e aba Equipamentos de /treatments",
+      "chama": "Nuvem: GET /clients (todos os clientes com todos os equipamentos) e /equipments/orphans",
+      "frequencia": "2 consultas a cada 10 s com a aba visível",
+      "segundos": 10,
+      "quantos": "1 por aba da equipe interna",
+      "porque": "Equipe de suporte ver quem está online.",
+      "seEspacar": "O botão \"Atualizar telemetria\" já força a atualização na hora.",
+      "situacao": "excessivo",
+      "proposta": "30-60 s.",
+      "ondeNoCodigo": [
+        "metrics/src/pages/app/clients-equipments/index.tsx:102"
+      ]
+    },
+    {
+      "id": "web-vpn",
+      "nome": "Central VPN (Headscale) na web",
+      "ondeRoda": "Navegador, aba Rede VPN de /treatments",
+      "chama": "Nuvem: GET /vpn/networks (2 consultas + chamada ao Headscale)",
+      "frequencia": "a cada 10 s com a aba visível",
+      "segundos": 10,
+      "quantos": "1 por aba da equipe interna",
+      "porque": "Ver as máquinas da VPN de suporte.",
+      "situacao": "atencao",
+      "proposta": "60 s (já existe o botão Atualizar).",
+      "ondeNoCodigo": [
+        "metrics/src/pages/app/treatments/components/vpn-noc-tab.tsx:28"
+      ]
+    }
+  ]
 }

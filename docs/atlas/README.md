@@ -20,6 +20,8 @@ Gerado em 08/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o ma
 | Empresa, usuários e configuração | 9 | [empresa.md](empresa.md) |
 | SaaS (banco master) | 2 | [saas.md](saas.md) |
 
+Numa crise de lentidão ou de CPU, comece por [trabalhos-continuos.md](trabalhos-continuos.md): tudo o que roda sozinho e sem parar, do mais grave ao mais leve.
+
 ## Ligações entre módulos (por chave)
 
 

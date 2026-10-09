@@ -6,6 +6,17 @@
 
 Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.
 
+## Trabalhos que rodam o tempo todo
+
+### Formas de pagamento, identificadores, maquininhas e condições (PDV) — Atenção
+- **Frequência:** a cada 5 min (sincronia geral do PDV) (4 chamadas)
+- **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /payments, /payment-identifiers, /pos-machines, /payment-conditions`
+- **Quantos:** 1 por loja
+- **A cada vez:** 4 listas pequenas, sempre inteiras.
+- **Por que existe:** Formas de pagamento e maquininhas cadastradas na web aparecem no PDV.
+- **Proposta:** 30-60 min ou carimbo de mudança.
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:875`
+
 ## Tabelas e Estrutura de Dados
 
 ### Lançamento financeiro (`transactions`)

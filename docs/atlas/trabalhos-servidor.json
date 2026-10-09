@@ -1,0 +1,172 @@
+{
+  "titulo": "Servidor da nuvem (Hostinger + Coolify)",
+  "resumo": "Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a API, a web, o Postgres de todas as lojas, o Coolify (o painel que publica), o Traefik (a porta de entrada), Mongo, Redis, Headscale (VPN), RustDesk e o Netdata. A Hostinger usa \"créditos de CPU\": acima de 30% de uso gasta crédito; quando acaba, limita o servidor a 20% (foi o que deixou tudo lento em 07 e 08/10/2026). Medido em 08/10: o próprio Docker (dockerd ~45% + containerd ~50% de um núcleo) gasta sozinho cerca de metade do servidor o tempo todo; a API, o Postgres e o Coolify somam pouco (~5%, ~3% e ~6%). As checagens de saúde abaixo são os valores padrão do Coolify: ninguém do time escolheu esses números.",
+  "trabalhos": [
+    {
+      "id": "srv-checagem-traefik",
+      "nome": "Checagem de saúde da porta de entrada (coolify-proxy, Traefik)",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "wget /ping dentro do contêiner",
+      "frequencia": "a cada 4 s",
+      "segundos": 4,
+      "faz": "Cada checagem faz o Docker criar um processo novo dentro do contêiner (runc), o que gasta CPU no dockerd e no containerd.",
+      "porque": "O Coolify mostra se a porta de entrada está de pé.",
+      "seEspacar": "Se o Traefik cair, o painel leva até ~3 min para mostrar (60 s × 3 tentativas). As lojas não dependem desta checagem.",
+      "situacao": "excessivo",
+      "proposta": "60 s.",
+      "ondeNoCodigo": [
+        "Coolify › Servers › localhost › Proxy (docker-compose do Traefik)"
+      ]
+    },
+    {
+      "id": "srv-checagem-coolify",
+      "nome": "Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis, coolify-realtime)",
+      "ondeRoda": "Servidor (Docker)",
+      "frequencia": "a cada 5 s, em 4 contêineres",
+      "segundos": 5,
+      "faz": "4 processos novos a cada 5 s (48 por minuto).",
+      "porque": "O Coolify sabe se as peças dele estão de pé (painel, banco, fila, tempo real).",
+      "seEspacar": "Depois de atualizar o Coolify, ele demora mais para se declarar saudável, a não ser com uma checagem rápida só na partida (start_interval, Docker 25 ou mais novo: conferir com docker version).",
+      "situacao": "excessivo",
+      "proposta": "60 s pelo docker-compose.custom.yml (sobrevive às atualizações do Coolify).",
+      "ondeNoCodigo": [
+        "/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)",
+        "/data/coolify/source/docker-compose.custom.yml (onde ajustar)"
+      ]
+    },
+    {
+      "id": "srv-checagem-postgres-lojas",
+      "nome": "Checagem de saúde do Postgres das lojas",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "psql -U postgres -d db_marujo -c 'SELECT 1'",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "faz": "Abre uma conexão nova no banco de produção a cada 5 s (login e um processo novo do Postgres). Depende do banco do Marujo existir.",
+      "porque": "O Coolify sabe se o banco de todas as lojas está de pé.",
+      "seEspacar": "Se o banco cair, o painel leva até ~3 min para mostrar; nada reinicia sozinho por causa desta checagem.",
+      "situacao": "excessivo",
+      "proposta": "60 s; trocar por pg_isready (não faz login completo).",
+      "ondeNoCodigo": [
+        "Coolify › banco das lojas › Healthcheck (aplicar exige reiniciar o banco, à noite)"
+      ]
+    },
+    {
+      "id": "srv-checagem-proxy-banco",
+      "nome": "Checagem de saúde do proxy da porta pública do banco",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "stat nginx.conf",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "porque": "O contêiner existe porque o banco está \"publicamente acessível\" no Coolify (porta 5432 aberta).",
+      "situacao": "excessivo",
+      "proposta": "60 s. Decidir depois: fechar a porta 5432 a quem não for o escritório (firewall da Hostinger).",
+      "ondeNoCodigo": [
+        "Coolify › banco das lojas › Make it publicly available"
+      ]
+    },
+    {
+      "id": "srv-checagem-mongo",
+      "nome": "Checagem de saúde do Mongo",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "echo ok",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "faz": "Só prova que o contêiner aceita comandos. Quem usa este Mongo: a identificar.",
+      "porque": "O Coolify sabe se o Mongo está de pé.",
+      "situacao": "excessivo",
+      "proposta": "60 s, ou desligar se ninguém usa.",
+      "ondeNoCodigo": [
+        "Coolify › recurso do Mongo › Healthcheck"
+      ]
+    },
+    {
+      "id": "srv-sentinel",
+      "nome": "Coolify Sentinel (coleta de métricas)",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "API do Docker",
+      "frequencia": "checagem a cada 10 s + coleta contínua",
+      "segundos": 10,
+      "faz": "Consulta o Docker sem parar. Parado à mão, o Coolify religa sozinho.",
+      "porque": "Gráficos de CPU e memória dentro do Coolify.",
+      "seEspacar": "O Netdata já mede tudo isso.",
+      "situacao": "excessivo",
+      "proposta": "Desligar em Servers › localhost › Sentinel.",
+      "ondeNoCodigo": [
+        "Coolify › Servers › localhost › Sentinel"
+      ]
+    },
+    {
+      "id": "srv-consultas-docker",
+      "nome": "Consultas ao Docker com tamanho dos contêineres",
+      "ondeRoda": "Servidor (Docker)",
+      "frequencia": "~1 por minuto",
+      "segundos": 60,
+      "faz": "\"size=true\" faz o Docker medir o disco de cada contêiner, que é pesado; sob o limite, estouram o tempo.",
+      "porque": "Alguém (provável painel do Coolify ou Sentinel: a confirmar) lista contêineres e imagens.",
+      "situacao": "atencao",
+      "proposta": "Medir de novo depois de desligar o Sentinel e do teste de parar o Coolify por 10 min.",
+      "ondeNoCodigo": [
+        "logs do dockerd: /containers/json?all=true&size=true e /images/json canceladas"
+      ]
+    },
+    {
+      "id": "srv-backup-coolify",
+      "nome": "Backup do Postgres das lojas pelo Coolify",
+      "ondeRoda": "Servidor (Docker)",
+      "chama": "pg_dumpall + pigz + mc",
+      "frequencia": "de hora em hora",
+      "segundos": 3600,
+      "faz": "Pico de CPU a cada hora.",
+      "porque": "Cópia de segurança de todas as lojas.",
+      "situacao": "atencao",
+      "proposta": "1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 \"backups\"; depois ensaiar a restauração.",
+      "ondeNoCodigo": [
+        "Coolify › banco das lojas › Backups"
+      ]
+    },
+    {
+      "id": "srv-netdata",
+      "nome": "Netdata (monitor do servidor)",
+      "ondeRoda": "Servidor",
+      "frequencia": "coleta a cada 1 s",
+      "segundos": 1,
+      "faz": "Custo pequeno. A porta 19999 está aberta para a internet, sem senha.",
+      "porque": "Ver CPU, memória e processos do servidor (foi o que achou a causa em 08/10).",
+      "situacao": "atencao",
+      "proposta": "Fechar a 19999 no firewall da Hostinger e usar o Netdata Cloud com alerta de CPU acima de 30% na média de 1 h.",
+      "ondeNoCodigo": [
+        "Serviço netdata, porta 19999"
+      ]
+    },
+    {
+      "id": "srv-strelaysrv",
+      "nome": "Relay do Syncthing (strelaysrv)",
+      "ondeRoda": "Servidor",
+      "frequencia": "sempre ligado",
+      "segundos": null,
+      "porque": "Sobra de uma instalação antiga (\"removido\"), mas o processo ainda aparece no Netdata usando CPU.",
+      "situacao": "atencao",
+      "proposta": "Identificar quem o inicia e remover.",
+      "ondeNoCodigo": [
+        "Netdata › Applications"
+      ]
+    },
+    {
+      "id": "srv-moodle",
+      "nome": "Moodle e MariaDB",
+      "ondeRoda": "Servidor (Docker)",
+      "frequencia": "parados em 08/10/2026",
+      "segundos": null,
+      "porque": "Plataforma de cursos instalada no servidor.",
+      "situacao": "atencao",
+      "proposta": "Decidir se voltam (docker start nos dois) ou se saem de vez.",
+      "ondeNoCodigo": [
+        "contêineres moodle-9aj5… e mariadb-9aj5…"
+      ]
+    }
+  ],
+  "notas": [
+    "Como medir numa crise: (1) hPanel da Hostinger › CPU (a linha de 30% é o limite dos créditos); (2) Netdata › Applications: dockerd e containerd altos = checagens de saúde ou consultas ao Docker; node alto = API; postgres alto = consultas das lojas; (3) no terminal do servidor, docker inspect --format \"{{json .Config.Healthcheck}}\" <contêiner> mostra a checagem de cada contêiner e docker events --filter event=exec_start mostra cada checagem acontecendo.",
+    "Serviços sempre ligados que não são trabalhos periódicos: API (metrics-node), web (metrics-frontend), Headscale e a tela dele, RustDesk (hbbs e hbbr), Redis, Traefik."
+  ]
+}

@@ -143,5 +143,98 @@
   ],
   "paraQueServe": "Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem existe só uma foto ao vivo das mesas abertas, sem ligação com venda ou caixa. Quando a mesa é paga, sai da foto e vira venda (módulo Caixa e vendas).",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "web-mesas-ao-vivo",
+      "nome": "Mesas ao vivo na web (aba Mesas do caixa)",
+      "ondeRoda": "Navegador, /cashier aba Mesas",
+      "chama": "Nuvem: GET /pdv/sync/tables/snapshot",
+      "frequencia": "a cada 10 s com a aba visível",
+      "segundos": 10,
+      "quantos": "1 por aba aberta",
+      "faz": "A rota exige uma chave (x-api-key) que a web não manda: responde sempre 401, a tela nunca funcionou e paga só a consulta ao master. Sem dados, a tela mostra mesas inventadas (\"Lucas Silva\"), que confundem.",
+      "porque": "Gerente ou dono ver o salão de longe.",
+      "situacao": "defeito",
+      "proposta": "Consertar a autorização, passar a 30 s (ou receber pelo canal ao vivo) e tirar as mesas de exemplo.",
+      "ondeNoCodigo": [
+        "metrics/src/pages/app/cashier/components/LiveTablesView.tsx:69",
+        "metrics/src/pages/app/cashier/components/LiveTablesView.tsx:95",
+        "metrics-node/src/modules/pdv-sync/http/controllers/routes.ts:41"
+      ]
+    },
+    {
+      "id": "pdv-sync-mesas",
+      "nome": "Retrato das mesas abertas para a nuvem",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: POST /api/pdv/sync/tables",
+      "frequencia": "a cada 5 min (sincronia geral do PDV), sempre (mesmo sem mesa aberta)",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "A nuvem grava cada mesa e apaga e recria os itens um por um.",
+      "porque": "Alimentar o painel do dono e as mesas ao vivo da web.",
+      "situacao": "atencao",
+      "proposta": "Pular quando nada mudou desde o último envio.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:464",
+        "metrics-node/src/modules/pdv-sync/http/controllers/tables-sync-controller.ts:11"
+      ]
+    },
+    {
+      "id": "pdv-salao-recarga",
+      "nome": "Salão do PDV (mesas ociosas e recarga)",
+      "ondeRoda": "PDV com o Salão aberto",
+      "chama": "Banco da loja (não chama a nuvem)",
+      "frequencia": "a cada 20 s",
+      "segundos": 20,
+      "quantos": "1 por Salão aberto",
+      "porque": "Atualizar tempos, mesas ociosas e o que outros computadores e celulares lançaram.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Views/MesasView.xaml.cs:226"
+      ]
+    },
+    {
+      "id": "garcom-lista-mesas",
+      "nome": "App do garçom: lista de mesas",
+      "ondeRoda": "Celular do garçom",
+      "chama": "Core Service da loja: /api/garcom/mesas, /impressoras, /equipe (não chama a nuvem)",
+      "frequencia": "a cada 15 s (equipe a cada 60 s)",
+      "segundos": 15,
+      "quantos": "1 por celular",
+      "porque": "Ver as mesas abertas e lançadas por outros garçons e pelo caixa.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "metrics-garcom/app/src/main/java/com/example/metricsgarcom/ui/GarcomViewModel.kt:249"
+      ]
+    },
+    {
+      "id": "garcom-mesa-aberta",
+      "nome": "App do garçom: mesa aberta na tela",
+      "ondeRoda": "Celular do garçom",
+      "chama": "Core Service da loja: /api/garcom/mesas/{id}",
+      "frequencia": "a cada 15 s",
+      "segundos": 15,
+      "quantos": "1 por celular com uma mesa aberta",
+      "porque": "Ver na hora o que foi lançado na mesa por outra pessoa.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "metrics-garcom/app/src/main/java/com/example/metricsgarcom/ui/atendimento/MesaDetalhesScreen.kt:69"
+      ]
+    },
+    {
+      "id": "garcom-servidores",
+      "nome": "App do garçom: lista de servidores da loja",
+      "ondeRoda": "Celular do garçom",
+      "chama": "Core Service da loja: /api/cluster/servidores",
+      "frequencia": "a cada 60 s",
+      "segundos": 60,
+      "quantos": "1 por celular",
+      "porque": "Saber para qual computador ir se o servidor da loja cair (troca automática de servidor).",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "metrics-garcom/app/src/main/java/com/example/metricsgarcom/data/api/GarcomApiClient.kt:266"
+      ]
+    }
+  ]
 }

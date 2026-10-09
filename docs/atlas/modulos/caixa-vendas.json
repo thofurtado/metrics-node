@@ -848,5 +848,50 @@
         "nuvem:CashierEntry"
       ]
     }
+  ],
+  "trabalhos": [
+    {
+      "id": "pdv-envio-vendas-caixa",
+      "nome": "Envio de vendas, caixas e cancelamentos para a nuvem",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations",
+      "frequencia": "venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff).",
+      "porque": "A nuvem (web, relatórios, financeiro) tem de ter tudo o que o PDV vendeu, mesmo depois de a internet cair.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157",
+        "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200",
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530"
+      ]
+    },
+    {
+      "id": "pdv-caixa-sem-servidor",
+      "nome": "Entrega do \"caixa sem servidor\"",
+      "ondeRoda": "Core Service de todo computador da loja",
+      "chama": "Core Service do servidor (não chama a nuvem)",
+      "frequencia": "a cada 15 s, só se houver fila",
+      "segundos": 15,
+      "porque": "Venda feita num computador enquanto o servidor estava fora volta para o servidor quando ele aparece.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/EntregaDoCaixaSemServidor.cs:21"
+      ]
+    },
+    {
+      "id": "pdv-terminal-caixa-servidor",
+      "nome": "Caixa do servidor visto pelo terminal",
+      "ondeRoda": "PDV de terminal sem caixa próprio, tela Caixa aberta",
+      "chama": "Banco do servidor da loja",
+      "frequencia": "a cada 10 s",
+      "segundos": 10,
+      "porque": "O terminal acompanha o caixa aberto no servidor.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs:2645"
+      ]
+    }
   ]
 }

@@ -150,6 +150,28 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Usada por:** ['Gestor Financeiro', 'Dono do Restaurante']
 - **Tabelas afetadas:** `nuvem:CashierSession`, `nuvem:CashierEntry`
 
+## Trabalhos que rodam o tempo todo
+
+### Caixa do servidor visto pelo terminal — Ok
+- **Frequência:** a cada 10 s
+- **Onde roda:** PDV de terminal sem caixa próprio, tela Caixa aberta → `Banco do servidor da loja`
+- **Por que existe:** O terminal acompanha o caixa aberto no servidor.
+- **Onde no código:** `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs:2645`
+
+### Entrega do "caixa sem servidor" — Ok
+- **Frequência:** a cada 15 s, só se houver fila
+- **Onde roda:** Core Service de todo computador da loja → `Core Service do servidor (não chama a nuvem)`
+- **Por que existe:** Venda feita num computador enquanto o servidor estava fora volta para o servidor quando ele aparece.
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/EntregaDoCaixaSemServidor.cs:21`
+
+### Envio de vendas, caixas e cancelamentos para a nuvem — Ok
+- **Frequência:** venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência
+- **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations`
+- **Quantos:** 1 por loja
+- **A cada vez:** Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff).
+- **Por que existe:** A nuvem (web, relatórios, financeiro) tem de ter tudo o que o PDV vendeu, mesmo depois de a internet cair.
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530`
+
 ## Tabelas e Estrutura de Dados
 
 ### Caixa (`cashier_sessions`)

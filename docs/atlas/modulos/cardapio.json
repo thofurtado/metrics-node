@@ -235,5 +235,113 @@
   ],
   "paraQueServe": "Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de impressão (para onde cada produto vai na cozinha). A nuvem é a fonte: o PDV baixa o cardápio a cada ciclo.",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "web-acompanhamento-pedido",
+      "nome": "Acompanhamento do pedido no cardápio (cliente)",
+      "ondeRoda": "Celular ou computador do cliente, passo \"Seu pedido\"",
+      "chama": "Nuvem: GET /public/orders/:id/status",
+      "frequencia": "a cada 2,5 s (24 por minuto), sem parar nunca",
+      "segundos": 2.5,
+      "quantos": "1 por cliente com a tela aberta; no pico, dezenas por loja",
+      "faz": "1 consulta ao master e 1 busca do pedido pelo código (uuid), que não tem índice: lê a tabela de pedidos inteira. Não para quando o pedido é entregue, concluído ou cancelado, nem em erro. Pedido cancelado aparece como \"Aguardando confirmação\".",
+      "porque": "Mostrar ao cliente em que etapa está o pedido (Aguardando → Entregue). Tela feita com muito esforço: mexer só na parada e no intervalo.",
+      "seEspacar": "O servidor já manda notificação (web push) a cada mudança; a consulta é só reserva. Em 10-15 s, quem não aceitou notificação vê a mudança até 15 s depois.",
+      "situacao": "defeito",
+      "proposta": "Parar nos status finais e em 404; limite de ~3 h; 10-15 s; pausar com a tela escondida; mostrar \"Cancelado\".",
+      "desde": "Conhecido desde 18/09/2026 (\"a consulta de status nunca para\")",
+      "ondeNoCodigo": [
+        "metrics/src/pages/landings/GenericMenu.tsx:1966",
+        "metrics/src/pages/landings/GenericMenu.tsx:2036",
+        "metrics-node/src/modules/public/http/controllers/get-online-order-status.ts:18"
+      ]
+    },
+    {
+      "id": "web-acompanhamento-marujo",
+      "nome": "Acompanhamento do pedido no cardápio do Marujo",
+      "ondeRoda": "Celular ou computador do cliente do Marujo",
+      "chama": "Nuvem: GET /public/orders/:id/status",
+      "frequencia": "a cada 4 s (15 por minuto), sem parar nunca",
+      "segundos": 4,
+      "quantos": "1 por cliente do Marujo com a tela aberta",
+      "faz": "Igual ao genérico. Pior: fechar a janela pelo fundo ou pelo ESC deixa a consulta rodando escondida até recarregar a página.",
+      "porque": "O mesmo do cardápio genérico, na tela própria do Marujo.",
+      "situacao": "defeito",
+      "proposta": "A mesma correção do genérico e a consulta depender da janela aberta.",
+      "ondeNoCodigo": [
+        "metrics/src/pages/landings/Marujo/MarujoMenu.tsx:510",
+        "metrics/src/pages/landings/Marujo/MarujoMenu.tsx:1310"
+      ]
+    },
+    {
+      "id": "pdv-sync-cardapio-completo",
+      "nome": "Cardápio completo e complementos (PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /public/menu",
+      "frequencia": "a cada 5 min (sincronia geral do PDV), SEMPRE tudo",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "Produtos com grupos e opções, todos os grupos, subcategorias e formas de pagamento, toda vez, mesmo sem mudança.",
+      "porque": "Deixar o cardápio do PDV (complementos, grupos, subcategorias) igual ao da nuvem.",
+      "seEspacar": "Obedecendo ao carimbo de \"última mudança\" (que já existe), só baixa quando algo mudou; mudança feita na web continua chegando em até 5 min.",
+      "situacao": "excessivo",
+      "proposta": "Obedecer ao carimbo de última mudança, como os produtos já fazem.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SincronizacaoProdutoService.cs:23",
+        "metrics-node/src/modules/public/http/controllers/get-menu.ts:12"
+      ]
+    },
+    {
+      "id": "pdv-sync-produtos",
+      "nome": "Produtos que mudaram (PDV) e o carimbo de mudança",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/sync/status (4 contas) e, só se mudou, GET /api/pdv/products?lastSync=",
+      "frequencia": "a cada 5 min (sincronia geral do PDV)",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "Produto alterado com foto baixa a foto de novo, mesmo que ela não tenha mudado.",
+      "porque": "Trazer para o PDV só os produtos alterados na nuvem. O carimbo evita baixar à toa.",
+      "situacao": "ok",
+      "proposta": "Baixar a foto só quando a foto mudou (melhoria pequena).",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:73",
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:224",
+        "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:287"
+      ]
+    },
+    {
+      "id": "pdv-sync-custos",
+      "nome": "Custos dos produtos (PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/sync/costs",
+      "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a tabela inteira",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "porque": "Custo do produto no PDV (margem, relatórios).",
+      "situacao": "atencao",
+      "proposta": "Obedecer ao carimbo de mudança ou passar a 30 min.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCustoService.cs:44"
+      ]
+    },
+    {
+      "id": "sync-erp-catalogo",
+      "nome": "Metrics.Sync: envio do catálogo do ERP para a nuvem",
+      "ondeRoda": "Computador da loja com o Metrics.Sync (Athos, Excel…)",
+      "chama": "Nuvem: POST /api/pdv/sync/products/bulk",
+      "frequencia": "a cada 5 min (padrão, configurável) e a cada mudança da planilha",
+      "segundos": 300,
+      "quantos": "Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo",
+      "faz": "Manda o catálogo INTEIRO toda vez. A nuvem compara produto por produto (2-3 consultas por produto, mesmo sem mudança): 500 produtos ≈ 1.500 consultas de uma vez.",
+      "porque": "Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).",
+      "situacao": "excessivo",
+      "proposta": "Enviar só o que mudou desde o último envio, ou passar a 30-60 min.",
+      "ondeNoCodigo": [
+        "Metrics.Sync/Services/SyncOrchestrator.cs:27",
+        "Metrics.Sync/Models/SyncConfig.cs:18",
+        "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:473"
+      ]
+    }
+  ]
 }

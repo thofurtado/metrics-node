@@ -130,5 +130,74 @@
   ],
   "notas": [
     "Como se ligam (nenhuma ligação tem chave no banco): a comanda do item acha o item do pedido pelo número (pedido_item_id) e o departamento de impressão pelo código (departamento_uuid); a situação da impressora acha o departamento pelo código; o registro de operações aponta a mesa ou comanda (atendimento_id) e, quando é de um item, o item (pedido_item_id). Um item apagado não apaga essas linhas."
+  ],
+  "trabalhos": [
+    {
+      "id": "core-impressao-departamentos",
+      "nome": "Impressão por departamento (comandas)",
+      "ondeRoda": "Core Service do servidor da loja",
+      "chama": "Banco da loja e impressoras",
+      "frequencia": "aviso instantâneo do banco + conferência a cada 10 s",
+      "segundos": 10,
+      "porque": "Comanda sai na cozinha ou no bar assim que o item é lançado; a conferência pega o que o aviso perdeu.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/DepartmentPrintWatcherBackgroundService.cs:39"
+      ]
+    },
+    {
+      "id": "core-vigia-impressoras",
+      "nome": "Vigia das impressoras",
+      "ondeRoda": "Core Service do servidor da loja",
+      "chama": "Impressoras (rede) e banco da loja",
+      "frequencia": "a cada 15 s",
+      "segundos": 15,
+      "porque": "Mostrar impressora desligada ou sem papel antes de a comanda se perder.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/VigiaDasImpressoras.cs:26"
+      ]
+    },
+    {
+      "id": "pdv-comandas-grafico",
+      "nome": "Comandas em modo gráfico",
+      "ondeRoda": "PDV do servidor com o modo gráfico ligado",
+      "chama": "Banco da loja e impressoras",
+      "frequencia": "a cada 3 s",
+      "segundos": 3,
+      "porque": "O desenho gráfico só existe no PDV: ele imprime as comandas quando o modo gráfico está ligado.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/App.xaml.cs:171"
+      ]
+    },
+    {
+      "id": "kds-itens",
+      "nome": "Tela da cozinha (KDS): itens",
+      "ondeRoda": "TV ou box da cozinha",
+      "chama": "Core Service da loja: /api/kds/items",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "quantos": "1 por tela de cozinha",
+      "porque": "Mostrar na cozinha os itens a preparar.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74"
+      ]
+    },
+    {
+      "id": "pdv-sync-departamentos",
+      "nome": "Departamentos de impressão (PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/print-departments",
+      "frequencia": "a cada 5 min (sincronia geral do PDV)",
+      "segundos": 300,
+      "porque": "Trazer da web a lista de departamentos (cozinha, bar…) e as impressoras de cada um.",
+      "situacao": "atencao",
+      "proposta": "30 min ou carimbo de mudança.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1167"
+      ]
+    }
   ]
 }

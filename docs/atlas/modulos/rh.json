@@ -205,5 +205,51 @@
       ]
     }
   ],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "pdv-sync-equipe",
+      "nome": "Equipe do PDV (usuários e funcionários)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/users?incluirFuncionarios=1",
+      "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "A nuvem protege o PIN e uma senha aleatória de cada funcionário com bcrypt (feito em JavaScript puro, que é lento de propósito) a cada chamada: 2 cálculos por funcionário a cada 5 min, e o resultado muda toda vez.",
+      "porque": "Login por PIN no PDV e no app do garçom, com o grupo de permissão do RH.",
+      "situacao": "excessivo",
+      "proposta": "Usar o carimbo de mudança de usuários (já devolvido por /sync/status) ou 30 min; não recalcular quando nada mudou.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:186",
+        "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:91",
+        "metrics-node/src/modules/pdv-sync/services/equipe-do-pdv.ts:98"
+      ]
+    },
+    {
+      "id": "ponto-envio-batidas",
+      "nome": "Relógio de ponto: envio de batidas",
+      "ondeRoda": "Computador do Metrics.Ponto",
+      "chama": "Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)",
+      "frequencia": "a cada 30 s, só se houver batida não enviada",
+      "segundos": 30,
+      "porque": "Batida feita sem internet sobe quando a internet volta.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.Ponto/MainWindow.xaml.cs:205"
+      ]
+    },
+    {
+      "id": "ponto-funcionarios",
+      "nome": "Relógio de ponto: lista de funcionários",
+      "ondeRoda": "Computador do Metrics.Ponto",
+      "chama": "Nuvem: GET /hr/employees/sync",
+      "frequencia": "ao abrir e a cada 30 min",
+      "segundos": 1800,
+      "porque": "Funcionário novo pode bater o ponto sem reiniciar o relógio.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.Ponto/MainWindow.xaml.cs:207"
+      ]
+    }
+  ]
 }

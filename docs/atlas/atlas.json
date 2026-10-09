@@ -15,5 +15,6 @@
     "impressao",
     "empresa",
     "saas"
-  ]
+  ],
+  "trabalhosResumo": "Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens (perguntar de tantos em tantos segundos), conexões ao vivo, sincronias e tarefas agendadas. Cada ficha diz onde roda, o que chama, de quanto em quanto tempo, quantas cópias rodam juntas, o que custa, por que existe e o que acontece se espaçar. Numa crise de CPU da nuvem, olhe nesta ordem: (1) o servidor, que gasta CPU sem ninguém ver; (2) o que chama a nuvem com intervalo curto e se multiplica por loja e por aba; (3) o que fica só na rede da loja não pesa no servidor da nuvem. Levantamento de 08/10/2026; toda mudança nesses trabalhos atualiza esta lista na mesma tarefa."
 }

@@ -128,5 +128,23 @@
   ],
   "paraQueServe": "Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "web-posicao-estoque",
+      "nome": "Posição de estoque na web",
+      "ondeRoda": "Navegador, /stock aba 1",
+      "chama": "Nuvem: GET /api/stock/overview",
+      "frequencia": "a cada 30 s com a aba visível",
+      "segundos": 30,
+      "quantos": "1 por aba aberta",
+      "faz": "As ações da própria tela já atualizam a lista.",
+      "porque": "Mostrar o saldo atualizado sem recarregar.",
+      "situacao": "atencao",
+      "proposta": "Tirar a atualização automática ou passar a 5 min.",
+      "ondeNoCodigo": [
+        "metrics/src/pages/app/stock/tabs/tab-stock-position.tsx:103"
+      ]
+    }
+  ]
 }

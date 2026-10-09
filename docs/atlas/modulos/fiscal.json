@@ -63,5 +63,63 @@
   ],
   "paraQueServe": "A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numeração e a tabela do IBPT (valor aproximado dos tributos) ficam no banco local. Os dados fiscais do produto (NCM, CFOP, CSOSN) ficam no cardápio.",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "tray-painel-fiscal",
+      "nome": "TrayMonitor: painel aberto consulta a SEFAZ",
+      "ondeRoda": "Computador da loja com o painel do TrayMonitor aberto",
+      "chama": "Core Service local; /api/fiscal/status consulta a SEFAZ a cada chamada",
+      "frequencia": "a cada 3 s, 4 rotas do Core Service",
+      "segundos": 3,
+      "quantos": "1 por painel aberto",
+      "faz": "Consulta a SEFAZ a cada 3 s sem o limite de 3 min que o PDV respeita: risco de rejeição 656 (consumo indevido), que bloqueia a emissão por um tempo.",
+      "porque": "Mostrar a situação do serviço, da nota e das impressoras no painel.",
+      "situacao": "defeito",
+      "proposta": "Guardar a resposta da SEFAZ por 3 min (como o PDV) e o painel a cada 10-15 s.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.TrayMonitor/MainWindow.xaml.cs:72",
+        "Metrics.PDV/Metrics.CoreService/Program.cs:423"
+      ]
+    },
+    {
+      "id": "core-contingencia-nfce",
+      "nome": "Contingência da NFC-e",
+      "ondeRoda": "Core Service do servidor da loja",
+      "chama": "Banco da loja; SEFAZ só com pendência",
+      "frequencia": "a cada 30 s; SEFAZ só se houver nota pendente",
+      "segundos": 30,
+      "porque": "Transmitir as notas emitidas em contingência assim que a SEFAZ volta.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.CoreService/ContingencyWatcherBackgroundService.cs:31"
+      ]
+    },
+    {
+      "id": "pdv-verificacao-sefaz",
+      "nome": "Verificação ao vivo (SEFAZ e certificado)",
+      "ondeRoda": "Todo PDV aberto",
+      "chama": "SEFAZ (com limite)",
+      "frequencia": "itens locais a cada 10 s; SEFAZ a cada 15 min (3 min na tela de entrada)",
+      "segundos": 10,
+      "porque": "Avisar antes da venda se a SEFAZ está fora ou o certificado venceu.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:138"
+      ]
+    },
+    {
+      "id": "pdv-ibpt",
+      "nome": "Tabela de impostos aproximados (IBPT)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/sync/ibpt (lotes de 100)",
+      "frequencia": "no máximo a cada 6 h (30 min se faltar algum NCM)",
+      "segundos": 21600,
+      "porque": "Imposto aproximado no cupom (Lei da Transparência).",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/Fiscal/IbptAtualizacaoService.cs:88"
+      ]
+    }
+  ]
 }

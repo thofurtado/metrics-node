@@ -130,5 +130,226 @@
   ],
   "paraQueServe": "Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "pdv-teste-internet",
+      "nome": "Teste \"Internet e nuvem\" do PDV",
+      "ondeRoda": "Todo PDV aberto (servidor e terminal)",
+      "chama": "Nuvem: GET https://api.metrics.dev.br/health; também TCP com 1.1.1.1/8.8.8.8 e 256 KB da Cloudflare a cada 5 min",
+      "frequencia": "~20 s na janela principal, 12 s na tela de entrada",
+      "segundos": 20,
+      "quantos": "1 por PDV aberto",
+      "faz": "/health passa pelo filtro da loja (1 consulta ao master) e provavelmente responde 403. Existe /public/health, que é barata.",
+      "porque": "Mostrar se a loja está com internet e se a nuvem responde.",
+      "situacao": "excessivo",
+      "proposta": "Usar /public/health a cada 60 s.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Services/MonitorConexao.cs:33",
+        "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:138"
+      ]
+    },
+    {
+      "id": "core-cluster-vivo",
+      "nome": "\"Estou vivo\" da troca automática de servidor",
+      "ondeRoda": "Core Service de todo computador da loja",
+      "chama": "Nuvem: POST /api/pdv/cluster/vivo (só memória)",
+      "frequencia": "a cada 15 s (ciclo de 10 s)",
+      "segundos": 15,
+      "quantos": "Todo computador, só se a \"ordem dos servidores\" estiver configurada (inclusive terminal fora da ordem)",
+      "porque": "A nuvem é o juiz da troca de servidor: conta como vivo quem falou há menos de 60 s; o PDV descarta a resposta depois de 45 s.",
+      "seEspacar": "Não passar de 20-30 s sem mudar as regras de 45 e 60 s.",
+      "situacao": "atencao",
+      "proposta": "Terminal fora da ordem não chamar.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:167",
+        "metrics-node/src/modules/pdv-sync/services/cluster-judge.ts:4"
+      ]
+    },
+    {
+      "id": "pdv-sync-config",
+      "nome": "Configurações da loja (PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/config",
+      "frequencia": "a cada 5 min (sincronia geral do PDV)",
+      "segundos": 300,
+      "porque": "Configuração feita na web chega ao PDV.",
+      "situacao": "atencao",
+      "proposta": "30 min.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1249"
+      ]
+    },
+    {
+      "id": "pdv-limpeza-avisos",
+      "nome": "Limpeza dos avisos de pedido",
+      "ondeRoda": "Todo PDV aberto",
+      "chama": "Banco da loja",
+      "frequencia": "a cada 4 s",
+      "segundos": 4,
+      "faz": "Também nunca é desligado: soma um a cada \"Bloquear sessão\".",
+      "porque": "Tirar da tela os avisos de pedido já tratados.",
+      "situacao": "atencao",
+      "proposta": "Desligar ao fechar a janela.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:157"
+      ]
+    },
+    {
+      "id": "core-procura-atualizacao",
+      "nome": "Procura de atualização do PDV",
+      "ondeRoda": "Core Service de todo computador",
+      "chama": "Nuvem: GET /api/public/pdv/latest",
+      "frequencia": "a cada 30 min",
+      "segundos": 1800,
+      "porque": "Saber se há versão nova para o botão Atualizar.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149"
+      ]
+    },
+    {
+      "id": "core-cluster-copia",
+      "nome": "Troca de servidor: cópia do banco",
+      "ondeRoda": "Core Service de todo computador da ordem",
+      "chama": "Postgres da loja (rede local)",
+      "frequencia": "a cada 1 s (2 s fora do servidor)",
+      "segundos": 1,
+      "porque": "Manter a cópia do banco pronta para outro computador assumir se o servidor cair.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:368"
+      ]
+    },
+    {
+      "id": "core-cluster-ciclo",
+      "nome": "Troca de servidor: ciclo de conferência",
+      "ondeRoda": "Core Service de todo computador",
+      "chama": "Banco do servidor e http://IP:5000/api/cluster/estado",
+      "frequencia": "a cada 10 s",
+      "segundos": 10,
+      "porque": "Ler a ordem dos servidores e perguntar o estado dos outros computadores.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:142"
+      ]
+    },
+    {
+      "id": "core-presenca",
+      "nome": "Presença do computador no banco",
+      "ondeRoda": "Core Service de todo computador",
+      "chama": "Banco da loja (computadores_loja)",
+      "frequencia": "a cada 15 s",
+      "segundos": 15,
+      "porque": "Lista de computadores da loja com a última vez que foram vistos.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:201"
+      ]
+    },
+    {
+      "id": "pdv-terminal-ligacao-servidor",
+      "nome": "Ligação do terminal com o servidor",
+      "ondeRoda": "PDV de terminal",
+      "chama": "Banco do servidor da loja",
+      "frequencia": "a cada 5 s (dados da loja a cada 1 min)",
+      "segundos": 5,
+      "porque": "Perceber a queda do servidor e avisar o caixa.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/ConexaoServidorMonitor.cs:57"
+      ]
+    },
+    {
+      "id": "pdv-situacao-troca",
+      "nome": "Situação da troca de servidor no PDV",
+      "ondeRoda": "Todo PDV aberto",
+      "chama": "Core Service local: /api/cluster/situacao",
+      "frequencia": "a cada 5 s (avisos do banco a cada 15 s)",
+      "segundos": 5,
+      "porque": "Mostrar no PDV quem é o servidor e se houve troca.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Services/TrocaDeServidorNoPdv.cs:61"
+      ]
+    },
+    {
+      "id": "pdv-situacao-atualizacao",
+      "nome": "Situação da atualização no PDV",
+      "ondeRoda": "Todo PDV aberto",
+      "chama": "Core Service local: /api/update/status",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "porque": "Mostrar o andamento do botão Atualizar.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/Services/PdvUpdateClient.cs:48"
+      ]
+    },
+    {
+      "id": "pdv-sinais-menu",
+      "nome": "Sinais do menu do PDV",
+      "ondeRoda": "Todo PDV aberto",
+      "chama": "Banco e Core Service locais",
+      "frequencia": "a cada 10 s",
+      "segundos": 10,
+      "porque": "Luzes do menu: impressoras, caixa sem servidor.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:104"
+      ]
+    },
+    {
+      "id": "core-vigia-config",
+      "nome": "Vigia da configuração do computador",
+      "ondeRoda": "Core Service de todo computador",
+      "chama": "Arquivo config_terminal.json",
+      "frequencia": "a cada 5 s",
+      "segundos": 5,
+      "porque": "Perceber troca de papel (servidor/terminal) ou de banco sem reiniciar.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.CoreService/Program.cs:121"
+      ]
+    },
+    {
+      "id": "core-publica-dados-loja",
+      "nome": "Publicação dos dados da loja",
+      "ondeRoda": "Core Service do servidor",
+      "chama": "Banco da loja",
+      "frequencia": "a cada 1 min",
+      "segundos": 60,
+      "porque": "Terminais e celulares sabem nome, servidor e configuração da loja.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.CoreService/Program.cs:745"
+      ]
+    },
+    {
+      "id": "core-limpeza-idempotencia",
+      "nome": "Limpeza das marcas de \"já recebido\"",
+      "ondeRoda": "Core Service do servidor",
+      "chama": "Banco da loja",
+      "frequencia": "a cada 1 h",
+      "segundos": 3600,
+      "porque": "Apagar as marcas antigas que evitam gravar a mesma venda duas vezes.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/IdempotenciaCleanupBackgroundService.cs:33"
+      ]
+    },
+    {
+      "id": "tray-icone",
+      "nome": "Ícone da bandeja (TrayMonitor)",
+      "ondeRoda": "Todo computador da loja",
+      "chama": "localhost:5000/health",
+      "frequencia": "a cada 10 s",
+      "segundos": 10,
+      "porque": "A cor do ícone diz se o Core Service está de pé.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.TrayMonitor/App.xaml.cs:43"
+      ]
+    }
+  ]
 }

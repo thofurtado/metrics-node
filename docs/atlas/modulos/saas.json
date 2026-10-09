@@ -36,5 +36,57 @@
   },
   "paraQueServe": "O banco master do SaaS Admin: cada cliente do Metrics (tenant) com seu domínio e o nome do banco próprio, e as credenciais globais de integração (iFood).",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "nuvem-gancho-loja",
+      "nome": "Descobrir a loja de cada requisição",
+      "ondeRoda": "Nuvem (metrics-node), em toda requisição",
+      "chama": "Banco master (tabela Tenant)",
+      "frequencia": "a cada requisição",
+      "segundos": null,
+      "quantos": "Multiplica todas as sondagens acima (~34 por minuto por loja)",
+      "faz": "1 consulta ao banco master SEM memória (e sem índice: compara texto quebrado por vírgula). Domínio desconhecido (robô): 2 consultas e nada guardado.",
+      "porque": "Cada loja tem seu próprio banco; o domínio da requisição diz qual.",
+      "seEspacar": "Com memória de 30-60 s, suspender uma loja leva até 60 s para valer.",
+      "situacao": "excessivo",
+      "proposta": "Memória de 30-60 s.",
+      "ondeNoCodigo": [
+        "metrics-node/src/app.ts:141",
+        "metrics-node/src/lib/tenant-manager.ts:18"
+      ]
+    },
+    {
+      "id": "nuvem-log-requisicoes",
+      "nome": "Registro (log) de toda requisição",
+      "ondeRoda": "Nuvem (metrics-node)",
+      "frequencia": "2 linhas por requisição",
+      "segundos": null,
+      "faz": "JSON no log, que o Docker guarda. Mais 1 linha por aviso ao vivo enviado.",
+      "porque": "Investigar problemas pelo log do Coolify.",
+      "situacao": "atencao",
+      "proposta": "Registrar só avisos e erros (nível warn), mantendo os erros completos.",
+      "ondeNoCodigo": [
+        "metrics-node/src/app.ts:56",
+        "metrics-node/src/lib/sse-manager.ts:79"
+      ]
+    },
+    {
+      "id": "nuvem-motores-prisma",
+      "nome": "Motores do Prisma (um processo por banco de loja)",
+      "ondeRoda": "Nuvem (metrics-node)",
+      "frequencia": "sempre ligados",
+      "segundos": null,
+      "quantos": "~14-16 processos query-engine (1 por banco), nunca fechados; o polling do iFood mantém todos acordados",
+      "faz": "engineType \"binary\": cada consulta vai do Node ao motor por HTTP local e volta em JSON. O motor padrão (library) roda dentro do próprio Node e evita esse vai-e-volta.",
+      "porque": "Cada loja tem seu banco e seu cliente Prisma.",
+      "situacao": "atencao",
+      "proposta": "Ensaio com o motor padrão (library) e medir; descobrir por que \"binary\" foi escolhido (arquivos travados no Windows?).",
+      "desde": "12/02/2026 (commit 4a7afe6)",
+      "ondeNoCodigo": [
+        "metrics-node/prisma/schema.prisma:3",
+        "metrics-node/src/lib/tenant-manager.ts:76"
+      ]
+    }
+  ]
 }

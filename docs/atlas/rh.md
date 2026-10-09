@@ -56,6 +56,29 @@ Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), po
 - **Decisão:** 08/10/2026 por Lei (CLT) + Thomás Furtado (D18)
 - **Onde no código:** `metrics-node/src/modules/hr/ponto/apuracao.ts`, `metrics-node/src/modules/hr/ponto/regra.ts`
 
+## Trabalhos que rodam o tempo todo
+
+### Equipe do PDV (usuários e funcionários) — Excessivo
+- **Frequência:** a cada 5 min (sincronia geral do PDV), sempre a lista inteira
+- **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/users?incluirFuncionarios=1`
+- **Quantos:** 1 por loja
+- **A cada vez:** A nuvem protege o PIN e uma senha aleatória de cada funcionário com bcrypt (feito em JavaScript puro, que é lento de propósito) a cada chamada: 2 cálculos por funcionário a cada 5 min, e o resultado muda toda vez.
+- **Por que existe:** Login por PIN no PDV e no app do garçom, com o grupo de permissão do RH.
+- **Proposta:** Usar o carimbo de mudança de usuários (já devolvido por /sync/status) ou 30 min; não recalcular quando nada mudou.
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:186`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:91`, `metrics-node/src/modules/pdv-sync/services/equipe-do-pdv.ts:98`
+
+### Relógio de ponto: envio de batidas — Ok
+- **Frequência:** a cada 30 s, só se houver batida não enviada
+- **Onde roda:** Computador do Metrics.Ponto → `Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)`
+- **Por que existe:** Batida feita sem internet sobe quando a internet volta.
+- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:205`
+
+### Relógio de ponto: lista de funcionários — Ok
+- **Frequência:** ao abrir e a cada 30 min
+- **Onde roda:** Computador do Metrics.Ponto → `Nuvem: GET /hr/employees/sync`
+- **Por que existe:** Funcionário novo pode bater o ponto sem reiniciar o relógio.
+- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:207`
+
 ## Tabelas e Estrutura de Dados
 
 ### Funcionário (`employees`)

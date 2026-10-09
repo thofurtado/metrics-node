@@ -6,6 +6,17 @@
 
 Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).
 
+## Trabalhos que rodam o tempo todo
+
+### Posição de estoque na web — Atenção
+- **Frequência:** a cada 30 s com a aba visível
+- **Onde roda:** Navegador, /stock aba 1 → `Nuvem: GET /api/stock/overview`
+- **Quantos:** 1 por aba aberta
+- **A cada vez:** As ações da própria tela já atualizam a lista.
+- **Por que existe:** Mostrar o saldo atualizado sem recarregar.
+- **Proposta:** Tirar a atualização automática ou passar a 5 min.
+- **Onde no código:** `metrics/src/pages/app/stock/tabs/tab-stock-position.tsx:103`
+
 ## Tabelas e Estrutura de Dados
 
 ### Insumo (`supplies`)

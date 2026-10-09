@@ -17,7 +17,180 @@
    "impressao",
    "empresa",
    "saas"
-  ]
+  ],
+  "trabalhosResumo": "Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens (perguntar de tantos em tantos segundos), conexões ao vivo, sincronias e tarefas agendadas. Cada ficha diz onde roda, o que chama, de quanto em quanto tempo, quantas cópias rodam juntas, o que custa, por que existe e o que acontece se espaçar. Numa crise de CPU da nuvem, olhe nesta ordem: (1) o servidor, que gasta CPU sem ninguém ver; (2) o que chama a nuvem com intervalo curto e se multiplica por loja e por aba; (3) o que fica só na rede da loja não pesa no servidor da nuvem. Levantamento de 08/10/2026; toda mudança nesses trabalhos atualiza esta lista na mesma tarefa.",
+  "servidor": {
+   "titulo": "Servidor da nuvem (Hostinger + Coolify)",
+   "resumo": "Um único servidor virtual da Hostinger (KVM 2: 2 núcleos, 8 GB) roda tudo: a API, a web, o Postgres de todas as lojas, o Coolify (o painel que publica), o Traefik (a porta de entrada), Mongo, Redis, Headscale (VPN), RustDesk e o Netdata. A Hostinger usa \"créditos de CPU\": acima de 30% de uso gasta crédito; quando acaba, limita o servidor a 20% (foi o que deixou tudo lento em 07 e 08/10/2026). Medido em 08/10: o próprio Docker (dockerd ~45% + containerd ~50% de um núcleo) gasta sozinho cerca de metade do servidor o tempo todo; a API, o Postgres e o Coolify somam pouco (~5%, ~3% e ~6%). As checagens de saúde abaixo são os valores padrão do Coolify: ninguém do time escolheu esses números.",
+   "trabalhos": [
+    {
+     "id": "srv-checagem-traefik",
+     "nome": "Checagem de saúde da porta de entrada (coolify-proxy, Traefik)",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "wget /ping dentro do contêiner",
+     "frequencia": "a cada 4 s",
+     "segundos": 4,
+     "faz": "Cada checagem faz o Docker criar um processo novo dentro do contêiner (runc), o que gasta CPU no dockerd e no containerd.",
+     "porque": "O Coolify mostra se a porta de entrada está de pé.",
+     "seEspacar": "Se o Traefik cair, o painel leva até ~3 min para mostrar (60 s × 3 tentativas). As lojas não dependem desta checagem.",
+     "situacao": "excessivo",
+     "proposta": "60 s.",
+     "ondeNoCodigo": [
+      "Coolify › Servers › localhost › Proxy (docker-compose do Traefik)"
+     ]
+    },
+    {
+     "id": "srv-checagem-coolify",
+     "nome": "Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis, coolify-realtime)",
+     "ondeRoda": "Servidor (Docker)",
+     "frequencia": "a cada 5 s, em 4 contêineres",
+     "segundos": 5,
+     "faz": "4 processos novos a cada 5 s (48 por minuto).",
+     "porque": "O Coolify sabe se as peças dele estão de pé (painel, banco, fila, tempo real).",
+     "seEspacar": "Depois de atualizar o Coolify, ele demora mais para se declarar saudável, a não ser com uma checagem rápida só na partida (start_interval, Docker 25 ou mais novo: conferir com docker version).",
+     "situacao": "excessivo",
+     "proposta": "60 s pelo docker-compose.custom.yml (sobrevive às atualizações do Coolify).",
+     "ondeNoCodigo": [
+      "/data/coolify/source/docker-compose.prod.yml (padrão do Coolify)",
+      "/data/coolify/source/docker-compose.custom.yml (onde ajustar)"
+     ]
+    },
+    {
+     "id": "srv-checagem-postgres-lojas",
+     "nome": "Checagem de saúde do Postgres das lojas",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "psql -U postgres -d db_marujo -c 'SELECT 1'",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "faz": "Abre uma conexão nova no banco de produção a cada 5 s (login e um processo novo do Postgres). Depende do banco do Marujo existir.",
+     "porque": "O Coolify sabe se o banco de todas as lojas está de pé.",
+     "seEspacar": "Se o banco cair, o painel leva até ~3 min para mostrar; nada reinicia sozinho por causa desta checagem.",
+     "situacao": "excessivo",
+     "proposta": "60 s; trocar por pg_isready (não faz login completo).",
+     "ondeNoCodigo": [
+      "Coolify › banco das lojas › Healthcheck (aplicar exige reiniciar o banco, à noite)"
+     ]
+    },
+    {
+     "id": "srv-checagem-proxy-banco",
+     "nome": "Checagem de saúde do proxy da porta pública do banco",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "stat nginx.conf",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "porque": "O contêiner existe porque o banco está \"publicamente acessível\" no Coolify (porta 5432 aberta).",
+     "situacao": "excessivo",
+     "proposta": "60 s. Decidir depois: fechar a porta 5432 a quem não for o escritório (firewall da Hostinger).",
+     "ondeNoCodigo": [
+      "Coolify › banco das lojas › Make it publicly available"
+     ]
+    },
+    {
+     "id": "srv-checagem-mongo",
+     "nome": "Checagem de saúde do Mongo",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "echo ok",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "faz": "Só prova que o contêiner aceita comandos. Quem usa este Mongo: a identificar.",
+     "porque": "O Coolify sabe se o Mongo está de pé.",
+     "situacao": "excessivo",
+     "proposta": "60 s, ou desligar se ninguém usa.",
+     "ondeNoCodigo": [
+      "Coolify › recurso do Mongo › Healthcheck"
+     ]
+    },
+    {
+     "id": "srv-sentinel",
+     "nome": "Coolify Sentinel (coleta de métricas)",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "API do Docker",
+     "frequencia": "checagem a cada 10 s + coleta contínua",
+     "segundos": 10,
+     "faz": "Consulta o Docker sem parar. Parado à mão, o Coolify religa sozinho.",
+     "porque": "Gráficos de CPU e memória dentro do Coolify.",
+     "seEspacar": "O Netdata já mede tudo isso.",
+     "situacao": "excessivo",
+     "proposta": "Desligar em Servers › localhost › Sentinel.",
+     "ondeNoCodigo": [
+      "Coolify › Servers › localhost › Sentinel"
+     ]
+    },
+    {
+     "id": "srv-consultas-docker",
+     "nome": "Consultas ao Docker com tamanho dos contêineres",
+     "ondeRoda": "Servidor (Docker)",
+     "frequencia": "~1 por minuto",
+     "segundos": 60,
+     "faz": "\"size=true\" faz o Docker medir o disco de cada contêiner, que é pesado; sob o limite, estouram o tempo.",
+     "porque": "Alguém (provável painel do Coolify ou Sentinel: a confirmar) lista contêineres e imagens.",
+     "situacao": "atencao",
+     "proposta": "Medir de novo depois de desligar o Sentinel e do teste de parar o Coolify por 10 min.",
+     "ondeNoCodigo": [
+      "logs do dockerd: /containers/json?all=true&size=true e /images/json canceladas"
+     ]
+    },
+    {
+     "id": "srv-backup-coolify",
+     "nome": "Backup do Postgres das lojas pelo Coolify",
+     "ondeRoda": "Servidor (Docker)",
+     "chama": "pg_dumpall + pigz + mc",
+     "frequencia": "de hora em hora",
+     "segundos": 3600,
+     "faz": "Pico de CPU a cada hora.",
+     "porque": "Cópia de segurança de todas as lojas.",
+     "situacao": "atencao",
+     "proposta": "1 vez por dia (0 8 * * *), 3 cópias no servidor e 30 no R2 \"backups\"; depois ensaiar a restauração.",
+     "ondeNoCodigo": [
+      "Coolify › banco das lojas › Backups"
+     ]
+    },
+    {
+     "id": "srv-netdata",
+     "nome": "Netdata (monitor do servidor)",
+     "ondeRoda": "Servidor",
+     "frequencia": "coleta a cada 1 s",
+     "segundos": 1,
+     "faz": "Custo pequeno. A porta 19999 está aberta para a internet, sem senha.",
+     "porque": "Ver CPU, memória e processos do servidor (foi o que achou a causa em 08/10).",
+     "situacao": "atencao",
+     "proposta": "Fechar a 19999 no firewall da Hostinger e usar o Netdata Cloud com alerta de CPU acima de 30% na média de 1 h.",
+     "ondeNoCodigo": [
+      "Serviço netdata, porta 19999"
+     ]
+    },
+    {
+     "id": "srv-strelaysrv",
+     "nome": "Relay do Syncthing (strelaysrv)",
+     "ondeRoda": "Servidor",
+     "frequencia": "sempre ligado",
+     "segundos": null,
+     "porque": "Sobra de uma instalação antiga (\"removido\"), mas o processo ainda aparece no Netdata usando CPU.",
+     "situacao": "atencao",
+     "proposta": "Identificar quem o inicia e remover.",
+     "ondeNoCodigo": [
+      "Netdata › Applications"
+     ]
+    },
+    {
+     "id": "srv-moodle",
+     "nome": "Moodle e MariaDB",
+     "ondeRoda": "Servidor (Docker)",
+     "frequencia": "parados em 08/10/2026",
+     "segundos": null,
+     "porque": "Plataforma de cursos instalada no servidor.",
+     "situacao": "atencao",
+     "proposta": "Decidir se voltam (docker start nos dois) ou se saem de vez.",
+     "ondeNoCodigo": [
+      "contêineres moodle-9aj5… e mariadb-9aj5…"
+     ]
+    }
+   ],
+   "notas": [
+    "Como medir numa crise: (1) hPanel da Hostinger › CPU (a linha de 30% é o limite dos créditos); (2) Netdata › Applications: dockerd e containerd altos = checagens de saúde ou consultas ao Docker; node alto = API; postgres alto = consultas das lojas; (3) no terminal do servidor, docker inspect --format \"{{json .Config.Healthcheck}}\" <contêiner> mostra a checagem de cada contêiner e docker events --filter event=exec_start mostra cada checagem acontecendo.",
+    "Serviços sempre ligados que não são trabalhos periódicos: API (metrics-node), web (metrics-frontend), Headscale e a tela dele, RustDesk (hbbs e hbbr), Redis, Traefik."
+   ]
+  }
  },
  "ordem": [
   "caixa-vendas",
@@ -885,6 +1058,51 @@
       "nuvem:CashierEntry"
      ]
     }
+   ],
+   "trabalhos": [
+    {
+     "id": "pdv-envio-vendas-caixa",
+     "nome": "Envio de vendas, caixas e cancelamentos para a nuvem",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations",
+     "frequencia": "venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff).",
+     "porque": "A nuvem (web, relatórios, financeiro) tem de ter tudo o que o PDV vendeu, mesmo depois de a internet cair.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157",
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530"
+     ]
+    },
+    {
+     "id": "pdv-caixa-sem-servidor",
+     "nome": "Entrega do \"caixa sem servidor\"",
+     "ondeRoda": "Core Service de todo computador da loja",
+     "chama": "Core Service do servidor (não chama a nuvem)",
+     "frequencia": "a cada 15 s, só se houver fila",
+     "segundos": 15,
+     "porque": "Venda feita num computador enquanto o servidor estava fora volta para o servidor quando ele aparece.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/EntregaDoCaixaSemServidor.cs:21"
+     ]
+    },
+    {
+     "id": "pdv-terminal-caixa-servidor",
+     "nome": "Caixa do servidor visto pelo terminal",
+     "ondeRoda": "PDV de terminal sem caixa próprio, tela Caixa aberta",
+     "chama": "Banco do servidor da loja",
+     "frequencia": "a cada 10 s",
+     "segundos": 10,
+     "porque": "O terminal acompanha o caixa aberto no servidor.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs:2645"
+     ]
+    }
    ]
   },
   "cardapio": {
@@ -1125,6 +1343,114 @@
    "paraQueServe": "Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de impressão (para onde cada produto vai na cozinha). A nuvem é a fonte: o PDV baixa o cardápio a cada ciclo.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "web-acompanhamento-pedido",
+     "nome": "Acompanhamento do pedido no cardápio (cliente)",
+     "ondeRoda": "Celular ou computador do cliente, passo \"Seu pedido\"",
+     "chama": "Nuvem: GET /public/orders/:id/status",
+     "frequencia": "a cada 2,5 s (24 por minuto), sem parar nunca",
+     "segundos": 2.5,
+     "quantos": "1 por cliente com a tela aberta; no pico, dezenas por loja",
+     "faz": "1 consulta ao master e 1 busca do pedido pelo código (uuid), que não tem índice: lê a tabela de pedidos inteira. Não para quando o pedido é entregue, concluído ou cancelado, nem em erro. Pedido cancelado aparece como \"Aguardando confirmação\".",
+     "porque": "Mostrar ao cliente em que etapa está o pedido (Aguardando → Entregue). Tela feita com muito esforço: mexer só na parada e no intervalo.",
+     "seEspacar": "O servidor já manda notificação (web push) a cada mudança; a consulta é só reserva. Em 10-15 s, quem não aceitou notificação vê a mudança até 15 s depois.",
+     "situacao": "defeito",
+     "proposta": "Parar nos status finais e em 404; limite de ~3 h; 10-15 s; pausar com a tela escondida; mostrar \"Cancelado\".",
+     "desde": "Conhecido desde 18/09/2026 (\"a consulta de status nunca para\")",
+     "ondeNoCodigo": [
+      "metrics/src/pages/landings/GenericMenu.tsx:1966",
+      "metrics/src/pages/landings/GenericMenu.tsx:2036",
+      "metrics-node/src/modules/public/http/controllers/get-online-order-status.ts:18"
+     ]
+    },
+    {
+     "id": "web-acompanhamento-marujo",
+     "nome": "Acompanhamento do pedido no cardápio do Marujo",
+     "ondeRoda": "Celular ou computador do cliente do Marujo",
+     "chama": "Nuvem: GET /public/orders/:id/status",
+     "frequencia": "a cada 4 s (15 por minuto), sem parar nunca",
+     "segundos": 4,
+     "quantos": "1 por cliente do Marujo com a tela aberta",
+     "faz": "Igual ao genérico. Pior: fechar a janela pelo fundo ou pelo ESC deixa a consulta rodando escondida até recarregar a página.",
+     "porque": "O mesmo do cardápio genérico, na tela própria do Marujo.",
+     "situacao": "defeito",
+     "proposta": "A mesma correção do genérico e a consulta depender da janela aberta.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/landings/Marujo/MarujoMenu.tsx:510",
+      "metrics/src/pages/landings/Marujo/MarujoMenu.tsx:1310"
+     ]
+    },
+    {
+     "id": "pdv-sync-cardapio-completo",
+     "nome": "Cardápio completo e complementos (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /public/menu",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), SEMPRE tudo",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "Produtos com grupos e opções, todos os grupos, subcategorias e formas de pagamento, toda vez, mesmo sem mudança.",
+     "porque": "Deixar o cardápio do PDV (complementos, grupos, subcategorias) igual ao da nuvem.",
+     "seEspacar": "Obedecendo ao carimbo de \"última mudança\" (que já existe), só baixa quando algo mudou; mudança feita na web continua chegando em até 5 min.",
+     "situacao": "excessivo",
+     "proposta": "Obedecer ao carimbo de última mudança, como os produtos já fazem.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoProdutoService.cs:23",
+      "metrics-node/src/modules/public/http/controllers/get-menu.ts:12"
+     ]
+    },
+    {
+     "id": "pdv-sync-produtos",
+     "nome": "Produtos que mudaram (PDV) e o carimbo de mudança",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/sync/status (4 contas) e, só se mudou, GET /api/pdv/products?lastSync=",
+     "frequencia": "a cada 5 min (sincronia geral do PDV)",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "Produto alterado com foto baixa a foto de novo, mesmo que ela não tenha mudado.",
+     "porque": "Trazer para o PDV só os produtos alterados na nuvem. O carimbo evita baixar à toa.",
+     "situacao": "ok",
+     "proposta": "Baixar a foto só quando a foto mudou (melhoria pequena).",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:73",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:224",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:287"
+     ]
+    },
+    {
+     "id": "pdv-sync-custos",
+     "nome": "Custos dos produtos (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/sync/costs",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a tabela inteira",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "porque": "Custo do produto no PDV (margem, relatórios).",
+     "situacao": "atencao",
+     "proposta": "Obedecer ao carimbo de mudança ou passar a 30 min.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCustoService.cs:44"
+     ]
+    },
+    {
+     "id": "sync-erp-catalogo",
+     "nome": "Metrics.Sync: envio do catálogo do ERP para a nuvem",
+     "ondeRoda": "Computador da loja com o Metrics.Sync (Athos, Excel…)",
+     "chama": "Nuvem: POST /api/pdv/sync/products/bulk",
+     "frequencia": "a cada 5 min (padrão, configurável) e a cada mudança da planilha",
+     "segundos": 300,
+     "quantos": "Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo",
+     "faz": "Manda o catálogo INTEIRO toda vez. A nuvem compara produto por produto (2-3 consultas por produto, mesmo sem mudança): 500 produtos ≈ 1.500 consultas de uma vez.",
+     "porque": "Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).",
+     "situacao": "excessivo",
+     "proposta": "Enviar só o que mudou desde o último envio, ou passar a 30-60 min.",
+     "ondeNoCodigo": [
+      "Metrics.Sync/Services/SyncOrchestrator.cs:27",
+      "Metrics.Sync/Models/SyncConfig.cs:18",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:473"
+     ]
+    }
+   ],
    "fluxos": [],
    "notas": []
   },
@@ -1215,6 +1541,25 @@
    "paraQueServe": "Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "pdv-sync-clientes",
+     "nome": "Clientes (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/clients",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "A tabela inteira de clientes com endereços e fiados, toda vez; cresce com a base. O PDV ainda faz 1 consulta local por cliente.",
+     "porque": "Cliente cadastrado na web ou no cardápio aparece no PDV (delivery, fiado).",
+     "situacao": "excessivo",
+     "proposta": "Usar o carimbo de mudança de clientes que /sync/status já devolve.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1051",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:102"
+     ]
+    }
+   ],
    "ligacoes": [],
    "fluxos": [],
    "notas": [],
@@ -1343,11 +1688,177 @@
     }
    ],
    "pendencias": [
-    "Decisão R2/R3: o delivery com PDV vira venda do caixa que deu a baixa, e a Conferência não pode contá-lo duas vezes."
+    "Decisão R2/R3: o delivery com PDV vira venda do caixa que deu a baixa, e a Conferência não pode contá-lo duas vezes.",
+    "08/10/2026: as tabelas pedidos e pedido_itens não têm índice além da chave (faltam uuid, data_abertura e pedido_id); toda sondagem de pedidos e o acompanhamento do cardápio leem a tabela inteira.",
+    "08/10/2026 (LGPD): avisos ao vivo do iFood e da 99 vão para todas as lojas conectadas (ver o trabalho \"Avisos ao vivo de pedido\")."
    ],
    "paraQueServe": "Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do PDV, o vínculo dos itens das plataformas com os produtos do Metrics e o diário de eventos do iFood. Pela decisão R2/R3, com PDV o delivery sobe como venda do caixa que deu a baixa.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "pdv-vigia-pedidos-online",
+     "nome": "Vigia de pedidos online do PDV (reserva do canal ao vivo)",
+     "ondeRoda": "PDV aberto no computador servidor da loja",
+     "chama": "Nuvem: GET /api/pdv/orders/pending duas vezes (uma com includeCancelled=1)",
+     "frequencia": "a cada 5 s, 2 chamadas (24 por minuto)",
+     "segundos": 5,
+     "quantos": "1 por PDV servidor aberto, em toda loja, tenha delivery ou não. Cada \"Bloquear sessão\" liga mais um sem desligar o anterior (+24 por minuto até fechar o PDV) e duplica os avisos de pedido novo.",
+     "faz": "Na nuvem: 1 consulta ao banco master e 5 ao banco da loja (pedidos com itens, clientes, endereços, produtos, perfil), sem índice na tabela de pedidos. Devolve TODOS os pedidos do dia, não só os novos: a resposta cresce ao longo do dia. Não espera a resposta anterior: com o servidor lento, as chamadas se acumulam. É cerca de 70% de tudo o que uma loja pede à nuvem.",
+     "porque": "Reserva do canal ao vivo: se o aviso instantâneo de pedido novo falhar, o pedido ainda aparece. Também descobre pedidos que o iFood cancelou sozinho e reenvia status e deliverys feitos no PDV.",
+     "seEspacar": "Com o canal ao vivo funcionando, nada muda: pedido novo e mudança de status chegam na hora. Se o canal cair, o pedido aparece até 60 s depois (hoje 5 s). A regra de 30 s do iFood vale para a nuvem, não para o PDV.",
+     "situacao": "defeito",
+     "proposta": "Voltar a 60 s (o próprio comentário do código diz 60), uma chamada só, desligar ao fechar a janela, não sobrepor chamadas; depois, a nuvem devolver só o que mudou.",
+     "desde": "05/09/2026: o commit b555038 trocou 60 s por 5 s junto com \"correções da entrada de pedidos online\" (o motivo não foi escrito)",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:291",
+      "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:307",
+      "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:671",
+      "metrics-node/src/modules/public/http/controllers/get-pending-online-orders.ts:28"
+     ]
+    },
+    {
+     "id": "pdv-tela-delivery",
+     "nome": "Atualização da tela Delivery do PDV",
+     "ondeRoda": "PDV com a tela Delivery aberta (servidor E terminal)",
+     "chama": "Nuvem: GET /api/pdv/orders/pending?includeCancelled=1 (mais os reenvios abaixo)",
+     "frequencia": "a cada 4 s (15 por minuto) enquanto a tela está visível",
+     "segundos": 4,
+     "quantos": "1 por tela Delivery aberta, também no terminal",
+     "faz": "O mesmo custo do vigia (5 consultas, o dia inteiro de pedidos). No terminal contraria a regra \"só o servidor busca na nuvem e grava\" (MainWindow.xaml.cs:161) e grava pedidos no banco do servidor ao mesmo tempo que ele.",
+     "porque": "Manter os cartões das 5 etapas (aguardando, produção, conferência, na rua, entregue) sempre atualizados.",
+     "seEspacar": "Lendo só o banco local (que o servidor já mantém igual à nuvem), a tela continua a cada 4 s sem custo nenhum na nuvem.",
+     "situacao": "excessivo",
+     "proposta": "Ler só o banco local; o terminal nunca chama a nuvem.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Views/DeliveryView.xaml.cs:97"
+     ]
+    },
+    {
+     "id": "pdv-reenvios-delivery",
+     "nome": "Reenvio de status e de delivery feito no PDV",
+     "ondeRoda": "PDV aberto no computador servidor da loja",
+     "chama": "Nuvem: PATCH /api/pdv/orders/{id}/status e POST /api/pdv/orders",
+     "frequencia": "a cada volta do vigia (5 s) e da tela Delivery (4 s), sem esperar mais a cada falha",
+     "segundos": 5,
+     "quantos": "1 por pedido com status à frente do da nuvem ou ainda não enviado (sem limite de data)",
+     "faz": "Pedido recusado pela nuvem é reenviado inteiro a cada 4 a 5 s para sempre (o próprio comentário do código admite).",
+     "porque": "Garantir que a nuvem (e o iFood, por ela) saiba do status que o PDV mudou e dos deliverys criados no PDV.",
+     "seEspacar": "Esperar mais a cada falha não atrasa o caso normal (a primeira tentativa é na hora).",
+     "situacao": "atencao",
+     "proposta": "Esperar mais a cada falha (como as vendas já fazem) e só pedidos do dia.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:845",
+      "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:930"
+     ]
+    },
+    {
+     "id": "pdv-canal-ao-vivo-pedidos",
+     "nome": "Canal ao vivo de pedidos no PDV (SSE)",
+     "ondeRoda": "PDV aberto no computador servidor da loja",
+     "chama": "Nuvem: /api/pdv/orders/stream",
+     "frequencia": "conexão sempre aberta; se cair, tenta de novo a cada 5 s",
+     "segundos": null,
+     "quantos": "1 por PDV servidor (protegido contra duplicar)",
+     "faz": "Ao conectar, a nuvem consulta os pendentes e manda um aviso por pedido. Depois só avisa pedido novo, mudança de status e exclusão.",
+     "porque": "É o \"tempo real\" do delivery: o pedido do cardápio, do iFood e da 99 aparece no PDV na hora, sem perguntar sem parar.",
+     "seEspacar": "Não se aplica: é uma conexão parada. É ela que permite espaçar o vigia de 5 s.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:146",
+      "metrics-node/src/modules/public/http/controllers/orders-stream.ts:34"
+     ]
+    },
+    {
+     "id": "nuvem-avisos-ao-vivo",
+     "nome": "Avisos ao vivo de pedido (nuvem → PDVs e caixas da web)",
+     "ondeRoda": "Nuvem (metrics-node)",
+     "chama": "Conexões ao vivo abertas (PDVs e abas de caixa)",
+     "frequencia": "a cada evento (pedido novo, status, cancelamento, exclusão)",
+     "segundos": null,
+     "quantos": "Hoje: TODAS as lojas conectadas",
+     "faz": "DEFEITO GRAVE (LGPD): os avisos do iFood e da 99 saem sem a loja (broadcast) e vão para as conexões de todas as lojas, com nome, telefone, CPF e endereço do cliente; todo pedido do iFood também vai para a loja de teste (db_restaurante). O casamento da loja é por \"contém\" e pode errar de loja. Cada caixa da web de cada loja refaz a consulta de pedidos ao receber.",
+     "porque": "Avisar na hora o PDV e o caixa da web da loja do pedido.",
+     "seEspacar": "Não é de tempo: é de destino.",
+     "situacao": "defeito",
+     "proposta": "Mandar só para a loja do pedido, tirar o envio fixo para db_restaurante e casar a loja pelo nome exato.",
+     "ondeNoCodigo": [
+      "metrics-node/src/lib/sse-manager.ts:65",
+      "metrics-node/src/modules/delivery/services/ifood-poller.ts:450",
+      "metrics-node/src/modules/delivery/services/ifood-events.service.ts:133",
+      "metrics-node/src/modules/delivery/http/controllers/webhook-99food.ts:312",
+      "metrics-node/src/modules/cashier/http/controllers/delete-online-order.ts:77"
+     ]
+    },
+    {
+     "id": "web-barra-entregas-caixa",
+     "nome": "Barra de entregas do caixa na web",
+     "ondeRoda": "Navegador, tela do caixa (/cashier/session/:id)",
+     "chama": "Nuvem: GET /public/orders/pending?date=… e o canal ao vivo /public/orders/stream",
+     "frequencia": "a cada 3 s (20 por minuto) com a aba visível, mesmo sem foco",
+     "segundos": 3,
+     "quantos": "1 por aba de caixa aberta, inclusive caixa FECHADO ou CONFERIDO, datas passadas e loja sem delivery",
+     "faz": "As mesmas 5 consultas do vigia do PDV, o dia inteiro de pedidos, sem paginação. Cada aviso do canal ao vivo refaz a consulta (também com a aba escondida); a cada reconexão chegam N avisos seguidos.",
+     "porque": "Contadores Novos / Em produção / Conferência / Na rua e o alarme de pedido novo no caixa da web.",
+     "seEspacar": "Com o canal ao vivo, o alarme continua na hora; se o canal cair, até 30-60 s.",
+     "situacao": "excessivo",
+     "proposta": "Só com caixa ABERTO e do dia; 30-60 s com o canal ao vivo ligado e 10-15 s se ele cair; juntar avisos em rajada.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/cashier/components/DeliveryOrdersBar.tsx:72",
+      "metrics/src/pages/app/cashier/components/DeliveryOrdersBar.tsx:159",
+      "metrics/src/pages/app/cashier/components/DetalheLote.tsx:499"
+     ]
+    },
+    {
+     "id": "nuvem-ifood-polling",
+     "nome": "Consulta de eventos do iFood (polling)",
+     "ondeRoda": "Nuvem (metrics-node), dentro do processo da API",
+     "chama": "iFood (events:polling) e o banco de cada loja",
+     "frequencia": "a cada 30 s",
+     "segundos": 30,
+     "quantos": "Percorre todas as lojas ativas (~14), uma de cada vez",
+     "faz": "Loja sem token do iFood: 1 consulta ao perfil a cada volta (o \"sem token\" nunca fica guardado). Loja com token: 1 chamada ao iFood e 1 linha no diário (ifood_api_logs), mesmo vazia: ~2.880 linhas por dia por loja, e nada apaga esse diário. Com evento: confirma, grava e avisa. Liga em qualquer computador que rode a API, inclusive em teste local (consumiria eventos reais).",
+     "porque": "Exigência da homologação do iFood: consultar a cada 30 s e confirmar (ACK) os eventos na hora. Sem isso o pedido não chega e o iFood pode descredenciar.",
+     "seEspacar": "NÃO pode espaçar para loja com iFood.",
+     "situacao": "atencao",
+     "proposta": "Pular lojas sem token; limpeza do diário (ex.: 30 dias), mantendo os eventos de cancelamento da homologação; não ligar fora do servidor de produção.",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/delivery/services/ifood-poller.ts:536",
+      "metrics-node/src/modules/delivery/services/ifood-poller.ts:61",
+      "metrics-node/src/modules/delivery/services/ifood-api.service.ts:109"
+     ]
+    },
+    {
+     "id": "nuvem-descobrir-loja-ifood-99",
+     "nome": "Descobrir de qual loja é um evento do iFood ou da 99",
+     "ondeRoda": "Nuvem (metrics-node)",
+     "frequencia": "a cada evento; memória de 10 min",
+     "segundos": null,
+     "quantos": "Por evento",
+     "faz": "Se não está na memória, percorre todas as lojas (1 consulta em cada). Loja não cadastrada nunca fica guardada: cada evento dela varre ~14 bancos.",
+     "porque": "O iFood e a 99 mandam o código do restaurante, não o banco: é preciso achar a loja.",
+     "situacao": "atencao",
+     "proposta": "Guardar também o \"não achei\" por alguns minutos.",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/delivery/services/delivery-tenant-resolver.ts:52"
+     ]
+    },
+    {
+     "id": "nuvem-pagina-diag-ifood",
+     "nome": "Página de diagnóstico do iFood",
+     "ondeRoda": "Navegador com /delivery/ifood/diag aberto (equipe)",
+     "chama": "Nuvem: /delivery/ifood/diag/data (até 400 linhas do diário)",
+     "frequencia": "a cada 3 s enquanto aberta",
+     "segundos": 3,
+     "quantos": "Só quando alguém da equipe deixa a página aberta",
+     "porque": "Acompanhar o diário do iFood ao vivo durante testes e homologação.",
+     "seEspacar": "Fechar a página quando não estiver usando.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/delivery/http/controllers/ifood-diagnostic.ts:298"
+     ]
+    }
+   ],
    "espelhos": [],
    "fluxos": [],
    "notas": []
@@ -1485,6 +1996,227 @@
    "paraQueServe": "Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label do cardápio, horários, setores de entrega) e as configurações gerais.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "pdv-teste-internet",
+     "nome": "Teste \"Internet e nuvem\" do PDV",
+     "ondeRoda": "Todo PDV aberto (servidor e terminal)",
+     "chama": "Nuvem: GET https://api.metrics.dev.br/health; também TCP com 1.1.1.1/8.8.8.8 e 256 KB da Cloudflare a cada 5 min",
+     "frequencia": "~20 s na janela principal, 12 s na tela de entrada",
+     "segundos": 20,
+     "quantos": "1 por PDV aberto",
+     "faz": "/health passa pelo filtro da loja (1 consulta ao master) e provavelmente responde 403. Existe /public/health, que é barata.",
+     "porque": "Mostrar se a loja está com internet e se a nuvem responde.",
+     "situacao": "excessivo",
+     "proposta": "Usar /public/health a cada 60 s.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Services/MonitorConexao.cs:33",
+      "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:138"
+     ]
+    },
+    {
+     "id": "core-cluster-vivo",
+     "nome": "\"Estou vivo\" da troca automática de servidor",
+     "ondeRoda": "Core Service de todo computador da loja",
+     "chama": "Nuvem: POST /api/pdv/cluster/vivo (só memória)",
+     "frequencia": "a cada 15 s (ciclo de 10 s)",
+     "segundos": 15,
+     "quantos": "Todo computador, só se a \"ordem dos servidores\" estiver configurada (inclusive terminal fora da ordem)",
+     "porque": "A nuvem é o juiz da troca de servidor: conta como vivo quem falou há menos de 60 s; o PDV descarta a resposta depois de 45 s.",
+     "seEspacar": "Não passar de 20-30 s sem mudar as regras de 45 e 60 s.",
+     "situacao": "atencao",
+     "proposta": "Terminal fora da ordem não chamar.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:167",
+      "metrics-node/src/modules/pdv-sync/services/cluster-judge.ts:4"
+     ]
+    },
+    {
+     "id": "pdv-sync-config",
+     "nome": "Configurações da loja (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/config",
+     "frequencia": "a cada 5 min (sincronia geral do PDV)",
+     "segundos": 300,
+     "porque": "Configuração feita na web chega ao PDV.",
+     "situacao": "atencao",
+     "proposta": "30 min.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1249"
+     ]
+    },
+    {
+     "id": "pdv-limpeza-avisos",
+     "nome": "Limpeza dos avisos de pedido",
+     "ondeRoda": "Todo PDV aberto",
+     "chama": "Banco da loja",
+     "frequencia": "a cada 4 s",
+     "segundos": 4,
+     "faz": "Também nunca é desligado: soma um a cada \"Bloquear sessão\".",
+     "porque": "Tirar da tela os avisos de pedido já tratados.",
+     "situacao": "atencao",
+     "proposta": "Desligar ao fechar a janela.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:157"
+     ]
+    },
+    {
+     "id": "core-procura-atualizacao",
+     "nome": "Procura de atualização do PDV",
+     "ondeRoda": "Core Service de todo computador",
+     "chama": "Nuvem: GET /api/public/pdv/latest",
+     "frequencia": "a cada 30 min",
+     "segundos": 1800,
+     "porque": "Saber se há versão nova para o botão Atualizar.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149"
+     ]
+    },
+    {
+     "id": "core-cluster-copia",
+     "nome": "Troca de servidor: cópia do banco",
+     "ondeRoda": "Core Service de todo computador da ordem",
+     "chama": "Postgres da loja (rede local)",
+     "frequencia": "a cada 1 s (2 s fora do servidor)",
+     "segundos": 1,
+     "porque": "Manter a cópia do banco pronta para outro computador assumir se o servidor cair.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:368"
+     ]
+    },
+    {
+     "id": "core-cluster-ciclo",
+     "nome": "Troca de servidor: ciclo de conferência",
+     "ondeRoda": "Core Service de todo computador",
+     "chama": "Banco do servidor e http://IP:5000/api/cluster/estado",
+     "frequencia": "a cada 10 s",
+     "segundos": 10,
+     "porque": "Ler a ordem dos servidores e perguntar o estado dos outros computadores.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:142"
+     ]
+    },
+    {
+     "id": "core-presenca",
+     "nome": "Presença do computador no banco",
+     "ondeRoda": "Core Service de todo computador",
+     "chama": "Banco da loja (computadores_loja)",
+     "frequencia": "a cada 15 s",
+     "segundos": 15,
+     "porque": "Lista de computadores da loja com a última vez que foram vistos.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/Cluster/CoordenadorCluster.cs:201"
+     ]
+    },
+    {
+     "id": "pdv-terminal-ligacao-servidor",
+     "nome": "Ligação do terminal com o servidor",
+     "ondeRoda": "PDV de terminal",
+     "chama": "Banco do servidor da loja",
+     "frequencia": "a cada 5 s (dados da loja a cada 1 min)",
+     "segundos": 5,
+     "porque": "Perceber a queda do servidor e avisar o caixa.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/ConexaoServidorMonitor.cs:57"
+     ]
+    },
+    {
+     "id": "pdv-situacao-troca",
+     "nome": "Situação da troca de servidor no PDV",
+     "ondeRoda": "Todo PDV aberto",
+     "chama": "Core Service local: /api/cluster/situacao",
+     "frequencia": "a cada 5 s (avisos do banco a cada 15 s)",
+     "segundos": 5,
+     "porque": "Mostrar no PDV quem é o servidor e se houve troca.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Services/TrocaDeServidorNoPdv.cs:61"
+     ]
+    },
+    {
+     "id": "pdv-situacao-atualizacao",
+     "nome": "Situação da atualização no PDV",
+     "ondeRoda": "Todo PDV aberto",
+     "chama": "Core Service local: /api/update/status",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "porque": "Mostrar o andamento do botão Atualizar.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Services/PdvUpdateClient.cs:48"
+     ]
+    },
+    {
+     "id": "pdv-sinais-menu",
+     "nome": "Sinais do menu do PDV",
+     "ondeRoda": "Todo PDV aberto",
+     "chama": "Banco e Core Service locais",
+     "frequencia": "a cada 10 s",
+     "segundos": 10,
+     "porque": "Luzes do menu: impressoras, caixa sem servidor.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:104"
+     ]
+    },
+    {
+     "id": "core-vigia-config",
+     "nome": "Vigia da configuração do computador",
+     "ondeRoda": "Core Service de todo computador",
+     "chama": "Arquivo config_terminal.json",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "porque": "Perceber troca de papel (servidor/terminal) ou de banco sem reiniciar.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.CoreService/Program.cs:121"
+     ]
+    },
+    {
+     "id": "core-publica-dados-loja",
+     "nome": "Publicação dos dados da loja",
+     "ondeRoda": "Core Service do servidor",
+     "chama": "Banco da loja",
+     "frequencia": "a cada 1 min",
+     "segundos": 60,
+     "porque": "Terminais e celulares sabem nome, servidor e configuração da loja.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.CoreService/Program.cs:745"
+     ]
+    },
+    {
+     "id": "core-limpeza-idempotencia",
+     "nome": "Limpeza das marcas de \"já recebido\"",
+     "ondeRoda": "Core Service do servidor",
+     "chama": "Banco da loja",
+     "frequencia": "a cada 1 h",
+     "segundos": 3600,
+     "porque": "Apagar as marcas antigas que evitam gravar a mesma venda duas vezes.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/IdempotenciaCleanupBackgroundService.cs:33"
+     ]
+    },
+    {
+     "id": "tray-icone",
+     "nome": "Ícone da bandeja (TrayMonitor)",
+     "ondeRoda": "Todo computador da loja",
+     "chama": "localhost:5000/health",
+     "frequencia": "a cada 10 s",
+     "segundos": 10,
+     "porque": "A cor do ícone diz se o Core Service está de pé.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.TrayMonitor/App.xaml.cs:43"
+     ]
+    }
+   ],
    "ligacoes": [],
    "fluxos": [],
    "notas": [],
@@ -1621,6 +2353,24 @@
    "paraQueServe": "Insumos, ficha técnica dos produtos, movimentos de estoque (entradas, saídas e a baixa das vendas), fornecedores com o De-Para da nota de entrada e a contagem de inventário. Decisão de 24/09: só o backend cria movimentos; o PDV manda fatos (venda, nota, contagem).",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "web-posicao-estoque",
+     "nome": "Posição de estoque na web",
+     "ondeRoda": "Navegador, /stock aba 1",
+     "chama": "Nuvem: GET /api/stock/overview",
+     "frequencia": "a cada 30 s com a aba visível",
+     "segundos": 30,
+     "quantos": "1 por aba aberta",
+     "faz": "As ações da própria tela já atualizam a lista.",
+     "porque": "Mostrar o saldo atualizado sem recarregar.",
+     "situacao": "atencao",
+     "proposta": "Tirar a atualização automática ou passar a 5 min.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/stock/tabs/tab-stock-position.tsx:103"
+     ]
+    }
+   ],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -1861,6 +2611,24 @@
    "paraQueServe": "Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "pdv-sync-pagamentos",
+     "nome": "Formas de pagamento, identificadores, maquininhas e condições (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /payments, /payment-identifiers, /pos-machines, /payment-conditions",
+     "frequencia": "a cada 5 min (sincronia geral do PDV) (4 chamadas)",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "4 listas pequenas, sempre inteiras.",
+     "porque": "Formas de pagamento e maquininhas cadastradas na web aparecem no PDV.",
+     "situacao": "atencao",
+     "proposta": "30-60 min ou carimbo de mudança.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:875"
+     ]
+    }
+   ],
    "ligacoes": [],
    "fluxos": [],
    "notas": []
@@ -1931,6 +2699,64 @@
    "paraQueServe": "A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numeração e a tabela do IBPT (valor aproximado dos tributos) ficam no banco local. Os dados fiscais do produto (NCM, CFOP, CSOSN) ficam no cardápio.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "tray-painel-fiscal",
+     "nome": "TrayMonitor: painel aberto consulta a SEFAZ",
+     "ondeRoda": "Computador da loja com o painel do TrayMonitor aberto",
+     "chama": "Core Service local; /api/fiscal/status consulta a SEFAZ a cada chamada",
+     "frequencia": "a cada 3 s, 4 rotas do Core Service",
+     "segundos": 3,
+     "quantos": "1 por painel aberto",
+     "faz": "Consulta a SEFAZ a cada 3 s sem o limite de 3 min que o PDV respeita: risco de rejeição 656 (consumo indevido), que bloqueia a emissão por um tempo.",
+     "porque": "Mostrar a situação do serviço, da nota e das impressoras no painel.",
+     "situacao": "defeito",
+     "proposta": "Guardar a resposta da SEFAZ por 3 min (como o PDV) e o painel a cada 10-15 s.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.TrayMonitor/MainWindow.xaml.cs:72",
+      "Metrics.PDV/Metrics.CoreService/Program.cs:423"
+     ]
+    },
+    {
+     "id": "core-contingencia-nfce",
+     "nome": "Contingência da NFC-e",
+     "ondeRoda": "Core Service do servidor da loja",
+     "chama": "Banco da loja; SEFAZ só com pendência",
+     "frequencia": "a cada 30 s; SEFAZ só se houver nota pendente",
+     "segundos": 30,
+     "porque": "Transmitir as notas emitidas em contingência assim que a SEFAZ volta.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.CoreService/ContingencyWatcherBackgroundService.cs:31"
+     ]
+    },
+    {
+     "id": "pdv-verificacao-sefaz",
+     "nome": "Verificação ao vivo (SEFAZ e certificado)",
+     "ondeRoda": "Todo PDV aberto",
+     "chama": "SEFAZ (com limite)",
+     "frequencia": "itens locais a cada 10 s; SEFAZ a cada 15 min (3 min na tela de entrada)",
+     "segundos": 10,
+     "porque": "Avisar antes da venda se a SEFAZ está fora ou o certificado venceu.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:138"
+     ]
+    },
+    {
+     "id": "pdv-ibpt",
+     "nome": "Tabela de impostos aproximados (IBPT)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/sync/ibpt (lotes de 100)",
+     "frequencia": "no máximo a cada 6 h (30 min se faltar algum NCM)",
+     "segundos": 21600,
+     "porque": "Imposto aproximado no cupom (Lei da Transparência).",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/Fiscal/IbptAtualizacaoService.cs:88"
+     ]
+    }
+   ],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -2068,6 +2894,75 @@
    ],
    "notas": [
     "Como se ligam (nenhuma ligação tem chave no banco): a comanda do item acha o item do pedido pelo número (pedido_item_id) e o departamento de impressão pelo código (departamento_uuid); a situação da impressora acha o departamento pelo código; o registro de operações aponta a mesa ou comanda (atendimento_id) e, quando é de um item, o item (pedido_item_id). Um item apagado não apaga essas linhas."
+   ],
+   "trabalhos": [
+    {
+     "id": "core-impressao-departamentos",
+     "nome": "Impressão por departamento (comandas)",
+     "ondeRoda": "Core Service do servidor da loja",
+     "chama": "Banco da loja e impressoras",
+     "frequencia": "aviso instantâneo do banco + conferência a cada 10 s",
+     "segundos": 10,
+     "porque": "Comanda sai na cozinha ou no bar assim que o item é lançado; a conferência pega o que o aviso perdeu.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/DepartmentPrintWatcherBackgroundService.cs:39"
+     ]
+    },
+    {
+     "id": "core-vigia-impressoras",
+     "nome": "Vigia das impressoras",
+     "ondeRoda": "Core Service do servidor da loja",
+     "chama": "Impressoras (rede) e banco da loja",
+     "frequencia": "a cada 15 s",
+     "segundos": 15,
+     "porque": "Mostrar impressora desligada ou sem papel antes de a comanda se perder.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/VigiaDasImpressoras.cs:26"
+     ]
+    },
+    {
+     "id": "pdv-comandas-grafico",
+     "nome": "Comandas em modo gráfico",
+     "ondeRoda": "PDV do servidor com o modo gráfico ligado",
+     "chama": "Banco da loja e impressoras",
+     "frequencia": "a cada 3 s",
+     "segundos": 3,
+     "porque": "O desenho gráfico só existe no PDV: ele imprime as comandas quando o modo gráfico está ligado.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/App.xaml.cs:171"
+     ]
+    },
+    {
+     "id": "kds-itens",
+     "nome": "Tela da cozinha (KDS): itens",
+     "ondeRoda": "TV ou box da cozinha",
+     "chama": "Core Service da loja: /api/kds/items",
+     "frequencia": "a cada 5 s",
+     "segundos": 5,
+     "quantos": "1 por tela de cozinha",
+     "porque": "Mostrar na cozinha os itens a preparar.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74"
+     ]
+    },
+    {
+     "id": "pdv-sync-departamentos",
+     "nome": "Departamentos de impressão (PDV)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/print-departments",
+     "frequencia": "a cada 5 min (sincronia geral do PDV)",
+     "segundos": 300,
+     "porque": "Trazer da web a lista de departamentos (cozinha, bar…) e as impressoras de cada um.",
+     "situacao": "atencao",
+     "proposta": "30 min ou carimbo de mudança.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1167"
+     ]
+    }
    ],
    "espelhos": [],
    "fluxos": [],
@@ -2220,6 +3115,99 @@
    "paraQueServe": "Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem existe só uma foto ao vivo das mesas abertas, sem ligação com venda ou caixa. Quando a mesa é paga, sai da foto e vira venda (módulo Caixa e vendas).",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "web-mesas-ao-vivo",
+     "nome": "Mesas ao vivo na web (aba Mesas do caixa)",
+     "ondeRoda": "Navegador, /cashier aba Mesas",
+     "chama": "Nuvem: GET /pdv/sync/tables/snapshot",
+     "frequencia": "a cada 10 s com a aba visível",
+     "segundos": 10,
+     "quantos": "1 por aba aberta",
+     "faz": "A rota exige uma chave (x-api-key) que a web não manda: responde sempre 401, a tela nunca funcionou e paga só a consulta ao master. Sem dados, a tela mostra mesas inventadas (\"Lucas Silva\"), que confundem.",
+     "porque": "Gerente ou dono ver o salão de longe.",
+     "situacao": "defeito",
+     "proposta": "Consertar a autorização, passar a 30 s (ou receber pelo canal ao vivo) e tirar as mesas de exemplo.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/cashier/components/LiveTablesView.tsx:69",
+      "metrics/src/pages/app/cashier/components/LiveTablesView.tsx:95",
+      "metrics-node/src/modules/pdv-sync/http/controllers/routes.ts:41"
+     ]
+    },
+    {
+     "id": "pdv-sync-mesas",
+     "nome": "Retrato das mesas abertas para a nuvem",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: POST /api/pdv/sync/tables",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre (mesmo sem mesa aberta)",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "A nuvem grava cada mesa e apaga e recria os itens um por um.",
+     "porque": "Alimentar o painel do dono e as mesas ao vivo da web.",
+     "situacao": "atencao",
+     "proposta": "Pular quando nada mudou desde o último envio.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:464",
+      "metrics-node/src/modules/pdv-sync/http/controllers/tables-sync-controller.ts:11"
+     ]
+    },
+    {
+     "id": "pdv-salao-recarga",
+     "nome": "Salão do PDV (mesas ociosas e recarga)",
+     "ondeRoda": "PDV com o Salão aberto",
+     "chama": "Banco da loja (não chama a nuvem)",
+     "frequencia": "a cada 20 s",
+     "segundos": 20,
+     "quantos": "1 por Salão aberto",
+     "porque": "Atualizar tempos, mesas ociosas e o que outros computadores e celulares lançaram.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Views/MesasView.xaml.cs:226"
+     ]
+    },
+    {
+     "id": "garcom-lista-mesas",
+     "nome": "App do garçom: lista de mesas",
+     "ondeRoda": "Celular do garçom",
+     "chama": "Core Service da loja: /api/garcom/mesas, /impressoras, /equipe (não chama a nuvem)",
+     "frequencia": "a cada 15 s (equipe a cada 60 s)",
+     "segundos": 15,
+     "quantos": "1 por celular",
+     "porque": "Ver as mesas abertas e lançadas por outros garçons e pelo caixa.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "metrics-garcom/app/src/main/java/com/example/metricsgarcom/ui/GarcomViewModel.kt:249"
+     ]
+    },
+    {
+     "id": "garcom-mesa-aberta",
+     "nome": "App do garçom: mesa aberta na tela",
+     "ondeRoda": "Celular do garçom",
+     "chama": "Core Service da loja: /api/garcom/mesas/{id}",
+     "frequencia": "a cada 15 s",
+     "segundos": 15,
+     "quantos": "1 por celular com uma mesa aberta",
+     "porque": "Ver na hora o que foi lançado na mesa por outra pessoa.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "metrics-garcom/app/src/main/java/com/example/metricsgarcom/ui/atendimento/MesaDetalhesScreen.kt:69"
+     ]
+    },
+    {
+     "id": "garcom-servidores",
+     "nome": "App do garçom: lista de servidores da loja",
+     "ondeRoda": "Celular do garçom",
+     "chama": "Core Service da loja: /api/cluster/servidores",
+     "frequencia": "a cada 60 s",
+     "segundos": 60,
+     "quantos": "1 por celular",
+     "porque": "Saber para qual computador ir se o servidor da loja cair (troca automática de servidor).",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "metrics-garcom/app/src/main/java/com/example/metricsgarcom/data/api/GarcomApiClient.kt:266"
+     ]
+    }
+   ],
    "fluxos": [],
    "notas": []
   },
@@ -2431,6 +3419,52 @@
     }
    ],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "pdv-sync-equipe",
+     "nome": "Equipe do PDV (usuários e funcionários)",
+     "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+     "chama": "Nuvem: GET /api/pdv/users?incluirFuncionarios=1",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira",
+     "segundos": 300,
+     "quantos": "1 por loja",
+     "faz": "A nuvem protege o PIN e uma senha aleatória de cada funcionário com bcrypt (feito em JavaScript puro, que é lento de propósito) a cada chamada: 2 cálculos por funcionário a cada 5 min, e o resultado muda toda vez.",
+     "porque": "Login por PIN no PDV e no app do garçom, com o grupo de permissão do RH.",
+     "situacao": "excessivo",
+     "proposta": "Usar o carimbo de mudança de usuários (já devolvido por /sync/status) ou 30 min; não recalcular quando nada mudou.",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:186",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:91",
+      "metrics-node/src/modules/pdv-sync/services/equipe-do-pdv.ts:98"
+     ]
+    },
+    {
+     "id": "ponto-envio-batidas",
+     "nome": "Relógio de ponto: envio de batidas",
+     "ondeRoda": "Computador do Metrics.Ponto",
+     "chama": "Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)",
+     "frequencia": "a cada 30 s, só se houver batida não enviada",
+     "segundos": 30,
+     "porque": "Batida feita sem internet sobe quando a internet volta.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.Ponto/MainWindow.xaml.cs:205"
+     ]
+    },
+    {
+     "id": "ponto-funcionarios",
+     "nome": "Relógio de ponto: lista de funcionários",
+     "ondeRoda": "Computador do Metrics.Ponto",
+     "chama": "Nuvem: GET /hr/employees/sync",
+     "frequencia": "ao abrir e a cada 30 min",
+     "segundos": 1800,
+     "porque": "Funcionário novo pode bater o ponto sem reiniciar o relógio.",
+     "situacao": "ok",
+     "ondeNoCodigo": [
+      "Metrics.Ponto/MainWindow.xaml.cs:207"
+     ]
+    }
+   ],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -2475,6 +3509,58 @@
    "paraQueServe": "O banco master do SaaS Admin: cada cliente do Metrics (tenant) com seu domínio e o nome do banco próprio, e as credenciais globais de integração (iFood).",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "nuvem-gancho-loja",
+     "nome": "Descobrir a loja de cada requisição",
+     "ondeRoda": "Nuvem (metrics-node), em toda requisição",
+     "chama": "Banco master (tabela Tenant)",
+     "frequencia": "a cada requisição",
+     "segundos": null,
+     "quantos": "Multiplica todas as sondagens acima (~34 por minuto por loja)",
+     "faz": "1 consulta ao banco master SEM memória (e sem índice: compara texto quebrado por vírgula). Domínio desconhecido (robô): 2 consultas e nada guardado.",
+     "porque": "Cada loja tem seu próprio banco; o domínio da requisição diz qual.",
+     "seEspacar": "Com memória de 30-60 s, suspender uma loja leva até 60 s para valer.",
+     "situacao": "excessivo",
+     "proposta": "Memória de 30-60 s.",
+     "ondeNoCodigo": [
+      "metrics-node/src/app.ts:141",
+      "metrics-node/src/lib/tenant-manager.ts:18"
+     ]
+    },
+    {
+     "id": "nuvem-log-requisicoes",
+     "nome": "Registro (log) de toda requisição",
+     "ondeRoda": "Nuvem (metrics-node)",
+     "frequencia": "2 linhas por requisição",
+     "segundos": null,
+     "faz": "JSON no log, que o Docker guarda. Mais 1 linha por aviso ao vivo enviado.",
+     "porque": "Investigar problemas pelo log do Coolify.",
+     "situacao": "atencao",
+     "proposta": "Registrar só avisos e erros (nível warn), mantendo os erros completos.",
+     "ondeNoCodigo": [
+      "metrics-node/src/app.ts:56",
+      "metrics-node/src/lib/sse-manager.ts:79"
+     ]
+    },
+    {
+     "id": "nuvem-motores-prisma",
+     "nome": "Motores do Prisma (um processo por banco de loja)",
+     "ondeRoda": "Nuvem (metrics-node)",
+     "frequencia": "sempre ligados",
+     "segundos": null,
+     "quantos": "~14-16 processos query-engine (1 por banco), nunca fechados; o polling do iFood mantém todos acordados",
+     "faz": "engineType \"binary\": cada consulta vai do Node ao motor por HTTP local e volta em JSON. O motor padrão (library) roda dentro do próprio Node e evita esse vai-e-volta.",
+     "porque": "Cada loja tem seu banco e seu cliente Prisma.",
+     "situacao": "atencao",
+     "proposta": "Ensaio com o motor padrão (library) e medir; descobrir por que \"binary\" foi escolhido (arquivos travados no Windows?).",
+     "desde": "12/02/2026 (commit 4a7afe6)",
+     "ondeNoCodigo": [
+      "metrics-node/prisma/schema.prisma:3",
+      "metrics-node/src/lib/tenant-manager.ts:76"
+     ]
+    }
+   ],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],
@@ -2562,6 +3648,72 @@
    "paraQueServe": "Atendimento técnico: a ordem de serviço de um equipamento do cliente, os itens e serviços usados, o andamento e o pagamento.",
    "regras": [],
    "funcoes": [],
+   "trabalhos": [
+    {
+     "id": "windy-conexao-ao-vivo",
+     "nome": "Windy: conexão ao vivo (comandos remotos)",
+     "ondeRoda": "Computador da loja com o Windy",
+     "chama": "Nuvem: WS /equipments/{id}/ws",
+     "frequencia": "conexão sempre aberta; provavelmente cai e reabre a cada ~155 s",
+     "segundos": 155,
+     "quantos": "1 por computador com Windy",
+     "faz": "O Windy desiste depois de 150 s sem mensagem; a nuvem só manda \"ping\" a cada 120 s, e o ping não conta como mensagem. Cada reabertura grava \"online\" no banco, lê ao fechar e manda uma telemetria extra. A confirmar no windy_ws_log.txt (\"WS Connected\" a cada ~2,5 min).",
+     "porque": "Receber comandos do suporte (atualizar, reiniciar, acesso remoto) na hora.",
+     "situacao": "defeito",
+     "proposta": "Tirar o prazo de 150 s ou a nuvem mandar uma mensagem de vida.",
+     "ondeNoCodigo": [
+      "Metrics.Windy/Services/TelemetryService.cs:377",
+      "Metrics.Windy/Services/TelemetryService.cs:410",
+      "metrics-node/src/modules/equipments/http/controllers/routes.ts:48"
+     ]
+    },
+    {
+     "id": "windy-telemetria",
+     "nome": "Windy: telemetria do computador",
+     "ondeRoda": "Computador da loja com o Windy",
+     "chama": "Nuvem: POST /equipments/{id}/telemetry (~2-4 KB)",
+     "frequencia": "a cada 2 min, mais a cada reabertura da conexão e ao abrir o painel",
+     "segundos": 120,
+     "quantos": "1 por computador",
+     "porque": "Suporte ver CPU, memória, discos e RustDesk de cada computador da loja.",
+     "situacao": "atencao",
+     "proposta": "5-10 min.",
+     "ondeNoCodigo": [
+      "Metrics.Windy/Services/TelemetryService.cs:271"
+     ]
+    },
+    {
+     "id": "web-equipamentos",
+     "nome": "Equipamentos e telemetria na web",
+     "ondeRoda": "Navegador, /clients-equipments e aba Equipamentos de /treatments",
+     "chama": "Nuvem: GET /clients (todos os clientes com todos os equipamentos) e /equipments/orphans",
+     "frequencia": "2 consultas a cada 10 s com a aba visível",
+     "segundos": 10,
+     "quantos": "1 por aba da equipe interna",
+     "porque": "Equipe de suporte ver quem está online.",
+     "seEspacar": "O botão \"Atualizar telemetria\" já força a atualização na hora.",
+     "situacao": "excessivo",
+     "proposta": "30-60 s.",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/clients-equipments/index.tsx:102"
+     ]
+    },
+    {
+     "id": "web-vpn",
+     "nome": "Central VPN (Headscale) na web",
+     "ondeRoda": "Navegador, aba Rede VPN de /treatments",
+     "chama": "Nuvem: GET /vpn/networks (2 consultas + chamada ao Headscale)",
+     "frequencia": "a cada 10 s com a aba visível",
+     "segundos": 10,
+     "quantos": "1 por aba da equipe interna",
+     "porque": "Ver as máquinas da VPN de suporte.",
+     "situacao": "atencao",
+     "proposta": "60 s (já existe o botão Atualizar).",
+     "ondeNoCodigo": [
+      "metrics/src/pages/app/treatments/components/vpn-noc-tab.tsx:28"
+     ]
+    }
+   ],
    "ligacoes": [],
    "espelhos": [],
    "fluxos": [],

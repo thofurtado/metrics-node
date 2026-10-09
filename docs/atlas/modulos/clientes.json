@@ -84,5 +84,24 @@
   ],
   "paraQueServe": "Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.",
   "regras": [],
-  "funcoes": []
+  "funcoes": [],
+  "trabalhos": [
+    {
+      "id": "pdv-sync-clientes",
+      "nome": "Clientes (PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
+      "chama": "Nuvem: GET /api/pdv/clients",
+      "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira",
+      "segundos": 300,
+      "quantos": "1 por loja",
+      "faz": "A tabela inteira de clientes com endereços e fiados, toda vez; cresce com a base. O PDV ainda faz 1 consulta local por cliente.",
+      "porque": "Cliente cadastrado na web ou no cardápio aparece no PDV (delivery, fiado).",
+      "situacao": "excessivo",
+      "proposta": "Usar o carimbo de mudança de clientes que /sync/status já devolve.",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1051",
+        "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:102"
+      ]
+    }
+  ]
 }
