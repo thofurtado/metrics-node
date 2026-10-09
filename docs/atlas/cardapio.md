@@ -59,10 +59,10 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Frequência:** a cada 5 min (sincronia geral do PDV)
 - **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/sync/status (4 contas) e, só se mudou, GET /api/pdv/products?lastSync=`
 - **Quantos:** 1 por loja
-- **A cada vez:** Produto alterado com foto baixa a foto de novo, mesmo que ela não tenha mudado.
-- **Por que existe:** Trazer para o PDV só os produtos alterados na nuvem. O carimbo evita baixar à toa.
+- **A cada vez:** Traz TODOS os produtos ativos completos (código da nuvem, código de barras e dados fiscais limpos), não só os do cardápio online (nuvem 2.6.107.0 + PDV 2.5.17.0, 09/10/2026). Depois da atualização baixa tudo uma vez sozinho; o botão SINCRONIZAR API AGORA força a lista completa. Grava os códigos em 3 etapas numa transação, para dois produtos poderem trocar de código. Produto alterado com foto baixa a foto de novo, mesmo que ela não tenha mudado.
+- **Por que existe:** Trazer para o PDV só os produtos alterados na nuvem (o carimbo evita baixar à toa). Regra do Thomás (09/10/2026): o PDV tem todos os produtos ativos; o cardápio online só os marcados Cardápio. Antes os 1.750 produtos da Katatau fora do cardápio ficavam no caixa com o código antigo, sem código de barras e sem NCM.
 - **Proposta:** Baixar a foto só quando a foto mudou (melhoria pequena).
-- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:73`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:224`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:287`
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:73`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:209`, `Metrics.PDV/Metrics.Shared/Services/CodigosDosProdutos.cs:26`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:12`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:311`
 
 ## Tabelas e Estrutura de Dados
 
