@@ -1,13 +1,15 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
-import { sseManager } from '@/lib/sse-manager'
+import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 export async function ordersStream(request: FastifyRequest, reply: FastifyReply) {
-    const queryTenant = (request.query as { tenant?: string })?.tenant;
-    const headerTenant = request.headers['x-tenant-domain'] as string;
-    const rawDomain = queryTenant || headerTenant || request.hostname;
-    const domain = rawDomain.split(':')[0].replace(/^www\./, '').replace(/^api\./, '').toLowerCase().trim()
+    // O banco da loja vem do gancho de toda requisição (domínio, x-tenant-domain ou ?tenant=). Os avisos são mandados
+    // pelo banco, nunca pelo domínio (ver sse-manager.ts).
+    const banco = bancoDaRequisicao()
+    if (!banco) {
+        return reply.status(403).send({ message: 'Loja não identificada para o canal ao vivo.' })
+    }
 
     // Configura cabeçalhos HTTP para Streaming SSE
     reply.raw.writeHead(200, {
@@ -19,10 +21,10 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
     })
 
     // Registra conexão no SSE Manager
-    const conn = sseManager.addConnection(domain, reply)
+    const conn = sseManager.addConnection(banco, reply)
 
     // Envia evento inicial de confirmação de conexão
-    reply.raw.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', tenant: domain, timestamp: new Date() })}\n\n`)
+    reply.raw.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', tenant: banco, timestamp: new Date() })}\n\n`)
 
     // Envia imediatamente pedidos pendentes atuais caso o PDV tenha acabado de ligar/reconectar
     const prisma = requestContext.get('prisma')

@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { sseManager } from '@/lib/sse-manager'
+import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 
 export async function deleteOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user?.sub
@@ -69,15 +69,10 @@ export async function deleteOnlineOrder(request: FastifyRequest, reply: FastifyR
 
     // 4. Emite evento SSE para sincronização imediata
     try {
-        const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname
-        sseManager.notifyTenant(rawDomain, 'order_deleted', {
+        sseManager.notifyTenant(bancoDaRequisicao(), 'order_deleted', {
             id: pedido.uuid,
             display_id: pedido.display_id
         })
-        sseManager.broadcast('order_deleted', {
-            id: pedido.uuid,
-            display_id: pedido.display_id
-        }, rawDomain)
     } catch (e) {
         console.warn('[SSE] Erro ao emitir order_deleted:', e)
     }

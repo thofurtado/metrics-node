@@ -36,7 +36,7 @@ describe('U0: Desarmar auto-update forçado, Upload Atômico e Validação de Lo
   })
 
   it('U0.a: Não deve disparar remote_update via SSE ao fazer upload de release do PDV', async () => {
-    const broadcastSpy = vi.spyOn(sseManager, 'broadcast')
+    const broadcastSpy = vi.spyOn(sseManager, 'notifyTenant')
     vi.spyOn(releaseAuth, 'authorizeReleaseUpload').mockReturnValue(true)
 
     const dummyFilePath = path.join(downloadsDir, 'temp_test_dummy.exe')

@@ -1,115 +1,88 @@
 import { FastifyReply } from 'fastify'
+import { requestContext } from '@fastify/request-context'
 
+/**
+ * Avisos ao vivo (SSE) para os PDVs e para o caixa da web.
+ *
+ * Cada conexão fica guardada pelo NOME DO BANCO da loja (db_x), que o gancho de toda requisição já descobriu
+ * (requestContext 'tenant'), e cada aviso vai só para as conexões desse banco, por nome exato.
+ *
+ * Por que (08/10/2026, LGPD): antes as conexões eram guardadas pelo domínio, mas o iFood e a 99 só conhecem o banco da
+ * loja. Para o pedido chegar, o código mandava o aviso para TODAS as lojas conectadas (broadcast), com nome, telefone,
+ * CPF e endereço do cliente, mandava todo pedido do iFood e da 99 também para a loja de teste e casava a loja por
+ * "contém" (db_loja casaria com db_loja2). Não existe mais envio para todas as lojas: quem não sabe o banco não avisa.
+ */
 interface SseConnection {
     reply: FastifyReply
-    tenantDomain: string
+    banco: string
     connectedAt: Date
 }
 
+/** O banco da loja da requisição atual, que o gancho de toda requisição pôs em requestContext 'tenant'. */
+export function bancoDaRequisicao(): string {
+    return String((requestContext as any).get('tenant') ?? '')
+}
+
+export function chaveDoBanco(banco: string | null | undefined): string {
+    return String(banco ?? '').trim().toLowerCase()
+}
+
 class SseManager {
-    private tenantConnections: Map<string, Set<SseConnection>> = new Map()
+    private conexoesPorBanco: Map<string, Set<SseConnection>> = new Map()
     private heartbeatTimer: NodeJS.Timeout | null = null
 
     constructor() {
         this.startHeartbeat()
     }
 
-    private normalizeDomain(domain: string): string {
-        if (!domain) return ''
-        let clean = domain.trim().toLowerCase()
-        if (clean.includes('://')) {
-            try {
-                clean = new URL(clean).hostname
-            } catch {
-                clean = clean.split('://')[1].split('/')[0]
-            }
-        }
-        return clean
-            .split(':')[0]
-            .split('/')[0]
-            .replace(/^www\./, '')
-            .replace(/^api\./, '')
-            .toLowerCase()
-            .trim()
-    }
-
-    public addConnection(tenantDomain: string, reply: FastifyReply): SseConnection {
-        const key = this.normalizeDomain(tenantDomain)
-        if (!this.tenantConnections.has(key)) {
-            this.tenantConnections.set(key, new Set())
+    /** Guarda a conexão do PDV ou do caixa da web no banco da loja (o nome que o gancho pôs em requestContext 'tenant'). */
+    public addConnection(banco: string, reply: FastifyReply): SseConnection {
+        const key = chaveDoBanco(banco)
+        if (!this.conexoesPorBanco.has(key)) {
+            this.conexoesPorBanco.set(key, new Set())
         }
 
-        const conn: SseConnection = {
-            reply,
-            tenantDomain: key,
-            connectedAt: new Date()
-        }
-
-        this.tenantConnections.get(key)!.add(conn)
-        console.log(`[SSE] PDV conectado para o tenant: ${key} (Total conectados no tenant: ${this.tenantConnections.get(key)!.size})`)
+        const conn: SseConnection = { reply, banco: key, connectedAt: new Date() }
+        this.conexoesPorBanco.get(key)!.add(conn)
+        console.log(`[SSE] Conectado: ${key} (${this.conexoesPorBanco.get(key)!.size} conexão(ões) nessa loja)`)
         return conn
     }
 
     public removeConnection(conn: SseConnection): void {
-        const key = conn.tenantDomain
-        const set = this.tenantConnections.get(key)
+        const set = this.conexoesPorBanco.get(conn.banco)
         if (set) {
             set.delete(conn)
-            console.log(`[SSE] PDV desconectado do tenant: ${key} (Restantes no tenant: ${set.size})`)
             if (set.size === 0) {
-                this.tenantConnections.delete(key)
+                this.conexoesPorBanco.delete(conn.banco)
             }
         }
     }
 
-    public notifyTenant(tenantDomain: string, eventName: string, data: any): boolean {
-        const key = this.normalizeDomain(tenantDomain)
-        let connections = this.tenantConnections.get(key)
-
+    /** Manda o aviso só para as conexões do banco da loja, por nome exato. Devolve se alguma conexão recebeu. */
+    public notifyTenant(banco: string, eventName: string, data: any): boolean {
+        const key = chaveDoBanco(banco)
+        const connections = key ? this.conexoesPorBanco.get(key) : undefined
         if (!connections || connections.size === 0) {
-            for (const [tKey, tSet] of this.tenantConnections.entries()) {
-                if (tKey && key && (tKey.includes(key) || key.includes(tKey))) {
-                    connections = tSet
-                    break
-                }
-            }
-        }
-
-        if (!connections || connections.size === 0) {
-            console.log(`[SSE] Nenhum PDV/Gestor conectado no momento para o tenant: ${key}`)
             return false
         }
 
         const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`
         let sentCount = 0
-
-        for (const conn of connections) {
+        for (const conn of Array.from(connections)) {
             try {
                 conn.reply.raw.write(payload)
                 sentCount++
             } catch (err) {
-                console.error(`[SSE] Erro ao enviar evento para conexão do tenant ${key}:`, err)
+                console.error(`[SSE] Erro ao enviar '${eventName}' para ${key}:`, err)
+                this.removeConnection(conn)
             }
         }
-
-        console.log(`[SSE] Evento '${eventName}' enviado com sucesso para ${sentCount} conexão(ões) do tenant ${key}`)
         return sentCount > 0
-    }
-
-    public broadcast(eventName: string, data: any, tenantDomain?: string): boolean {
-        if (tenantDomain) {
-            return this.notifyTenant(tenantDomain, eventName, data)
-        }
-        let totalSent = 0
-        for (const key of this.tenantConnections.keys()) {
-            if (this.notifyTenant(key, eventName, data)) totalSent++
-        }
-        return totalSent > 0
     }
 
     private startHeartbeat(): void {
         this.heartbeatTimer = setInterval(() => {
-            for (const [tenantKey, connections] of this.tenantConnections.entries()) {
+            for (const connections of this.conexoesPorBanco.values()) {
                 for (const conn of Array.from(connections)) {
                     try {
                         conn.reply.raw.write(': ping\n\n')
@@ -118,12 +91,13 @@ class SseManager {
                     }
                 }
             }
-        }, 25000) // 25 segundos
+        }, 25000) // 25 segundos: o proxy derruba conexão parada
+        this.heartbeatTimer.unref?.()
     }
 
     public getActiveConnectionsCount(): number {
         let total = 0
-        for (const set of this.tenantConnections.values()) {
+        for (const set of this.conexoesPorBanco.values()) {
             total += set.size
         }
         return total

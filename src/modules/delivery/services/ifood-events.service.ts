@@ -130,7 +130,9 @@ export async function processCancellationEvent(event: any, token: string | undef
 
   if (code === 'CARF' || fullCode === 'CANCELLATION_REQUEST_FAILED') {
     try {
-      sseManager.broadcast('ifood_cancellation_failed', { order_id: orderId, metadata: event?.metadata || {} })
+      // Só a loja do pedido (LGPD, 08/10/2026); loja desconhecida não recebe aviso nenhum
+      const dono = await localizarTenantDaLoja(String(event?.merchantId || event?.merchant_id || ''), 'IFOOD')
+      if (dono) sseManager.notifyTenant(dono.dbName, 'ifood_cancellation_failed', { order_id: orderId, metadata: event?.metadata || {} })
     } catch (_) {}
     return 'cancelamento RECUSADO pelo iFood; pedido segue ativo'
   }
@@ -181,7 +183,6 @@ export async function processCancellationEvent(event: any, token: string | undef
       },
     })
     const dto = { order_id: order.uuid, display_id: order.display_id, status: 'Cancelado', status_delivery: 'Cancelado' }
-    sseManager.broadcast('order_status_change', dto)
     sseManager.notifyTenant(targetDbName, 'order_status_change', dto)
     return `pedido #${order.display_id} marcado como Cancelado (${source})`
   }

@@ -447,8 +447,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               })),
             }
 
-            sseManager.broadcast('new_order', fullOrderDto)
-            sseManager.notifyTenant('db_restaurante', 'new_order', fullOrderDto)
+            // Só a loja do pedido (LGPD, 08/10/2026): antes ia para todas as lojas conectadas e para a loja de teste
             sseManager.notifyTenant(tenantDbName, 'new_order', fullOrderDto)
           } catch (sseErr) {
             console.error('[iFood SSE Error]:', sseErr)
@@ -499,7 +498,6 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               status: 'Fechado',
               status_delivery: 'Entregue',
             }
-            sseManager.broadcast('order_status_change', conDto)
             sseManager.notifyTenant(tenantDbName, 'order_status_change', conDto)
           }
                 } catch (conErr) {

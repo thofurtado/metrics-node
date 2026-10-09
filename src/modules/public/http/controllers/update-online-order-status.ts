@@ -4,7 +4,7 @@ import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
-import { sseManager } from '@/lib/sse-manager'
+import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 
 export async function updateOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -164,8 +164,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             console.log(`[Cashier] Pedido Delivery #${existingPedido.display_id} lançado com sucesso no caixa (${cashier_session_id})`);
         }
 
-        // Dispara notificação SSE para todos os ouvintes do tenant
-        const rawDomain = (request.headers['x-tenant-domain'] as string) || request.hostname;
+        // O aviso ao vivo vai para o banco da loja (ver sse-manager.ts)
         // Busca link do Google Reviews configurado no restaurante
         let googleReviewUrl = null;
         let storeTradeName = 'Restaurante';
@@ -202,7 +201,7 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
             webPushManager.notifyOrderStatus(existingPedido.uuid, existingPedido.display_id, status);
         }
 
-        sseManager.notifyTenant(rawDomain, 'order_status_updated', {
+        sseManager.notifyTenant(bancoDaRequisicao(), 'order_status_updated', {
             id: updated.uuid,
             display_id: updated.display_id,
             status: status === 'conferencia' ? 'in_preparation' : status,

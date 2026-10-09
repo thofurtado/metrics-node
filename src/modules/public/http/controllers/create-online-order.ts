@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
-import { sseManager } from '@/lib/sse-manager'
+import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
@@ -330,8 +330,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 }))
             }
 
-            sseManager.notifyTenant(host, 'new_order', fullOrderDto)
-            sseManager.broadcast('new_order', fullOrderDto, host)
+            sseManager.notifyTenant(bancoDaRequisicao(), 'new_order', fullOrderDto)
         } catch (sseErr) {
             console.error('Erro ao emitir evento SSE de novo pedido:', sseErr)
         }

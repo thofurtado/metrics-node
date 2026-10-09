@@ -309,8 +309,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           }))
         }
 
-        sseManager.broadcast('new_order', fullOrderDto)
-        sseManager.notifyTenant('db_restaurante', 'new_order', fullOrderDto)
+        // Só a loja do pedido (LGPD, 08/10/2026): antes ia para todas as lojas conectadas e para a loja de teste
         sseManager.notifyTenant(dbName, 'new_order', fullOrderDto)
       } catch (sseErr) {
         console.error('[99Food Webhook SSE Error]:', sseErr)
