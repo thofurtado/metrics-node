@@ -1,19 +1,19 @@
 {
- "gerado_em": "2026-10-09T10:25:42",
+ "gerado_em": "2026-10-09T12:58:21",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "7bb9ada 2026-10-09",
+   "versao": "ba00884 2026-10-09",
    "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "d1a2214 2026-10-09",
+   "versao": "63768d5 2026-10-09",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "dcd78b7 2026-10-09",
+   "versao": "c6a3771 2026-10-09",
    "tabelas": 42
   }
  },

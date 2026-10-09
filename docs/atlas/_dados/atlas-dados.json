@@ -1460,14 +1460,15 @@
      "frequencia": "a cada 5 min (padrão, configurável) e a cada mudança da planilha",
      "segundos": 300,
      "quantos": "Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo",
-     "faz": "Manda o catálogo INTEIRO toda vez. A nuvem compara produto por produto (2-3 consultas por produto, mesmo sem mudança): 500 produtos ≈ 1.500 consultas de uma vez.",
+     "faz": "Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Antes mandava o catálogo inteiro toda vez e a nuvem procura cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos (22,9 bilhões em uma semana), 70% de um núcleo do banco.",
      "porque": "Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).",
-     "situacao": "excessivo",
-     "proposta": "Enviar só o que mudou desde o último envio, ou passar a 30-60 min.",
+     "situacao": "atencao",
+     "proposta": "Na nuvem, buscar os produtos da loja uma vez só e comparar na memória (o envio manual completo ainda faz uma busca sem índice por produto).",
      "ondeNoCodigo": [
-      "Metrics.Sync/Services/SyncOrchestrator.cs:27",
+      "Metrics.Sync/Services/EnvioIncremental.cs:22",
+      "Metrics.Sync/Services/SyncOrchestrator.cs:205",
       "Metrics.Sync/Models/SyncConfig.cs:18",
-      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:473"
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497"
      ]
     }
    ],
@@ -3741,21 +3742,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-09T10:25:42",
+  "gerado_em": "2026-10-09T12:58:21",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "7bb9ada 2026-10-09",
+    "versao": "ba00884 2026-10-09",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "d1a2214 2026-10-09",
+    "versao": "63768d5 2026-10-09",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "dcd78b7 2026-10-09",
+    "versao": "c6a3771 2026-10-09",
     "tabelas": 42
    }
   },

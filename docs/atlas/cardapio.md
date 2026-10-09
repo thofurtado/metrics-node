@@ -38,15 +38,6 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Proposta:** Obedecer ao carimbo de última mudança, como os produtos já fazem.
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoProdutoService.cs:23`, `metrics-node/src/modules/public/http/controllers/get-menu.ts:12`
 
-### Metrics.Sync: envio do catálogo do ERP para a nuvem — Excessivo
-- **Frequência:** a cada 5 min (padrão, configurável) e a cada mudança da planilha
-- **Onde roda:** Computador da loja com o Metrics.Sync (Athos, Excel…) → `Nuvem: POST /api/pdv/sync/products/bulk`
-- **Quantos:** Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo
-- **A cada vez:** Manda o catálogo INTEIRO toda vez. A nuvem compara produto por produto (2-3 consultas por produto, mesmo sem mudança): 500 produtos ≈ 1.500 consultas de uma vez.
-- **Por que existe:** Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).
-- **Proposta:** Enviar só o que mudou desde o último envio, ou passar a 30-60 min.
-- **Onde no código:** `Metrics.Sync/Services/SyncOrchestrator.cs:27`, `Metrics.Sync/Models/SyncConfig.cs:18`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:473`
-
 ### Custos dos produtos (PDV) — Atenção
 - **Frequência:** a cada 5 min (sincronia geral do PDV), sempre a tabela inteira
 - **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/sync/costs`
@@ -54,6 +45,15 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Por que existe:** Custo do produto no PDV (margem, relatórios).
 - **Proposta:** Obedecer ao carimbo de mudança ou passar a 30 min.
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCustoService.cs:44`
+
+### Metrics.Sync: envio do catálogo do ERP para a nuvem — Atenção
+- **Frequência:** a cada 5 min (padrão, configurável) e a cada mudança da planilha
+- **Onde roda:** Computador da loja com o Metrics.Sync (Athos, Excel…) → `Nuvem: POST /api/pdv/sync/products/bulk`
+- **Quantos:** Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo
+- **A cada vez:** Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Antes mandava o catálogo inteiro toda vez e a nuvem procura cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos (22,9 bilhões em uma semana), 70% de um núcleo do banco.
+- **Por que existe:** Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).
+- **Proposta:** Na nuvem, buscar os produtos da loja uma vez só e comparar na memória (o envio manual completo ainda faz uma busca sem índice por produto).
+- **Onde no código:** `Metrics.Sync/Services/EnvioIncremental.cs:22`, `Metrics.Sync/Services/SyncOrchestrator.cs:205`, `Metrics.Sync/Models/SyncConfig.cs:18`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497`
 
 ### Produtos que mudaram (PDV) e o carimbo de mudança — Ok
 - **Frequência:** a cada 5 min (sincronia geral do PDV)
