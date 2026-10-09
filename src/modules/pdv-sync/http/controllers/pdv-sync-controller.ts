@@ -6,6 +6,7 @@ import { splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
 import { funcionarioEntraNoPdv, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { hash } from 'bcryptjs'
+import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
 import { randomBytes } from 'node:crypto'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
@@ -32,6 +33,18 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
             updated_at: true,
             image_url: true,
             measureUnit: true,
+            barcode: true,
+            ncm: true,
+            cest: true,
+            cfop: true,
+            csosn: true,
+            cst_icms: true,
+            origem: true,
+            cst_pis: true,
+            aliquota_pis: true,
+            cst_cofins: true,
+            aliquota_cofins: true,
+            is_priority: true,
             category: {
                 select: {
                     name: true
@@ -54,7 +67,18 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         UpdatedAt: p.updated_at,
         ImageUrl: p.image_url,
         // UNITARY ou FRACTIONAL (por peso): o Caixa do PDV pede a quantidade em kg com vírgula (06/10/2026)
-        MeasureUnit: p.measureUnit
+        MeasureUnit: p.measureUnit,
+        // Regra (Thomás, 09/10/2026): o PDV recebe TODOS os produtos ativos completos; o cardápio online só os marcados
+        // "Cardápio". Antes o código de barras e os dados fiscais só chegavam ao PDV pelo cardápio, e os produtos fora dele
+        // (1.751 na Katatau) ficavam sem código de barras, sem NCM e com o código errado.
+        ...(() => {
+            const f = fiscaisLimpos(p)
+            return {
+                Barcode: f.barcode, Ncm: f.ncm, Cest: f.cest, Cfop: f.cfop, Csosn: f.csosn, CstIcms: f.cst_icms, Origem: f.origem,
+                CstPis: f.cst_pis, AliquotaPis: p.aliquota_pis, CstCofins: f.cst_cofins, AliquotaCofins: p.aliquota_cofins,
+            }
+        })(),
+        IsPriority: p.is_priority
     }))
 
     return reply.status(200).send(formatted)
@@ -593,16 +617,17 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                         price: p.price,
                         cost: p.cost !== undefined && p.cost !== null ? p.cost : existing.cost,
                         stock: p.stock !== undefined && p.stock !== null ? p.stock : existing.stock,
-                        barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : existing.barcode,
-                        ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : existing.ncm,
-                        cest: p.cest && p.cest.trim() ? p.cest.trim() : existing.cest,
-                        cfop: p.cfop && p.cfop.trim() ? p.cfop.trim() : existing.cfop,
-                        csosn: p.csosn && p.csosn.trim() ? p.csosn.trim() : existing.csosn,
-                        cst_icms: p.cstIcms && p.cstIcms.trim() ? p.cstIcms.trim() : existing.cst_icms,
+                        // Código fiscal fora do formato não entra; o que já está gravado fica (a limpeza é na saída): ver lib/codigos-fiscais.ts
+                        barcode: codigoBarrasValido(p.barcode) ?? existing.barcode,
+                        ncm: ncmValido(p.ncm) ?? existing.ncm,
+                        cest: cestValido(p.cest) ?? existing.cest,
+                        cfop: cfopValido(p.cfop) ?? existing.cfop,
+                        csosn: csosnValido(p.csosn) ?? existing.csosn,
+                        cst_icms: cstIcmsValido(p.cstIcms) ?? existing.cst_icms,
                         origem: p.origem !== undefined && p.origem !== null ? p.origem : existing.origem,
-                        cst_pis: p.cstPis && p.cstPis.trim() ? p.cstPis.trim() : existing.cst_pis,
+                        cst_pis: cstPisCofinsValido(p.cstPis) ?? existing.cst_pis,
                         aliquota_pis: p.aliquotaPis !== undefined && p.aliquotaPis !== null ? p.aliquotaPis : existing.aliquota_pis,
-                        cst_cofins: p.cstCofins && p.cstCofins.trim() ? p.cstCofins.trim() : existing.cst_cofins,
+                        cst_cofins: cstPisCofinsValido(p.cstCofins) ?? existing.cst_cofins,
                         aliquota_cofins: p.aliquotaCofins !== undefined && p.aliquotaCofins !== null ? p.aliquotaCofins : existing.aliquota_cofins,
                         category_id: categoryId ?? existing.category_id,
                         subcategory_id: subcategoryId ?? existing.subcategory_id,
@@ -643,16 +668,16 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                     cost: p.cost ?? 0,
                     stock: p.stock ?? 0,
                     min_stock: 0,
-                    barcode: p.barcode && p.barcode.trim() ? p.barcode.trim() : null,
-                    ncm: p.ncm && p.ncm.trim() ? p.ncm.trim() : null,
-                    cest: p.cest && p.cest.trim() ? p.cest.trim() : null,
-                    cfop: p.cfop && p.cfop.trim() ? p.cfop.trim() : null,
-                    csosn: p.csosn && p.csosn.trim() ? p.csosn.trim() : null,
-                    cst_icms: p.cstIcms && p.cstIcms.trim() ? p.cstIcms.trim() : null,
+                    barcode: codigoBarrasValido(p.barcode),
+                    ncm: ncmValido(p.ncm),
+                    cest: cestValido(p.cest),
+                    cfop: cfopValido(p.cfop),
+                    csosn: csosnValido(p.csosn),
+                    cst_icms: cstIcmsValido(p.cstIcms),
                     origem: p.origem ?? 0,
-                    cst_pis: p.cstPis && p.cstPis.trim() ? p.cstPis.trim() : null,
+                    cst_pis: cstPisCofinsValido(p.cstPis),
                     aliquota_pis: p.aliquotaPis ?? 0,
-                    cst_cofins: p.cstCofins && p.cstCofins.trim() ? p.cstCofins.trim() : null,
+                    cst_cofins: cstPisCofinsValido(p.cstCofins),
                     aliquota_cofins: p.aliquotaCofins ?? 0,
                     category_id: categoryId,
                     subcategory_id: subcategoryId,

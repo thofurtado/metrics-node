@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
+import { fiscaisLimpos } from '@/lib/codigos-fiscais'
 import { requestContext } from '@fastify/request-context'
 
 export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
@@ -135,16 +136,9 @@ export async function getMenu(request: FastifyRequest, reply: FastifyReply) {
                 name: product.name,
                 price: product.price,
                 // O custo NÃO sai no cardápio público (é dado interno do cliente); o PDV pega em /api/pdv/sync/costs
-                barcode: product.barcode,
-                ncm: product.ncm,
-                cest: product.cest,
-                cfop: product.cfop,
-                csosn: product.csosn,
-                cst_icms: product.cst_icms,
-                origem: product.origem,
-                cst_pis: product.cst_pis,
+                // Códigos fiscais limpos (ver lib/codigos-fiscais.ts): um valor fora do formato travava o PDV inteiro
+                ...fiscaisLimpos(product),
                 aliquota_pis: product.aliquota_pis,
-                cst_cofins: product.cst_cofins,
                 aliquota_cofins: product.aliquota_cofins,
                 description: product.description,
                 measureUnit: product.measureUnit,
