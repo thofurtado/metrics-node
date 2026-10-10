@@ -17,6 +17,7 @@ import {
     sameEntries,
     type PaymentKind,
 } from '../../services/cashier-sync-rules'
+import { metodoNaConferencia } from '../../services/pagamentos-do-pdv'
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
     const saleSchema = z.array(z.object({
@@ -45,6 +46,11 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             Parcelas: z.number().optional().default(1),
             // PRAZO ou FUNCIONARIO (PDV 2.5.23 em diante): a mesma regra que exige o cliente ou o funcionário na tela do PDV
             Tipo: z.string().optional().nullable(),
+            // PDV 2.5.24 em diante: categoria da forma (Dinheiro, Pix, Debito, Credito, Voucher, CreditoLoja), o identificador
+            // (Correntista, Funcionário, Permuta) e a maquininha, pelos códigos da web
+            Categoria: z.string().optional().nullable(),
+            IdentificadorUuid: z.string().uuid().optional().nullable(),
+            PosMachineUuid: z.string().uuid().optional().nullable(),
         })).optional().default([]),
         Items: z.array(z.object({
             Uuid: z.string().uuid(),
@@ -74,6 +80,37 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
     const sales = saleSchema.parse(request.body)
 
+    // Cada pagamento com o nome do caixa da web e a maquininha com o nome que está na web hoje (10/10/2026). Antes ia o nome do
+    // PDV ("Cartão de Crédito", "Vale Refeição (VR/Sodexo/Alelo)") e a conferência, que procura pelos nomes da web, não achava a
+    // taxa nem o prazo de recebimento da maquininha.
+    const identificadores = new Map<string, string>()
+    const maquininhas = new Map<string, string>()
+    const metodoDoPagamento = new WeakMap<object, string>()
+    for (const sale of sales) {
+        for (const pay of sale.Payments) {
+            if (pay.IdentificadorUuid) identificadores.set(pay.IdentificadorUuid, '')
+            if (pay.PosMachineUuid) maquininhas.set(pay.PosMachineUuid, '')
+        }
+    }
+    if (identificadores.size > 0) {
+        for (const i of await prisma.paymentIdentifier.findMany({ where: { id: { in: [...identificadores.keys()] } }, select: { id: true, name: true } })) {
+            identificadores.set(i.id, i.name)
+        }
+    }
+    if (maquininhas.size > 0) {
+        for (const m of await prisma.pOSMachine.findMany({ where: { id: { in: [...maquininhas.keys()] } }, select: { id: true, name: true } })) {
+            maquininhas.set(m.id, m.name)
+        }
+    }
+    for (const sale of sales) {
+        for (const pay of sale.Payments) {
+            const nomeDoIdentificador = pay.IdentificadorUuid ? identificadores.get(pay.IdentificadorUuid) : null
+            const nomeDaMaquininha = pay.PosMachineUuid ? maquininhas.get(pay.PosMachineUuid) : null
+            metodoDoPagamento.set(pay, metodoNaConferencia(pay, nomeDoIdentificador))
+            if (nomeDaMaquininha) pay.PosMachineName = nomeDaMaquininha
+        }
+    }
+
     try {
         await prisma.$transaction(async (tx) => {
         for (const sale of sales) {
@@ -89,7 +126,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 : null
 
             // 2. O que a venda muda: lançamentos (um por pagamento), valores/status e itens novos.
-            const desiredEntries = buildSaleEntries(sale.Uuid, sale.Origin, sale.Status, sale.Payments)
+            const desiredEntries = buildSaleEntries(sale.Uuid, sale.Origin, sale.Status,
+                sale.Payments.map(p => ({ Method: metodoDoPagamento.get(p) ?? p.Method, Amount: p.Amount })))
             const storedEntries = session && targetSessionId
                 ? await tx.cashierEntry.findMany({
                     where: {

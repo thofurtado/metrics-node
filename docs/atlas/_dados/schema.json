@@ -1,19 +1,19 @@
 {
- "gerado_em": "2026-10-10T10:18:01",
+ "gerado_em": "2026-10-10T12:58:45",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "d832e57 2026-10-10",
+   "versao": "90a34eb 2026-10-10",
    "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "fc6b03c 2026-10-10",
+   "versao": "c5bb994 2026-10-10",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "c0e226b 2026-10-10",
+   "versao": "c9e7cca 2026-10-10",
    "tabelas": 42
   }
  },
@@ -12919,6 +12919,17 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Categorias",
+     "coluna": "categorias",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,

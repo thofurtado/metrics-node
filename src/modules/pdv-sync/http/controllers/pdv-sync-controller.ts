@@ -5,6 +5,7 @@ import type { StockReason } from '@prisma/client'
 import { splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
 import { funcionarioEntraNoPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
+import { categoriasDaMaquininha, tipoDoIdentificador } from '../../services/pagamentos-do-pdv'
 import { hash } from 'bcryptjs'
 import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
 import { randomBytes } from 'node:crypto'
@@ -452,11 +453,15 @@ export async function getPaymentsSync(request: FastifyRequest, reply: FastifyRep
 
 export async function getPaymentIdentifiersSync(request: FastifyRequest, reply: FastifyReply) {
     const identifiers = await prisma.paymentIdentifier.findMany({ where: { active: true } })
+    // "Type" no formato do PDV (10/10/2026): o PDV lê o tipo por esse campo, que não vinha, e os identificadores da web
+    // chegavam vazios e nunca apareciam no PDV. Nome sem espaço sobrando ("Correntista " na Katatau).
     const formatted = identifiers.map(i => ({
         Uuid: i.id,
-        Name: i.name,
+        Name: i.name.trim(),
+        Type: tipoDoIdentificador(i),
         IsCorrentistaDebt: i.is_correntista_debt,
         IsStockEvasion: i.is_stock_evasion,
+        PaymentMethodId: i.payment_method_id,
         Active: i.active,
         CreatedAt: i.created_at
     }))
@@ -476,12 +481,15 @@ export async function getPaymentConditionsSync(request: FastifyRequest, reply: F
 }
 
 export async function getPOSMachinesSync(request: FastifyRequest, reply: FastifyReply) {
-    const machines = await prisma.pOSMachine.findMany({ where: { active: true } })
+    const machines = await prisma.pOSMachine.findMany({ where: { active: true }, include: { rates: { select: { payment_category: true } } } })
+    // O que cada maquininha aceita, pelas taxas cadastradas na web (10/10/2026): o PDV só pergunta pelas maquininhas daquela
+    // forma (e escolhe sozinho quando só uma aceita). Sem taxa cadastrada = vale para todo cartão, como antes.
     const formatted = machines.map(m => ({
         Uuid: m.id,
         Name: m.name,
         AccountId: m.account_id,
         Active: m.active,
+        Categorias: categoriasDaMaquininha(m.rates),
         CreatedAt: m.created_at
     }))
     return reply.status(200).send(formatted)

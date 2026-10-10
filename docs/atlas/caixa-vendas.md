@@ -110,6 +110,24 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs (ConfirmarMovimentoAsync)`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs`, `metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (movementEntryType)`, `metrics-node/src/modules/pdv-sync/http/controllers/cashier-sync-controller.ts`
 
+### Formas, identificadores e maquininhas: cadastro só na web, o PDV espelha (`regra-cadastros-so-na-web`)
+- **Regra:** Formas de pagamento (Configurações > Financeiro > Formas de Pagamento), identificadores (Caixa & Pagamentos > Identificadores) e maquininhas (Caixa & Pagamentos > Maquininhas & Taxas) são cadastrados só na web. O PDV mostra em Configurações só para consulta; a cada sincronia, o que não veio da web fica desativado no PDV. As formas e identificadores que o PDV cria sozinho só valem antes da primeira vinda da nuvem (configuração financeiro.nuvem). Cada maquininha leva o que aceita (pelas taxas da web: crédito, débito, Pix, vale) e o Pagamento só pergunta pelas maquininhas da forma (sem taxa = todo cartão).
+- **Por que é assim:** Pedido do Thomás de 10/10/2026 ("a sincronia deve ser orgânica entre o PDV e o backend") e decisão no mesmo dia: só na web. Antes o PDV renomeava "A Prazo (Correntista)" para "A Prazo" a cada abertura, o desativado na web continuava no PDV, o criado no PDV nunca chegava à nuvem e os identificadores chegavam sem tipo.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/CadastrosDaNuvem.cs`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncFinancialConfigAsync)`, `Metrics.PDV/Metrics.PDV/App.xaml.cs`, `metrics-node/src/modules/pdv-sync/services/pagamentos-do-pdv.ts`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts`
+
+### A forma A Prazo pergunta de quem (identificadores da web) (`regra-a-prazo-de-quem`)
+- **Regra:** No Pagamento do PDV, escolher A Prazo abre "de quem?" com os identificadores a prazo da web (ex.: Correntista, Funcionário, Permuta; Enter escolhe o 1º). Funcionário pede o funcionário do RH e vira consumo (a venda inteira, vale na conferência); os outros pedem o cliente (conta do cliente). A tecla da forma de novo troca. Sem identificadores cadastrados, pede o cliente direto. Cortesia e pró-labore (evasão) não aparecem (decisão de 28/09).
+- **Por que é assim:** Decisão do Thomás de 10/10/2026: uma forma "A Prazo" que pergunta de quem. Na Katatau o consumo é o identificador Funcionário, e o PDV só fazia consumo com uma forma de nome "funcionário", que lá não existe.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs (EscolherDeQuem)`, `Metrics.PDV/Metrics.Shared/Helpers/FormaPagamentoTipo.cs (EhConsumo)`
+
+### A venda do PDV chega à conferência com os nomes do caixa da web (`regra-venda-com-nomes-da-web`)
+- **Regra:** Cada pagamento sobe com a categoria, o identificador e a maquininha pelos códigos da web. A nuvem grava o lançamento com o nome do caixa da web (Dinheiro, PIX, Débito, Crédito, Voucher, ou o identificador: Correntista, Funcionário, Permuta) e o nome atual da maquininha. A conferência acha a taxa e o prazo pela categoria (CRÉDITO = CREDIT = Cartão de Crédito; VOUCHER = Vale Refeição).
+- **Por que é assim:** Antes ia o nome do PDV ("Vale Refeição (VR/Sodexo/Alelo)") e a conferência não achava a taxa de vale nem o prazo D+30; a taxa cadastrada em inglês (CREDIT) nunca casava.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs`
+
 ## Funções de Negócio
 
 ### `AbrirTurnoCaixa`

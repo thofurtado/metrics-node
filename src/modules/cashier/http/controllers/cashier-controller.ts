@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { z } from 'zod'
 import { isTermPayment, saleEntryTag } from '@/modules/pdv-sync/services/cashier-sync-rules'
+import { categoriaDeCartao } from '@/modules/pdv-sync/services/pagamentos-do-pdv'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
@@ -703,10 +704,14 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             
             let taxPercentage = 0
             
-            // Tenta achar a taxa que case com o tipo (crédito/débito)
+            // Tenta achar a taxa que case com o tipo (crédito/débito/Pix/vale). Desde 10/10/2026 pela categoria: antes era o texto,
+            // e "vale refeição (vr/sodexo/alelo)" não achava "VOUCHER" nem "crédito" achava "CREDIT" (taxa zero e prazo errado).
             if (matchedMachine && matchedMachine.rates.length > 0) {
                 const normPayment = normalizeString(paymentMethodRaw)
-                const rate = matchedMachine.rates.find(r => normalizeString(r.payment_category).includes(normPayment))
+                const categoria = categoriaDeCartao(paymentMethodRaw)
+                const daCategoria = categoria ? matchedMachine.rates.filter(r => categoriaDeCartao(r.payment_category) === categoria) : []
+                const rate = daCategoria.find(r => (r.installments ?? 1) <= 1) ?? daCategoria[0]
+                    ?? matchedMachine.rates.find(r => normalizeString(r.payment_category).includes(normPayment))
                 if (rate) {
                     settlementDays = rate.settlement_days
                     taxPercentage = rate.tax_percentage
