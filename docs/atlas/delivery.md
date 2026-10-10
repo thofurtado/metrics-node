@@ -91,10 +91,10 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Frequência:** conexão sempre aberta; se cair, tenta de novo a cada 5 s
 - **Onde roda:** PDV aberto no computador servidor da loja → `Nuvem: /api/pdv/orders/stream`
 - **Quantos:** 1 por PDV servidor (protegido contra duplicar)
-- **A cada vez:** Ao conectar, a nuvem consulta os pendentes e manda um aviso por pedido. Depois só avisa pedido novo, mudança de status e exclusão.
+- **A cada vez:** Ao conectar, a nuvem consulta os pendentes e manda um aviso por pedido, no mesmo formato da lista de pendentes (pedido-online-dto.ts: bairro, cidade, CEP, taxa de entrega, troco, endereço do próprio pedido e nome do produto). Até a nuvem 2.6.107.0 esse reenvio tinha formato próprio, sem bairro e sem taxa: o PDV que ligava com pedido pendente gravava a taxa de entrega zerada e o aviso dizia "Bairro não informado" (09/10/2026). Depois só avisa pedido novo, mudança de status e exclusão.
 - **Por que existe:** É o "tempo real" do delivery: o pedido do cardápio, do iFood e da 99 aparece no PDV na hora, sem perguntar sem parar.
 - **Se espaçar:** Não se aplica: é uma conexão parada. É ela que permite espaçar o vigia de 5 s.
-- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:146`, `metrics-node/src/modules/public/http/controllers/orders-stream.ts:34`
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:146`, `metrics-node/src/modules/public/http/controllers/orders-stream.ts:34`, `metrics-node/src/modules/public/http/controllers/pedido-online-dto.ts`
 
 ## Tabelas e Estrutura de Dados
 

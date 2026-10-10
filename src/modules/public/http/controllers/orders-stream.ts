@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { requestContext } from '@fastify/request-context'
 import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
+import { montarPedidosOnline } from './pedido-online-dto'
 
 export async function ordersStream(request: FastifyRequest, reply: FastifyReply) {
     // O banco da loja vem do gancho de toda requisição (domínio, x-tenant-domain ou ?tenant=). Os avisos são mandados
@@ -50,39 +51,9 @@ export async function ordersStream(request: FastifyRequest, reply: FastifyReply)
                 }
             })
 
-            const clientIds = pendingPedidos.map(p => p.cliente_id).filter(Boolean) as string[];
-            const clients = await prisma.client.findMany({
-                where: { id: { in: clientIds } },
-                include: { addresses: true }
-            });
-            const clientMap = new Map(clients.map(c => [c.id, c]));
-
-            for (const p of pendingPedidos) {
-                const client = p.cliente_id ? clientMap.get(p.cliente_id) : null;
-                const address = client?.addresses?.[0]
-                    ? `${client.addresses[0].street}, ${client.addresses[0].number} - ${client.addresses[0].neighborhood}`
-                    : '';
-
-                const orderDto = {
-                    id: p.uuid,
-                    display_id: p.display_id,
-                    client_name: client?.name || 'Cliente',
-                    client_phone: client?.phone || '',
-                    client_document: p.cpf_na_nota || null,
-                    address: address,
-                    total_amount: p.valor_final,
-                    observations: p.observacao || '',
-                    created_at: p.data_abertura,
-                    items: p.itens.map(i => ({
-                        id: i.uuid,
-                        product_id: i.produto_id,
-                        name: i.observacao || 'Item',
-                        quantity: i.quantidade,
-                        price: i.valor_unitario,
-                        observation: i.observacao
-                    }))
-                }
-
+            // Mesmo formato da lista de pendentes (bairro, taxa de entrega, endereço do pedido, nome do produto). Antes ia um
+            // formato próprio sem bairro e sem taxa, e o PDV que ligava gravava o pedido com a taxa zerada (09/10/2026).
+            for (const orderDto of await montarPedidosOnline(prisma, pendingPedidos)) {
                 reply.raw.write(`event: new_order\ndata: ${JSON.stringify(orderDto)}\n\n`)
             }
         } catch (err) {
