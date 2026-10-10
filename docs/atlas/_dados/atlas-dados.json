@@ -847,6 +847,63 @@
       "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs",
       "Metrics.PDV/Metrics.PDV/Views/LancamentoProdutosWindow.xaml.cs"
      ]
+    },
+    {
+     "id": "regra-tipo-do-pagamento",
+     "titulo": "Cada pagamento da venda do PDV diz se é fiado ou consumo de funcionário",
+     "regra": "O PDV manda em cada pagamento o tipo: PRAZO (fiado: forma de categoria Crédito da loja ou com prazo, correntista, permuta ou fiado no nome), FUNCIONARIO (consumo: funcionário, funcionario ou colaborador no nome) ou NENHUM. A nuvem usa o tipo do PDV; para o PDV antigo, os mesmos nomes. O cliente só vai no lançamento do caixa quando o pagamento é fiado.",
+     "porque": "Antes a nuvem adivinhava pelo nome (sem a permuta, que o PDV tratava como fiado) e punha o cliente da venda em TODOS os pagamentos: na conferência, o Pix ou o dinheiro de uma venda com cliente identificado virava \"a prazo\" desse cliente.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs (TipoDoPagamento)",
+      "Metrics.PDV/Metrics.Shared/Helpers/FormaPagamentoTipo.cs",
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (paymentKind)",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts"
+     ]
+    },
+    {
+     "id": "regra-fiado-na-conta-do-cliente",
+     "titulo": "O fiado do PDV fica na conta do cliente, e a conta acompanha a venda",
+     "regra": "A venda a prazo abre a conta do cliente na nuvem (client_tabs, \"Venda a Prazo - Pedido #xxxxxxxx\"). Troca de pagamento muda o valor ou o cliente; cancelamento tira a parte não paga; parte já paga nunca é mexida. A conferência do caixa NÃO cria outra receita a prazo para esse fiado. Em Financeiro > Clientes a Prazo a conta aparece e a baixa a quita (inteira, parcial ou por permuta); o PDV mostra o saldo novo na sincronia seguinte. O painel do financeiro soma as contas abertas no \"a receber\" (vencimento: 30 dias depois da venda).",
+     "porque": "Decisão do Thomás de 25/09/2026: o registro oficial do fiado é a conta do cliente; o financeiro lê o a receber dessas contas. Até 10/10 a conta só era criada: a conferência criava outra receita, a baixa da web não chegava ao PDV e venda cancelada continuava devendo.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (desiredClientTabs, planClientTabs)",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts (postCancellationsSync)",
+      "metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)",
+      "metrics-node/src/modules/financial/services/conta-do-cliente.ts",
+      "metrics-node/src/modules/financial/http/controllers/settlements.ts",
+      "metrics-node/src/modules/financial/http/controllers/settle-term-debt.ts"
+     ]
+    },
+    {
+     "id": "regra-consumo-vira-vale-na-conferencia",
+     "titulo": "Consumo de funcionário vira vale num lugar só: a conferência do caixa",
+     "regra": "A venda do PDV paga com consumo de funcionário leva o funcionário do RH no lançamento do caixa (a nuvem aceita o id do funcionário ou o do usuário do sistema ligado a um). Ao conferir o caixa na web, o vale é lançado no RH; desfazer a conferência tira o vale. Venda cancelada antes da conferência some do caixa e não vira vale.",
+     "porque": "Antes o vale nascia quando a venda subia e de novo na conferência: o funcionário seria descontado em dobro, e a venda cancelada continuava como vale.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts",
+      "metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)"
+     ]
+    },
+    {
+     "id": "regra-movimentos-do-pdv-na-conferencia",
+     "titulo": "Sangria e vale do PDV chegam à conferência com o tipo certo",
+     "regra": "Sangria do PDV = recolhimento (cofre ou dono), nunca despesa. Vale = saída para funcionário, com o funcionário do RH escolhido no PDV (nada vem marcado; sem escolher, não grava). Dois toques em Confirmar gravam uma vez só.",
+     "porque": "Decisões do Thomás de 25/09/2026 (sangria = recolhimento; vale com o funcionário do RH). Antes a sangria com observação virava despesa na conferência, e o vale ia só com o nome no texto: a conferência do caixa inteiro parava com \"vale sem funcionário selecionado\".",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs (ConfirmarMovimentoAsync)",
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs",
+      "metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (movementEntryType)",
+      "metrics-node/src/modules/pdv-sync/http/controllers/cashier-sync-controller.ts"
+     ]
     }
    ],
    "funcoes": [
@@ -1612,6 +1669,20 @@
       "Metrics.Sync/Services/EnvioDeClientes.cs:92",
       "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:163"
      ]
+    },
+    {
+     "id": "regra-clientes-no-pdv",
+     "titulo": "Clientes da nuvem no PDV: telefone pode faltar ou repetir",
+     "regra": "No PDV o telefone do cliente não é único (cliente sem telefone fica com o telefone vazio; família pode repetir o telefone). O cliente da nuvem é achado pelo código; pelo telefone só quando o cliente do PDV não é outro cliente da nuvem. O limite de crédito do PDV não é apagado (a nuvem não guarda limite). O saldo do fiado = contas abertas na nuvem + fiado das vendas deste PDV que ainda não subiram. Cadastro mudado no PDV e ainda não enviado não é sobrescrito. Os clientes descem depois das vendas e dos cancelamentos. No cadastro rápido do PDV só o nome é obrigatório.",
+     "porque": "Katatau, 10/10/2026: os 29 clientes da nuvem não têm telefone; com o telefone único, o 2º cliente sem telefone derrubava a gravação e a sincronia dos clientes parava ali a cada ciclo (o PDV não trazia os clientes). Decisão de 28/09: cliente pode ser cadastrado sem telefone.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/ClientesDaNuvem.cs",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (BaixarClientesAsync)",
+      "Metrics.PDV/Metrics.Shared/Data/DatabaseBootstrapper.cs (SqlFuncionariosDoRhETelefone)",
+      "Metrics.PDV/Metrics.PDV/Views/ModalClienteWindow.xaml.cs"
+     ]
     }
    ],
    "funcoes": [],
@@ -1621,10 +1692,10 @@
      "nome": "Clientes (PDV)",
      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
      "chama": "Nuvem: GET /api/pdv/clients",
-     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira",
+     "frequencia": "a cada 5 min (sincronia geral do PDV), sempre a lista inteira, depois das vendas e dos cancelamentos",
      "segundos": 300,
      "quantos": "1 por loja",
-     "faz": "A tabela inteira de clientes com endereços e fiados, toda vez; cresce com a base. O PDV ainda faz 1 consulta local por cliente.",
+     "faz": "A tabela inteira de clientes com endereços e saldo do fiado, toda vez; cresce com a base. Desde a 2.5.23.0 o PDV lê os clientes locais de uma vez e grava uma vez só no fim (antes eram uma consulta por cliente e uma gravação por cliente novo).",
      "porque": "Cliente cadastrado na web ou no cardápio aparece no PDV (delivery, fiado).",
      "situacao": "excessivo",
      "proposta": "Usar o carimbo de mudança de clientes que /sync/status já devolve.",
@@ -2698,10 +2769,26 @@
     }
    ],
    "pendencias": [
-    "A maquininha usada na venda do PDV não chega ao lançamento do caixa (sem taxa e sem banco na conferência)."
+    "Desfazer a baixa (Recebidos > reverter) de um acerto de conta do cliente não reabre a conta: a receita volta a pendente sozinha (10/10/2026)."
    ],
    "paraQueServe": "Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.",
-   "regras": [],
+   "regras": [
+    {
+     "id": "regra-clientes-a-prazo-le-a-conta",
+     "titulo": "Clientes a Prazo mostra e dá baixa na conta do cliente (fiado do PDV)",
+     "regra": "A lista Clientes a Prazo traz, junto com as receitas a prazo e os vales, as contas abertas dos clientes (id \"tab-...\", com o nome do cliente). A baixa quita a conta: inteira (receita confirmada na conta escolhida, \"Acerto A Prazo - cliente - ...\"), parcial (a conta vira paga com o valor recebido e o saldo fica numa conta aberta da mesma venda) ou por permuta (quita sem dinheiro). O painel soma as contas abertas no a receber do mês (vencimento 30 dias depois da venda) e no a receber vencido.",
+     "porque": "Decisão do Thomás de 25/09/2026: o financeiro lê o total a receber das contas dos clientes. Antes a tela não via as contas e a baixa não chegava ao saldo que o PDV mostra.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/financial/services/conta-do-cliente.ts",
+      "metrics-node/src/modules/financial/http/controllers/settlements.ts",
+      "metrics-node/src/modules/financial/http/controllers/settle-term-debt.ts",
+      "metrics-node/src/modules/financial/repositories/prisma/prisma-transactions-repository.ts",
+      "metrics-node/src/modules/financial/http/controllers/get-operational-summary.ts"
+     ]
+    }
+   ],
    "funcoes": [],
    "trabalhos": [
     {
@@ -3508,6 +3595,20 @@
       "metrics-node/src/modules/hr/ponto/apuracao.ts",
       "metrics-node/src/modules/hr/ponto/regra.ts"
      ]
+    },
+    {
+     "id": "regra-funcionarios-no-consumo-e-vale",
+     "titulo": "Consumo e vale no PDV usam todos os funcionários ativos do RH",
+     "regra": "A nuvem manda ao PDV todos os funcionários ativos do RH: quem tem grupo com acesso entra no PDV ou no app pelo PIN, como antes; quem não tem vai sem PIN e sem acesso, só para ser escolhido no consumo e no vale. O usuário do sistema ligado a um funcionário vai marcado como funcionário. No PDV a lista do consumo e do vale tem só esses (marca funcionario_rh); o administrador que não é funcionário não aparece.",
+     "porque": "Decisão do Thomás de 25/09/2026: vale e consumo usam os funcionários do RH, a mesma lista da web. Até 10/10 iam só os do grupo com acesso: na Katatau nenhum dos 9 funcionários chegava, a lista só tinha os 2 administradores e a nuvem recusava a venda.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/services/equipe-do-pdv.ts (funcionarioParaConsumo)",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts (getUsersSync)",
+      "Metrics.PDV/Metrics.Shared/Services/FuncionariosDoRh.cs",
+      "Metrics.PDV/Metrics.Shared/Services/UsuariosDaNuvem.cs"
+     ]
     }
    ],
    "funcoes": [],
@@ -3814,21 +3915,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-10T09:34:57",
+  "gerado_em": "2026-10-10T10:18:01",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "ead9085 2026-10-10",
+    "versao": "d832e57 2026-10-10",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "cda1a9d 2026-10-10",
+    "versao": "fc6b03c 2026-10-10",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "41bc328 2026-10-10",
+    "versao": "c0e226b 2026-10-10",
     "tabelas": 42
    }
   },
@@ -14437,6 +14538,17 @@
       "unico": false,
       "padrao": null,
       "comentario": null
+     },
+     {
+      "nome": "ColaboradorId",
+      "coluna": "colaborador_id",
+      "tipo": "Guid",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
      }
     ],
     "relacoes": [
@@ -19414,6 +19526,17 @@
      {
       "nome": "PodeAppGarcom",
       "coluna": "pode_app_garcom",
+      "tipo": "bool",
+      "enum": false,
+      "opcional": false,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "FuncionarioRh",
+      "coluna": "funcionario_rh",
       "tipo": "bool",
       "enum": false,
       "opcional": false,

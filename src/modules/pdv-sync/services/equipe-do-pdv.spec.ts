@@ -4,7 +4,9 @@ import {
     chaveDoGrupo,
     emailDoFuncionario,
     funcionarioEntraNoPdv,
+    funcionarioParaConsumo,
     funcionarioParaPdv,
+    funcionarioSoParaConsumo,
     normalizarNomeDoGrupo,
     usuarioParaPdv,
     type FuncionarioComGrupo,
@@ -67,6 +69,31 @@ describe('equipe que entra no PDV e no app do garçom', () => {
         expect(garcom).toMatchObject({ Role: 'MEMBER', Origem: 'FUNCIONARIO', Grupo: 'Garçom', PodePdv: false, PodeAppGarcom: true })
         const caixa = await funcionarioParaPdv(funcionario({ group: { name: 'Caixa', can_use_waiter_app: true, can_use_pdv: true } }), proteger, () => 's')
         expect(caixa).toMatchObject({ Role: 'CASHIER', PodePdv: true, PodeAppGarcom: true })
+    })
+
+    it('consumo e vale (10/10/2026): todo funcionário ativo vai, quem não entra em nada vai sem PIN e sem acesso', async () => {
+        // Katatau: os 9 funcionários estão num grupo sem acesso; antes nenhum chegava ao PDV
+        const balconista = funcionario({ group: { name: 'Balconista', can_use_waiter_app: false, can_use_pdv: false } })
+        expect(funcionarioEntraNoPdv(balconista)).toBe(false)
+        expect(funcionarioSoParaConsumo(balconista)).toBe(true)
+        const p = await funcionarioParaConsumo(balconista, proteger, () => 'segredo')
+        expect(p).toMatchObject({ Uuid: balconista.id, Origem: 'FUNCIONARIO', Grupo: 'Balconista', PinHash: null, PodePdv: false, PodeAppGarcom: false, Role: 'MEMBER', FuncionarioRh: true })
+        expect(await compare('', p.PasswordHash)).toBe(false)
+
+        // Sem grupo ou com PIN fora do padrão também vai (só para o consumo)
+        expect(funcionarioSoParaConsumo(funcionario({ group: null }))).toBe(true)
+        expect(funcionarioSoParaConsumo(funcionario({ pin: '12' }))).toBe(true)
+        // Quem entra no PDV vai pelo caminho de sempre; inativo e ligado a usuário não vão
+        expect(funcionarioSoParaConsumo(funcionario())).toBe(false)
+        expect(funcionarioSoParaConsumo(funcionario({ isRegistered: false }))).toBe(false)
+        expect(funcionarioSoParaConsumo(funcionario({ user_id: 'u1' }))).toBe(false)
+        expect((await funcionarioParaPdv(funcionario(), proteger, () => 's')).FuncionarioRh).toBe(true)
+    })
+
+    it('usuário do sistema ligado a um funcionário vai marcado para o consumo; os outros, não', () => {
+        const u = { id: 'u1', name: 'Gerente', email: 'g@loja.com', password_hash: '$2a$x', pin_hash: null, role: 'ADMIN', created_at: criadoEm }
+        expect(usuarioParaPdv(u).FuncionarioRh).toBe(false)
+        expect(usuarioParaPdv(u, true).FuncionarioRh).toBe(true)
     })
 
     it('nome do grupo sem espaços sobrando', () => {

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
 import { splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
-import { funcionarioEntraNoPdv, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
+import { funcionarioEntraNoPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { hash } from 'bcryptjs'
 import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
 import { randomBytes } from 'node:crypto'
@@ -97,22 +97,41 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
         }
     })
 
-    const formatted = users.map(usuarioParaPdv)
-
     // Funcionários do RH que o grupo libera para o PDV e/ou o app do garçom (etapa 1.5, 06/10/2026). Só para o PDV que
     // pede (2.5.8 em diante): o PDV antigo não sabe separar "só o app do garçom" e mostraria o garçom no login do caixa.
+    // Desde 10/10/2026 vão TODOS os funcionários ativos: quem não entra em nada vai sem PIN e sem acesso, só para o consumo e
+    // o vale (decisão de 25/09: a mesma lista do RH da web); o usuário ligado a um funcionário vai marcado como funcionário.
     const { incluirFuncionarios } = (request.query ?? {}) as { incluirFuncionarios?: string }
+    let usuariosFuncionarios = new Set<string>()
+    if (incluirFuncionarios === '1') {
+        try {
+            const ligados = await prisma.employee.findMany({
+                where: { isRegistered: true, user_id: { not: null } },
+                select: { user_id: true },
+            })
+            usuariosFuncionarios = new Set(ligados.map(l => l.user_id!))
+        } catch (err) {
+            request.log.warn({ err }, '[pdv-sync] usuários ligados a funcionários não lidos')
+        }
+    }
+
+    const formatted = users.map(u => usuarioParaPdv(u, usuariosFuncionarios.has(u.id)))
+
     if (incluirFuncionarios === '1') {
         try {
             const funcionarios = await prisma.employee.findMany({
-                where: { isRegistered: true, user_id: null, group: { OR: [{ can_use_pdv: true }, { can_use_waiter_app: true }] } },
+                where: { isRegistered: true, user_id: null },
                 select: {
                     id: true, name: true, pin: true, isRegistered: true, user_id: true, created_at: true,
                     group: { select: { name: true, can_use_waiter_app: true, can_use_pdv: true } },
                 },
             })
-            for (const f of funcionarios.filter(funcionarioEntraNoPdv)) {
-                formatted.push(await funcionarioParaPdv(f, (texto) => hash(texto, 6), () => randomBytes(24).toString('hex')))
+            const protegerTexto = (texto: string) => hash(texto, 6)
+            const segredoAleatorio = () => randomBytes(24).toString('hex')
+            for (const f of funcionarios) {
+                formatted.push(funcionarioEntraNoPdv(f)
+                    ? await funcionarioParaPdv(f, protegerTexto, segredoAleatorio)
+                    : await funcionarioParaConsumo(f, protegerTexto, segredoAleatorio))
             }
         } catch (err) {
             // Banco desta loja ainda sem os grupos (sincronização pendente no SaaS Admin): vão só os usuários, como antes
@@ -182,6 +201,11 @@ export async function postClientsSync(request: FastifyRequest, reply: FastifyRep
     )
 
     const parsedClients = clientsSchema.parse(request.body)
+    // Telefone de mentira ("00000000000", que o PDV antigo grava no cliente sem telefone) vira "sem telefone" (10/10/2026)
+    const telefoneDeVerdade = (fone: string | null | undefined) => {
+        const digitos = (fone ?? '').replace(/\D/g, '')
+        return digitos.length > 0 && !/^0+$/.test(digitos) ? fone!.trim() : null
+    }
 
     for (const c of parsedClients) {
         // Upsert no client
@@ -191,14 +215,14 @@ export async function postClientsSync(request: FastifyRequest, reply: FastifyRep
                 name: c.Name,
                 identification: c.Identification || null,
                 email: c.Email || null,
-                phone: c.Phone || null
+                phone: telefoneDeVerdade(c.Phone)
             },
             create: {
                 id: c.Uuid,
                 name: c.Name,
                 identification: c.Identification || null,
                 email: c.Email || null,
-                phone: c.Phone || null,
+                phone: telefoneDeVerdade(c.Phone),
                 created_at: c.CreatedAt ? new Date(c.CreatedAt) : new Date()
             }
         })
@@ -812,6 +836,15 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                             source: 'PDV',
                             OR: [{ sale_id: canc.PedidoUuid }, { identification: { contains: saleEntryTag(canc.PedidoUuid) } }],
                         }
+                    }),
+                    // Fiado da venda cancelada sai da conta do cliente (10/10/2026; a parte já paga fica). Antes o cliente
+                    // continuava devendo na nuvem e o saldo voltava ao PDV na sincronia seguinte.
+                    prisma.clientTab.deleteMany({
+                        where: { is_paid: false, description: { contains: saleEntryTag(canc.PedidoUuid) } }
+                    }),
+                    // Vale de consumo criado pela venda nas versões até 2.6.107 (hoje o vale nasce só na conferência)
+                    prisma.payrollEntry.deleteMany({
+                        where: { status: 'PENDING', description: { startsWith: `Consumo PDV - ${saleEntryTag(canc.PedidoUuid)}` } }
                     }),
                 ])
 

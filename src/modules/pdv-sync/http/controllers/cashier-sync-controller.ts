@@ -9,6 +9,8 @@ import {
     SyncRejection,
     acceptsChanges,
     isPlaceholderFromClose,
+    movementEntryType,
+    movementIdentification,
     normalizeCounted,
     shouldApplyClose,
     terminalToStore,
@@ -163,6 +165,8 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
         data_transacao: z.string().optional(),
         observacao: z.string().optional().nullable(),
         payment_method: z.string().optional().default('Dinheiro'),
+        // Funcionário do vale (PDV 2.5.23 em diante): o funcionário do RH ou o usuário ligado a um
+        employee_id: z.string().uuid().optional().nullable(),
     }))
 
     const movements = movementsSchema.parse(request.body)
@@ -199,31 +203,23 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
                 continue
             }
 
-            const tipoLower = (mov.tipo || '').toLowerCase()
-            const isSangria = tipoLower.includes('sangria')
-            const isSuprimento = tipoLower.includes('suprimento') || tipoLower.includes('sobracaixa')
-            const isDespesa = tipoLower.includes('saidaoperacional') || tipoLower.includes('vale') || tipoLower.includes('despesa')
-
-            let entryType = 'WITHDRAWAL'
-            let isWithdrawal = true
-            let isAddition = false
-
-            if (isSuprimento) {
-                entryType = 'ADDITION'
-                isWithdrawal = false
-                isAddition = true
-            } else if (isDespesa) {
-                entryType = 'EXPENSE'
-                isWithdrawal = true
-                isAddition = false
-            } else if (isSangria) {
-                entryType = 'WITHDRAWAL'
-                isWithdrawal = true
-                isAddition = false
-            }
-
-            const ident = mov.observacao ? `${mov.tipo}: ${mov.observacao}` : mov.tipo
+            // Os mesmos tipos da conferência da web (10/10/2026): sangria do PDV = recolhimento (decisão de 25/09), vale = saída
+            // para funcionário. Antes a sangria com observação virava despesa na conferência e o vale ia sem o funcionário,
+            // o que parava a conferência do caixa inteiro ("vale sem funcionário selecionado").
+            const { type: entryType, is_withdrawal: isWithdrawal, is_addition: isAddition } = movementEntryType(mov.tipo)
+            const ident = movementIdentification(mov.tipo, mov.observacao)
             const createdAt = mov.data_transacao ? new Date(mov.data_transacao) : new Date()
+
+            // Funcionário do vale: pelo id do RH ou pelo usuário ligado a um funcionário. Desconhecido fica sem funcionário
+            // (a conferência pede para escolher), em vez de recusar o movimento e deixar a gaveta sem a saída.
+            let employeeId: string | null = null
+            if (mov.employee_id) {
+                const employee = await tx.employee.findFirst({
+                    where: { OR: [{ id: mov.employee_id }, { user_id: mov.employee_id }] },
+                    select: { id: true },
+                })
+                employeeId = employee?.id ?? null
+            }
 
             await tx.cashierEntry.upsert({
                 where: { id: mov.uuid },
@@ -234,6 +230,8 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
                     is_addition: isAddition,
                     type: entryType,
                     identification: ident,
+                    // PDV antigo não manda: não apaga o funcionário que alguém escolheu na web
+                    ...(employeeId ? { employee_id: employeeId } : {}),
                 },
                 create: {
                     id: mov.uuid,
@@ -245,6 +243,7 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
                     is_checked: false,
                     type: entryType,
                     identification: ident,
+                    employee_id: employeeId,
                     created_at: createdAt,
                 }
             })

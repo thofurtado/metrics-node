@@ -86,6 +86,30 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/EtiquetaDeBalanca.cs`, `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs`, `Metrics.PDV/Metrics.PDV/Views/LancamentoProdutosWindow.xaml.cs`
 
+### Cada pagamento da venda do PDV diz se é fiado ou consumo de funcionário (`regra-tipo-do-pagamento`)
+- **Regra:** O PDV manda em cada pagamento o tipo: PRAZO (fiado: forma de categoria Crédito da loja ou com prazo, correntista, permuta ou fiado no nome), FUNCIONARIO (consumo: funcionário, funcionario ou colaborador no nome) ou NENHUM. A nuvem usa o tipo do PDV; para o PDV antigo, os mesmos nomes. O cliente só vai no lançamento do caixa quando o pagamento é fiado.
+- **Por que é assim:** Antes a nuvem adivinhava pelo nome (sem a permuta, que o PDV tratava como fiado) e punha o cliente da venda em TODOS os pagamentos: na conferência, o Pix ou o dinheiro de uma venda com cliente identificado virava "a prazo" desse cliente.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs (TipoDoPagamento)`, `Metrics.PDV/Metrics.Shared/Helpers/FormaPagamentoTipo.cs`, `metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (paymentKind)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`
+
+### O fiado do PDV fica na conta do cliente, e a conta acompanha a venda (`regra-fiado-na-conta-do-cliente`)
+- **Regra:** A venda a prazo abre a conta do cliente na nuvem (client_tabs, "Venda a Prazo - Pedido #xxxxxxxx"). Troca de pagamento muda o valor ou o cliente; cancelamento tira a parte não paga; parte já paga nunca é mexida. A conferência do caixa NÃO cria outra receita a prazo para esse fiado. Em Financeiro > Clientes a Prazo a conta aparece e a baixa a quita (inteira, parcial ou por permuta); o PDV mostra o saldo novo na sincronia seguinte. O painel do financeiro soma as contas abertas no "a receber" (vencimento: 30 dias depois da venda).
+- **Por que é assim:** Decisão do Thomás de 25/09/2026: o registro oficial do fiado é a conta do cliente; o financeiro lê o a receber dessas contas. Até 10/10 a conta só era criada: a conferência criava outra receita, a baixa da web não chegava ao PDV e venda cancelada continuava devendo.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (desiredClientTabs, planClientTabs)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts (postCancellationsSync)`, `metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)`, `metrics-node/src/modules/financial/services/conta-do-cliente.ts`, `metrics-node/src/modules/financial/http/controllers/settlements.ts`, `metrics-node/src/modules/financial/http/controllers/settle-term-debt.ts`
+
+### Consumo de funcionário vira vale num lugar só: a conferência do caixa (`regra-consumo-vira-vale-na-conferencia`)
+- **Regra:** A venda do PDV paga com consumo de funcionário leva o funcionário do RH no lançamento do caixa (a nuvem aceita o id do funcionário ou o do usuário do sistema ligado a um). Ao conferir o caixa na web, o vale é lançado no RH; desfazer a conferência tira o vale. Venda cancelada antes da conferência some do caixa e não vira vale.
+- **Por que é assim:** Antes o vale nascia quando a venda subia e de novo na conferência: o funcionário seria descontado em dobro, e a venda cancelada continuava como vale.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)`
+
+### Sangria e vale do PDV chegam à conferência com o tipo certo (`regra-movimentos-do-pdv-na-conferencia`)
+- **Regra:** Sangria do PDV = recolhimento (cofre ou dono), nunca despesa. Vale = saída para funcionário, com o funcionário do RH escolhido no PDV (nada vem marcado; sem escolher, não grava). Dois toques em Confirmar gravam uma vez só.
+- **Por que é assim:** Decisões do Thomás de 25/09/2026 (sangria = recolhimento; vale com o funcionário do RH). Antes a sangria com observação virava despesa na conferência, e o vale ia só com o nome no texto: a conferência do caixa inteiro parava com "vale sem funcionário selecionado".
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs (ConfirmarMovimentoAsync)`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs`, `metrics-node/src/modules/pdv-sync/services/cashier-sync-rules.ts (movementEntryType)`, `metrics-node/src/modules/pdv-sync/http/controllers/cashier-sync-controller.ts`
+
 ## Funções de Negócio
 
 ### `AbrirTurnoCaixa`

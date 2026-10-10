@@ -56,6 +56,12 @@ Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), po
 - **Decisão:** 08/10/2026 por Lei (CLT) + Thomás Furtado (D18)
 - **Onde no código:** `metrics-node/src/modules/hr/ponto/apuracao.ts`, `metrics-node/src/modules/hr/ponto/regra.ts`
 
+### Consumo e vale no PDV usam todos os funcionários ativos do RH (`regra-funcionarios-no-consumo-e-vale`)
+- **Regra:** A nuvem manda ao PDV todos os funcionários ativos do RH: quem tem grupo com acesso entra no PDV ou no app pelo PIN, como antes; quem não tem vai sem PIN e sem acesso, só para ser escolhido no consumo e no vale. O usuário do sistema ligado a um funcionário vai marcado como funcionário. No PDV a lista do consumo e do vale tem só esses (marca funcionario_rh); o administrador que não é funcionário não aparece.
+- **Por que é assim:** Decisão do Thomás de 25/09/2026: vale e consumo usam os funcionários do RH, a mesma lista da web. Até 10/10 iam só os do grupo com acesso: na Katatau nenhum dos 9 funcionários chegava, a lista só tinha os 2 administradores e a nuvem recusava a venda.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/services/equipe-do-pdv.ts (funcionarioParaConsumo)`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts (getUsersSync)`, `Metrics.PDV/Metrics.Shared/Services/FuncionariosDoRh.cs`, `Metrics.PDV/Metrics.Shared/Services/UsuariosDaNuvem.cs`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Equipe do PDV (usuários e funcionários) — Excessivo

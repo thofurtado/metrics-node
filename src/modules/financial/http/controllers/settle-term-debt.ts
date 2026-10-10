@@ -1,6 +1,7 @@
 ﻿import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { PREFIXO_CONTA, baixaDaConta } from '../../services/conta-do-cliente'
 
 export async function settleTermDebt(request: FastifyRequest, reply: FastifyReply) {
     try {
@@ -39,6 +40,67 @@ export async function settleTermDebt(request: FastifyRequest, reply: FastifyRepl
         let settledCount = 0
 
         for (const id of rawIds) {
+            // Caso 0 (10/10/2026): conta do cliente (fiado do PDV, o registro oficial do fiado). A baixa quita a conta, e o
+            // PDV deixa de mostrar a dívida na sincronia seguinte. Parcial: a conta vira "paga" com o valor recebido e o saldo
+            // fica numa conta aberta com o mesmo texto (ligada à mesma venda).
+            if (id.startsWith(PREFIXO_CONTA)) {
+                const tab = await prisma.clientTab.findUnique({
+                    where: { id: id.slice(PREFIXO_CONTA.length) },
+                    include: { client: { select: { name: true } } },
+                })
+                if (!tab || tab.is_paid) {
+                    continue
+                }
+                const textoDaConta = tab.description || 'Venda a Prazo'
+
+                if (isWriteOff) {
+                    await prisma.clientTab.update({
+                        where: { id: tab.id },
+                        data: { is_paid: true, description: `${textoDaConta} (Baixado por Permuta)` },
+                    })
+                    settledCount++
+                    continue
+                }
+
+                if (!targetAccountId) {
+                    return reply.status(400).send({ message: 'Conta de destino é obrigatória para recebimentos normais.' })
+                }
+
+                const { recebido, saldo } = baixaDaConta(tab.amount, amountPaid, rawIds.length === 1)
+                await prisma.$transaction(async (tx) => {
+                    await tx.clientTab.update({ where: { id: tab.id }, data: { is_paid: true, amount: recebido } })
+                    if (saldo > 0) {
+                        await tx.clientTab.create({
+                            data: {
+                                client_id: tab.client_id,
+                                cashier_session_id: tab.cashier_session_id,
+                                amount: saldo,
+                                description: textoDaConta,
+                                is_paid: false,
+                                created_at: tab.created_at,
+                            }
+                        })
+                    }
+                    await tx.transaction.create({
+                        data: {
+                            operation: 'income',
+                            amount: recebido,
+                            totalValue: recebido,
+                            confirmed: true,
+                            account_id: targetAccountId,
+                            payment_method: actualPaymentMethod || 'DINHEIRO',
+                            data_vencimento: new Date(),
+                            data_emissao: new Date(),
+                            description: `Acerto A Prazo - ${tab.client?.name || 'Cliente'} - ${textoDaConta}${saldo > 0 ? ' (Baixa Parcial)' : ''}`,
+                        }
+                    })
+                })
+
+                totalIncrementAmount += recebido
+                settledCount++
+                continue
+            }
+
             // Caso 1: Débito de Funcionário (PayrollEntry do RH)
             if (id.startsWith('payroll-') || isPayrollDeducted) {
                 const payrollId = id.replace('payroll-', '')

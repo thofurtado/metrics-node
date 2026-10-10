@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { contaComoRecebivel, janelaDasContasDoMes, type RecebivelDaConta } from '../../services/conta-do-cliente'
 
 const CARD_PAYMENT_METHODS = [
     'CREDITO', 'DEBITO', 'PIX', 'VOUCHER', 
@@ -257,28 +258,50 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
         }))
     }
 
-    const totalGross = Number(aggregate._sum.amount || 0) + (type === 'term' || type === 'all' ? employeeVales.reduce((acc, v) => acc + v.amount, 0) : 0)
-    const totalNet = Number(aggregate._sum.totalValue || totalGross) + (type === 'term' || type === 'all' ? employeeVales.reduce((acc, v) => acc + v.amount, 0) : 0)
+    // Contas abertas dos clientes (fiado do PDV, 10/10/2026): o registro oficial do fiado (decisão de 25/09). Antes esta
+    // lista não as via e a baixa na web não chegava ao saldo que o PDV mostra.
+    let clientTabs: RecebivelDaConta[] = []
+    if (type === 'term' || type === 'all') {
+        const tabWhere: any = { is_paid: false }
+        if (month && year) {
+            const { desde, ate } = janelaDasContasDoMes(parseInt(month, 10), parseInt(year, 10))
+            tabWhere.created_at = { gte: desde, lte: ate }
+        }
+        const rawTabs = await prisma.clientTab.findMany({
+            where: tabWhere,
+            include: { client: { select: { id: true, name: true } } },
+            orderBy: { created_at: 'desc' },
+        })
+        clientTabs = rawTabs.map(contaComoRecebivel)
+    }
+
+    const extras = type === 'term' || type === 'all'
+        ? employeeVales.reduce((acc, v) => acc + v.amount, 0) + clientTabs.reduce((acc, t) => acc + t.amount, 0)
+        : 0
+    const totalGross = Number(aggregate._sum.amount || 0) + extras
+    // Líquido das receitas (sem a taxa) mais as contas e os vales; antes, sem receita nenhuma, os vales eram somados duas vezes
+    const totalNet = (aggregate._sum.totalValue != null ? Number(aggregate._sum.totalValue) : Number(aggregate._sum.amount || 0)) + extras
     const totalFees = Math.max(0, totalGross - totalNet)
 
-    let finalData = transactions
+    let finalData: any[] = transactions
     if (type === 'term') {
-        finalData = [...transactions, ...employeeVales]
+        finalData = [...transactions, ...clientTabs, ...employeeVales]
     }
+    const extraCount = type === 'term' ? employeeVales.length + clientTabs.length : 0
 
     return reply.status(200).send({
         data: finalData,
         meta: {
-            total: total + (type === 'term' ? employeeVales.length : 0),
+            total: total + extraCount,
             page: parseInt(page, 10),
             limit: take,
-            totalPages: Math.ceil((total + (type === 'term' ? employeeVales.length : 0)) / take)
+            totalPages: Math.ceil((total + extraCount) / take)
         },
         summary: {
             totalGross,
             totalNet,
             totalFees,
-            count: total + (type === 'term' ? employeeVales.length : 0)
+            count: total + extraCount
         }
     })
 }

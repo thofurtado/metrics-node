@@ -9,6 +9,12 @@
  * - e-mail de marcação único (o PDV exige e-mail), que ninguém usa para entrar.
  * Funcionário inativo, sem grupo, de grupo sem acesso, ligado a um usuário (entra como o usuário) ou com PIN
  * fora do padrão do ponto fica de fora: no PDV ele deixa de poder entrar.
+ *
+ * Consumo e vale (10/10/2026, decisão do Thomás de 25/09: "vale e consumo de funcionário usam os funcionários do RH, a
+ * mesma lista da web"): todo funcionário ATIVO do RH vai para o PDV, também quem não entra em nada (sem PIN, sem acesso),
+ * só para ser escolhido no consumo e no vale. `FuncionarioRh` marca quem pode ser escolhido: o funcionário e o usuário do
+ * sistema ligado a um funcionário (a nuvem acha o funcionário pelo usuário). Antes, na Katatau, nenhum dos 9 funcionários
+ * chegava ao PDV e a lista do consumo só tinha os administradores, que a nuvem recusa.
  */
 
 export interface UsuarioDoSistema {
@@ -51,12 +57,14 @@ export interface PessoaParaPdv {
     Grupo: string | null
     PodePdv: boolean
     PodeAppGarcom: boolean
+    /** Pode ser escolhido no consumo e no vale (é funcionário do RH, ou usuário ligado a um). PDV 2.5.23 em diante. */
+    FuncionarioRh: boolean
 }
 
 /** O mesmo padrão do PIN dos usuários (4 a 6 números); o ponto usa 4. */
 export const PIN_VALIDO = /^\d{4,6}$/
 
-export function usuarioParaPdv(u: UsuarioDoSistema): PessoaParaPdv {
+export function usuarioParaPdv(u: UsuarioDoSistema, ligadoAFuncionario = false): PessoaParaPdv {
     return {
         Uuid: u.id,
         Name: u.name,
@@ -71,6 +79,7 @@ export function usuarioParaPdv(u: UsuarioDoSistema): PessoaParaPdv {
         PodePdv: true,
         // Usuário do sistema com PIN também entra no celular (o gerente, por exemplo)
         PodeAppGarcom: !!u.pin_hash,
+        FuncionarioRh: ligadoAFuncionario,
     }
 }
 
@@ -78,6 +87,11 @@ export function funcionarioEntraNoPdv(f: FuncionarioComGrupo): boolean {
     if (!f.isRegistered || f.user_id) return false
     if (!f.group || !(f.group.can_use_pdv || f.group.can_use_waiter_app)) return false
     return PIN_VALIDO.test((f.pin ?? '').trim())
+}
+
+/** Funcionário ativo que não entra no PDV nem no app, mas pode ser escolhido no consumo e no vale. */
+export function funcionarioSoParaConsumo(f: FuncionarioComGrupo): boolean {
+    return f.isRegistered && !f.user_id && !funcionarioEntraNoPdv(f)
 }
 
 /** E-mail de marcação do funcionário no PDV (único; ninguém entra por ele). */
@@ -105,6 +119,34 @@ export async function funcionarioParaPdv(
         Grupo: grupo.name,
         PodePdv: grupo.can_use_pdv,
         PodeAppGarcom: grupo.can_use_waiter_app,
+        FuncionarioRh: true,
+    }
+}
+
+/**
+ * O funcionário que só vai para o consumo e o vale: sem PIN (não entra no PDV, no app nem como vendedor), sem acesso e
+ * com senha impossível (o PDV exige uma). PDV antigo (até a 2.5.22) também o recebe: lá ele aparece na lista do consumo,
+ * que era a de todos os usuários ativos, e não aparece no login (sem PDV) nem no app (sem PIN).
+ */
+export async function funcionarioParaConsumo(
+    f: FuncionarioComGrupo,
+    protegerTexto: (texto: string) => Promise<string>,
+    segredoAleatorio: () => string,
+): Promise<PessoaParaPdv> {
+    return {
+        Uuid: f.id,
+        Name: f.name,
+        Email: emailDoFuncionario(f.id),
+        PasswordHash: await protegerTexto(segredoAleatorio()),
+        PinHash: null,
+        Role: 'MEMBER',
+        Active: true,
+        CreatedAt: f.created_at,
+        Origem: 'FUNCIONARIO',
+        Grupo: f.group?.name ?? null,
+        PodePdv: false,
+        PodeAppGarcom: false,
+        FuncionarioRh: true,
     }
 }
 

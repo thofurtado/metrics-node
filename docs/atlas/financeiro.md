@@ -6,6 +6,14 @@
 
 Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de crédito com fatura, transferências, setores (centros de custo), formas e condições de pagamento e maquininhas com taxas. A conferência do caixa gera os lançamentos daqui.
 
+## Regras de Negócio e Porquês
+
+### Clientes a Prazo mostra e dá baixa na conta do cliente (fiado do PDV) (`regra-clientes-a-prazo-le-a-conta`)
+- **Regra:** A lista Clientes a Prazo traz, junto com as receitas a prazo e os vales, as contas abertas dos clientes (id "tab-...", com o nome do cliente). A baixa quita a conta: inteira (receita confirmada na conta escolhida, "Acerto A Prazo - cliente - ..."), parcial (a conta vira paga com o valor recebido e o saldo fica numa conta aberta da mesma venda) ou por permuta (quita sem dinheiro). O painel soma as contas abertas no a receber do mês (vencimento 30 dias depois da venda) e no a receber vencido.
+- **Por que é assim:** Decisão do Thomás de 25/09/2026: o financeiro lê o total a receber das contas dos clientes. Antes a tela não via as contas e a baixa não chegava ao saldo que o PDV mostra.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/financial/services/conta-do-cliente.ts`, `metrics-node/src/modules/financial/http/controllers/settlements.ts`, `metrics-node/src/modules/financial/http/controllers/settle-term-debt.ts`, `metrics-node/src/modules/financial/repositories/prisma/prisma-transactions-repository.ts`, `metrics-node/src/modules/financial/http/controllers/get-operational-summary.ts`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Formas de pagamento, identificadores, maquininhas e condições (PDV) — Atenção
@@ -137,4 +145,4 @@ Contas (inclusive o Caixa Central), lançamentos a pagar e a receber, cartão de
 
 ## Pendências e decisões
 
-- A maquininha usada na venda do PDV não chega ao lançamento do caixa (sem taxa e sem banco na conferência).
+- Desfazer a baixa (Recebidos > reverter) de um acerto de conta do cliente não reabre a conta: a receita volta a pendente sozinha (10/10/2026).

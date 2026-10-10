@@ -14,13 +14,19 @@ Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de s
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.Sync/Services/AthosDataSourceAdapter.cs:211`, `Metrics.Sync/Services/EnvioDeClientes.cs:92`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:163`
 
+### Clientes da nuvem no PDV: telefone pode faltar ou repetir (`regra-clientes-no-pdv`)
+- **Regra:** No PDV o telefone do cliente não é único (cliente sem telefone fica com o telefone vazio; família pode repetir o telefone). O cliente da nuvem é achado pelo código; pelo telefone só quando o cliente do PDV não é outro cliente da nuvem. O limite de crédito do PDV não é apagado (a nuvem não guarda limite). O saldo do fiado = contas abertas na nuvem + fiado das vendas deste PDV que ainda não subiram. Cadastro mudado no PDV e ainda não enviado não é sobrescrito. Os clientes descem depois das vendas e dos cancelamentos. No cadastro rápido do PDV só o nome é obrigatório.
+- **Por que é assim:** Katatau, 10/10/2026: os 29 clientes da nuvem não têm telefone; com o telefone único, o 2º cliente sem telefone derrubava a gravação e a sincronia dos clientes parava ali a cada ciclo (o PDV não trazia os clientes). Decisão de 28/09: cliente pode ser cadastrado sem telefone.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/ClientesDaNuvem.cs`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (BaixarClientesAsync)`, `Metrics.PDV/Metrics.Shared/Data/DatabaseBootstrapper.cs (SqlFuncionariosDoRhETelefone)`, `Metrics.PDV/Metrics.PDV/Views/ModalClienteWindow.xaml.cs`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Clientes (PDV) — Excessivo
-- **Frequência:** a cada 5 min (sincronia geral do PDV), sempre a lista inteira
+- **Frequência:** a cada 5 min (sincronia geral do PDV), sempre a lista inteira, depois das vendas e dos cancelamentos
 - **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/clients`
 - **Quantos:** 1 por loja
-- **A cada vez:** A tabela inteira de clientes com endereços e fiados, toda vez; cresce com a base. O PDV ainda faz 1 consulta local por cliente.
+- **A cada vez:** A tabela inteira de clientes com endereços e saldo do fiado, toda vez; cresce com a base. Desde a 2.5.23.0 o PDV lê os clientes locais de uma vez e grava uma vez só no fim (antes eram uma consulta por cliente e uma gravação por cliente novo).
 - **Por que existe:** Cliente cadastrado na web ou no cardápio aparece no PDV (delivery, fiado).
 - **Proposta:** Usar o carimbo de mudança de clientes que /sync/status já devolve.
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1051`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:102`

@@ -1,19 +1,19 @@
 {
- "gerado_em": "2026-10-10T09:34:57",
+ "gerado_em": "2026-10-10T10:18:01",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "ead9085 2026-10-10",
+   "versao": "d832e57 2026-10-10",
    "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "cda1a9d 2026-10-10",
+   "versao": "fc6b03c 2026-10-10",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "41bc328 2026-10-10",
+   "versao": "c0e226b 2026-10-10",
    "tabelas": 42
   }
  },
@@ -10622,6 +10622,17 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "ColaboradorId",
+     "coluna": "colaborador_id",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -15599,6 +15610,17 @@
     {
      "nome": "PodeAppGarcom",
      "coluna": "pode_app_garcom",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "FuncionarioRh",
+     "coluna": "funcionario_rh",
      "tipo": "bool",
      "enum": false,
      "opcional": false,

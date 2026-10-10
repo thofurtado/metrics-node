@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { criadasParaVencerEm } from '@/modules/financial/services/conta-do-cliente'
 
 export async function getOperationalSummary(request: FastifyRequest, reply: FastifyReply) {
     const getSummaryQuerySchema = z.object({
@@ -148,7 +149,12 @@ export async function getOperationalSummary(request: FastifyRequest, reply: Fast
                 data_vencimento: { gte: firstDayOfMonth, lte: lastDayOfMonth },
             },
         })
-        const receitaPendenteMes = Number(pendingIncomeMonthAggr._sum.amount || 0)
+        // Fiado do PDV (conta do cliente, 10/10/2026) que vence no mês: a receber, como as receitas a prazo
+        const contasDoMesAggr = await prisma.clientTab.aggregate({
+            _sum: { amount: true },
+            where: { is_paid: false, created_at: criadasParaVencerEm({ gte: firstDayOfMonth, lte: lastDayOfMonth }) },
+        })
+        const receitaPendenteMes = Number(pendingIncomeMonthAggr._sum.amount || 0) + Number(contasDoMesAggr._sum.amount || 0)
 
         const totalReceitasMes = receitaPagaMes + receitaPendenteMes
         const receitaAcumulada = receitaPagaMes // Mantém retrocompatibilidade

@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { z } from 'zod'
+import { isTermPayment, saleEntryTag } from '@/modules/pdv-sync/services/cashier-sync-rules'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
@@ -448,6 +449,20 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         const operatorName = user ? user.name : 'Operador'
         const dateFormatted = new Date(session.opened_at).toLocaleDateString('pt-BR')
 
+        // Fiado das vendas do PDV que já está na conta do cliente (o registro oficial do fiado, decisão de 25/09/2026): a
+        // conferência não cria outra receita a prazo para ele (10/10/2026; antes o mesmo fiado ficava em dois lugares e a
+        // baixa de um não chegava ao outro).
+        const fiadosDoPdv = session.entries.filter(e => e.source === 'PDV' && e.type === 'SALE' && e.sale_id && e.client_id)
+        const contasDoCaixa = fiadosDoPdv.length > 0
+            ? await prisma.clientTab.findMany({
+                where: { OR: fiadosDoPdv.map(e => ({ description: { contains: saleEntryTag(e.sale_id!) } })) },
+                select: { client_id: true, description: true },
+            })
+            : []
+        const fiadoJaNaContaDoCliente = (entry: { sale_id: string | null; client_id: string | null }) =>
+            !!entry.sale_id && !!entry.client_id
+            && contasDoCaixa.some(t => t.client_id === entry.client_id && (t.description || '').includes(saleEntryTag(entry.sale_id!)))
+
         // Resolve o funcionário de um vale/consumo com segurança: sempre por ID e sempre ativo.
         // Nunca adivinha por nome nem cai no primeiro funcionário do banco (isso já atribuiu vale
         // a funcionário errado). Se o lançamento não tiver funcionário válido, a conferência para
@@ -594,8 +609,16 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                 continue
             }
 
-            // Lançamento de Pendência no Contas a Receber para Cliente (Qualquer forma a prazo / identificador exceto funcionário)
-            const isClientePrazo = Boolean(entry.client_id) || Boolean(entry.client) || normMethod.includes('a prazo') || normMethod.includes('permuta') || normMethod.includes('correntista') || (!normMethod.includes('funcionario') && !normIdent.includes('funcionario') && Boolean(entry.identification) && !['dinheiro', 'pix', 'debito', 'credito', 'voucher'].some(m => normMethod.includes(m)))
+            // Lançamento de Pendência no Contas a Receber para Cliente (Qualquer forma a prazo / identificador exceto funcionário).
+            // Venda do PDV (10/10/2026): o tipo vem da venda (cliente no lançamento = fiado; forma a prazo), nunca do texto
+            // "Balcao - Pedido #...": antes Vale Refeição, cortesia ou Pix de venda com cliente viravam "a prazo".
+            const isPdvSale = entry.source === 'PDV' && entry.type === 'SALE' && Boolean(entry.sale_id)
+            const isClientePrazo = isPdvSale
+                ? Boolean(entry.client_id) || isTermPayment(method)
+                : Boolean(entry.client_id) || Boolean(entry.client) || normMethod.includes('a prazo') || normMethod.includes('permuta') || normMethod.includes('correntista') || (!normMethod.includes('funcionario') && !normIdent.includes('funcionario') && Boolean(entry.identification) && !['dinheiro', 'pix', 'debito', 'credito', 'voucher'].some(m => normMethod.includes(m)))
+            if (isClientePrazo && isPdvSale && fiadoJaNaContaDoCliente(entry)) {
+                continue // já está na conta do cliente; a baixa é feita em Clientes a Prazo
+            }
             if (isClientePrazo) {
                 const clientName = entry.client?.name || entry.identification || 'Cliente'
                 const methodType = method.toUpperCase().trim() || 'A PRAZO'

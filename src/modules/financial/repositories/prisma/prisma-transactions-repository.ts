@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { GetTransactionsDTO } from '@/modules/financial/repositories/DTO/get-transactions-dto'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 import { ChangeTransactionStatusParams } from '@/modules/financial/repositories/DTO/change-transaction-status-params-dto'
+import { criadasParaVencerEm } from '@/modules/financial/services/conta-do-cliente'
 
 
 
@@ -98,7 +99,20 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             })
         ]);
 
-        const pendingInc = pendingIncomeResult._sum.amount || 0;
+        // Fiado do PDV (conta do cliente, 10/10/2026): entra no "a receber" como as receitas a prazo (decisão de 25/09: o
+        // financeiro lê o total a receber dessas contas). Vence 30 dias depois da venda.
+        const [contasDoMes, contasVencidas] = await Promise.all([
+            prisma.clientTab.aggregate({
+                where: { is_paid: false, created_at: criadasParaVencerEm({ gte: startOfMonth, lt: startOfNextMonth }) },
+                _sum: { amount: true }
+            }),
+            prisma.clientTab.aggregate({
+                where: { is_paid: false, created_at: criadasParaVencerEm({ lt: startOfToday }) },
+                _sum: { amount: true }
+            })
+        ]);
+
+        const pendingInc = (pendingIncomeResult._sum.amount || 0) + (contasDoMes._sum.amount || 0);
         const pendingExp = pendingExpensesResult._sum.amount || 0;
         const confirmedInc = monthlyIncomeResult._sum.totalValue || 0;
         const confirmedExp = monthlyExpensesResult._sum.totalValue || 0;
@@ -109,7 +123,7 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
             monthlyExpenses: pendingExp + confirmedExp,
             pendingIncome: pendingInc,
             pendingExpenses: pendingExp,
-            overdueIncome: overdueIncomeResult._sum.amount || 0,    // A receber vencido
+            overdueIncome: (overdueIncomeResult._sum.amount || 0) + (contasVencidas._sum.amount || 0),    // A receber vencido
             overdueExpenses: overdueExpensesResult._sum.amount || 0 // A pagar vencido
         };
     }

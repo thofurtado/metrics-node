@@ -7,6 +7,13 @@ import {
     chooseSaleSessionId,
     isPlaceholderFromClose,
     isTermPayment,
+    isEmployeePayment,
+    paymentKind,
+    desiredClientTabs,
+    planClientTabs,
+    clientTabDescription,
+    movementEntryType,
+    movementIdentification,
     saleEntryTag,
     saleFieldsChanged,
     normalizeCounted,
@@ -154,7 +161,7 @@ describe('saleFieldsChanged', () => {
 })
 
 describe('isTermPayment', () => {
-    it.each(['A Prazo', 'A Prazo (Correntista)', 'Fiado'])('%s é fiado', (m) => expect(isTermPayment(m)).toBe(true))
+    it.each(['A Prazo', 'A Prazo (Correntista)', 'Fiado', 'Permuta'])('%s é fiado', (m) => expect(isTermPayment(m)).toBe(true))
     it.each(['Dinheiro', 'Pix', null])('%s não é fiado', (m) => expect(isTermPayment(m)).toBe(false))
 })
 
@@ -242,5 +249,128 @@ describe('shouldReverseStock', () => {
     it('PDV antigo, sem a escolha, não devolve (como antes)', () => {
         expect(shouldReverseStock(null, false)).toBe(false)
         expect(shouldReverseStock(undefined, false)).toBe(false)
+    })
+})
+
+describe('paymentKind (10/10/2026)', () => {
+    it('vale o que o PDV diz (2.5.23 em diante)', () => {
+        expect(paymentKind({ Method: 'Conta da loja', Tipo: 'PRAZO' })).toBe('PRAZO')
+        expect(paymentKind({ Method: 'Refeição equipe', Tipo: 'funcionario' })).toBe('FUNCIONARIO')
+        // O PDV disse que não é nenhum dos dois: o nome não muda isso
+        expect(paymentKind({ Method: 'A Prazo', Tipo: 'NENHUM' })).toBeNull()
+    })
+
+    it('PDV antigo: pelo nome da forma, com os mesmos nomes do PDV', () => {
+        expect(paymentKind({ Method: 'A Prazo (Correntista)' })).toBe('PRAZO')
+        expect(paymentKind({ Method: 'Permuta' })).toBe('PRAZO')
+        expect(paymentKind({ Method: 'Consumo Funcionário' })).toBe('FUNCIONARIO')
+        expect(paymentKind({ Method: 'Colaborador' })).toBe('FUNCIONARIO')
+        expect(paymentKind({ Method: 'Dinheiro' })).toBeNull()
+        expect(isEmployeePayment(null)).toBe(false)
+    })
+})
+
+describe('desiredClientTabs', () => {
+    it('soma o fiado de cada cliente da venda', () => {
+        const contas = desiredClientTabs('COMPLETED', [
+            { amount: 30, clientId: 'c1', kind: 'PRAZO', holderName: 'Maria' },
+            { amount: 12.5, clientId: 'c1', kind: 'PRAZO' },
+            { amount: 20, clientId: 'c2', kind: 'PRAZO', holderName: 'João' },
+            { amount: 40, clientId: 'c3', kind: null }, // Pix com cliente identificado: não é fiado
+            { amount: 15, clientId: null, kind: 'PRAZO' }, // sem cliente: a nuvem já recusa antes
+        ])
+        expect(contas).toEqual([
+            { clientId: 'c1', amount: 42.5, holderName: 'Maria' },
+            { clientId: 'c2', amount: 20, holderName: 'João' },
+        ])
+    })
+
+    it('venda cancelada não deixa nada na conta', () => {
+        expect(desiredClientTabs('CANCELLED', [{ amount: 30, clientId: 'c1', kind: 'PRAZO' }])).toEqual([])
+    })
+
+    it('centavos sem erro de arredondamento', () => {
+        expect(desiredClientTabs('COMPLETED', [
+            { amount: 0.1, clientId: 'c1', kind: 'PRAZO' },
+            { amount: 0.2, clientId: 'c1', kind: 'PRAZO' },
+        ])[0].amount).toBe(0.3)
+    })
+})
+
+describe('planClientTabs (a conta do cliente acompanha a venda)', () => {
+    const quer = (clientId: string, amount: number) => ({ clientId, amount, holderName: null })
+
+    it('venda nova: abre a conta', () => {
+        expect(planClientTabs([], [quer('c1', 30)])).toEqual({ create: [quer('c1', 30)], update: [], remove: [] })
+    })
+
+    it('reenvio igual: nada muda', () => {
+        expect(planClientTabs([{ id: 't1', client_id: 'c1', amount: 30, is_paid: false }], [quer('c1', 30)]))
+            .toEqual({ create: [], update: [], remove: [] })
+    })
+
+    it('valor do fiado trocado: a conta aberta passa a ter o valor novo', () => {
+        expect(planClientTabs([{ id: 't1', client_id: 'c1', amount: 30, is_paid: false }], [quer('c1', 45)]))
+            .toEqual({ create: [], update: [{ id: 't1', amount: 45 }], remove: [] })
+    })
+
+    it('venda cancelada ou pagamento trocado para dinheiro: a conta aberta sai', () => {
+        expect(planClientTabs([{ id: 't1', client_id: 'c1', amount: 30, is_paid: false }], []))
+            .toEqual({ create: [], update: [], remove: ['t1'] })
+    })
+
+    it('fiado trocado de cliente: sai da conta de um e entra na do outro', () => {
+        expect(planClientTabs([{ id: 't1', client_id: 'c1', amount: 30, is_paid: false }], [quer('c2', 30)]))
+            .toEqual({ create: [quer('c2', 30)], update: [], remove: ['t1'] })
+    })
+
+    it('parte já paga nunca é mexida: fica em aberto só o que falta', () => {
+        const stored = [
+            { id: 'pago', client_id: 'c1', amount: 10, is_paid: true },
+            { id: 'saldo', client_id: 'c1', amount: 20, is_paid: false },
+        ]
+        // A venda continua com 30 de fiado: nada muda
+        expect(planClientTabs(stored, [quer('c1', 30)])).toEqual({ create: [], update: [], remove: [] })
+        // Venda cancelada depois de uma baixa parcial: tira só o saldo; os 10 pagos ficam
+        expect(planClientTabs(stored, [])).toEqual({ create: [], update: [], remove: ['saldo'] })
+        // Tudo pago: não reabre
+        expect(planClientTabs([{ id: 'pago', client_id: 'c1', amount: 30, is_paid: true }], [quer('c1', 30)]))
+            .toEqual({ create: [], update: [], remove: [] })
+    })
+
+    it('contas abertas repetidas da mesma venda viram uma só', () => {
+        const stored = [
+            { id: 't1', client_id: 'c1', amount: 30, is_paid: false },
+            { id: 't2', client_id: 'c1', amount: 30, is_paid: false },
+        ]
+        expect(planClientTabs(stored, [quer('c1', 30)])).toEqual({ create: [], update: [], remove: ['t2'] })
+    })
+
+    it('o texto da conta liga a conta à venda', () => {
+        expect(clientTabDescription(SALE, 'Maria')).toBe('Venda a Prazo - Pedido #1f9408ee (Maria)')
+        expect(clientTabDescription(SALE, null)).toBe('Venda a Prazo - Pedido #1f9408ee (Cliente)')
+    })
+})
+
+describe('movementEntryType (movimentos do PDV com os tipos da conferência)', () => {
+    it('sangria do PDV é sempre recolhimento (cofre ou dono), nunca despesa', () => {
+        expect(movementEntryType('Sangria')).toEqual({ type: 'WITHDRAWAL_OWNER', is_withdrawal: true, is_addition: false })
+    })
+
+    it('vale é saída para funcionário', () => {
+        expect(movementEntryType('Vale')).toEqual({ type: 'WITHDRAWAL_EMPLOYEE', is_withdrawal: true, is_addition: false })
+    })
+
+    it('saída operacional é despesa; suprimento e sobra são entrada; quebra continua como antes', () => {
+        expect(movementEntryType('SaidaOperacional').type).toBe('EXPENSE')
+        expect(movementEntryType('Suprimento')).toEqual({ type: 'ADDITION', is_withdrawal: false, is_addition: true })
+        expect(movementEntryType('SobraCaixa').type).toBe('ADDITION')
+        expect(movementEntryType('QuebraCaixa')).toEqual({ type: 'WITHDRAWAL', is_withdrawal: true, is_addition: false })
+    })
+
+    it('o texto não repete o tipo', () => {
+        expect(movementIdentification('Vale', 'Vale: Ana - adiantamento')).toBe('Vale: Ana - adiantamento')
+        expect(movementIdentification('Sangria', 'Retirada para o cofre')).toBe('Sangria: Retirada para o cofre')
+        expect(movementIdentification('Suprimento', null)).toBe('Suprimento')
     })
 })

@@ -2,17 +2,20 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { dataDoDiaOperacional } from '@/lib/dia-operacional'
 import { buildItemCost } from '../../services/item-cost-loader'
 import {
     SyncRejection,
     buildSaleEntries,
     checkSaleSession,
     chooseSaleSessionId,
-    isTermPayment,
+    clientTabDescription,
+    desiredClientTabs,
+    paymentKind,
+    planClientTabs,
     saleEntryTag,
     saleFieldsChanged,
     sameEntries,
+    type PaymentKind,
 } from '../../services/cashier-sync-rules'
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
@@ -40,6 +43,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             ColaboradorId: z.string().uuid().optional().nullable(),
             NomeTitular: z.string().optional().nullable(),
             Parcelas: z.number().optional().default(1),
+            // PRAZO ou FUNCIONARIO (PDV 2.5.23 em diante): a mesma regra que exige o cliente ou o funcionário na tela do PDV
+            Tipo: z.string().optional().nullable(),
         })).optional().default([]),
         Items: z.array(z.object({
             Uuid: z.string().uuid(),
@@ -126,24 +131,36 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
 
             const saleCreatedAt = sale.CreatedAt ? new Date(sale.CreatedAt) : new Date()
 
-            // Pagamentos positivos, na mesma ordem dos lançamentos desejados (cliente e colaborador conferidos antes de gravar)
+            // Pagamentos positivos, na mesma ordem dos lançamentos desejados (cliente e colaborador conferidos antes de gravar).
+            // Desde 10/10/2026 o cliente só vai no lançamento do FIADO: na conferência, lançamento com cliente = conta a prazo, e
+            // antes o Pix ou o dinheiro de uma venda com cliente identificado (delivery, CPF) virava "a prazo" desse cliente.
             const positivePayments = sale.Status === 'CANCELLED' ? [] : sale.Payments.filter(p => p.Amount > 0)
-            const paymentLinks: { clientId: string | null; employeeId: string | null }[] = []
+            const paymentLinks: { clientId: string | null; employeeId: string | null; kind: PaymentKind }[] = []
             for (const pay of positivePayments) {
-                const wantedClientId = pay.ClienteId || sale.ClienteUuid || null
-                const clientExists = wantedClientId
-                    ? !!(await tx.client.findUnique({ where: { id: wantedClientId }, select: { id: true } }))
-                    : false
-                // Fiado sem o cliente na nuvem perderia a conta a receber: recusa até o cadastro do cliente subir.
-                if (isTermPayment(pay.Method) && wantedClientId && !clientExists) throw new SyncRejection('CLIENTE_NAO_ENVIADO', sale.Uuid)
-
-                const wantedEmployeeId = pay.ColaboradorId || null
-                if (wantedEmployeeId) {
-                    const employeeExists = await tx.employee.findUnique({ where: { id: wantedEmployeeId }, select: { id: true } })
-                    // O PDV manda um usuário do sistema como colaborador; sem funcionário do RH o vale se perderia.
-                    if (!employeeExists) throw new SyncRejection('FUNCIONARIO_NAO_ENCONTRADO', sale.Uuid)
+                const kind = paymentKind(pay)
+                let clientId: string | null = null
+                if (kind === 'PRAZO') {
+                    const wantedClientId = pay.ClienteId || sale.ClienteUuid || null
+                    const clientExists = wantedClientId
+                        ? !!(await tx.client.findUnique({ where: { id: wantedClientId }, select: { id: true } }))
+                        : false
+                    // Fiado sem o cliente na nuvem perderia a conta a receber: recusa até o cadastro do cliente subir.
+                    if (wantedClientId && !clientExists) throw new SyncRejection('CLIENTE_NAO_ENVIADO', sale.Uuid)
+                    clientId = clientExists ? wantedClientId : null
                 }
-                paymentLinks.push({ clientId: clientExists ? wantedClientId : null, employeeId: wantedEmployeeId })
+
+                // O colaborador é o funcionário do RH; o PDV pode mandar o usuário do sistema ligado a um funcionário (a nuvem
+                // acha o funcionário por ele). Usuário que não é funcionário: recusa, senão o vale se perderia.
+                let employeeId: string | null = null
+                if (pay.ColaboradorId) {
+                    const employee = await tx.employee.findFirst({
+                        where: { OR: [{ id: pay.ColaboradorId }, { user_id: pay.ColaboradorId }] },
+                        select: { id: true },
+                    })
+                    if (!employee) throw new SyncRejection('FUNCIONARIO_NAO_ENCONTRADO', sale.Uuid)
+                    employeeId = employee.id
+                }
+                paymentLinks.push({ clientId, employeeId, kind })
             }
 
             // 3. Venda: o caixa de uma venda que já existe nunca muda.
@@ -195,55 +212,38 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 }
             }
 
-            // 5. Fiado e consumo de funcionário (cliente e funcionário já conferidos acima; não duplicam no reenvio)
-            for (let i = 0; i < positivePayments.length; i++) {
-                const pay = positivePayments[i]
-                const targetClientId = paymentLinks[i].clientId
-                const targetEmployeeId = paymentLinks[i].employeeId
-
-                // Venda a Prazo: cria conta a receber (ClientTab)
-                if (isTermPayment(pay.Method) && targetClientId) {
-                    const existingTab = await tx.clientTab.findFirst({
-                        where: {
-                            client_id: targetClientId,
-                            description: { contains: sale.Uuid.slice(0, 8) }
-                        }
-                    })
-                    if (!existingTab) {
-                        await tx.clientTab.create({
-                            data: {
-                                client_id: targetClientId,
-                                cashier_session_id: targetSessionId,
-                                amount: pay.Amount,
-                                description: `Venda a Prazo - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Cliente'})`,
-                                is_paid: false,
-                                created_at: saleCreatedAt
-                            }
-                        })
+            // 5. Fiado: a conta do cliente acompanha a venda (decisão de 25/09: é o registro oficial do fiado). Venda nova abre a
+            //    conta; troca de pagamento muda o valor ou o cliente; cancelamento tira o que ainda não foi pago. Parte já paga
+            //    nunca é mexida. Antes a conta só era criada: venda cancelada continuava devendo e o saldo voltava ao PDV.
+            //    O consumo de funcionário NÃO vira vale aqui: o vale nasce num lugar só, na conferência do caixa (antes nascia
+            //    aqui e de novo na conferência, e o funcionário seria descontado em dobro).
+            const storedTabs = await tx.clientTab.findMany({
+                where: { description: { contains: saleEntryTag(sale.Uuid) } },
+                select: { id: true, client_id: true, amount: true, is_paid: true },
+            })
+            const tabPlan = planClientTabs(storedTabs, desiredClientTabs(sale.Status, positivePayments.map((pay, i) => ({
+                amount: pay.Amount,
+                clientId: paymentLinks[i].clientId,
+                kind: paymentLinks[i].kind,
+                holderName: pay.NomeTitular,
+            }))))
+            if (tabPlan.remove.length > 0) {
+                await tx.clientTab.deleteMany({ where: { id: { in: tabPlan.remove }, is_paid: false } })
+            }
+            for (const u of tabPlan.update) {
+                await tx.clientTab.update({ where: { id: u.id }, data: { amount: u.amount } })
+            }
+            for (const c of tabPlan.create) {
+                await tx.clientTab.create({
+                    data: {
+                        client_id: c.clientId,
+                        cashier_session_id: targetSessionId,
+                        amount: c.amount,
+                        description: clientTabDescription(sale.Uuid, c.holderName),
+                        is_paid: false,
+                        created_at: saleCreatedAt,
                     }
-                }
-
-                // Venda para Funcionário: cria lançamento em folha / vale (PayrollEntry)
-                if (targetEmployeeId) {
-                    const existingVale = await tx.payrollEntry.findFirst({
-                        where: {
-                            employee_id: targetEmployeeId,
-                            description: { contains: sale.Uuid.slice(0, 8) }
-                        }
-                    })
-                    if (!existingVale) {
-                        await tx.payrollEntry.create({
-                            data: {
-                                employee_id: targetEmployeeId,
-                                type: 'VALE',
-                                amount: pay.Amount,
-                                referenceDate: dataDoDiaOperacional(saleCreatedAt), // dia operacional da venda
-                                description: `Consumo PDV - Pedido #${sale.Uuid.slice(0, 8)} (${pay.NomeTitular || 'Colaborador'})`,
-                                status: 'PENDING'
-                            }
-                        })
-                    }
-                }
+                })
             }
 
             // 6. Processar Itens da Venda e Motor de Baixa de Insumos da Ficha Técnica

@@ -146,10 +146,145 @@ export function saleFieldsChanged(stored: StoredSale, incoming: { TotalAmount: n
         || stored.status !== incoming.Status
 }
 
-/** Forma de pagamento a prazo (fiado): gera conta do cliente e exige o cliente na nuvem. */
+/**
+ * Forma de pagamento a prazo (fiado) pelo NOME, para o PDV antigo que não manda o tipo: gera conta do cliente e exige o
+ * cliente na nuvem. Os mesmos nomes do PDV (`FormaPagamentoTipo.EhPrazo`): desde 10/10/2026 "permuta" também (o PDV já
+ * exigia o cliente nela, mas a nuvem não abria a conta).
+ */
 export function isTermPayment(method: string | null | undefined): boolean {
     const m = (method || '').toLowerCase()
-    return m.includes('prazo') || m.includes('correntista') || m.includes('fiado')
+    return m.includes('prazo') || m.includes('correntista') || m.includes('fiado') || m.includes('permuta')
+}
+
+/** Consumo de funcionário pelo NOME da forma (PDV antigo): os mesmos nomes do PDV (`FormaPagamentoTipo.EhFuncionario`). */
+export function isEmployeePayment(method: string | null | undefined): boolean {
+    const m = (method || '').toLowerCase()
+    return m.includes('funcionário') || m.includes('funcionario') || m.includes('colaborador')
+}
+
+export type PaymentKind = 'PRAZO' | 'FUNCIONARIO' | null
+
+/**
+ * Tipo do pagamento: o que o PDV diz (desde a 2.5.23, `Tipo`, calculado pela mesma regra que exige o cliente ou o
+ * funcionário na tela) ou, no PDV antigo, pelo nome da forma.
+ */
+export function paymentKind(pay: { Method?: string | null; Tipo?: string | null }): PaymentKind {
+    const tipo = (pay.Tipo || '').trim().toUpperCase()
+    if (tipo === 'PRAZO' || tipo === 'FUNCIONARIO') return tipo
+    if (tipo) return null // o PDV disse que não é nenhum dos dois
+    if (isTermPayment(pay.Method)) return 'PRAZO'
+    if (isEmployeePayment(pay.Method)) return 'FUNCIONARIO'
+    return null
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Conta do cliente (fiado) da venda do PDV — decisão do Thomás de 25/09/2026: "o registro oficial do fiado é a conta do
+// cliente (client_tabs); a conferência não cria outra receita a prazo para o mesmo fiado". Desde 10/10/2026 a conta
+// acompanha a venda: troca de pagamento e cancelamento mudam ou tiram a parte ainda não paga.
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface TabPayment {
+    amount: number
+    clientId: string | null
+    kind: PaymentKind
+    holderName?: string | null
+}
+
+export interface DesiredTab {
+    clientId: string
+    amount: number
+    holderName: string | null
+}
+
+/** Quanto a venda deixa na conta de cada cliente (fiado somado por cliente). Venda cancelada não deixa nada. */
+export function desiredClientTabs(status: string, payments: TabPayment[]): DesiredTab[] {
+    if (status === 'CANCELLED') return []
+    const porCliente = new Map<string, DesiredTab>()
+    for (const p of payments) {
+        if (p.kind !== 'PRAZO' || !p.clientId || !(p.amount > 0)) continue
+        const atual = porCliente.get(p.clientId)
+        if (atual) {
+            atual.amount = cents(atual.amount + p.amount) / 100
+            if (!atual.holderName && p.holderName) atual.holderName = p.holderName
+        } else {
+            porCliente.set(p.clientId, { clientId: p.clientId, amount: cents(p.amount) / 100, holderName: p.holderName || null })
+        }
+    }
+    return [...porCliente.values()]
+}
+
+export interface StoredTab {
+    id: string
+    client_id: string
+    amount: number
+    is_paid: boolean
+}
+
+export interface TabPlan {
+    create: DesiredTab[]
+    update: { id: string; amount: number }[]
+    remove: string[]
+}
+
+/**
+ * O que mudar nas contas de uma venda para ficarem como a venda está agora. Parte já paga nunca é mexida: o que fica em
+ * aberto para cada cliente é o fiado da venda menos o que ele já pagou dela (baixa parcial na web divide a conta em
+ * paga + saldo). Conta aberta de cliente que saiu da venda (pagamento trocado, venda cancelada) é tirada.
+ */
+export function planClientTabs(stored: StoredTab[], desired: DesiredTab[]): TabPlan {
+    const plan: TabPlan = { create: [], update: [], remove: [] }
+    const clientes = new Set<string>([...stored.map(t => t.client_id), ...desired.map(d => d.clientId)])
+    for (const clientId of clientes) {
+        const queria = desired.find(d => d.clientId === clientId)
+        const pago = stored.filter(t => t.client_id === clientId && t.is_paid).reduce((s, t) => s + cents(t.amount), 0)
+        const abertas = stored.filter(t => t.client_id === clientId && !t.is_paid)
+        const alvo = Math.max(0, cents(queria?.amount ?? 0) - pago)
+
+        if (alvo === 0) {
+            plan.remove.push(...abertas.map(t => t.id))
+            continue
+        }
+        if (abertas.length === 0) {
+            plan.create.push({ clientId, amount: alvo / 100, holderName: queria?.holderName ?? null })
+            continue
+        }
+        const [primeira, ...sobra] = abertas
+        if (cents(primeira.amount) !== alvo) plan.update.push({ id: primeira.id, amount: alvo / 100 })
+        plan.remove.push(...sobra.map(t => t.id))
+    }
+    return plan
+}
+
+/** Texto da conta do cliente: o mesmo formato de sempre (a marca "Pedido #xxxxxxxx" liga a conta à venda). */
+export function clientTabDescription(saleUuid: string, holderName: string | null | undefined): string {
+    return `Venda a Prazo - ${saleEntryTag(saleUuid)} (${holderName || 'Cliente'})`
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Movimentos de caixa do PDV (10/10/2026): os mesmos tipos da conferência da web, para ela não adivinhar pelo texto
+// (decisões do Thomás de 25/09/2026: sangria do PDV = sempre recolhimento; vale com o funcionário do RH).
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface MovementEntryType {
+    type: string
+    is_withdrawal: boolean
+    is_addition: boolean
+}
+
+export function movementEntryType(tipo: string | null | undefined): MovementEntryType {
+    const t = (tipo || '').toLowerCase()
+    if (t.includes('suprimento') || t.includes('sobracaixa')) return { type: 'ADDITION', is_withdrawal: false, is_addition: true }
+    if (t.includes('vale')) return { type: 'WITHDRAWAL_EMPLOYEE', is_withdrawal: true, is_addition: false }
+    if (t.includes('saidaoperacional') || t.includes('despesa')) return { type: 'EXPENSE', is_withdrawal: true, is_addition: false }
+    if (t.includes('sangria')) return { type: 'WITHDRAWAL_OWNER', is_withdrawal: true, is_addition: false }
+    return { type: 'WITHDRAWAL', is_withdrawal: true, is_addition: false }
+}
+
+/** Texto do movimento: o tipo e a observação, sem repetir o tipo quando a observação já começa com ele ("Vale: Ana"). */
+export function movementIdentification(tipo: string, observacao: string | null | undefined): string {
+    const obs = (observacao || '').trim()
+    if (!obs) return tipo
+    return obs.toLowerCase().startsWith(tipo.toLowerCase()) ? obs : `${tipo}: ${obs}`
 }
 
 // ---------------------------------------------------------------------------------------------------------------
