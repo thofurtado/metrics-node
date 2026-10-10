@@ -3955,16 +3955,16 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-10T13:08:04",
+  "gerado_em": "2026-10-10T20:14:20",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "cec937f 2026-10-10",
+    "versao": "5351a6b 2026-10-10",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "7d86ffc 2026-10-10",
+    "versao": "93344f6 2026-10-10",
     "tabelas": 2
    },
    "pdv": {

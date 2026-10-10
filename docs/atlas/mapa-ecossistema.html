@@ -1,0 +1,381 @@
+<title>Mapa do Ecossistema Metrics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: o mapa à esquerda (lugares onde cada app roda: loja, nuvem, navegador/celular) e o painel de leitura à direita;
+   em tela estreita o painel desce para baixo do mapa, e o mapa rola de lado dentro da própria caixa */
+:root {
+  --bg: #eef3f5;
+  --surface: #ffffff;
+  --zone: #e3ecef;
+  --fg: #11242c;
+  --muted: #4b6370;
+  --line: #c9d7dd;
+  --edge: #8aa3ae;
+  --accent: #0a6c84;
+  --accent-soft: #d4ecf2;
+  --alta: #b3261e;
+  --alta-bg: #fbe8e6;
+  --media: #8a5a00;
+  --media-bg: #fcf0d6;
+  --ok: #1f6f43;
+  --ok-bg: #e2f2e8;
+  --ext: #6b7a82;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1519; --surface: #13212a; --zone: #16262e; --fg: #e2ecef; --muted: #9bb2bc; --line: #263943; --edge: #4f6a75;
+    --accent: #5cc8df; --accent-soft: #123843; --alta: #ff8b80; --alta-bg: #3b1714; --media: #f0c36c; --media-bg: #33270e;
+    --ok: #7dd29f; --ok-bg: #11301e; --ext: #8c9ca4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1519; --surface: #13212a; --zone: #16262e; --fg: #e2ecef; --muted: #9bb2bc; --line: #263943; --edge: #4f6a75;
+  --accent: #5cc8df; --accent-soft: #123843; --alta: #ff8b80; --alta-bg: #3b1714; --media: #f0c36c; --media-bg: #33270e;
+  --ok: #7dd29f; --ok-bg: #11301e; --ext: #8c9ca4; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--f-body); padding-inline: 16px; padding-block: 20px 48px; }
+.pagina { max-width: 1320px; margin: 0 auto; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); font-weight: 800; }
+h2 { font-size: 1.3rem; font-weight: 800; }
+h3 { font-size: 1rem; font-weight: 700; }
+p { margin: 0; }
+.cab { display: grid; gap: 6px; }
+.cab p { color: var(--muted); max-width: 75ch; }
+.eyebrow { font: 600 0.75rem/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.barra .rot { font: 600 0.78rem/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+button.chip { font: 600 0.92rem/1 var(--f-body); color: var(--fg); background: var(--surface); border: 1px solid var(--edge); border-radius: 999px;
+  padding: 9px 14px; min-height: 40px; cursor: pointer; }
+button.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button.chip:focus-visible, .no:focus-visible, .aresta:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.grade { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+@media (max-width: 1000px) { .grade { grid-template-columns: minmax(0, 1fr); } }
+.mapa-caixa { background: var(--surface); border-radius: 14px; overflow-x: auto; }
+svg { display: block; width: 100%; min-width: 820px; height: auto; font-family: var(--f-body); }
+.zona { fill: var(--zone); }
+.zona-rot { font: 700 13px var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; fill: var(--muted); }
+.aresta path.traco { fill: none; stroke: var(--edge); stroke-width: 2.2; }
+.aresta path.toque { fill: none; stroke: transparent; stroke-width: 16; cursor: pointer; }
+.aresta.problema path.traco { stroke-dasharray: 7 5; }
+.aresta.tracejada path.traco { stroke-dasharray: 2 6; }
+.aresta.acesa path.traco { stroke: var(--accent); stroke-width: 4; stroke-dasharray: none; }
+.aresta.apagada { opacity: 0.18; }
+.no { cursor: pointer; }
+.no rect { fill: var(--surface); stroke: var(--edge); stroke-width: 1.6; }
+.no.externo rect { fill: var(--zone); stroke-dasharray: 4 4; }
+.no .nome { font: 700 15px var(--f-display); fill: var(--fg); }
+.no .sub { font: 400 12px var(--f-body); fill: var(--muted); }
+.no.acesso rect { stroke: var(--accent); stroke-width: 3.2; }
+.no.apagado { opacity: 0.25; }
+.no .selo { font: 700 11px var(--f-body); }
+.selo-fundo.alta { fill: var(--alta-bg); } .selo-txt.alta { fill: var(--alta); }
+.selo-fundo.media { fill: var(--media-bg); } .selo-txt.media { fill: var(--media); }
+.selo-fundo.ok { fill: var(--ok-bg); } .selo-txt.ok { fill: var(--ok); }
+.selo-fundo.info { fill: var(--accent-soft); } .selo-txt.info { fill: var(--accent); }
+.painel { background: var(--surface); border-radius: 14px; padding: 18px 18px 20px; display: grid; gap: 14px; min-width: 0; }
+.painel .tipo { font: 600 0.75rem/1 var(--f-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.painel p.txt { color: var(--fg); }
+.painel .muted { color: var(--muted); }
+dl.fatos { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; }
+dl.fatos dt { color: var(--muted); font-size: 0.9rem; }
+dl.fatos dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; }
+.pill { display: inline-block; font: 700 0.72rem/1 var(--f-body); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; }
+.pill.alta { color: var(--alta); background: var(--alta-bg); }
+.pill.media { color: var(--media); background: var(--media-bg); }
+.pill.ok { color: var(--ok); background: var(--ok-bg); }
+.aviso { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--alta-bg); color: var(--fg); }
+.aviso.media { background: var(--media-bg); }
+ul.ligacoes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.ligacoes button { width: 100%; text-align: left; background: var(--bg); border: 1px solid transparent; border-radius: 8px; padding: 9px 11px;
+  font: 600 0.92rem/1.35 var(--f-body); color: var(--fg); cursor: pointer; min-height: 44px; }
+ul.ligacoes button:hover, ul.ligacoes button:focus-visible { border-color: var(--accent); outline: none; }
+ul.ligacoes small { display: block; font-weight: 400; color: var(--muted); }
+.passos { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.passos button { font: 600 0.92rem/1 var(--f-body); background: var(--accent); color: var(--bg); border: 0; border-radius: 8px; padding: 10px 14px; min-height: 44px; cursor: pointer; }
+.passos button:disabled { opacity: 0.4; cursor: default; }
+.passos .conta { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.92rem; }
+code { font: 0.8rem/1.4 var(--f-mono); color: var(--muted); overflow-wrap: anywhere; }
+.rodape { color: var(--muted); font-size: 0.9rem; display: grid; gap: 6px; max-width: 90ch; }
+@media (prefers-reduced-motion: no-preference) { .aresta path.traco, .no rect { transition: stroke 160ms, stroke-width 160ms, opacity 160ms; } }
+</style>
+
+<div class="pagina">
+  <header class="cab">
+    <span class="eyebrow">Uso interno · atualizado em 10/10/2026</span>
+    <h1>Mapa do Ecossistema Metrics</h1>
+    <p>Cada caixa é um app; cada linha é uma conversa entre dois deles. Toque num app ou numa linha para ver o que passa, de quanto
+      em quanto tempo, o que acontece quando cai e o que está errado hoje. As jornadas mostram um acontecimento atravessando
+      vários apps, passo a passo.</p>
+  </header>
+
+  <div class="barra" role="group" aria-label="Jornadas">
+    <span class="rot">Jornadas</span>
+    <span id="jornadas" class="barra"></span>
+  </div>
+  <div class="barra" role="group" aria-label="O que destacar">
+    <span class="rot">Mostrar nos apps</span>
+    <button class="chip" type="button" data-modo="defeitos" aria-pressed="true">Defeitos graves</button>
+    <button class="chip" type="button" data-modo="aulas" aria-pressed="false">Aulas</button>
+    <button class="chip" type="button" data-modo="copia" aria-pressed="false">Cópia do código</button>
+  </div>
+
+  <div class="grade">
+    <div class="mapa-caixa">
+      <svg id="mapa" viewBox="0 0 1100 770" role="img" aria-label="Mapa dos apps do Metrics e das ligações entre eles">
+        <defs>
+          <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"></path>
+          </marker>
+          <marker id="seta-acesa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+        <rect class="zona" x="16" y="16" width="420" height="738" rx="16"></rect>
+        <text class="zona-rot" x="36" y="44">Na loja · rede local</text>
+        <rect class="zona" x="452" y="16" width="200" height="738" rx="16"></rect>
+        <text class="zona-rot" x="472" y="44">Servidores Metrics</text>
+        <rect class="zona" x="668" y="16" width="416" height="738" rx="16"></rect>
+        <text class="zona-rot" x="688" y="44">Navegador, celular e Metrics</text>
+        <g id="arestas"></g>
+        <g id="nos"></g>
+      </svg>
+    </div>
+    <aside class="painel" id="painel" aria-live="polite"></aside>
+  </div>
+
+  <footer class="rodape">
+    <p><strong>De onde vêm os dados:</strong> o Raio-X do Ecossistema (10/10/2026), com cada ligação comprovada no código (arquivo e
+      linha nos relatórios de cada parte), e os números de funções, defeitos e aulas de cada app. Versões: as publicadas em 10/10.</p>
+    <p><strong>Como fica atualizado:</strong> os dados moram no Atlas (<code>metrics-node/docs/atlas/ecossistema.json</code>). A cada versão
+      fechada que muda uma ligação, uma versão no ar ou os números de um app, o arquivo é corrigido na mesma tarefa e o gerador do Atlas
+      monta esta página de novo, junto com as regras e as aulas.</p>
+  </footer>
+</div>
+
+<script>
+const DADOS = {"titulo": "Mapa do Ecossistema Metrics", "atualizado": "10/10/2026", "fonte": "Raio-X do Ecossistema (10/10/2026): _claude-sync/raio-x-ecossistema/saida/<parte>/raio-x.md; quem fala com quem: saida/nuvem/raio-x.md seção A", "publico": "interno (Thomás e equipe Metrics; decisão de 10/10/2026)", "nos": [{"id": "sefaz", "x": 318, "y": 78, "nome": "SEFAZ", "sub": "nota fiscal", "externo": true, "oque": "O órgão do estado que autoriza a nota fiscal do consumidor (NFC-e). Não é da Metrics."}, {"id": "pdv", "x": 112, "y": 150, "nome": "Metrics PDV", "sub": "o caixa", "versao": "2.5.24.0", "onde": "Computadores do balcão (Windows)", "oque": "O caixa da loja: vendas no balcão, mesas e comandas, delivery, pagamento, nota fiscal, abertura e fechamento de caixa.", "fichas": 451, "defeitos": 14, "graves": 1, "aulasHoje": "3 em rascunho", "aulasPropostas": 46, "copia": true, "destaque": "Pedido online de cliente já cadastrado sai com o endereço antigo dele, não o do pedido."}, {"id": "servidor", "x": 318, "y": 250, "nome": "Servidor da loja", "sub": "Core Service · porta 5000", "versao": "2.5.24.0", "onde": "O computador servidor da loja (vai junto com o PDV)", "oque": "Um serviço que fica ligado no computador servidor: guarda o banco da loja, atende o garçom e a cozinha, sincroniza com a nuvem e baixa a atualização do PDV.", "fichas": null, "defeitos": null, "graves": null, "aulasHoje": "faz parte do PDV", "aulasPropostas": null, "copia": true, "destaque": "Se o servidor cai, outro computador assume (troca automática); o PDV de cada computador guarda o que fez e envia depois."}, {"id": "garcom", "x": 112, "y": 330, "nome": "Metrics Garçom", "sub": "celular do garçom", "versao": "2.4.3", "onde": "Celular Android, no Wi-Fi da loja", "oque": "O garçom abre mesa ou comanda, lança itens com opções e sabores, manda para a cozinha e pede a conta.", "fichas": 49, "defeitos": 10, "graves": 2, "aulasHoje": "0 (trilha vazia)", "aulasPropostas": 12, "copia": false, "destaque": "Item lançado numa comanda aberta sem servidor pode cair na mesa de mesmo número quando o servidor volta."}, {"id": "cozinha", "x": 112, "y": 450, "nome": "Metrics Cozinha", "sub": "TV da cozinha", "versao": "1.0.2", "onde": "TV ou caixinha Android na cozinha", "oque": "Mostra para a cozinha os itens a preparar.", "fichas": 7, "defeitos": 27, "graves": 6, "defeitosNota": "contados junto com o Gerencial", "aulasHoje": "0", "aulasPropostas": null, "copia": false, "destaque": "Nunca mostra delivery, cardápio online, iFood nem 99, e não tira da tela o que já foi feito. A versão gerada não tem assinatura e não instala."}, {"id": "windy", "x": 318, "y": 450, "nome": "Metrics Windy", "sub": "suporte e atualização", "versao": "2.4.2.0", "onde": "Computadores da loja (Windows)", "oque": "Manda a saúde do computador para a Metrics, recebe comandos do suporte e atualiza os apps.", "fichas": 26, "defeitos": 13, "graves": 3, "aulasHoje": "0", "aulasPropostas": 7, "copia": true, "destaque": "Instala qualquer arquivo como administrador: só confere se ele tem mais de 1 MB."}, {"id": "ponto", "x": 112, "y": 580, "nome": "Metrics Ponto", "sub": "relógio de ponto", "versao": "1.3.2.0", "onde": "Computador de bater o ponto (Windows)", "oque": "O funcionário bate o ponto com o PIN; sem internet, guarda as batidas e envia depois.", "fichas": 20, "defeitos": 13, "graves": 1, "aulasHoje": "0", "aulasPropostas": 9, "copia": true, "destaque": "A batida guardada sem internet pode ser descartada pela nuvem com resposta \"ok\"."}, {"id": "sync", "x": 318, "y": 600, "nome": "Metrics Sync", "sub": "importa o cardápio", "versao": "1.4.6.0", "onde": "Computador da loja com o sistema antigo", "oque": "Lê o cardápio do sistema antigo (Athos, Excel e outros) e manda só o que mudou para a nuvem.", "fichas": 16, "defeitos": 8, "graves": 0, "aulasHoje": "0", "aulasPropostas": 6, "copia": false, "destaque": "Reabrir o programa desfaz o que o técnico configurou (sincronia automática, intervalo, iniciar com o Windows)."}, {"id": "erp", "x": 318, "y": 715, "nome": "Athos / Excel", "sub": "sistema antigo", "externo": true, "oque": "O sistema que a loja usava antes, de onde o Sync lê o cardápio. Clientes do Athos não vêm mais (Sync 1.4.6.0)."}, {"id": "suporte", "x": 112, "y": 705, "nome": "Suporte Remoto", "sub": "acesso remoto", "versao": "1.3.7.1", "onde": "Computadores da loja", "oque": "Instalador do programa de acesso remoto com a marca Metrics; o técnico conecta por um servidor próprio. Não fala com a nuvem.", "fichas": 4, "defeitos": 5, "graves": 1, "aulasHoje": "0", "aulasPropostas": 3, "copia": false, "destaque": "Desinstalar não remove o programa nem a senha de acesso."}, {"id": "saas", "x": 552, "y": 120, "nome": "SaaS Admin", "sub": "cria as lojas", "versao": "2.4.6", "onde": "Servidor da Metrics (site)", "oque": "Cria, suspende e apaga lojas, sincroniza o banco de todas e mostra o Atlas. Os apps acham a loja pelo código aqui.", "fichas": 17, "defeitos": 10, "graves": 2, "aulasHoje": "0", "aulasPropostas": 7, "copia": true, "destaque": "Não tem login: quem abrir o endereço cria e apaga lojas. Conferido em 10/10: abre sem pedir senha."}, {"id": "nuvem", "x": 552, "y": 330, "nome": "Nuvem Metrics", "sub": "o funcionário invisível", "versao": "2.6.109.0", "onde": "Servidor da Metrics, um banco por loja", "oque": "O centro de tudo: guarda os dados de cada loja, recebe as vendas do PDV, os pedidos online, o ponto, e atende a web e o Gerencial.", "fichas": 51, "defeitos": 14, "graves": 11, "aulasHoje": "0", "aulasPropostas": 7, "copia": true, "destaque": "Cadastro de usuário aberto na internet; a chave do relógio de ponto passa por cima do login em todas as lojas."}, {"id": "downloads", "x": 552, "y": 530, "nome": "Downloads", "sub": "central de atualizações", "versao": "parte da nuvem", "onde": "Dentro da nuvem", "oque": "Guarda o instalador mais novo de cada app. O PDV e o Windy se atualizam por ela; Ponto, Sync e celulares, à mão.", "fichas": null, "defeitos": null, "graves": null, "aulasHoje": "—", "aulasPropostas": null, "copia": true, "destaque": "Ponto, Windy e Sync não conferem se o arquivo baixado é o publicado (só o PDV confere)."}, {"id": "ifood", "x": 552, "y": 700, "nome": "iFood e 99Food", "sub": "plataformas", "externo": true, "oque": "As plataformas de delivery. Mandam os pedidos para a nuvem, que também consulta o iFood a cada 30 segundos."}, {"id": "gemini", "x": 760, "y": 92, "nome": "Google Gemini", "sub": "inteligência artificial", "externo": true, "oque": "A IA que a nuvem usa para ler nota de compra e boleto, e que o Priorit usa nas tarefas."}, {"id": "web", "x": 900, "y": 190, "nome": "Metrics Web", "sub": "o painel", "versao": "2.6.25.1", "onde": "Navegador do gerente e do dono", "oque": "Financeiro, caixa da web e conferência, estoque e produtos, RH e ponto, atendimento e configurações.", "fichas": 199, "defeitos": 109, "graves": 28, "aulasHoje": "19 no ar (17 a esconder)", "aulasPropostas": 61, "copia": true, "destaque": "O vale do caixa nunca sai do salário; dois cliques na conferência dobram o caixa; a entrada de nota diz que gravou e não grava."}, {"id": "cardapio", "x": 900, "y": 330, "nome": "Cardápio online", "sub": "pedido do cliente", "versao": "2.6.25.1", "onde": "Celular do cliente final", "oque": "O cliente monta o pedido, paga (Pix com comprovante no WhatsApp) e acompanha a entrega.", "fichas": 25, "defeitos": 30, "graves": 5, "aulasHoje": "1 no ar (esconder)", "aulasPropostas": 17, "copia": true, "destaque": "O total do pedido vem do navegador do cliente; a nuvem não confere o preço."}, {"id": "gerencial", "x": 900, "y": 470, "nome": "Metrics Gerencial", "sub": "celular do dono", "versao": "2.0.4", "onde": "Celular Android do dono ou gerente", "oque": "Resumo do dia, contas a pagar e a receber, comprovantes pela câmera, atendimentos.", "fichas": 30, "defeitos": 27, "graves": 6, "defeitosNota": "contados junto com a Cozinha", "aulasHoje": "0", "aulasPropostas": 8, "copia": false, "destaque": "Editar uma conta muda o vencimento para hoje sem ninguém pedir; \"Contas Vencidas\" só mostra o mês atual."}, {"id": "priorit", "x": 900, "y": 600, "nome": "Priorit", "sub": "tarefas com IA", "versao": "0.1.2", "onde": "Servidor próprio (site)", "oque": "Organizador de tarefas com IA, ligado à lista de usuários da loja.", "fichas": 16, "defeitos": 11, "graves": 1, "aulasHoje": "0", "aulasPropostas": 5, "copia": true, "destaque": "Não pede senha nenhuma, e a IA apaga tarefas sem confirmar."}, {"id": "aprenda", "x": 900, "y": 715, "nome": "Aprenda Metrics", "sub": "as aulas", "versao": "sem versão", "onde": "Moodle (parado desde 08/10)", "oque": "As aulas dos apps. Nascem das decisões registradas no Atlas e das funções do catálogo \"Onde fica?\".", "fichas": null, "defeitos": null, "graves": null, "aulasHoje": "3 em rascunho; 31 antigas (27 a esconder)", "aulasPropostas": 188, "copia": false, "destaque": "As trilhas por função estão vazias, e o repositório das aulas não tem cópia no GitHub."}], "ligacoes": [{"id": "pdv-servidor", "de": "pdv", "para": "servidor", "duas": true, "rot": "Mesmo banco da loja", "flui": "Tudo o que o caixa faz: vendas, mesas e comandas, abertura e fechamento de caixa. Cada computador do balcão usa o banco do servidor.", "freq": "Na hora", "falha": "Computador sem o servidor guarda as vendas e envia quando ele volta; se o servidor cai, outro computador assume.", "identificacao": "Rede local", "provas": ["Metrics.PDV/Metrics.Shared/Services/Cluster/"]}, {"id": "pdv-sefaz", "de": "pdv", "para": "sefaz", "rot": "Nota fiscal", "flui": "A NFC-e (nota fiscal do consumidor) de cada venda com nota.", "freq": "Na hora da venda", "falha": "Sem internet ou com a SEFAZ fora, a nota sai em contingência; recusa da SEFAZ vira mensagem com o produto e o campo.", "identificacao": "Certificado digital da loja", "provas": ["Metrics.PDV/Metrics.Shared/Services/Fiscal/EmissaoDaNota.cs"]}, {"id": "garcom-servidor", "de": "garcom", "para": "servidor", "rot": "Pedidos do garçom", "flui": "Abrir mesa ou comanda, lançar itens, mandar para a cozinha, pedir a conta.", "freq": "Na hora", "falha": "Sem servidor, o celular guarda e envia quando ele volta.", "problema": {"sev": "alta", "txt": "Qualquer aparelho no Wi-Fi da loja lança itens com o preço que quiser; comanda pode virar mesa na volta do servidor."}, "identificacao": "PIN no app (o servidor não confere o aparelho)", "provas": ["metrics-garcom/app/src/main/java/com/example/metricsgarcom/data/api/GarcomApiClient.kt:57-86", "Metrics.PDV/Metrics.CoreService/Endpoints/GarcomEndpoints.cs:104-670"]}, {"id": "cozinha-servidor", "de": "servidor", "para": "cozinha", "rot": "Itens a preparar", "flui": "A lista de itens a preparar.", "freq": "A cada 5 segundos, a lista inteira", "falha": "Sem servidor, a tela para de atualizar.", "problema": {"sev": "alta", "txt": "Delivery, cardápio online, iFood e 99 nunca aparecem; o que já foi feito não sai da tela."}, "identificacao": "Rede local", "provas": ["Metrics.PDV/Metrics.CoreService/Program.cs:305-326"]}, {"id": "servidor-nuvem", "de": "servidor", "para": "nuvem", "duas": true, "rot": "Sincronia", "flui": "Sobem: vendas, caixas, sangrias e vales, cancelamentos, clientes novos. Descem: produtos, usuários e funcionários do RH, clientes, formas de pagamento, identificadores, maquininhas e configurações.", "freq": "Venda na hora; o resto a cada 5 minutos", "falha": "Tudo fica guardado na loja e sobe quando a internet volta; o que a nuvem recusa aparece em \"Estado da sincronia\".", "identificacao": "Chave do PDV + endereço da loja", "provas": ["Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs", "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs", "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs"]}, {"id": "nuvem-servidor-pedidos", "de": "nuvem", "para": "servidor", "rot": "Pedidos online", "flui": "Pedidos do cardápio online, do iFood e da 99 chegando ao PDV.", "freq": "Canal ao vivo, com consulta de reserva", "falha": "O pedido espera na nuvem até o PDV voltar.", "problema": {"sev": "alta", "txt": "Pedido de cliente já cadastrado sai com o endereço antigo; a lista de pedidos pendentes funciona sem login."}, "identificacao": "Nenhuma (rota aberta)", "provas": ["Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs:172,313,677,966,1085"]}, {"id": "ponto-nuvem", "de": "ponto", "para": "nuvem", "rot": "Batidas de ponto", "flui": "Cada batida do funcionário; a lista de funcionários desce para o computador.", "freq": "Na hora; sem internet, numa fila", "falha": "Guarda as batidas e envia depois.", "problema": {"sev": "alta", "txt": "A nuvem pode descartar uma batida da fila e responder \"ok\"; a chave fixa abre a nuvem de todas as lojas."}, "identificacao": "Chave do Ponto, igual em todas as lojas", "provas": ["Metrics.Ponto/ApiService.cs:26-33,40,78,102,137,168", "metrics-node/src/modules/hr/http/controllers/time-clock.ts:142-176"]}, {"id": "ponto-saas", "de": "ponto", "para": "saas", "rot": "Acha a loja pelo código", "tracejada": true, "flui": "O código da loja digitado na instalação vira o endereço dela.", "freq": "Só na instalação", "falha": "Sem o SaaS Admin no ar, não dá para instalar.", "identificacao": "Nenhuma", "provas": ["Metrics.Ponto/ApiService.cs (admin.metrics.dev.br/api/tenants)"]}, {"id": "windy-nuvem", "de": "windy", "para": "nuvem", "duas": true, "rot": "Saúde e comandos", "flui": "Sobe a saúde do computador; descem comandos do suporte (atualizar, reiniciar) e a entrada na rede privada.", "freq": "Saúde a cada 2 minutos; comandos ao vivo", "falha": "Sem internet, o suporte não alcança o computador.", "problema": {"sev": "alta", "txt": "Aceita qualquer servidor na conexão de comandos; duas rotas do Windy funcionam sem login, uma delas entrega a chave da rede privada."}, "identificacao": "Chave do Ponto, igual em todas as lojas", "provas": ["Metrics.Windy/Services/ProvisioningService.cs:64-74", "Metrics.Windy/Services/TelemetryService.cs:390-398,464"]}, {"id": "windy-servidor", "de": "windy", "para": "servidor", "rot": "Atualiza o PDV", "flui": "O comando \"Update PDV\" do suporte baixa e instala a versão nova.", "freq": "Quando o suporte manda", "falha": "Computador desligado não recebe.", "identificacao": "Comando vindo da nuvem", "provas": ["Metrics.Windy/Services/TelemetryService.cs (comando ATUALIZAR_PDV)"]}, {"id": "erp-sync", "de": "erp", "para": "sync", "rot": "Lê o cardápio", "flui": "Produtos, preços e impostos do sistema antigo.", "freq": "A cada 5 minutos (padrão)", "falha": "Sem o sistema antigo, nada muda na nuvem.", "identificacao": "Acesso ao banco do sistema antigo", "provas": ["Metrics.Sync/Services/AthosDataSourceAdapter.cs", "Metrics.Sync/Services/ExcelDataSourceAdapter.cs"]}, {"id": "sync-nuvem", "de": "sync", "para": "nuvem", "rot": "Cardápio", "flui": "Só os produtos que mudaram, em lotes.", "freq": "A cada 5 minutos (padrão)", "falha": "Tenta de novo na rodada seguinte.", "identificacao": "Chave do PDV (com reserva escrita no código)", "provas": ["Metrics.Sync/Services/MetricsCloudSyncClient.cs:94-195"]}, {"id": "web-nuvem", "de": "web", "para": "nuvem", "duas": true, "rot": "Painel", "flui": "Cerca de 200 rotas: financeiro, caixa da web, estoque, RH, atendimento, configurações.", "freq": "Quando alguém usa", "falha": "Sem internet, o painel não abre.", "problema": {"sev": "alta", "txt": "O cadastro de usuário está aberto na internet e qualquer usuário logado cria administrador."}, "identificacao": "Login (e-mail e senha)", "provas": ["metrics/src/lib/axios.ts:16-31", "metrics/src/api/"]}, {"id": "cardapio-nuvem", "de": "cardapio", "para": "nuvem", "duas": true, "rot": "Pedido e acompanhamento", "flui": "O pedido do cliente e o acompanhamento da entrega.", "freq": "Acompanhamento a cada 2,5 segundos", "falha": "Sem internet, o cliente não pede.", "problema": {"sev": "alta", "txt": "O total do pedido vem do navegador do cliente; a nuvem não confere o preço."}, "identificacao": "Nenhuma (é público)", "provas": ["metrics/src/pages/landings/GenericMenu.tsx:237,936,1600,1668,1920,1968"]}, {"id": "gerencial-nuvem", "de": "gerencial", "para": "nuvem", "duas": true, "rot": "Resumo e contas", "flui": "Cerca de 45 rotas: resumo do dia, contas, comprovantes, atendimentos.", "freq": "Quando o dono usa", "falha": "Sem internet, mostra só o que já tinha.", "problema": {"sev": "media", "txt": "Editar muda o vencimento; a baixa grava a data do vencimento como data do pagamento."}, "identificacao": "Login", "provas": ["metrics-mobile/app/src/main/java/com/example/metricsmobile/data/api/ApiService.kt"]}, {"id": "saas-nuvem", "de": "saas", "para": "nuvem", "rot": "Cria e apaga lojas", "flui": "Criar loja (com o banco), apagar loja, atualizar a estrutura do banco de todas.", "freq": "Quando a Metrics usa", "falha": "—", "problema": {"sev": "alta", "txt": "O SaaS Admin não tem login: quem abrir o endereço apaga lojas."}, "identificacao": "Chave do Ponto", "provas": ["metrics-saas-admin/src/app/actions.ts:110-114,204-207,233-237,265-269,301-304"]}, {"id": "priorit-nuvem", "de": "priorit", "para": "nuvem", "rot": "Lista de usuários", "flui": "Os usuários da loja.", "freq": "Ao configurar", "falha": "—", "identificacao": "Chave do PDV", "provas": ["priorit/app/api/tenant/setup/route.ts:34-37"]}, {"id": "ifood-nuvem", "de": "ifood", "para": "nuvem", "duas": true, "rot": "Pedidos das plataformas", "flui": "Pedidos, cancelamentos e mudanças de situação.", "freq": "Ao vivo e consulta a cada 30 segundos", "falha": "O iFood guarda os eventos até a nuvem buscar.", "identificacao": "Avisos abertos das plataformas", "provas": ["metrics-node/src/modules/delivery/http/controllers/routes.ts:32-65", "metrics-node/src/modules/delivery/services/ifood-poller.ts:536-547"]}, {"id": "nuvem-gemini", "de": "nuvem", "para": "gemini", "rot": "Leitura com IA", "flui": "Foto da nota de compra e do boleto.", "freq": "Quando alguém usa", "falha": "Cai calada num \"plano B\" por nome.", "problema": {"sev": "alta", "txt": "O plano B troca produtos por nome parecido (SALSICHA vira Sal) sem avisar."}, "identificacao": "Chave da loja (sem tela para configurar)", "provas": ["metrics-node/src/modules/ai/services/gemini-ai.service.ts"]}, {"id": "downloads-servidor", "de": "downloads", "para": "servidor", "rot": "Versão nova do PDV", "flui": "O instalador novo do PDV.", "freq": "O servidor da loja confere a cada 30 minutos", "falha": "Sem internet, instala o que já tinha baixado.", "identificacao": "Confere o código do arquivo", "provas": ["Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:20,48"]}, {"id": "downloads-windy", "de": "downloads", "para": "windy", "rot": "Versão nova do Windy", "flui": "O instalador novo do Windy.", "freq": "Ao abrir", "falha": "—", "problema": {"sev": "media", "txt": "Não confere se o arquivo é o publicado."}, "identificacao": "Só confere o tamanho", "provas": ["Metrics.Windy/Services/UpdateService.cs:25-27,195-200"]}, {"id": "nuvem-downloads", "de": "nuvem", "para": "downloads", "rot": "Publicação", "tracejada": true, "flui": "Cada versão publicada.", "freq": "A cada publicação", "falha": "—", "identificacao": "Chave de publicação", "provas": ["metrics-node/src/modules/public/http/controllers/unified-downloads.ts"]}, {"id": "aprenda-nuvem", "de": "nuvem", "para": "aprenda", "rot": "Atlas e funções", "tracejada": true, "flui": "As regras do Atlas e as funções do catálogo \"Onde fica?\" viram as aulas.", "freq": "A cada versão fechada (planejado)", "falha": "—", "identificacao": "—", "provas": ["Aprenda/ferramentas/gerar_catalogo.py", "metrics-node/docs/atlas/"]}], "jornadas": [{"id": "j1", "nome": "Venda no balcão", "passos": [["pdv-servidor", "O caixa fecha a venda; ela fica gravada no banco do servidor da loja."], ["pdv-sefaz", "Se a venda é com nota, a NFC-e sai para a SEFAZ."], ["servidor-nuvem", "A venda sobe para a nuvem na hora; lá ela baixa o estoque pela ficha técnica."], ["web-nuvem", "Ela aparece na conferência de caixa e no financeiro da web."], ["gerencial-nuvem", "E entra no resumo do dia no celular do dono."]]}, {"id": "j2", "nome": "Pedido do cardápio", "passos": [["cardapio-nuvem", "O cliente faz o pedido pelo celular."], ["nuvem-servidor-pedidos", "O pedido chega ao PDV pelo canal ao vivo (hoje com o defeito do endereço antigo)."], ["cozinha-servidor", "A cozinha deveria ver o pedido; hoje a tela da Cozinha não mostra delivery."], ["servidor-nuvem", "Ao dar baixa, a venda sobe para a nuvem."], ["web-nuvem", "E aparece na conferência de caixa da web."]]}, {"id": "j3", "nome": "Mesa pelo garçom", "passos": [["garcom-servidor", "O garçom lança os itens pelo celular."], ["cozinha-servidor", "Os itens vão para a cozinha e para a impressora."], ["pdv-servidor", "O caixa fecha a conta no PDV (couvert: atenção se a conta foi pedida pelo celular)."], ["servidor-nuvem", "A venda sobe para a nuvem."]]}, {"id": "j4", "nome": "Ponto do funcionário", "passos": [["ponto-saas", "Na instalação, o código da loja vira o endereço dela."], ["ponto-nuvem", "O funcionário bate o ponto; sem internet, a batida espera numa fila."], ["web-nuvem", "O RH vê o espelho e a folha na web (hoje o vale do caixa não sai do salário)."]]}, {"id": "j5", "nome": "Boleto pelo celular", "passos": [["gerencial-nuvem", "O dono fotografa o comprovante ou o boleto."], ["nuvem-gemini", "A nuvem lê com IA (hoje só a web usa o leitor)."], ["web-nuvem", "A despesa aparece no financeiro da web para conferir."]]}, {"id": "j6", "nome": "Loja nova", "passos": [["saas-nuvem", "A Metrics cria a loja e o banco dela no SaaS Admin."], ["ponto-saas", "Cada app acha a loja pelo código."], ["downloads-servidor", "O PDV é instalado pela Central de Downloads."], ["servidor-nuvem", "Primeira sincronia: produtos, equipe e formas de pagamento descem para a loja."]]}], "como_atualizar": "Ao fechar uma versão que muda uma ligação (rota, frequência, quem fala com quem), uma versão no ar, os números de funções, defeitos ou aulas de um app: editar este arquivo e rodar atlas.py tudo (gera docs/atlas/mapa-ecossistema.html)."};
+const NOS = Object.fromEntries(DADOS.nos.map(n => [n.id, n]));
+const ARESTAS = DADOS.ligacoes.map(a => ({ ...a, id_: a.identificacao }));
+const JORNADAS = DADOS.jornadas;
+
+const W = 184, H = 64;
+const svgNs = "http://www.w3.org/2000/svg";
+const gArestas = document.getElementById("arestas");
+const gNos = document.getElementById("nos");
+const painel = document.getElementById("painel");
+let modo = "defeitos";
+let selecionado = null; // { tipo: "no"|"aresta"|"jornada", id, passo }
+
+function el(nome, attrs, pai) {
+  const e = document.createElementNS(svgNs, nome);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (pai) pai.appendChild(e);
+  return e;
+}
+function borda(n, alvo) {
+  // ponto na borda do retângulo do nó n, na direção de alvo
+  const dx = alvo.x - n.x, dy = alvo.y - n.y;
+  const sx = Math.abs(dx) / (W / 2), sy = Math.abs(dy) / (H / 2);
+  const s = Math.max(sx, sy) || 1;
+  return { x: n.x + dx / s, y: n.y + dy / s };
+}
+
+// Arestas
+for (const a of ARESTAS) {
+  const A = NOS[a.de], B = NOS[a.para];
+  const p1 = borda(A, B), p2 = borda(B, A);
+  const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+  const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.hypot(dx, dy) || 1;
+  const curva = 18;
+  const cx = mx - dy / len * curva, cy = my + dx / len * curva;
+  const d = `M${p1.x},${p1.y} Q${cx},${cy} ${p2.x},${p2.y}`;
+  const g = el("g", { class: "aresta" + (a.problema ? " problema" : "") + (a.tracejada ? " tracejada" : ""), "data-id": a.id,
+    tabindex: "0", role: "button", "aria-label": `${A.nome} e ${B.nome}: ${a.rot}` }, gArestas);
+  el("path", { class: "traco", d, "marker-end": "url(#seta)", ...(a.duas ? { "marker-start": "url(#seta)" } : {}) }, g);
+  el("path", { class: "toque", d }, g);
+  a.g = g;
+  g.addEventListener("click", () => escolher({ tipo: "aresta", id: a.id }));
+  g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); escolher({ tipo: "aresta", id: a.id }); } });
+}
+
+// Nós
+for (const id in NOS) {
+  const n = NOS[id];
+  const g = el("g", { class: "no" + (n.externo ? " externo" : ""), "data-id": id, tabindex: "0", role: "button", "aria-label": n.nome }, gNos);
+  el("rect", { x: n.x - W / 2, y: n.y - H / 2, width: W, height: H, rx: 12 }, g);
+  const t = el("text", { class: "nome", x: n.x - W / 2 + 12, y: n.y - 4 }, g); t.textContent = n.nome;
+  const s = el("text", { class: "sub", x: n.x - W / 2 + 12, y: n.y + 15 }, g); s.textContent = n.sub;
+  n.seloG = el("g", {}, g);
+  n.g = g;
+  g.addEventListener("click", () => escolher({ tipo: "no", id }));
+  g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); escolher({ tipo: "no", id }); } });
+}
+
+function seloDoNo(n) {
+  if (n.externo) return null;
+  if (modo === "defeitos") {
+    if (n.graves == null) return null;
+    return { txt: `${n.graves} grave${n.graves === 1 ? "" : "s"}`, cls: n.graves >= 5 ? "alta" : n.graves > 0 ? "media" : "ok" };
+  }
+  if (modo === "aulas") {
+    if (n.aulasPropostas == null) return null;
+    const temAula = /rascunho/.test(n.aulasHoje || "");
+    return { txt: `${n.aulasPropostas} aulas`, cls: temAula ? "info" : "media" };
+  }
+  if (modo === "copia") {
+    if (n.copia == null) return null;
+    return n.copia ? { txt: "no GitHub", cls: "ok" } : { txt: "só aqui", cls: "alta" };
+  }
+  return null;
+}
+function desenharSelos() {
+  for (const id in NOS) {
+    const n = NOS[id];
+    n.seloG.innerHTML = "";
+    const s = seloDoNo(n);
+    if (!s) continue;
+    const w = s.txt.length * 6.4 + 14;
+    el("rect", { class: "selo-fundo " + s.cls, x: n.x + W / 2 - w - 6, y: n.y - H / 2 - 11, width: w, height: 20, rx: 6 }, n.seloG);
+    const t = el("text", { class: "selo selo-txt " + s.cls, x: n.x + W / 2 - w / 2 - 6, y: n.y - H / 2 + 3, "text-anchor": "middle" }, n.seloG);
+    t.textContent = s.txt;
+  }
+}
+
+function acender(nosAcesos, arestasAcesas) {
+  const temFoco = nosAcesos.size > 0 || arestasAcesas.size > 0;
+  for (const id in NOS) {
+    const n = NOS[id];
+    n.g.classList.toggle("acesso", nosAcesos.has(id));
+    n.g.classList.toggle("apagado", temFoco && !nosAcesos.has(id));
+  }
+  for (const a of ARESTAS) {
+    const acesa = arestasAcesas.has(a.id);
+    a.g.classList.toggle("acesa", acesa);
+    a.g.classList.toggle("apagada", temFoco && !acesa);
+    const tr = a.g.querySelector(".traco");
+    tr.setAttribute("marker-end", acesa ? "url(#seta-acesa)" : "url(#seta)");
+    if (a.duas) tr.setAttribute("marker-start", acesa ? "url(#seta-acesa)" : "url(#seta)");
+  }
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function painelNo(id) {
+  const n = NOS[id];
+  const ligs = ARESTAS.filter(a => a.de === id || a.para === id);
+  let h = `<span class="tipo">${n.externo ? "De fora da Metrics" : "App"}</span><h2>${esc(n.nome)}</h2><p class="txt">${esc(n.oque)}</p>`;
+  if (!n.externo) {
+    h += `<dl class="fatos">
+      <dt>Versão</dt><dd>${esc(n.versao)}</dd>
+      <dt>Onde roda</dt><dd>${esc(n.onde)}</dd>
+      ${n.fichas != null ? `<dt>Funções</dt><dd>${n.fichas}</dd>` : ""}
+      ${n.defeitos != null ? `<dt>Defeitos</dt><dd>${n.defeitos} (${n.graves} grave${n.graves === 1 ? "" : "s"})${n.defeitosNota ? ` <span class="muted">· ${esc(n.defeitosNota)}</span>` : ""}</dd>` : ""}
+      <dt>Aulas hoje</dt><dd>${esc(n.aulasHoje)}</dd>
+      ${n.aulasPropostas != null ? `<dt>Aulas propostas</dt><dd>${n.aulasPropostas}</dd>` : ""}
+      <dt>Cópia do código</dt><dd>${n.copia ? '<span class="pill ok">no GitHub</span>' : '<span class="pill alta">só neste computador</span>'}</dd>
+    </dl>`;
+    if (n.destaque) h += `<div class="aviso ${n.graves ? "" : "media"}"><strong>Mais importante hoje</strong><span>${esc(n.destaque)}</span></div>`;
+  }
+  if (ligs.length) {
+    h += `<h3>Conversa com</h3><ul class="ligacoes">` + ligs.map(a => {
+      const outro = NOS[a.de === id ? a.para : a.de];
+      return `<li><button type="button" data-aresta="${a.id}">${esc(outro.nome)} · ${esc(a.rot)}<small>${esc(a.freq)}</small></button></li>`;
+    }).join("") + `</ul>`;
+  }
+  return { html: h, nos: new Set([id, ...ligs.map(a => a.de === id ? a.para : a.de)]), arestas: new Set(ligs.map(a => a.id)) };
+}
+
+function painelAresta(aid) {
+  const a = ARESTAS.find(x => x.id === aid);
+  const A = NOS[a.de], B = NOS[a.para];
+  let h = `<span class="tipo">Ligação</span><h2>${esc(A.nome)} ${a.duas ? "⇄" : "→"} ${esc(B.nome)}</h2>
+    <dl class="fatos">
+      <dt>O que passa</dt><dd>${esc(a.flui)}</dd>
+      <dt>De quanto em quanto</dt><dd>${esc(a.freq)}</dd>
+      <dt>Como se identifica</dt><dd>${esc(a.id_)}</dd>
+      <dt>Quando cai</dt><dd>${esc(a.falha)}</dd>
+    </dl>`;
+  if (a.problema) h += `<div class="aviso ${a.problema.sev === "alta" ? "" : "media"}"><strong>Problema hoje</strong><span>${esc(a.problema.txt)}</span></div>`;
+  if (a.provas && a.provas.length) h += `<h3>Onde está no código</h3><p>${a.provas.map(p => `<code>${esc(p)}</code>`).join("<br>")}</p>`;
+  h += `<ul class="ligacoes"><li><button type="button" data-no="${a.de}">Ver ${esc(A.nome)}</button></li><li><button type="button" data-no="${a.para}">Ver ${esc(B.nome)}</button></li></ul>`;
+  return { html: h, nos: new Set([a.de, a.para]), arestas: new Set([aid]) };
+}
+
+function painelJornada(jid, passo) {
+  const j = JORNADAS.find(x => x.id === jid);
+  const [aid, txt] = j.passos[passo];
+  const a = ARESTAS.find(x => x.id === aid);
+  const feitas = new Set(j.passos.slice(0, passo + 1).map(p => p[0]));
+  const nos = new Set();
+  for (const p of j.passos.slice(0, passo + 1)) { const x = ARESTAS.find(y => y.id === p[0]); nos.add(x.de); nos.add(x.para); }
+  const h = `<span class="tipo">Jornada</span><h2>${esc(j.nome)}</h2>
+    <p class="txt">${esc(txt)}</p>
+    <p class="muted">${esc(NOS[a.de].nome)} ${a.duas ? "⇄" : "→"} ${esc(NOS[a.para].nome)} · ${esc(a.freq)}</p>
+    ${a.problema ? `<div class="aviso ${a.problema.sev === "alta" ? "" : "media"}"><strong>Problema neste passo</strong><span>${esc(a.problema.txt)}</span></div>` : ""}
+    <div class="passos">
+      <button type="button" data-passo="-1" ${passo === 0 ? "disabled" : ""}>Anterior</button>
+      <button type="button" data-passo="1" ${passo === j.passos.length - 1 ? "disabled" : ""}>Próximo</button>
+      <span class="conta">Passo ${passo + 1} de ${j.passos.length}</span>
+    </div>`;
+  return { html: h, nos, arestas: feitas };
+}
+
+function painelInicio() {
+  const total = Object.values(NOS).filter(n => !n.externo);
+  const graves = total.reduce((s, n) => s + (n.graves || 0), 0) - 6; // Cozinha e Gerencial dividem a mesma contagem
+  return { html: `<span class="tipo">Como usar</span><h2>Toque num app ou numa linha</h2>
+    <p class="txt">O painel mostra o que é, a versão no ar, quantas funções e aulas tem, e o que está errado hoje.</p>
+    <dl class="fatos"><dt>Apps</dt><dd>${total.length}</dd><dt>Ligações</dt><dd>${ARESTAS.length}</dd><dt>Defeitos graves</dt><dd>${graves}</dd><dt>Jornadas</dt><dd>${JORNADAS.length}</dd></dl>
+    <p class="muted">Linha tracejada = tem problema hoje. Pontilhada = só na instalação ou na documentação.</p>`,
+    nos: new Set(), arestas: new Set() };
+}
+
+function escolher(s) {
+  selecionado = s;
+  let r;
+  if (!s) r = painelInicio();
+  else if (s.tipo === "no") r = painelNo(s.id);
+  else if (s.tipo === "aresta") r = painelAresta(s.id);
+  else r = painelJornada(s.id, s.passo);
+  painel.innerHTML = r.html;
+  acender(r.nos, r.arestas);
+  document.querySelectorAll("#jornadas button").forEach(b => b.setAttribute("aria-pressed", String(s?.tipo === "jornada" && b.dataset.j === s.id)));
+}
+
+painel.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.aresta) escolher({ tipo: "aresta", id: b.dataset.aresta });
+  else if (b.dataset.no) escolher({ tipo: "no", id: b.dataset.no });
+  else if (b.dataset.passo && selecionado?.tipo === "jornada") {
+    const j = JORNADAS.find(x => x.id === selecionado.id);
+    const p = Math.max(0, Math.min(j.passos.length - 1, selecionado.passo + Number(b.dataset.passo)));
+    escolher({ tipo: "jornada", id: j.id, passo: p });
+  }
+});
+
+const caixaJ = document.getElementById("jornadas");
+for (const j of JORNADAS) {
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button"; b.dataset.j = j.id; b.textContent = j.nome; b.setAttribute("aria-pressed", "false");
+  b.addEventListener("click", () => {
+    if (selecionado?.tipo === "jornada" && selecionado.id === j.id) escolher(null);
+    else escolher({ tipo: "jornada", id: j.id, passo: 0 });
+  });
+  caixaJ.appendChild(b);
+}
+document.querySelectorAll("[data-modo]").forEach(b => b.addEventListener("click", () => {
+  modo = b.dataset.modo;
+  document.querySelectorAll("[data-modo]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  desenharSelos();
+}));
+document.getElementById("mapa").addEventListener("click", e => { if (e.target.tagName === "svg" || e.target.classList.contains("zona")) escolher(null); });
+
+desenharSelos();
+escolher(null);
+</script>
