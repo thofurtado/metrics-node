@@ -1,5 +1,5 @@
 {
- "gerado_em": "09/10/2026",
+ "gerado_em": "10/10/2026",
  "atlas": {
   "titulo": "Atlas do Metrics",
   "resumo": "Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.",
@@ -808,6 +808,32 @@
      "ondeNoCodigo": [
       "Metrics.PDV/Views/JanelaFechamentoCaixaWindow.xaml.cs"
      ]
+    },
+    {
+     "id": "regra-peso-tres-casas",
+     "titulo": "O peso digitado no PDV tem 3 casas (os gramas)",
+     "regra": "Produto por peso (kg): os números entram pela direita com 3 casas, no campo da quantidade do Caixa e na janela do item: 6 vira 0,006 kg, 604 vira 0,604 kg, 1250 vira 1,250 kg. Até 9.999,999 kg. Em branco não lança. Na tela do Pagamento o item por peso aparece em kg.",
+     "porque": "O Thomás tinha escolhido 2 casas (como o dinheiro) em 06/10/2026 e corrigiu em 10/10/2026: o quilo trabalha com 3 casas, igual à etiqueta da balança (0,604 kg). O banco do PDV, o carrinho, a impressão, a NFC-e e a nuvem já guardavam 3 casas.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Helpers/QuantidadeDigitada.cs",
+      "Metrics.PDV/Metrics.PDV/Views/JanelaItemWindow.xaml.cs",
+      "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs"
+     ]
+    },
+    {
+     "id": "regra-pagamento-maquininha-teclado",
+     "titulo": "Pagamento: a maquininha e o resto da forma pelo teclado",
+     "regra": "Escolher Débito, Crédito, Pix ou Vale abre a escolha da maquininha (número, setas e Enter, ou toque; a última usada vem marcada). Com uma maquininha só, ela é escolhida sozinha. No Pix a lista traz também \"Sem maquininha\". Crédito vai em 1x sem perguntar; a tecla da forma de novo abre as parcelas. A prazo sem cliente abre a busca do cliente; consumo de funcionário abre a lista dos funcionários. O Enter nunca lança cartão sem maquininha.",
+     "porque": "Pedido do Thomás em 10/10/2026: os caixas que vieram do Athos fazem tudo pelo teclado; a lista suspensa embaixo só abria bem com o mouse e a 1ª maquininha ficava escolhida sem ninguém ver. No Athos da Katatau 99,99% do crédito é 1x.",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Helpers/PassosDoPagamento.cs",
+      "Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs",
+      "Metrics.PDV/Metrics.PDV/Views/EscolhaRapidaWindow.xaml.cs"
+     ]
     }
    ],
    "funcoes": [
@@ -1560,7 +1586,21 @@
     }
    ],
    "paraQueServe": "Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de serviço.",
-   "regras": [],
+   "regras": [
+    {
+     "id": "regra-clientes-do-sistema-antigo",
+     "titulo": "Clientes do sistema antigo chegam pelo Metrics.Sync",
+     "regra": "Com a origem Athos, o Metrics.Sync manda à nuvem os clientes ATIVOS (nome, CPF/CNPJ, telefone, e-mail e endereço); o PDV baixa da nuvem. Cada cliente ganha sempre o mesmo código (empresa + origem + código no Athos): rodar de novo atualiza, nunca duplica. Cliente que já existe na nuvem (mesmo CPF/CNPJ, telefone ou nome completo) é atualizado no próprio cadastro, sem perder telefone, e-mail e endereço. O limite de crédito e o saldo do fiado do Athos ainda não vêm.",
+     "porque": "Katatau, 10/10/2026: o Sync só trazia produtos e o PDV ficou sem os clientes do fiado (\"como fazemos a prazo sem cliente?\").",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.Sync/Services/AthosDataSourceAdapter.cs:211",
+      "Metrics.Sync/Services/EnvioDeClientes.cs:92",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:163"
+     ]
+    }
+   ],
    "funcoes": [],
    "trabalhos": [
     {
@@ -1578,6 +1618,24 @@
      "ondeNoCodigo": [
       "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1051",
       "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:102"
+     ]
+    },
+    {
+     "id": "metrics-sync-clientes",
+     "nome": "Metrics.Sync: clientes do Athos para a nuvem",
+     "ondeRoda": "Computador da loja com o Metrics.Sync (origem Athos)",
+     "chama": "Nuvem: GET /api/pdv/sync/clients e POST /api/pdv/sync/clients (lotes de 100), só quando há cliente novo ou alterado",
+     "frequencia": "na mesma rodada do catálogo (a cada 5 min, padrão); \"Sincronizar agora\" manda todos",
+     "segundos": 300,
+     "quantos": "Só lojas com Athos e o Sync 1.4.5.0 ou mais novo; quase sempre nenhuma chamada (nada mudou)",
+     "faz": "Lê os clientes ativos do Athos (nome e CPF em cliente_fisico; razão social, fantasia e CNPJ em cliente_juridico; telefone em cliente_contato; endereço em cliente_endereco), reconhece quem já existe na nuvem e manda os novos ou alterados. A impressão digital de cada cliente enviado fica em %AppData%\\Metrics.Sync\\clientes-enviados-<empresa>-<origem>.json. Falha aqui não derruba o envio dos produtos.",
+     "porque": "Katatau (10/10/2026): sem os clientes não havia como vender a prazo no PDV. 57 clientes ativos na cópia do Athos de 27/08/2026.",
+     "situacao": "ok",
+     "proposta": "Levar o limite de crédito (falta coluna na nuvem) e, se o Thomás decidir, o saldo do fiado em aberto.",
+     "ondeNoCodigo": [
+      "Metrics.Sync/Services/SyncOrchestrator.cs:138",
+      "Metrics.Sync/Services/EnvioDeClientes.cs:92",
+      "Metrics.Sync/Services/AthosDataSourceAdapter.cs:211"
      ]
     }
    ],
@@ -3743,21 +3801,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-09T12:58:21",
+  "gerado_em": "2026-10-10T08:28:15",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "ba00884 2026-10-09",
+    "versao": "1ebb350 2026-10-09",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "63768d5 2026-10-09",
+    "versao": "5fa0ec0 2026-10-10",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "c6a3771 2026-10-09",
+    "versao": "865b62d 2026-10-10",
     "tabelas": 42
    }
   },

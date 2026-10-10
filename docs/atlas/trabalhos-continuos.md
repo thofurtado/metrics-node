@@ -1,6 +1,6 @@
 # Trabalhos que rodam o tempo todo
 
-> Gerado por `atlas.py` em 09/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
+> Gerado por `atlas.py` em 10/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
 
 Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens (perguntar de tantos em tantos segundos), conexões ao vivo, sincronias e tarefas agendadas. Cada ficha diz onde roda, o que chama, de quanto em quanto tempo, quantas cópias rodam juntas, o que custa, por que existe e o que acontece se espaçar. Numa crise de CPU da nuvem, olhe nesta ordem: (1) o servidor, que gasta CPU sem ninguém ver; (2) o que chama a nuvem com intervalo curto e se multiplica por loja e por aba; (3) o que fica só na rede da loja não pesa no servidor da nuvem. Levantamento de 08/10/2026; toda mudança nesses trabalhos atualiza esta lista na mesma tarefa.
 
@@ -76,6 +76,7 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Ok | **Publicação dos dados da loja** (Empresa, usuários e configuração) | Core Service do servidor → `Banco da loja` | a cada 1 min |  |  |
 | Ok | **Envio de vendas, caixas e cancelamentos para a nuvem** (Caixa e vendas) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open\|movements\|close, /sync/cancellations` | venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência | 1 por loja |  |
 | Ok | **Produtos que mudaram (PDV) e o carimbo de mudança** (Cardápio e produtos) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/sync/status (4 contas) e, só se mudou, GET /api/pdv/products?lastSync=` | a cada 5 min (sincronia geral do PDV) | 1 por loja | Baixar a foto só quando a foto mudou (melhoria pequena). |
+| Ok | **Metrics.Sync: clientes do Athos para a nuvem** (Clientes) | Computador da loja com o Metrics.Sync (origem Athos) → `Nuvem: GET /api/pdv/sync/clients e POST /api/pdv/sync/clients (lotes de 100), só quando há cliente novo ou alterado` | na mesma rodada do catálogo (a cada 5 min, padrão); "Sincronizar agora" manda todos | Só lojas com Athos e o Sync 1.4.5.0 ou mais novo; quase sempre nenhuma chamada (nada mudou) | Levar o limite de crédito (falta coluna na nuvem) e, se o Thomás decidir, o saldo do fiado em aberto. |
 | Ok | **Relógio de ponto: lista de funcionários** (RH e ponto) | Computador do Metrics.Ponto → `Nuvem: GET /hr/employees/sync` | ao abrir e a cada 30 min |  |  |
 | Ok | **Procura de atualização do PDV** (Empresa, usuários e configuração) | Core Service de todo computador → `Nuvem: GET /api/public/pdv/latest` | a cada 30 min |  |  |
 | Ok | **Limpeza das marcas de "já recebido"** (Empresa, usuários e configuração) | Core Service do servidor → `Banco da loja` | a cada 1 h |  |  |
@@ -199,7 +200,7 @@ As fichas completas de cada módulo ficam no `.md` do módulo, na seção "Traba
 - [Cardápio e produtos](cardapio.md): 6
 - [Estoque e compras](estoque.md): 1
 - [Financeiro](financeiro.md): 1
-- [Clientes](clientes.md): 1
+- [Clientes](clientes.md): 2
 - [Ordens de serviço](servicos.md): 4
 - [RH e ponto](rh.md): 3
 - [Fiscal (NFC-e)](fiscal.md): 4

@@ -2,7 +2,7 @@
 
 Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.
 
-Gerado em 09/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o manual.
+Gerado em 10/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o manual.
 
 | Módulo | Tabelas | Arquivo |
 |---|---|---|

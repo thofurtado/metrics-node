@@ -1,6 +1,6 @@
 # Caixa e vendas
 
-> Gerado por `atlas.py` em 09/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 10/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -67,6 +67,18 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Por que é assim:** Flexibilidade operacional: estabelecimentos familiares preferem conferência transparente e rápida, enquanto operações de grande porte usam o fechamento cego para prevenir fraudes.
 - **Decisão:** 27/09/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Views/JanelaFechamentoCaixaWindow.xaml.cs`
+
+### O peso digitado no PDV tem 3 casas (os gramas) (`regra-peso-tres-casas`)
+- **Regra:** Produto por peso (kg): os números entram pela direita com 3 casas, no campo da quantidade do Caixa e na janela do item: 6 vira 0,006 kg, 604 vira 0,604 kg, 1250 vira 1,250 kg. Até 9.999,999 kg. Em branco não lança. Na tela do Pagamento o item por peso aparece em kg.
+- **Por que é assim:** O Thomás tinha escolhido 2 casas (como o dinheiro) em 06/10/2026 e corrigiu em 10/10/2026: o quilo trabalha com 3 casas, igual à etiqueta da balança (0,604 kg). O banco do PDV, o carrinho, a impressão, a NFC-e e a nuvem já guardavam 3 casas.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Helpers/QuantidadeDigitada.cs`, `Metrics.PDV/Metrics.PDV/Views/JanelaItemWindow.xaml.cs`, `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs`
+
+### Pagamento: a maquininha e o resto da forma pelo teclado (`regra-pagamento-maquininha-teclado`)
+- **Regra:** Escolher Débito, Crédito, Pix ou Vale abre a escolha da maquininha (número, setas e Enter, ou toque; a última usada vem marcada). Com uma maquininha só, ela é escolhida sozinha. No Pix a lista traz também "Sem maquininha". Crédito vai em 1x sem perguntar; a tecla da forma de novo abre as parcelas. A prazo sem cliente abre a busca do cliente; consumo de funcionário abre a lista dos funcionários. O Enter nunca lança cartão sem maquininha.
+- **Por que é assim:** Pedido do Thomás em 10/10/2026: os caixas que vieram do Athos fazem tudo pelo teclado; a lista suspensa embaixo só abria bem com o mouse e a 1ª maquininha ficava escolhida sem ninguém ver. No Athos da Katatau 99,99% do crédito é 1x.
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Helpers/PassosDoPagamento.cs`, `Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs`, `Metrics.PDV/Metrics.PDV/Views/EscolhaRapidaWindow.xaml.cs`
 
 ## Funções de Negócio
 
