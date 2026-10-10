@@ -80,6 +80,12 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Helpers/PassosDoPagamento.cs`, `Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs`, `Metrics.PDV/Metrics.PDV/Views/EscolhaRapidaWindow.xaml.cs`
 
+### A etiqueta da balança é lida sempre (`regra-etiqueta-balanca-sempre`)
+- **Regra:** Código de 13 números que começa com 2, com o dígito verificador certo, que não é o código de barras de nenhum produto e que aponta para um produto cadastrado (o código do produto no formato da loja: 5 dígitos e preço total, de fábrica) entra direto: produto por peso com o peso (total ÷ preço do quilo) e produto por unidade com a quantidade (total ÷ preço). O total do item é o impresso na etiqueta. Não há opção de ligar.
+- **Por que é assim:** Katatau, 10/10/2026: a opção de ligar vinha desligada e a etiqueta do BISCOITO AMANTEGADO KG virava "código não cadastrado". Na Katatau a balança imprime etiqueta também de produto por unidade (SONHO, PÃO DE MEL), por isso não há trava de "só por peso".
+- **Decisão:** 10/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/EtiquetaDeBalanca.cs`, `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs`, `Metrics.PDV/Metrics.PDV/Views/LancamentoProdutosWindow.xaml.cs`
+
 ## Funções de Negócio
 
 ### `AbrirTurnoCaixa`

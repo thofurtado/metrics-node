@@ -834,6 +834,19 @@
       "Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs",
       "Metrics.PDV/Metrics.PDV/Views/EscolhaRapidaWindow.xaml.cs"
      ]
+    },
+    {
+     "id": "regra-etiqueta-balanca-sempre",
+     "titulo": "A etiqueta da balança é lida sempre",
+     "regra": "Código de 13 números que começa com 2, com o dígito verificador certo, que não é o código de barras de nenhum produto e que aponta para um produto cadastrado (o código do produto no formato da loja: 5 dígitos e preço total, de fábrica) entra direto: produto por peso com o peso (total ÷ preço do quilo) e produto por unidade com a quantidade (total ÷ preço). O total do item é o impresso na etiqueta. Não há opção de ligar.",
+     "porque": "Katatau, 10/10/2026: a opção de ligar vinha desligada e a etiqueta do BISCOITO AMANTEGADO KG virava \"código não cadastrado\". Na Katatau a balança imprime etiqueta também de produto por unidade (SONHO, PÃO DE MEL), por isso não há trava de \"só por peso\".",
+     "decididoPor": "Thomás Furtado",
+     "data": "10/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/EtiquetaDeBalanca.cs",
+      "Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs",
+      "Metrics.PDV/Metrics.PDV/Views/LancamentoProdutosWindow.xaml.cs"
+     ]
     }
    ],
    "funcoes": [
@@ -3801,21 +3814,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-10T08:28:15",
+  "gerado_em": "2026-10-10T09:34:57",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "1ebb350 2026-10-09",
+    "versao": "ead9085 2026-10-10",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "5fa0ec0 2026-10-10",
+    "versao": "cda1a9d 2026-10-10",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "865b62d 2026-10-10",
+    "versao": "41bc328 2026-10-10",
     "tabelas": 42
    }
   },
