@@ -8,9 +8,9 @@ Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de s
 
 ## Regras de Negócio e Porquês
 
-### Clientes do sistema antigo chegam pelo Metrics.Sync (`regra-clientes-do-sistema-antigo`)
-- **Regra:** Com a origem Athos, o Metrics.Sync manda à nuvem os clientes ATIVOS (nome, CPF/CNPJ, telefone, e-mail e endereço); o PDV baixa da nuvem. Cada cliente ganha sempre o mesmo código (empresa + origem + código no Athos): rodar de novo atualiza, nunca duplica. Cliente que já existe na nuvem (mesmo CPF/CNPJ, telefone ou nome completo) é atualizado no próprio cadastro, sem perder telefone, e-mail e endereço. O limite de crédito e o saldo do fiado do Athos ainda não vêm.
-- **Por que é assim:** Katatau, 10/10/2026: o Sync só trazia produtos e o PDV ficou sem os clientes do fiado ("como fazemos a prazo sem cliente?").
+### Clientes do sistema antigo NÃO vêm (desligado no Sync 1.4.6.0) (`regra-clientes-do-sistema-antigo`)
+- **Regra:** Os clientes do Athos não vão para a nuvem: valem só os clientes cadastrados na web (e os cadastrados no PDV, que sobem). O Metrics.Sync 1.4.5.0 mandava os clientes ativos do Athos a cada rodada; a 1.4.6.0 desligou o envio (o código ficou, sem uso).
+- **Por que é assim:** Decisão do Thomás de 10/10/2026: "não queremos os clientes da Athos, só os clientes que já estão cadastrados na web".
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.Sync/Services/AthosDataSourceAdapter.cs:211`, `Metrics.Sync/Services/EnvioDeClientes.cs:92`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:163`
 
@@ -32,10 +32,10 @@ Cadastro de clientes e endereços, usado no delivery, no fiado e nas ordens de s
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:1051`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:102`
 
 ### Metrics.Sync: clientes do Athos para a nuvem — Ok
-- **Frequência:** na mesma rodada do catálogo (a cada 5 min, padrão); "Sincronizar agora" manda todos
+- **Frequência:** nenhuma (desligado no Sync 1.4.6.0, 10/10/2026)
 - **Onde roda:** Computador da loja com o Metrics.Sync (origem Athos) → `Nuvem: GET /api/pdv/sync/clients e POST /api/pdv/sync/clients (lotes de 100), só quando há cliente novo ou alterado`
 - **Quantos:** Só lojas com Athos e o Sync 1.4.5.0 ou mais novo; quase sempre nenhuma chamada (nada mudou)
-- **A cada vez:** Lê os clientes ativos do Athos (nome e CPF em cliente_fisico; razão social, fantasia e CNPJ em cliente_juridico; telefone em cliente_contato; endereço em cliente_endereco), reconhece quem já existe na nuvem e manda os novos ou alterados. A impressão digital de cada cliente enviado fica em %AppData%\Metrics.Sync\clientes-enviados-<empresa>-<origem>.json. Falha aqui não derruba o envio dos produtos.
+- **A cada vez:** Nada desde a 1.4.6.0: os clientes do Athos não vão mais para a nuvem (decisão do Thomás).
 - **Por que existe:** Katatau (10/10/2026): sem os clientes não havia como vender a prazo no PDV. 57 clientes ativos na cópia do Athos de 27/08/2026.
 - **Proposta:** Levar o limite de crédito (falta coluna na nuvem) e, se o Thomás decidir, o saldo do fiado em aberto.
 - **Onde no código:** `Metrics.Sync/Services/SyncOrchestrator.cs:138`, `Metrics.Sync/Services/EnvioDeClientes.cs:92`, `Metrics.Sync/Services/AthosDataSourceAdapter.cs:211`
