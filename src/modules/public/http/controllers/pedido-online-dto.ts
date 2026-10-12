@@ -80,6 +80,8 @@ export function pedidoOnlineDto(
         id: p.uuid,
         display_id: p.display_id,
         origem: p.origem,
+        // IFOOD / 99FOOD (null nos outros): o PDV usa no botão "Vincular" (12/10/2026)
+        platform: p.plataforma || null,
         is_takeout: isTakeout,
         status: mappedStatus(p.status_delivery, p.status),
         status_delivery: p.status_delivery || 'Pendente',
@@ -109,6 +111,8 @@ export function pedidoOnlineDto(
             return {
                 id: i.uuid || String(i.id),
                 product_id: i.produto_id || undefined,
+                // Código do item na plataforma (iFood/99): o PDV guarda para o botão "Vincular" (12/10/2026)
+                external_code: i.external_code || null,
                 // Item do iFood/99 ainda sem vínculo: o nome que veio da plataforma (antes ia "Item")
                 name: productMap.get(i.produto_id || '') || i.external_name || 'Item',
                 quantity: i.quantidade,

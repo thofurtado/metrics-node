@@ -17,6 +17,7 @@ import {
     postCancellationsSync, getCancellationsSync
 } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
+import { createDeliveryItemMapping } from '@/modules/delivery/http/controllers/delivery-item-mapping'
 import { getIbptSync } from './ibpt-sync-controller'
 import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
@@ -44,6 +45,10 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
             return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API PDV inválida' })
         }
     })
+
+    // Botão "Vincular" do PDV (12/10/2026): item do iFood/99 sem produto -> produto do Metrics. A mesma função da tela
+    // Vínculos com Delivery da web (vale para os próximos pedidos e corrige os antigos na nuvem), com a chave do PDV.
+    app.post('/api/pdv/delivery/item-mappings', createDeliveryItemMapping)
 
     // Watermark / Delta status
     app.get('/api/pdv/sync/status', getSyncStatus)

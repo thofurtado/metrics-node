@@ -72,3 +72,20 @@ describe('pedido do iFood no PDV (12/10/2026)', () => {
     expect(dto.items[0].name).toBe('Marmita P')
   })
 })
+
+describe('botão "Vincular" do PDV (12/10/2026)', () => {
+  it('o pedido leva a plataforma e cada item o código do iFood', async () => {
+    const [dto] = await montarPedidosOnline(bancoFalso(), [pedido({
+      plataforma: 'IFOOD',
+      itens: [{ id: 3, uuid: 'it-3', produto_id: null, external_code: '7993', external_name: 'Marmita P', quantidade: 1, valor_unitario: 20, observacao: 'Marmita P', complementos_json: null }],
+    })])
+    expect(dto.platform).toBe('IFOOD')
+    expect(dto.items[0].external_code).toBe('7993')
+  })
+
+  it('pedido que não é de plataforma vai sem plataforma e sem código', async () => {
+    const [dto] = await montarPedidosOnline(bancoFalso(), [pedido()])
+    expect(dto.platform).toBeNull()
+    expect(dto.items[0].external_code).toBeNull()
+  })
+})

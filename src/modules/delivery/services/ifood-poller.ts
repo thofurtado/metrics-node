@@ -382,7 +382,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               })
             }
 
-            let obs = itemName
+            // Item vinculado: a observação leva só os adicionais e o que o cliente escreveu (o nome é o do nosso produto);
+            // sem vínculo, começa pelo nome do iFood para a cozinha saber o que é (decisão do Thomás, 12/10/2026)
+            let obs = matchedProduct ? '' : itemName
             if (Array.isArray(it.options) && it.options.length > 0) {
               const optsStr = it.options.map((o: any) => `${o.name || o.title || 'Opção'} (x${o.quantity || 1})`).join(', ')
               obs += ` [Adicionais: ${optsStr}]`
@@ -390,6 +392,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             if (it.observations) {
               obs += ` (Obs: ${it.observations})`
             }
+            obs = obs.trim()
 
             itemsToCreate.push({
               produto_id: matchedProduct ? matchedProduct.id : undefined,
@@ -397,7 +400,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               quantidade: valoresDoItemIfood(it).quantidade,
               valor_unitario: valoresDoItemIfood(it).unitario,
               valor_total: valoresDoItemIfood(it).total,
-              observacao: obs,
+              observacao: obs || null,
               external_code: extCode ? String(extCode) : null,
               external_name: itemName,
             })
