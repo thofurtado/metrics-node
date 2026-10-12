@@ -1,5 +1,4 @@
 import { sseManager } from '@/lib/sse-manager'
-import { ifoodApi } from './ifood-api.service'
 import { localizarTenantDaLoja } from './delivery-tenant-resolver'
 import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 
@@ -104,7 +103,7 @@ export function isCancellationRelatedEvent(event: any): boolean {
 }
 
 /**
- * HSD  (HANDSHAKE_DISPUTE)             → aceita a disputa pelo endpoint de disputas
+ * HSD  (HANDSHAKE_DISPUTE)             → SÓ REGISTRA: a loja responde pelo Gestor de Pedidos (12/10/2026; antes aceitava sozinho)
  * CAR  (CANCELLATION_REQUESTED)         → solicitação registrada; nada muda localmente
  * CARF (CANCELLATION_REQUEST_FAILED)    → iFood recusou; avisa os PDVs
  * CAN  (CANCELLED)                      → cancela o pedido local (não cria pedido se não existir)
@@ -118,10 +117,9 @@ export async function processCancellationEvent(event: any, token: string | undef
 
   if (code === 'HSD' || fullCode === 'HANDSHAKE_DISPUTE') {
     const disputeId = String(event?.metadata?.disputeId || event?.disputeId || '')
-    if (!disputeId) return 'disputa sem disputeId (nada feito)'
-    if (!token) return `disputa ${disputeId}: sem token para responder`
-    const accepted = await ifoodApi.acceptDispute(token, disputeId).catch(() => false)
-    return accepted ? `disputa ${disputeId} aceita` : `disputa ${disputeId}: falha ao aceitar`
+    // Decisão do Thomás (12/10/2026): o Metrics nunca aceita nem cancela nada que a loja não escolheu. Antes aceitava a
+    // disputa (pedido de reembolso/cancelamento do cliente) sem perguntar; na Katatau tentou aceitar uma disputa antiga.
+    return `disputa ${disputeId || '(sem id)'} registrada; a loja responde pelo Gestor de Pedidos (nada feito)`
   }
 
   if (code === 'CAR' || fullCode === 'CANCELLATION_REQUESTED') {

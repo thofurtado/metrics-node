@@ -7,6 +7,7 @@ import { isCancellationRelatedEvent, journalEvent, processCancellationEvent } fr
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { contatoDoClienteIfood, documentoDoCliente, enderecoDaEntregaIfood, mesmoEndereco, observacaoDoPedidoIfood } from './ifood-nota'
 import { codigoCurtoDoProduto, eanDoItemIfood, valoresDoItemIfood } from './ifood-itens'
+import { avancaSituacao, situacaoDoEvento, situacaoFinalPorPedido } from './ifood-situacao'
 import { montarPedidosOnline } from '@/modules/public/http/controllers/pedido-online-dto'
 
 interface TokenStore {
@@ -205,6 +206,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
       ackMs = Date.now() - ackInicio
       console.log(`[iFood Polling] ACK de ${idsRecebidos.length} evento(s) ${acked ? 'confirmado' : 'FALHOU'} no iFood em ${ackMs}ms.`)
     }
+
+    // Situação real de cada pedido neste lote (aceito no Gestor, despachado, entregue): o pedido novo já nasce nela
+    const situacaoNoLote = situacaoFinalPorPedido(events)
 
     for (const event of events) {
       eventsProcessed++
@@ -408,6 +412,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             })
           }
 
+          // Já aceito/despachado/entregue (ex.: aceito no Gestor de Pedidos, ou eventos antigos ao autorizar a loja)
+          const situacaoInicial = situacaoNoLote.get(String(event.orderId)) ?? null
+
           // 7. Criar Pedido Canônico em db_restaurante
           const pedido = await (prisma as any).pedido.create({
             data: {
@@ -422,8 +429,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
               valor_frete: deliveryFee,
               valor_final: totalAmount,
               valor_troco: 0,
-              status: 'Aberto',
-              status_delivery: 'Pendente',
+              status: situacaoInicial?.status ?? 'Aberto',
+              status_delivery: situacaoInicial?.status_delivery ?? 'Pendente',
+              data_fechamento: situacaoInicial?.status === 'Fechado' ? new Date() : undefined,
               // CPF/CNPJ que o cliente informou no iFood para a nota (antes era descartado) e a forma de pagamento de verdade:
               // pago no app ou "Pagar na entrega" (antes todo pedido virava "Pagamento via iFood"), com o código da loja
               cpf_na_nota: documentoDoCliente(order.customer),
@@ -444,8 +452,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           try {
             const [fullOrderDto] = await montarPedidosOnline(prisma as any, [pedido])
 
-            // Só a loja do pedido (LGPD, 08/10/2026): antes ia para todas as lojas conectadas e para a loja de teste
-            sseManager.notifyTenant(tenantDbName, 'new_order', fullOrderDto)
+            // Só a loja do pedido (LGPD, 08/10/2026): antes ia para todas as lojas conectadas e para a loja de teste.
+            // Alerta de pedido novo só para o que ainda espera aceite; o resto o PDV pega na lista (até 5 s), na situação real.
+            if (!situacaoInicial) sseManager.notifyTenant(tenantDbName, 'new_order', fullOrderDto)
+            else sseManager.notifyTenant(tenantDbName, 'order_status_change', { order_id: pedido.uuid, display_id: pedido.display_id, status: pedido.status, status_delivery: pedido.status_delivery })
           } catch (sseErr) {
             console.error('[iFood SSE Error]:', sseErr)
           }
@@ -466,45 +476,44 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         }
       }
 
-      // Evento CON = Concluded (Pedido entregue / concluído)
-
-      if ((event.code === 'CON' || event.code === 'CONCLUDED') && event.orderId) {
+      // Aceito (CFM), pronto (RTP), despachado (DSP) e concluído (CON): o pedido acompanha a situação real, só para a frente.
+      // Antes só o CON era tratado: pedido aceito no Gestor de Pedidos ficava "Pendente" no PDV (12/10/2026).
+      const situacao = event.code === 'PLC' ? null : situacaoDoEvento(event)
+      if (situacao && event.orderId) {
         try {
-          console.log(`[iFood Polling] Processando evento CON/CONCLUDED (${event.orderId})...`)
-          const tenantDbName = dbName
           const prisma = await getPrismaForDb(dbName)
-
           const order = await (prisma as any).pedido.findFirst({
-            where: { observacao: { contains: event.orderId } }
+            where: { observacao: { contains: `[iFood:${event.orderId}]` } },
           })
-
-          if (order) {
+          if (!order) {
+            outcome = `${situacao.status_delivery}: pedido não existe aqui (nada feito)`
+          } else if (order.status === 'Cancelado' || !avancaSituacao(order.status_delivery, situacao)) {
+            outcome = `${situacao.status_delivery}: pedido já está em ${order.status_delivery} (nada muda)`
+          } else {
             await (prisma as any).pedido.update({
               where: { id: order.id },
               data: {
-                status: 'Fechado',
-                status_delivery: 'Entregue',
-                data_fechamento: new Date(),
-              }
+                status: situacao.status,
+                status_delivery: situacao.status_delivery,
+                ...(situacao.status === 'Fechado' ? { data_fechamento: new Date() } : {}),
+              },
             })
-            console.log(`[iFood Polling] Pedido #${order.display_id} (${event.orderId}) marcado como Entregue em ${tenantDbName}!`)
-
-            const conDto = {
+            outcome = `pedido #${order.display_id}: ${order.status_delivery} -> ${situacao.status_delivery}`
+            sseManager.notifyTenant(dbName, 'order_status_change', {
               order_id: order.uuid,
               display_id: order.display_id,
-              status: 'Fechado',
-              status_delivery: 'Entregue',
-            }
-            sseManager.notifyTenant(tenantDbName, 'order_status_change', conDto)
+              status: situacao.status,
+              status_delivery: situacao.status_delivery,
+            })
           }
-                } catch (conErr) {
+        } catch (sitErr: any) {
           eventProcessed = false
-          console.error(`[iFood Polling CON Error] Falha ao concluir pedido ${event.orderId}:`, conErr)
+          outcome = `falha ao atualizar a situação: ${sitErr?.message || sitErr}`
+          console.error(`[iFood Polling] Falha ao tratar ${event.code} de ${event.orderId}:`, sitErr)
         }
       }
 
       if (event.code === 'PLC') outcome = eventProcessed ? 'pedido novo gravado' : 'pedido novo FALHOU (nova tentativa)'
-      if (event.code === 'CON' || event.code === 'CONCLUDED') outcome = eventProcessed ? 'pedido concluído' : 'conclusão FALHOU'
       void journalEvent(event, 'polling', { ackMs, outcome, success: eventProcessed })
 
       // Pedido novo que falhou ao gravar: o ACK já foi dado, então tenta de novo nos próximos ciclos.
