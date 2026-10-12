@@ -335,6 +335,28 @@ export class IFoodApiService {
   }
 
   /**
+   * Confirma o código de entrega que o cliente passou ao motoboy (entrega feita pela loja). Devolve a resposta crua (status e
+   * corpo) para ifood-codigo-entrega.ts explicar ao caixa. Conferido no pedido real: código errado = 400 "Confirmation code is
+   * invalid" (12/10/2026).
+   */
+  async verifyDeliveryCode(accessToken: string, orderId: string, code: string): Promise<{ status: number; corpo: any }> {
+    const response = await this.auditedFetch(`${this.baseUrl}/order/v1.0/orders/${orderId}/verifyDeliveryCode`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    })
+    const texto = await response.text()
+    let corpo: any = null
+    try { corpo = texto ? JSON.parse(texto) : null } catch { corpo = { message: texto } }
+    if (!response.ok) console.error(`[iFood Verify Delivery Code] (${response.status}): ${texto}`)
+    return { status: response.status, corpo }
+  }
+
+  /**
    * Consulta motivos de cancelamento disponíveis para o pedido (Obrigatório na homologação iFood)
    */
   async getCancellationReasons(accessToken: string, orderId: string): Promise<any[]> {
