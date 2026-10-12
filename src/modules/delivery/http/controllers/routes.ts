@@ -16,7 +16,6 @@ import {
   ifoodTestCancellationPatchController,
   pollIfoodNowController,
 
-  syncCatalogController,
 } from './ifood-controllers'
 import {
   getPendingDeliveryItemMappings,
@@ -105,11 +104,8 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.get('/delivery/ifood/poll-now', pollIfoodNowController)
   app.get('/api/delivery/ifood/poll-now', pollIfoodNowController)
 
-  // Sincronização centralizada de cardápio com marketplaces
-  app.post('/delivery/catalog/sync', syncCatalogController)
-  app.post('/api/delivery/catalog/sync', syncCatalogController)
-  app.get('/delivery/catalog/sync', syncCatalogController)
-  app.get('/api/delivery/catalog/sync', syncCatalogController)
+  // Envio de cardápio para a 99: saiu daqui em 12/10/2026 (não pedia login nem conferia se a loja já tinha cardápio na 99).
+  // Agora é POST /settings/integrations/food99/catalog, com login e só para loja nova.
 
   // Vínculo de item de delivery (iFood/99Food) com produto do Metrics
   app.get('/delivery/item-mappings/pending', { preHandler: verifyJwt }, getPendingDeliveryItemMappings)

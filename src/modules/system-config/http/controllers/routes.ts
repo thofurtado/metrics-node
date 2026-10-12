@@ -5,6 +5,7 @@ import { getModulesStatus } from './get-modules-status'
 import { updateModulesStatus } from './update-modules-status'
 import { updateCompanyProfile } from './update-company-profile'
 import { getExternalIntegrations, updateFood99Shop, updateIbptIntegration, updateIfoodMerchant } from './external-integrations'
+import { getFood99AuthorizationUrl, getFood99Menu, postFood99Catalog } from './food99-loja'
 
 export async function systemConfigRoutes(app: FastifyInstance) {
     // Configurações de Integrações & APIs
@@ -16,6 +17,10 @@ export async function systemConfigRoutes(app: FastifyInstance) {
     app.put('/settings/integrations/ibpt', { onRequest: [verifyJwt] }, updateIbptIntegration)
     app.put('/settings/integrations/ifood', { onRequest: [verifyJwt] }, updateIfoodMerchant)
     app.put('/settings/integrations/food99', { onRequest: [verifyJwt] }, updateFood99Shop)
+    // 99Food (12/10/2026): autorizar a loja, ver o cardápio que ela tem lá e enviar o cardápio SÓ para loja nova
+    app.get('/settings/integrations/food99/authorization-url', { onRequest: [verifyJwt] }, getFood99AuthorizationUrl)
+    app.get('/settings/integrations/food99/menu', { onRequest: [verifyJwt] }, getFood99Menu)
+    app.post('/settings/integrations/food99/catalog', { onRequest: [verifyJwt] }, postFood99Catalog)
 
     // Leitura das configurações dos módulos ativados no sistema (pública)
     app.get('/settings/modules', getModulesStatus)

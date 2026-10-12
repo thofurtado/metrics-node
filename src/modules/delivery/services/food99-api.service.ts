@@ -1,6 +1,7 @@
 import { env } from '@/env'
 import { writeJournal } from './ifood-events.service'
 import { parseJsonKeepingLongIds } from '@/lib/json-safe-ids'
+import { urlDaAutorizacao } from './food99-loja'
 
 /**
  * Cliente da OpenAPI da 99Food (https://openapi.99food.com).
@@ -181,6 +182,26 @@ async function uploadMenu(appShopId: string, menu: { menus: unknown[]; categorie
   return { ok: false, errmsg: 'Falha ao renovar o token da 99Food' }
 }
 
+/**
+ * Endereço da página onde o dono da loja autoriza o nosso app na 99 (GET /v1/auth/authorizationpage/getUrl). Conferido com o app
+ * oficial em 12/10/2026: errno 0 e data.url em merchant.99app.com. O endereço vale para uma loja e expira: gerar na hora.
+ */
+async function getAuthorizationUrl(appShopId: string): Promise<{ url: string | null; errmsg?: string }> {
+  const appId = env.FOOD99_APP_ID
+  const appSecret = env.FOOD99_SECRET
+  if (!appId || !appSecret) return { url: null, errmsg: 'FOOD99_APP_ID / FOOD99_SECRET não configurados no servidor' }
+  const q = `app_id=${encodeURIComponent(appId)}&app_secret=${encodeURIComponent(appSecret)}&app_shop_id=${encodeURIComponent(appShopId)}`
+  const t0 = Date.now()
+  try {
+    const d = await getJson(`${BASE}/v1/auth/authorizationpage/getUrl?${q}`)
+    const url = urlDaAutorizacao(d)
+    void writeJournal({ method: 'API99', endpoint: 'authorizationpage/getUrl', request: { app_shop_id: appShopId }, response: { errno: d?.errno, errmsg: d?.errmsg, requestId: d?.requestId, temUrl: Boolean(url) }, durationMs: Date.now() - t0, success: Boolean(url), error: url ? undefined : d?.errmsg })
+    return url ? { url } : { url: null, errmsg: d?.errmsg || 'resposta sem endereço' }
+  } catch (e: any) {
+    return { url: null, errmsg: e?.message }
+  }
+}
+
 /** Lista o cardápio que está de fato na loja (GET /v3/item/item/list). Só leitura. */
 async function listMenu(appShopId: string): Promise<{ ok: boolean; errmsg?: string; items: { app_item_id: string; item_name: string; price: number }[] }> {
   const token = await getFood99Token(appShopId)
@@ -195,6 +216,7 @@ async function listMenu(appShopId: string): Promise<{ ok: boolean; errmsg?: stri
 }
 
 export const food99Api = {
+  getAuthorizationUrl,
   uploadMenu,
   listMenu,
   /** Confirma (aceita) o pedido. Obrigatório em até 5 minutos após o orderNew, senão a 99Food cancela sozinha. */
