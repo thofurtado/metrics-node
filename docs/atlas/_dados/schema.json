@@ -1,9 +1,9 @@
 {
- "gerado_em": "2026-10-10T20:14:20",
+ "gerado_em": "2026-10-12T18:03:40",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "5351a6b 2026-10-10",
+   "versao": "f59374c 2026-10-12",
    "tabelas": 64
   },
   "saas": {
@@ -13,7 +13,7 @@
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "36c5a74 2026-10-10",
+   "versao": "8cc306e 2026-10-12",
    "tabelas": 42
   }
  },
@@ -14397,6 +14397,28 @@
     {
      "nome": "Descricao",
      "coluna": "descricao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CodigoExterno",
+     "coluna": "codigo_externo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PlataformaExterna",
+     "coluna": "plataforma_externa",
      "tipo": "string",
      "enum": false,
      "opcional": true,

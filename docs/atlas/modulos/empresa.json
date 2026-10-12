@@ -200,12 +200,13 @@
       "nome": "Procura de atualização do PDV",
       "ondeRoda": "Core Service de todo computador",
       "chama": "Nuvem: GET /api/public/pdv/latest",
-      "frequencia": "a cada 30 min",
-      "segundos": 1800,
-      "porque": "Saber se há versão nova para o botão Atualizar.",
+      "frequencia": "a cada 5 min e no \"Verificar agora\" (e ao abrir o PDV e a tela de entrada)",
+      "segundos": 300,
+      "porque": "Saber se há versão nova para o botão Atualizar. Era 30 min até 12/10/2026 (a Katatau esperou para ver a versão publicada); a consulta é um JSON pequeno e o instalador só baixa quando há versão nova.",
       "situacao": "ok",
       "ondeNoCodigo": [
-        "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149"
+        "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149",
+        "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:85"
       ]
     },
     {

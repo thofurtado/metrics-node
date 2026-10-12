@@ -1,6 +1,6 @@
 # Empresa, usuários e configuração
 
-> Gerado por `atlas.py` em 10/10/2026 a partir do código e de `modulos/empresa.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 12/10/2026 a partir do código e de `modulos/empresa.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -102,10 +102,10 @@ Usuários do sistema e seus módulos liberados, o perfil da empresa (White Label
 - **Onde no código:** `Metrics.PDV/Metrics.CoreService/Program.cs:745`
 
 ### Procura de atualização do PDV — Ok
-- **Frequência:** a cada 30 min
+- **Frequência:** a cada 5 min e no "Verificar agora" (e ao abrir o PDV e a tela de entrada)
 - **Onde roda:** Core Service de todo computador → `Nuvem: GET /api/public/pdv/latest`
-- **Por que existe:** Saber se há versão nova para o botão Atualizar.
-- **Onde no código:** `Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149`
+- **Por que existe:** Saber se há versão nova para o botão Atualizar. Era 30 min até 12/10/2026 (a Katatau esperou para ver a versão publicada); a consulta é um JSON pequeno e o instalador só baixa quando há versão nova.
+- **Onde no código:** `Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149`, `Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:85`
 
 ### Limpeza das marcas de "já recebido" — Ok
 - **Frequência:** a cada 1 h

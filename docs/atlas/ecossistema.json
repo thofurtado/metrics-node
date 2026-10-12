@@ -625,7 +625,7 @@
       "para": "servidor",
       "rot": "Versão nova do PDV",
       "flui": "O instalador novo do PDV.",
-      "freq": "O servidor da loja confere a cada 30 minutos",
+      "freq": "Cada computador da loja confere a cada 5 minutos e no \"Verificar agora\"",
       "falha": "Sem internet, instala o que já tinha baixado.",
       "identificacao": "Confere o código do arquivo",
       "provas": [

@@ -1,5 +1,5 @@
 {
- "gerado_em": "10/10/2026",
+ "gerado_em": "12/10/2026",
  "atlas": {
   "titulo": "Atlas do Metrics",
   "resumo": "Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.",
@@ -2268,12 +2268,13 @@
      "nome": "Procura de atualização do PDV",
      "ondeRoda": "Core Service de todo computador",
      "chama": "Nuvem: GET /api/public/pdv/latest",
-     "frequencia": "a cada 30 min",
-     "segundos": 1800,
-     "porque": "Saber se há versão nova para o botão Atualizar.",
+     "frequencia": "a cada 5 min e no \"Verificar agora\" (e ao abrir o PDV e a tela de entrada)",
+     "segundos": 300,
+     "porque": "Saber se há versão nova para o botão Atualizar. Era 30 min até 12/10/2026 (a Katatau esperou para ver a versão publicada); a consulta é um JSON pequeno e o instalador só baixa quando há versão nova.",
      "situacao": "ok",
      "ondeNoCodigo": [
-      "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149"
+      "Metrics.PDV/Metrics.CoreService/Services/CoreServiceUpdateAgent.cs:149",
+      "Metrics.PDV/Metrics.PDV/Services/VerificacaoAoVivo.cs:85"
      ]
     },
     {
@@ -3955,11 +3956,11 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-10T20:14:20",
+  "gerado_em": "2026-10-12T18:03:40",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "5351a6b 2026-10-10",
+    "versao": "f59374c 2026-10-12",
     "tabelas": 64
    },
    "saas": {
@@ -3969,7 +3970,7 @@
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "36c5a74 2026-10-10",
+    "versao": "8cc306e 2026-10-12",
     "tabelas": 42
    }
   },
@@ -18353,6 +18354,28 @@
      {
       "nome": "Descricao",
       "coluna": "descricao",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "CodigoExterno",
+      "coluna": "codigo_externo",
+      "tipo": "string",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "PlataformaExterna",
+      "coluna": "plataforma_externa",
       "tipo": "string",
       "enum": false,
       "opcional": true,
