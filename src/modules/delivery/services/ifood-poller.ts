@@ -6,6 +6,7 @@ import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
 import { isCancellationRelatedEvent, journalEvent, processCancellationEvent } from './ifood-events.service'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { contatoDoClienteIfood, documentoDoCliente, enderecoDaEntregaIfood, mesmoEndereco, observacaoDoPedidoIfood } from './ifood-nota'
+import { codigoCurtoDoProduto, eanDoItemIfood, valoresDoItemIfood } from './ifood-itens'
 import { montarPedidosOnline } from '@/modules/public/http/controllers/pedido-online-dto'
 
 interface TokenStore {
@@ -326,7 +327,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           })
 
           // 6. Valores e Itens
-          const totalAmount = Number(order.total?.orderAmount || order.total?.subTotal || 25.0)
+          const totalAmount = Number(order.total?.orderAmount ?? order.total?.subTotal ?? 0) || 0
           const deliveryFee = Number(order.total?.deliveryFee || 0)
           const subtotal = Math.max(0, totalAmount - deliveryFee)
 
@@ -358,6 +359,16 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
                 },
               })
             }
+            // 2b. Código curto do produto (o mesmo que o caixa usa, ex.: 175) no "Código PDV" do iFood (12/10/2026)
+            const codigoCurto = codigoCurtoDoProduto(it.externalCode)
+            if (!matchedProduct && codigoCurto) {
+              matchedProduct = await (prisma as any).product.findFirst({ where: { display_id: codigoCurto } })
+            }
+            // 2c. Código de barras que o próprio iFood manda no item (produto de mercado)
+            const ean = eanDoItemIfood(it)
+            if (!matchedProduct && ean) {
+              matchedProduct = await (prisma as any).product.findFirst({ where: { barcode: ean } })
+            }
             // 3. Último recurso: nome exato (frágil — acento/espaço já quebra).
             if (!matchedProduct && itemName) {
               matchedProduct = await (prisma as any).product.findFirst({
@@ -378,9 +389,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
 
             itemsToCreate.push({
               produto_id: matchedProduct ? matchedProduct.id : undefined,
-              quantidade: Number(it.quantity || 1),
-              valor_unitario: Number(it.unitPrice || it.price || 25.0),
-              valor_total: Number(it.totalPrice || (it.unitPrice || 25.0) * (it.quantity || 1)),
+              // Preço já com os adicionais (o PDV recalcula preço x quantidade); antes caía em 25,00 fixo sem preço
+              quantidade: valoresDoItemIfood(it).quantidade,
+              valor_unitario: valoresDoItemIfood(it).unitario,
+              valor_total: valoresDoItemIfood(it).total,
               observacao: obs,
               external_code: extCode ? String(extCode) : null,
               external_name: itemName,
