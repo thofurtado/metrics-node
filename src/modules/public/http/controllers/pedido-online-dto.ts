@@ -32,6 +32,10 @@ export async function montarPedidosOnline(prisma: PrismaClient, pedidos: PedidoC
     return pedidos.map(p => pedidoOnlineDto(p, p.cliente_id ? clientMap.get(p.cliente_id) : null, addressMap, productMap));
 }
 
+/** Observação sem as partes de texto livre do cliente do iFood (ponto de referência e contato). */
+const semReferencia = (obs: string) =>
+    obs.split('|').filter(parte => !/^\s*(Referência:|Ligar\s)/i.test(parte)).join('|');
+
 const mappedStatus = (statusDelivery: string | null, status: string) => {
     if (status === 'Fechado' || statusDelivery === 'Entregue' || statusDelivery === 'Finalizado') return 'delivered';
     if (statusDelivery === 'SaiuEntrega' || statusDelivery === 'EmRota') return 'dispatched';
@@ -44,7 +48,7 @@ const mappedStatus = (statusDelivery: string | null, status: string) => {
 export function pedidoOnlineDto(
     p: PedidoComItens,
     client: Pick<Client, 'name' | 'phone'> | null | undefined,
-    addressMap: Map<string, Pick<Address, 'street' | 'number' | 'neighborhood' | 'city' | 'zipcode'>>,
+    addressMap: Map<string, Pick<Address, 'street' | 'number' | 'neighborhood' | 'city' | 'zipcode'> & { complement?: string | null }>,
     productMap: Map<string, string>,
 ) {
     const isTakeout =
@@ -53,7 +57,8 @@ export function pedidoOnlineDto(
         p.origem === 'BalcÃ£o' ||
         p.origem === 'Retirada' ||
         p.origem === 'Takeout' ||
-        (Boolean(p.observacao) && p.observacao!.toLowerCase().includes('retirada')) ||
+        // Só as marcas do sistema contam: o ponto de referência do iFood ("Referência: ...") é texto do cliente (12/10/2026)
+        (Boolean(p.observacao) && semReferencia(p.observacao!).toLowerCase().includes('retirada')) ||
         !p.endereco_entrega_id;
 
     // Prioriza o endereço histórico salvo no pedido em endereco_entrega_id somente se NÃO for retirada
@@ -65,7 +70,7 @@ export function pedidoOnlineDto(
     const address = isTakeout
         ? 'Retirada no Balcão'
         : (orderAddr
-            ? `${orderAddr.street}, ${orderAddr.number} - ${orderAddr.neighborhood}${cityStr}`
+            ? `${orderAddr.street}, ${orderAddr.number}${orderAddr.complement ? ` ${orderAddr.complement}` : ''} - ${orderAddr.neighborhood}${cityStr}`
             : '');
     const neighborhood = isTakeout ? 'Balcão' : (orderAddr?.neighborhood || '');
     const city = isTakeout ? '' : (orderAddr?.city || '');
@@ -104,7 +109,8 @@ export function pedidoOnlineDto(
             return {
                 id: i.uuid || String(i.id),
                 product_id: i.produto_id || undefined,
-                name: productMap.get(i.produto_id || '') || 'Item',
+                // Item do iFood/99 ainda sem vínculo: o nome que veio da plataforma (antes ia "Item")
+                name: productMap.get(i.produto_id || '') || i.external_name || 'Item',
                 quantity: i.quantidade,
                 price: i.valor_unitario,
                 observation: i.observacao || '',

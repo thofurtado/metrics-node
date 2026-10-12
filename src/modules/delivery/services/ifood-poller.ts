@@ -5,7 +5,8 @@ import { getActiveTenantDbNames, getPrismaForDb } from '@/lib/tenant-manager'
 import { recentDeliveryEvents } from '../http/controllers/webhook-99food'
 import { isCancellationRelatedEvent, journalEvent, processCancellationEvent } from './ifood-events.service'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
-import { documentoDoCliente, observacaoDoPedidoIfood } from './ifood-nota'
+import { contatoDoClienteIfood, documentoDoCliente, enderecoDaEntregaIfood, mesmoEndereco, observacaoDoPedidoIfood } from './ifood-nota'
+import { montarPedidosOnline } from '@/modules/public/http/controllers/pedido-online-dto'
 
 interface TokenStore {
   accessToken: string
@@ -268,43 +269,47 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           const tenantDbName = dbName
           const prisma = await getPrismaForDb(dbName)
 
-          // 2. Extrair ou criar cliente
+          // 2. Cliente: o iFood manda um 0800 compartilhado, não o telefone do cliente (ver contatoDoClienteIfood). O
+          // "telefone" guardado é 0800 + localizador (único por pedido); sem ele, nunca reaproveita cliente de outro pedido.
           const clientName = String(order.customer?.name || 'Cliente iFood')
-          const clientPhone = String(order.customer?.phone?.number || order.customer?.phone || '11999999999')
+          const contato = contatoDoClienteIfood(order.customer)
 
-          let client = await (prisma as any).client.findFirst({
-            where: { phone: clientPhone },
-            include: { addresses: true },
-          })
+          let client = contato.telefone
+            ? await (prisma as any).client.findFirst({
+                where: { phone: contato.telefone },
+                include: { addresses: true },
+              })
+            : null
 
           if (!client) {
             client = await (prisma as any).client.create({
               data: {
                 name: clientName,
-                phone: clientPhone,
+                phone: contato.telefone,
               },
               include: { addresses: true },
             })
           }
 
-          // 3. Endereço de entrega
-          let targetAddressId = client.addresses?.[0]?.id || null
+          // 3. Endereço de entrega: SEMPRE o do próprio pedido (antes usava o 1º endereço já salvo do cliente, e com o 0800
+          // compartilhado o pedido novo ia com o endereço de outra pessoa). Retirada fica sem endereço.
+          let targetAddressId: string | null = null
           const delAddr = order.delivery?.deliveryAddress
-          if (!targetAddressId && delAddr) {
-            const addr = await (prisma as any).address.create({
-              data: {
-                client_id: client.id,
-                street: delAddr.streetName || delAddr.formattedAddress || 'Rua iFood',
-                number: String(delAddr.streetNumber || 'S/N'),
-                neighborhood: delAddr.district || 'Centro',
-                city: delAddr.city || 'Caraguatatuba',
-                state: delAddr.state || 'SP',
-                zipcode: delAddr.postalCode || undefined,
-                complement: delAddr.complement || undefined,
-                is_main: true,
-              },
-            })
-            targetAddressId = addr.id
+          const entrega = enderecoDaEntregaIfood(delAddr)
+          if (entrega) {
+            const igual = (client.addresses || []).find((a: any) => mesmoEndereco(a, entrega))
+            if (igual) {
+              targetAddressId = igual.id
+            } else {
+              const addr = await (prisma as any).address.create({
+                data: {
+                  client_id: client.id,
+                  ...entrega,
+                  is_main: !(client.addresses || []).length,
+                },
+              })
+              targetAddressId = addr.id
+            }
           }
 
           // 4. Display ID Diário
@@ -422,30 +427,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           ordersCreated++
           console.log(`[iFood Polling] Pedido #${pedido.display_id} gravado em ${tenantDbName}! UUID: ${pedido.uuid}`)
 
-          // 8. Transmissão SSE para os PDVs
+          // 8. Transmissão SSE para os PDVs, no mesmo formato da lista de pendentes (endereço do pedido, bairro, CEP, taxa
+          // de entrega e produto vinculado). Antes era um formato próprio, com o bairro sempre "Centro" e sem o produto.
           try {
-            const fullOrderDto = {
-              id: pedido.uuid,
-              order_id: pedido.uuid,
-              display_id: pedido.display_id,
-              client_name: client.name,
-              client_phone: client.phone,
-              client_document: pedido.cpf_na_nota || null,
-              address: delAddr?.formattedAddress || 'Endereço iFood',
-              neighborhood: delAddr?.district || 'Centro',
-              city: delAddr?.city || 'Caraguatatuba',
-              total_amount: pedido.valor_final,
-              delivery_fee: pedido.valor_frete,
-              observations: pedido.observacao || '',
-              created_at: pedido.data_abertura,
-              items: (pedido.itens || []).map((i: any) => ({
-                id: i.uuid,
-                name: i.observacao || 'Item',
-                quantity: i.quantidade,
-                price: i.valor_unitario,
-                observation: i.observacao,
-              })),
-            }
+            const [fullOrderDto] = await montarPedidosOnline(prisma as any, [pedido])
 
             // Só a loja do pedido (LGPD, 08/10/2026): antes ia para todas as lojas conectadas e para a loja de teste
             sseManager.notifyTenant(tenantDbName, 'new_order', fullOrderDto)

@@ -53,5 +53,76 @@ export function observacaoDoPedidoIfood(orderId: string, displayId: string | num
     ? `Pagar na entrega: ${pagamento.texto || 'a combinar'}`
     : `Pagamento via iFood${pagamento.texto ? ` (${pagamento.texto})` : ''}`
   const loja = order?.merchant?.id ? ` | [iFoodLoja:${String(order.merchant.id)}]` : ''
-  return `[iFood:${orderId}] Pedido #${displayId} | ${texto}${loja}`
+  // Contato (0800 + localizador) e ponto de referência: o alerta do PDV mostra o que sobra da observação (12/10/2026)
+  const contato = contatoDoClienteIfood(order?.customer).texto
+  const referencia = semBarra(order?.delivery?.deliveryAddress?.reference)
+  const extras = (contato ? ` | ${contato}` : '') + (referencia ? ` | Referência: ${referencia}` : '')
+  return `[iFood:${orderId}] Pedido #${displayId} | ${texto}${loja}${extras}`
+}
+
+/** Texto livre do cliente sem a barra "|", que o PDV usa para separar as partes da observação. */
+function semBarra(valor: any): string {
+  return String(valor ?? '').replace(/\|/g, '/').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Contato do cliente do iFood (12/10/2026, conferido no diário real: 92 pedidos de homologação). O iFood não manda o telefone
+ * do cliente: manda um 0800 COMPARTILHADO (`customer.phone.number`, o mesmo 0800 apareceu em 12 pedidos de clientes
+ * diferentes) e um `localizer` de 8 dígitos que muda a cada pedido. Antes a nuvem e o PDV usavam o 0800 como se fosse o
+ * telefone do cliente: clientes diferentes viravam um só e o pedido novo saía com o ENDEREÇO DO PRIMEIRO cliente.
+ * - telefone: 0800 + localizador (único por pedido; cabe nos 20 caracteres do telefone do PDV) ou o número de verdade;
+ *   null quando é um 0800 sem localizador (nunca reaproveitar cliente por ele);
+ * - texto: "Ligar 0800 705 0500, localizador 1234 5678", para o motoboy ou o caixa falar com o cliente.
+ */
+export function contatoDoClienteIfood(customer: any): { telefone: string | null; texto: string | null } {
+  const numero = semBarra(customer?.phone?.number ?? (typeof customer?.phone === 'string' ? customer.phone : ''))
+  const digitos = numero.replace(/\D/g, '')
+  const localizador = String(customer?.phone?.localizer ?? '').replace(/\D/g, '')
+  if (!digitos) return { telefone: null, texto: null }
+  if (localizador) {
+    const junto = `${digitos} ${localizador}`
+    const locFormatado = localizador.length === 8 ? `${localizador.slice(0, 4)} ${localizador.slice(4)}` : localizador
+    return {
+      telefone: junto.length <= 20 ? junto : `${digitos}${localizador}`.slice(-20),
+      texto: `Ligar ${numero}, localizador ${locFormatado}`,
+    }
+  }
+  if (digitos.startsWith('0800')) return { telefone: null, texto: `Ligar ${numero}` }
+  return { telefone: digitos.slice(-20), texto: null }
+}
+
+export interface EnderecoDaEntregaIfood {
+  street: string
+  number: string
+  neighborhood: string
+  city: string
+  state: string
+  zipcode?: string
+  complement?: string
+}
+
+/**
+ * Endereço de entrega do pedido do iFood (12/10/2026). O iFood manda o bairro em `neighborhood` (conferido no diário real);
+ * o código lia `district`, que nunca vem, e todo pedido saía com bairro "Centro". A cidade caía em "Caraguatatuba" fixo.
+ * null quando o pedido não tem endereço (retirada).
+ */
+export function enderecoDaEntregaIfood(endereco: any): EnderecoDaEntregaIfood | null {
+  if (!endereco) return null
+  const rua = semBarra(endereco.streetName) || semBarra(endereco.formattedAddress)
+  if (!rua) return null
+  return {
+    street: rua,
+    number: semBarra(endereco.streetNumber) || 'S/N',
+    neighborhood: semBarra(endereco.neighborhood) || semBarra(endereco.district) || 'Bairro não informado',
+    city: semBarra(endereco.city),
+    state: semBarra(endereco.state),
+    zipcode: semBarra(endereco.postalCode) || undefined,
+    complement: semBarra(endereco.complement) || undefined,
+  }
+}
+
+/** Mesmo endereço (rua, número e complemento, sem diferenciar maiúsculas): reaproveita em vez de criar outro igual. */
+export function mesmoEndereco(a: { street?: string | null; number?: string | null; complement?: string | null }, b: EnderecoDaEntregaIfood): boolean {
+  const n = (v: any) => String(v ?? '').trim().toLowerCase()
+  return n(a.street) === n(b.street) && n(a.number) === n(b.number) && n(a.complement) === n(b.complement)
 }

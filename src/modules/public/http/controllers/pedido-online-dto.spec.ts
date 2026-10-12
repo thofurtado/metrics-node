@@ -51,3 +51,24 @@ describe('pedido online igual na lista de pendentes e no aviso ao vivo (09/10/20
     expect(dto.delivery_fee).toBe(0)
   })
 })
+
+describe('pedido do iFood no PDV (12/10/2026)', () => {
+  it('complemento vai no endereço e o ponto de referência com "retirada" não vira retirada', async () => {
+    const banco = bancoFalso()
+    banco.address.findMany = async () => [
+      { id: 'end-pedido', street: 'Rua do Pedido', number: '10', neighborhood: 'Vila Nova', city: 'Santos', zipcode: null, complement: 'Apto 3' },
+    ]
+    const [dto] = await montarPedidosOnline(banco, [pedido({
+      observacao: '[iFood:x] Pedido #1 | Pagamento via iFood | Referência: em frente à retirada de lixo',
+    })])
+    expect(dto.is_takeout).toBe(false)
+    expect(dto.address).toBe('Rua do Pedido, 10 Apto 3 - Vila Nova, Santos')
+  })
+
+  it('item do iFood ainda sem vínculo vai com o nome que veio do iFood', async () => {
+    const [dto] = await montarPedidosOnline(bancoFalso(), [pedido({
+      itens: [{ id: 2, uuid: 'it-2', produto_id: null, external_name: 'Marmita P', quantidade: 1, valor_unitario: 20, observacao: 'Marmita P', complementos_json: null }],
+    })])
+    expect(dto.items[0].name).toBe('Marmita P')
+  })
+})
