@@ -6,6 +6,8 @@ import { sseManager } from '@/lib/sse-manager'
 import { env } from '@/env'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { chaveDoItem99 } from '../../services/food99-vinculos'
+import { avisoDa99, enderecoDa99 } from '../../services/food99-pedido'
+import { avancaSituacao } from '../../services/ifood-situacao'
 
 export interface DeliveryEventLog {
   id: string
@@ -104,8 +106,41 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
     // também trazem "order" no nome e antes criavam um pedido falso a cada notificação. Eventos sem "type"
     // (testes manuais antigos) continuam aceitos se trouxerem order_info.
     const isNewOrderEvent = eventType === 'orderNew' || (eventType === 'UNKNOWN' && Boolean(payload?.data?.order_info))
-    if (!isNewOrderEvent) {
-      console.log(`[99Food Webhook] Evento "${eventType}" registrado no diário; tratamento específico ainda não implementado.`)
+    // Avisos de situação (13/10/2026): concluído, cancelado, pronto... A situação do Metrics é sempre a da plataforma (regra do
+    // Thomás). Antes só o orderNew mexia no pedido: o 99 nº 1 da Katatau foi concluído às 09:52 e seguia "Saiu para entrega".
+    const aviso = isNewOrderEvent ? null : avisoDa99(eventType)
+    if (!isNewOrderEvent && !aviso) {
+      console.log(`[99Food Webhook] Evento "${eventType}" registrado no diário (não muda pedido).`)
+    }
+    if (aviso && journalOrderId != null) {
+      const pedido = await (prisma as any).pedido.findFirst({ where: { observacao: { contains: `[99Food] Pedido #${journalOrderId} ` } } })
+      let resultado: string
+      if (!pedido) {
+        resultado = 'pedido não existe aqui (nada feito)'
+      } else if (aviso.tipo === 'cancelado') {
+        if (pedido.status === 'Cancelado' || pedido.status_delivery === 'Entregue') {
+          resultado = `pedido já está ${pedido.status === 'Cancelado' ? 'cancelado' : 'entregue'} (nada muda)`
+        } else {
+          await (prisma as any).pedido.update({ where: { id: pedido.id }, data: { status: 'Cancelado', status_delivery: 'Cancelado' } })
+          resultado = `pedido #${pedido.display_id}: ${pedido.status_delivery} -> Cancelado`
+          sseManager.notifyTenant(dbName, 'order_status_change', { order_id: pedido.uuid, display_id: pedido.display_id, status: 'Cancelado', status_delivery: 'Cancelado' })
+        }
+      } else if (pedido.status === 'Cancelado' || !avancaSituacao(pedido.status_delivery, aviso.situacao)) {
+        resultado = `${aviso.situacao.status_delivery}: pedido já está em ${pedido.status_delivery} (nada muda)`
+      } else {
+        await (prisma as any).pedido.update({
+          where: { id: pedido.id },
+          data: {
+            status: aviso.situacao.status,
+            status_delivery: aviso.situacao.status_delivery,
+            ...(aviso.situacao.status === 'Fechado' ? { data_fechamento: new Date() } : {}),
+          },
+        })
+        resultado = `pedido #${pedido.display_id}: ${pedido.status_delivery} -> ${aviso.situacao.status_delivery}`
+        sseManager.notifyTenant(dbName, 'order_status_change', { order_id: pedido.uuid, display_id: pedido.display_id, ...aviso.situacao })
+      }
+      console.log(`[99Food Webhook] ${eventType} de ${journalOrderId}: ${resultado}`)
+      void writeJournal({ method: 'EVENT99', endpoint: `${eventType}/aplicado`, orderId: String(journalOrderId), request: { resultado }, durationMs: Date.now() - startedAt, success: true })
     }
 
     if (isNewOrderEvent) {
@@ -159,19 +194,20 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       }
 
       // Endereço: só cria se a 99Food mandou rua/endereço (retirada e o mock do Sandbox vêm sem).
-      const street = texto(recvAddr.street_name) || texto(recvAddr.poi_address)
+      const endereco99 = enderecoDa99(recvAddr)
+      const street = endereco99.rua
       let targetAddressId: string | null = null
       if (!isPickup && street) {
         const addr = await (prisma as any).address.create({
           data: {
             client_id: client.id,
             street,
-            number: texto(recvAddr.house_number) || texto(recvAddr.street_number) || 'S/N',
+            number: endereco99.numero,
             neighborhood: texto(recvAddr.district) || '',
             city: texto(recvAddr.city) || '',
             state: texto(recvAddr.state) || '',
             zipcode: texto(recvAddr.postal_code || recvAddr.postalCode) || undefined,
-            complement: texto(recvAddr.complement) || undefined,
+            complement: endereco99.complemento || undefined,
             is_main: false,
           },
         })
@@ -287,9 +323,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
 
       // Transmissão via Server-Sent Events (SSE) para os PDVs
       try {
-        const addrText = street
-          ? `${street}${texto(recvAddr.house_number) ? ', ' + texto(recvAddr.house_number) : ''}${texto(recvAddr.district) ? ' - ' + texto(recvAddr.district) : ''}`
-          : ''
+        const addrText = endereco99.linha
         const fullOrderDto = {
           id: pedido.uuid,
           order_id: pedido.uuid,
