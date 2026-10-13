@@ -36,7 +36,7 @@ export async function montarPedidosOnline(prisma: PrismaClient, pedidos: PedidoC
 const semReferencia = (obs: string) =>
     obs.split('|').filter(parte => !/^\s*(Referência:|Ligar\s)/i.test(parte)).join('|');
 
-const mappedStatus = (statusDelivery: string | null, status: string) => {
+export const mappedStatus = (statusDelivery: string | null, status: string) => {
     if (status === 'Fechado' || statusDelivery === 'Entregue' || statusDelivery === 'Finalizado') return 'delivered';
     if (statusDelivery === 'SaiuEntrega' || statusDelivery === 'EmRota') return 'dispatched';
     if (statusDelivery === 'Conferencia') return 'conferencia';

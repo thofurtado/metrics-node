@@ -24,6 +24,7 @@ import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync, getOpenCashierSessions } from './cashier-sync-controller'
 import { postClusterVivo } from './cluster-controller'
+import { getOrdersSituation } from './orders-situation-controller'
 import {
     getGarcomCardapio,
     getGarcomMesas,
@@ -52,6 +53,8 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/delivery/item-mappings', createDeliveryItemMapping)
     // Código de entrega do iFood digitado no PDV (12/10/2026): a nuvem confirma no iFood
     app.post('/api/pdv/orders/:id/delivery-code', postIfoodDeliveryCode)
+    // Situação de pedidos de dias anteriores que o PDV ainda tem abertos (13/10/2026: o #5706 da Katatau ficou na rua)
+    app.get('/api/pdv/orders/situacao', getOrdersSituation)
 
     // Watermark / Delta status
     app.get('/api/pdv/sync/status', getSyncStatus)
