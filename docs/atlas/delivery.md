@@ -129,10 +129,15 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Origem:** PDV local (Metrics.PDV)
 - **O que é:** Taxa por setor de bairros, cadastrada no PDV.
 
-### Entregador (PDV) (`motoboys`)
+### Motoboy (PDV) (`motoboys`)
 
 - **Origem:** PDV local (Metrics.PDV)
-- **O que é:** Cadastro dos entregadores usados no acerto do motoboy.
+- **O que é:** Cadastro dos motoboys da loja com o ganho: valor fixo por entrega ou % da taxa de entrega, diária e desde quando o ganho vale (PDV 2.5.37.0). Não é funcionário do RH: não aparece no Ponto nem na folha.
+
+### Entregas a pagar (PDV) (`entregas_a_pagar`)
+
+- **Origem:** PDV local (Metrics.PDV)
+- **O que é:** O que cada motoboy tem a receber: uma linha por entrega (fixo ou % da taxa, calculado na hora) e uma diária por dia com entrega. Situação PENDENTE, PAGA (com a despesa do caixa que pagou) ou NAO_PAGA (pedido cancelado; o caixa escolhe se paga). Criadas ao abrir a tela dos motoboys (PDV 2.5.37.0).
 
 ## Pendências e decisões
 

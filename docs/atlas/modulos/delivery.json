@@ -49,6 +49,10 @@
         "pdv:Motoboy": {
           "col": 2,
           "linha": 1
+        },
+        "pdv:EntregaAPagar": {
+          "col": 3,
+          "linha": 1
         }
       },
       "legenda": "O pedido de delivery no PDV é a tabela pedidos (módulo Caixa e vendas), com origem Delivery, iFood ou 99Food."
@@ -108,8 +112,12 @@
       ]
     },
     "pdv:Motoboy": {
-      "nome": "Entregador (PDV)",
-      "o_que_e": "Cadastro dos entregadores usados no acerto do motoboy."
+      "nome": "Motoboy (PDV)",
+      "o_que_e": "Cadastro dos motoboys da loja com o ganho: valor fixo por entrega ou % da taxa de entrega, diária e desde quando o ganho vale (PDV 2.5.37.0). Não é funcionário do RH: não aparece no Ponto nem na folha."
+    },
+    "pdv:EntregaAPagar": {
+      "nome": "Entregas a pagar (PDV)",
+      "o_que_e": "O que cada motoboy tem a receber: uma linha por entrega (fixo ou % da taxa, calculado na hora) e uma diária por dia com entrega. Situação PENDENTE, PAGA (com a despesa do caixa que pagou) ou NAO_PAGA (pedido cancelado; o caixa escolhe se paga). Criadas ao abrir a tela dos motoboys (PDV 2.5.37.0)."
     }
   },
   "ligacoes": [

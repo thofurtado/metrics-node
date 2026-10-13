@@ -1,20 +1,20 @@
 {
- "gerado_em": "2026-10-12T18:03:40",
+ "gerado_em": "2026-10-12T22:51:53",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "f59374c 2026-10-12",
+   "versao": "0b3d22c 2026-10-12",
    "tabelas": 64
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "93344f6 2026-10-10",
+   "versao": "9db9784 2026-10-12",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "8cc306e 2026-10-12",
-   "tabelas": 42
+   "versao": "2d40d19 2026-10-12",
+   "tabelas": 43
   }
  },
  "tabelas": {
@@ -11307,6 +11307,202 @@
    ],
    "arquivo": "EnderecoCliente.cs"
   },
+  "pdv:EntregaAPagar": {
+   "origem": "pdv",
+   "modelo": "EntregaAPagar",
+   "tabela": "entregas_a_pagar",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Uuid",
+     "coluna": "uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Tipo",
+     "coluna": "tipo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "MotoboyId",
+     "coluna": "motoboy_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "MotoboyNome",
+     "coluna": "motoboy_nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PedidoId",
+     "coluna": "pedido_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Data",
+     "coluna": "data",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Dia",
+     "coluna": "dia",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Descricao",
+     "coluna": "descricao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TaxaCobrada",
+     "coluna": "taxa_cobrada",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ValorAPagar",
+     "coluna": "valor_a_pagar",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Situacao",
+     "coluna": "situacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Motivo",
+     "coluna": "motivo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AcertoUuid",
+     "coluna": "acerto_uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PagoEm",
+     "coluna": "pago_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CaixaTransacaoId",
+     "coluna": "caixa_transacao_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CriadoEm",
+     "coluna": "criado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "EntregaAPagar.cs"
+  },
   "pdv:EvasaoEstoque": {
    "origem": "pdv",
    "modelo": "EvasaoEstoque",
@@ -13065,6 +13261,83 @@
      "tipo": "string",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Uuid",
+     "coluna": "uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Telefone",
+     "coluna": "telefone",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "FormaGanho",
+     "coluna": "forma_ganho",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ValorPorEntrega",
+     "coluna": "valor_por_entrega",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Diaria",
+     "coluna": "diaria",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Ativo",
+     "coluna": "ativo",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "GanhoDesde",
+     "coluna": "ganho_desde",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,

@@ -8,7 +8,7 @@ Gerado em 12/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o ma
 |---|---|---|
 | Caixa e vendas | 15 | [caixa-vendas.md](caixa-vendas.md) |
 | Mesas e salão | 5 | [mesas.md](mesas.md) |
-| Delivery e pedidos online | 6 | [delivery.md](delivery.md) |
+| Delivery e pedidos online | 7 | [delivery.md](delivery.md) |
 | Cardápio e produtos | 16 | [cardapio.md](cardapio.md) |
 | Estoque e compras | 10 | [estoque.md](estoque.md) |
 | Financeiro | 19 | [financeiro.md](financeiro.md) |
