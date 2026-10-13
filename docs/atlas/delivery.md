@@ -1,6 +1,6 @@
 # Delivery e pedidos online
 
-> Gerado por `atlas.py` em 12/10/2026 a partir do código e de `modulos/delivery.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/delivery.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -86,6 +86,15 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Por que existe:** Acompanhar o diário do iFood ao vivo durante testes e homologação.
 - **Se espaçar:** Fechar a página quando não estiver usando.
 - **Onde no código:** `metrics-node/src/modules/delivery/http/controllers/ifood-diagnostic.ts:298`
+
+### Conferência dos pedidos de dias anteriores ainda abertos no PDV — Ok
+- **Frequência:** ao ligar e depois no máximo a cada 10 min (só quando há pedido de dia anterior aberto)
+- **Onde roda:** PDV (junto da conferência de pedidos online), desde a 2.5.40.0 → `Nuvem: GET /api/pdv/orders/situacao?uuids= (chave do PDV), até 50 códigos`
+- **Quantos:** 1 por PDV; nenhuma chamada quando não há pedido antigo aberto
+- **A cada vez:** Na nuvem: 1 consulta simples aos pedidos pelos códigos (só código e situação, sem dado de cliente). No PDV: aplica a situação com a regra de sempre (só para a frente). Criado em 13/10/2026 porque o iFood #5706 da Katatau, entregue às 22:28 com o PDV desligado, ficou 'Na rua' no dia seguinte.
+- **Por que existe:** A conferência normal (/api/pdv/orders/pending) só traz o dia operacional; pedido que a plataforma conclui com o PDV desligado ficava aberto para sempre no PDV.
+- **Desde:** PDV 2.5.40.0 + nuvem 2.6.115.0 (13/10/2026)
+- **Onde no código:** `M`, `e`, `t`, `r`, `i`, `c`, `s`, `.`, `P`, `D`, `V`, `/`, `M`, `e`, `t`, `r`, `i`, `c`, `s`, `.`, `S`, `h`, `a`, `r`, `e`, `d`, `/`, `S`, `e`, `r`, `v`, `i`, `c`, `e`, `s`, `/`, `O`, `n`, `l`, `i`, `n`, `e`, `O`, `r`, `d`, `e`, `r`, `W`, `a`, `t`, `c`, `h`, `e`, `r`, `S`, `e`, `r`, `v`, `i`, `c`, `e`, `.`, `c`, `s`, ` `, `(`, `C`, `o`, `n`, `f`, `e`, `r`, `i`, `r`, `P`, `e`, `d`, `i`, `d`, `o`, `s`, `A`, `n`, `t`, `i`, `g`, `o`, `s`, `A`, `s`, `y`, `n`, `c`, `)`, ` `, `·`, ` `, `m`, `e`, `t`, `r`, `i`, `c`, `s`, `-`, `n`, `o`, `d`, `e`, `/`, `s`, `r`, `c`, `/`, `m`, `o`, `d`, `u`, `l`, `e`, `s`, `/`, `p`, `d`, `v`, `-`, `s`, `y`, `n`, `c`, `/`, `h`, `t`, `t`, `p`, `/`, `c`, `o`, `n`, `t`, `r`, `o`, `l`, `l`, `e`, `r`, `s`, `/`, `o`, `r`, `d`, `e`, `r`, `s`, `-`, `s`, `i`, `t`, `u`, `a`, `t`, `i`, `o`, `n`, `-`, `c`, `o`, `n`, `t`, `r`, `o`, `l`, `l`, `e`, `r`, `.`, `t`, `s`
 
 ### Canal ao vivo de pedidos no PDV (SSE) — Ok
 - **Frequência:** conexão sempre aberta; se cair, tenta de novo a cada 5 s

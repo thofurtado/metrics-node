@@ -1,5 +1,5 @@
 {
- "gerado_em": "12/10/2026",
+ "gerado_em": "13/10/2026",
  "atlas": {
   "titulo": "Atlas do Metrics",
   "resumo": "Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.",
@@ -2068,6 +2068,20 @@
      "ondeNoCodigo": [
       "metrics-node/src/modules/delivery/http/controllers/ifood-diagnostic.ts:298"
      ]
+    },
+    {
+     "id": "pdv-pedidos-antigos-abertos",
+     "nome": "Conferência dos pedidos de dias anteriores ainda abertos no PDV",
+     "ondeRoda": "PDV (junto da conferência de pedidos online), desde a 2.5.40.0",
+     "chama": "Nuvem: GET /api/pdv/orders/situacao?uuids= (chave do PDV), até 50 códigos",
+     "frequencia": "ao ligar e depois no máximo a cada 10 min (só quando há pedido de dia anterior aberto)",
+     "segundos": 600,
+     "quantos": "1 por PDV; nenhuma chamada quando não há pedido antigo aberto",
+     "faz": "Na nuvem: 1 consulta simples aos pedidos pelos códigos (só código e situação, sem dado de cliente). No PDV: aplica a situação com a regra de sempre (só para a frente). Criado em 13/10/2026 porque o iFood #5706 da Katatau, entregue às 22:28 com o PDV desligado, ficou 'Na rua' no dia seguinte.",
+     "porque": "A conferência normal (/api/pdv/orders/pending) só traz o dia operacional; pedido que a plataforma conclui com o PDV desligado ficava aberto para sempre no PDV.",
+     "situacao": "ok",
+     "desde": "PDV 2.5.40.0 + nuvem 2.6.115.0 (13/10/2026)",
+     "ondeNoCodigo": "Metrics.PDV/Metrics.Shared/Services/OnlineOrderWatcherService.cs (ConferirPedidosAntigosAsync) · metrics-node/src/modules/pdv-sync/http/controllers/orders-situation-controller.ts"
     }
    ],
    "espelhos": [],
@@ -3964,21 +3978,21 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-12T22:51:53",
+  "gerado_em": "2026-10-13T08:15:13",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "0b3d22c 2026-10-12",
+    "versao": "caeaeb9 2026-10-13",
     "tabelas": 64
    },
    "saas": {
     "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-    "versao": "9db9784 2026-10-12",
+    "versao": "8f4bb7a 2026-10-12",
     "tabelas": 2
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "2d40d19 2026-10-12",
+    "versao": "2fafde3 2026-10-13",
     "tabelas": 43
    }
   },
