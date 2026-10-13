@@ -91,6 +91,11 @@ export function pedidoOnlineDto(
         // CPF/CNPJ na nota (iFood: o que o cliente informou no app), para a NFC-e do delivery no PDV
         client_document: p.cpf_na_nota || null,
         address: address,
+        // Partes do endereço do PRÓPRIO pedido (13/10/2026): o PDV grava rua, número e complemento separados, e não o
+        // texto inteiro com "S/N" no fim. PDV antigo ignora estes campos.
+        street: orderAddr && !isTakeout ? orderAddr.street : null,
+        number: orderAddr && !isTakeout ? orderAddr.number : null,
+        complement: orderAddr && !isTakeout ? (orderAddr.complement || null) : null,
         neighborhood: neighborhood,
         city: city,
         zipcode: zipcode,

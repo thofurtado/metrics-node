@@ -182,8 +182,12 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         'Cliente 99Food'
       const clientPhone = texto(recvAddr.virtual_phone_number) || texto(recvAddr.phone) || null
 
+      // O telefone da 99 é VIRTUAL (0122398xxxx) e volta para outro cliente no mesmo dia: só reaproveita o cadastro com o
+      // mesmo telefone E o mesmo nome. Caso real (Katatau, 13/10/2026): o pedido Nº 5 de outra pessoa herdou o cadastro do
+      // Nº 1 e o PDV imprimiu o nome e o endereço do Nº 1.
+      const mesmoNome = { equals: clientName, mode: 'insensitive' }
       let client = clientPhone
-        ? await (prisma as any).client.findFirst({ where: { phone: clientPhone }, include: { addresses: true } })
+        ? await (prisma as any).client.findFirst({ where: { phone: clientPhone, name: mesmoNome }, include: { addresses: true } })
         : await (prisma as any).client.findFirst({ where: { phone: null, name: clientName }, include: { addresses: true } })
 
       if (!client) {

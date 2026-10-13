@@ -63,6 +63,9 @@ describe('pedido do iFood no PDV (12/10/2026)', () => {
     })])
     expect(dto.is_takeout).toBe(false)
     expect(dto.address).toBe('Rua do Pedido, 10 Apto 3 - Vila Nova, Santos')
+    expect(dto.street).toBe('Rua do Pedido')
+    expect(dto.number).toBe('10')
+    expect(dto.complement).toBe('Apto 3')
   })
 
   it('item do iFood ainda sem vínculo vai com o nome que veio do iFood', async () => {
