@@ -5,6 +5,7 @@ import { writeJournal } from '../../services/ifood-events.service'
 import { sseManager } from '@/lib/sse-manager'
 import { env } from '@/env'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
+import { chaveDoItem99 } from '../../services/food99-vinculos'
 
 export interface DeliveryEventLog {
   id: string
@@ -203,13 +204,16 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       for (const it of rawItems) {
         const itemName = texto(it.name) || 'Item 99Food'
         const appItemId = texto(it.app_item_id)
+        // Código do vínculo: o app_item_id; sem ele (cardápio montado direto na 99, caso da Katatau), o nome normalizado
+        // (12/10/2026). É a mesma chave que a aba 99Food da tela Vínculos com Delivery grava.
+        const chave = chaveDoItem99(appItemId, itemName)
 
         // Vínculo manual tem prioridade: cobre o caso raro de o produto ter sido apagado/recriado
         // com outro ID depois que o cardápio já foi enviado pro 99Food.
         let matchedProduct: any = null
-        if (appItemId) {
+        if (chave) {
           const mapping = await (prisma as any).deliveryItemMapping.findUnique({
-            where: { platform_external_code: { platform: '99FOOD', external_code: appItemId } },
+            where: { platform_external_code: { platform: '99FOOD', external_code: chave } },
           })
           if (mapping) {
             matchedProduct = await (prisma as any).product.findUnique({ where: { id: mapping.product_id } })
@@ -238,7 +242,7 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           valor_unitario: unit,
           valor_total: it.total_price != null ? centavos(it.total_price) : unit * qty,
           observacao: obs,
-          external_code: appItemId || null,
+          external_code: chave || null,
           external_name: itemName,
         })
       }

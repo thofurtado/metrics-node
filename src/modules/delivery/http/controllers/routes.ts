@@ -22,6 +22,8 @@ import {
   createDeliveryItemMapping,
   listDeliveryItemMappings,
   deleteDeliveryItemMapping,
+  getFood99MenuMappings,
+  createDeliveryItemMappingsBulk,
 } from './delivery-item-mapping'
 
 export async function deliveryRoutes(app: FastifyInstance) {
@@ -108,6 +110,11 @@ export async function deliveryRoutes(app: FastifyInstance) {
   // Agora é POST /settings/integrations/food99/catalog, com login e só para loja nova.
 
   // Vínculo de item de delivery (iFood/99Food) com produto do Metrics
+  // Aba 99Food da tela Vínculos com Delivery (12/10/2026): cardápio da 99 com o vínculo/sugestão de cada item e o "confirmar todas"
+  app.get('/delivery/item-mappings/food99-menu', { preHandler: verifyJwt }, getFood99MenuMappings)
+  app.get('/api/delivery/item-mappings/food99-menu', { preHandler: verifyJwt }, getFood99MenuMappings)
+  app.post('/delivery/item-mappings/bulk', { preHandler: verifyJwt }, createDeliveryItemMappingsBulk)
+  app.post('/api/delivery/item-mappings/bulk', { preHandler: verifyJwt }, createDeliveryItemMappingsBulk)
   app.get('/delivery/item-mappings/pending', { preHandler: verifyJwt }, getPendingDeliveryItemMappings)
   app.get('/api/delivery/item-mappings/pending', { preHandler: verifyJwt }, getPendingDeliveryItemMappings)
   app.get('/delivery/item-mappings', { preHandler: verifyJwt }, listDeliveryItemMappings)

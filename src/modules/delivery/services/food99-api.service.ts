@@ -209,7 +209,7 @@ async function listMenu(appShopId: string): Promise<{ ok: boolean; errmsg?: stri
   try {
     const d = await getJson(`${BASE}/v3/item/item/list?auth_token=${encodeURIComponent(token)}`)
     if (d?.errno !== 0) return { ok: false, errmsg: d?.errmsg, items: [] }
-    return { ok: true, items: (d?.data?.items || []).map((i: any) => ({ app_item_id: String(i.app_item_id), item_name: i.item_name, price: i.price })) }
+    return { ok: true, items: (d?.data?.items || []).map((i: any) => ({ app_item_id: String(i.app_item_id ?? ''), item_name: i.item_name, price: i.price })) }
   } catch (e: any) {
     return { ok: false, errmsg: e?.message, items: [] }
   }
