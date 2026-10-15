@@ -51,9 +51,23 @@ import path from 'path'
 
 import { fastifyRequestContext, requestContext } from '@fastify/request-context'
 import { getPrismaForDomain, getDbNameForDomain } from '@/lib/tenant-manager'
+import { tirarPinDoEndereco } from '@/utils/tirar-pin-do-endereco'
 
 export const app = fastify({
-    logger: true,
+    // Registro padrão do Fastify, só com o PIN do Ponto escondido no endereço (Mergulho 01:R11)
+    logger: {
+        serializers: {
+            req(req: any) {
+                return {
+                    method: req.method,
+                    url: tirarPinDoEndereco(String(req.url ?? '')),
+                    host: req.host,
+                    remoteAddress: req.ip,
+                    remotePort: req.socket ? req.socket.remotePort : undefined,
+                }
+            },
+        },
+    },
     bodyLimit: 30 * 1024 * 1024, // 30 MB (permite uploads e sincronizações em lote)
 })
 
