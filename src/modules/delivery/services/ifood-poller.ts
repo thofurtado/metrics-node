@@ -9,6 +9,9 @@ import { contatoDoClienteIfood, documentoDoCliente, enderecoDaEntregaIfood, mesm
 import { codigoCurtoDoProduto, eanDoItemIfood, valoresDoItemIfood } from './ifood-itens'
 import { avancaSituacao, situacaoDoEvento, situacaoFinalPorPedido } from './ifood-situacao'
 import { montarPedidosOnline } from '@/modules/public/http/controllers/pedido-online-dto'
+import { eventoDeCancelado, FilaDePedidosNovos, MAX_TENTATIVAS_PEDIDO_NOVO, pedidosQueFalharam, situacaoMaisAdiantada } from './ifood-fila-pedidos'
+import { localizarTenantDaLoja } from './delivery-tenant-resolver'
+import { produtoUnicoPeloNome } from './produto-por-nome'
 
 interface TokenStore {
   accessToken: string
@@ -28,11 +31,10 @@ const tokenStates = new Map<string, TokenStore>()
 const DEFAULT_TENANT = 'db_restaurante'
 
 // Homologação iFood: o ACK sai imediatamente após o polling e o mesmo evento pode chegar mais de uma vez.
-// Ids já vistos são descartados; pedidos novos (PLC) que falharem entram numa fila curta de nova tentativa.
+// Ids já vistos são descartados; pedidos novos (PLC) que falharem entram na fila de nova tentativa da loja (ifood-fila-pedidos.ts).
 const processedEventIds = new Set<string>()
 const MAX_TRACKED_EVENT_IDS = 5000
-const placedRetryQueue = new Map<string, { event: any; attempts: number }>()
-const MAX_PLACED_RETRIES = 5
+const filaDePedidosNovos = new FilaDePedidosNovos()
 
 function markEventProcessed(eventId: string) {
   processedEventIds.add(eventId)
@@ -42,14 +44,52 @@ function markEventProcessed(eventId: string) {
   }
 }
 
-function takePlacedRetries(): any[] {
-  const events: any[] = []
-  for (const [orderId, entry] of placedRetryQueue) {
-    events.push({ ...entry.event, __retry: true })
-    entry.attempts++
-    if (entry.attempts > MAX_PLACED_RETRIES) placedRetryQueue.delete(orderId)
+/** Eventos que o diário guardou deste pedido, do mais antigo ao mais novo (para a nova tentativa nascer na situação real). */
+async function eventosDoPedidoNoDiario(orderId: string): Promise<any[]> {
+  try {
+    const prisma = await getPrismaForDb(process.env.IFOOD_AUDIT_DB || 'db_restaurante')
+    const linhas = await (prisma as any).ifoodApiLog.findMany({
+      where: { method: 'EVENT', order_id: orderId },
+      orderBy: { created_at: 'asc' },
+      select: { request_body: true },
+      take: 200,
+    })
+    return linhas.map((l: any) => l.request_body).filter((e: any) => e && typeof e === 'object')
+  } catch (error: any) {
+    console.error(`[iFood Poller] Falha ao ler no diário os eventos do pedido ${orderId}:`, error?.message || error)
+    return []
   }
-  return events
+}
+
+/**
+ * Ao subir a nuvem: os pedidos novos cuja última tentativa falhou nas últimas 24 h (pelo diário) voltam para a fila da loja.
+ * Fase 4 do Mergulho (09:F3): antes a fila vivia só na memória e a publicação (que reinicia a nuvem) perdia o pedido.
+ */
+export async function recuperarPedidosQueFalharam(): Promise<number> {
+  try {
+    const prisma = await getPrismaForDb(process.env.IFOOD_AUDIT_DB || 'db_restaurante')
+    const linhas = await (prisma as any).ifoodApiLog.findMany({
+      where: { method: 'EVENT', endpoint: '/events/polling/PLC', created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+      orderBy: { created_at: 'asc' },
+      select: { order_id: true, success: true, request_body: true, response_body: true },
+      take: 5000,
+    })
+    let recuperados = 0
+    for (const { dbName, event } of pedidosQueFalharam(linhas)) {
+      // Linha antiga (sem a loja no diário): acha a loja pelo ID dela no iFood
+      const dono = dbName ?? (await localizarTenantDaLoja(String(event?.merchantId ?? ''), 'IFOOD'))?.dbName
+      if (!dono) {
+        console.warn(`[iFood Poller] Pedido ${event?.orderId} falhou antes de reiniciar, mas a loja dele não foi encontrada.`)
+        continue
+      }
+      if (filaDePedidosNovos.falhou(dono, event)) recuperados++
+    }
+    if (recuperados > 0) console.warn(`[iFood Poller] ${recuperados} pedido(s) novo(s) que falharam antes de reiniciar voltaram para a fila.`)
+    return recuperados
+  } catch (error: any) {
+    console.error('[iFood Poller] Falha ao reler no diário os pedidos que falharam:', error?.message || error)
+    return 0
+  }
 }
 
 function getTokenStore(dbName: string = DEFAULT_TENANT): TokenStore {
@@ -189,7 +229,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         throw err
       }
     }
-    events = [...(Array.isArray(events) ? events : []), ...takePlacedRetries()]
+    events = [...(Array.isArray(events) ? events : []), ...filaDePedidosNovos.retirar(dbName)]
     if (events.length === 0) {
       return { polled: true, eventsProcessed: 0, ordersCreated: 0 }
     }
@@ -216,7 +256,7 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
       if (eventKey && !event.__retry) {
         if (processedEventIds.has(eventKey)) {
           console.log(`[iFood Polling] Evento ${eventKey} duplicado; descartado.`)
-          void journalEvent(event, 'polling', { ackMs, duplicate: true, outcome: 'duplicado; descartado' })
+          void journalEvent(event, 'polling', { ackMs, duplicate: true, outcome: 'duplicado; descartado', tenant: dbName })
           continue
         }
         markEventProcessed(eventKey)
@@ -250,9 +290,19 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             })
             if (jaExiste) {
               console.log(`[iFood Polling] Pedido ${event.orderId} já existe (#${jaExiste.id}); evento PLC ignorado.`)
-              placedRetryQueue.delete(String(event.orderId))
+              filaDePedidosNovos.resolvido(dbName, String(event.orderId))
+              // Nova tentativa encerrada fica no diário: senão a última linha seguiria "falhou" e voltaria para a fila ao reiniciar
+              if (event.__retry) void journalEvent(event, 'polling', { outcome: `pedido já existe (#${jaExiste.id}); nova tentativa encerrada`, tenant: dbName })
               continue
             }
+          }
+          // Nova tentativa (09:F3): o que o iFood avisou deste pedido enquanto ele não entrava (o diário guarda os eventos)
+          const eventosAnteriores = event.__retry ? await eventosDoPedidoNoDiario(String(event.orderId)) : []
+          if (eventosAnteriores.some(eventoDeCancelado)) {
+            console.warn(`[iFood Polling] Pedido ${event.orderId} foi cancelado no iFood antes de conseguir entrar; não é gravado.`)
+            filaDePedidosNovos.resolvido(dbName, String(event.orderId))
+            void journalEvent(event, 'polling', { outcome: 'cancelado no iFood antes de conseguir entrar (nada a preparar)', tenant: dbName })
+            continue
           }
           let order: any = null
           try {
@@ -373,13 +423,9 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
             if (!matchedProduct && ean) {
               matchedProduct = await (prisma as any).product.findFirst({ where: { barcode: ean } })
             }
-            // 3. Último recurso: nome exato (frágil — acento/espaço já quebra).
+            // 3. Último recurso: nome exato (frágil — acento/espaço já quebra), só quando um único produto tem esse nome (09:F4)
             if (!matchedProduct && itemName) {
-              matchedProduct = await (prisma as any).product.findFirst({
-                where: {
-                  name: { equals: itemName, mode: 'insensitive' },
-                },
-              })
+              matchedProduct = await produtoUnicoPeloNome(prisma, itemName)
             }
 
             // Item vinculado: a observação leva só os adicionais e o que o cliente escreveu (o nome é o do nosso produto);
@@ -416,7 +462,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
           }
 
           // Já aceito/despachado/entregue (ex.: aceito no Gestor de Pedidos, ou eventos antigos ao autorizar a loja)
-          const situacaoInicial = situacaoNoLote.get(String(event.orderId)) ?? null
+          const situacaoInicial = situacaoMaisAdiantada(
+            situacaoNoLote.get(String(event.orderId)) ?? null,
+            situacaoFinalPorPedido(eventosAnteriores).get(String(event.orderId)) ?? null,
+          )
 
           // 7. Criar Pedido Canônico em db_restaurante
           const pedido = await (prisma as any).pedido.create({
@@ -516,18 +565,22 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
         }
       }
 
-      if (event.code === 'PLC') outcome = eventProcessed ? 'pedido novo gravado' : 'pedido novo FALHOU (nova tentativa)'
-      void journalEvent(event, 'polling', { ackMs, outcome, success: eventProcessed })
-
-      // Pedido novo que falhou ao gravar: o ACK já foi dado, então tenta de novo nos próximos ciclos.
-      if (!eventProcessed && event.code === 'PLC' && event.orderId) {
+      // Pedido novo que falhou ao gravar: o ACK já foi dado, então tenta de novo nas próximas rodadas desta loja.
+      if (event.code === 'PLC' && event.orderId) {
         const key = String(event.orderId)
-        const entry = placedRetryQueue.get(key)
-        if (!entry) placedRetryQueue.set(key, { event: { ...event, __retry: undefined }, attempts: 0 })
-        console.warn(`[iFood Polling] Pedido ${key} será reprocessado no próximo ciclo (tentativa ${(entry?.attempts ?? 0) + 1}/${MAX_PLACED_RETRIES}).`)
-      } else if (eventProcessed && event.code === 'PLC' && event.orderId) {
-        placedRetryQueue.delete(String(event.orderId))
+        if (eventProcessed) {
+          filaDePedidosNovos.resolvido(dbName, key)
+          outcome = 'pedido novo gravado'
+        } else if (filaDePedidosNovos.falhou(dbName, event)) {
+          const tentativa = filaDePedidosNovos.tentativa(dbName, key) + 1
+          outcome = `pedido novo FALHOU (nova tentativa ${tentativa}/${MAX_TENTATIVAS_PEDIDO_NOVO})`
+          console.warn(`[iFood Polling] Pedido ${key} será reprocessado na próxima rodada (tentativa ${tentativa}/${MAX_TENTATIVAS_PEDIDO_NOVO}).`)
+        } else {
+          outcome = `pedido novo NÃO ENTROU depois de ${MAX_TENTATIVAS_PEDIDO_NOVO} tentativas (confira no Gestor de Pedidos do iFood)`
+          console.error(`[iFood Polling] Pedido ${key} não entrou depois de ${MAX_TENTATIVAS_PEDIDO_NOVO} tentativas.`)
+        }
       }
+      void journalEvent(event, 'polling', { ackMs, outcome, success: eventProcessed, tenant: dbName })
     }
 
     return { polled: true, eventsProcessed, ordersCreated }
@@ -548,8 +601,10 @@ export function startIfoodPollingLoop() {
   }
 
   console.log('🚀 [iFood Poller] Iniciando worker de eventos iFood (polling a cada 30s, conforme a homologação)...')
-  // Executa uma checagem imediata
-    pollAllIfoodTenants().catch((e) => console.error('[iFood Initial Poll Error]:', e))
+  // Antes da 1ª checagem, os pedidos novos que falharam antes de reiniciar voltam para a fila (09:F3)
+  recuperarPedidosQueFalharam()
+    .catch(() => 0)
+    .finally(() => pollAllIfoodTenants().catch((e) => console.error('[iFood Initial Poll Error]:', e)))
 
   pollIntervalTimer = setInterval(() => {
     pollAllIfoodTenants().catch((e) => console.error('[iFood Interval Poll Error]:', e))

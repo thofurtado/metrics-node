@@ -53,6 +53,8 @@ export interface EventJournalInfo {
   outcome?: string
   success?: boolean
   error?: string
+  /** Banco do cliente que recebeu o evento (o diário é um só para todas as lojas). Fase 4 do Mergulho (09:F3). */
+  tenant?: string
 }
 
 export function journalEvent(event: any, source: IfoodEventSource, info: EventJournalInfo = {}) {
@@ -71,6 +73,7 @@ export function journalEvent(event: any, source: IfoodEventSource, info: EventJo
       ackMs: info.ackMs ?? null,
       duplicate: Boolean(info.duplicate),
       outcome: info.outcome ?? null,
+      tenant: info.tenant ?? null,
     },
     durationMs: info.ackMs ?? 0,
     success: info.success ?? true,

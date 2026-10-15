@@ -47,6 +47,16 @@ describe('cliente e endereço do pedido do iFood (12/10/2026)', () => {
     expect(enderecoDaEntregaIfood({})).toBeNull()
   })
 
+  it('entrega sem rua, mas com bairro, referência ou coordenadas, NÃO vira retirada (Mergulho 09:F5)', () => {
+    const e = enderecoDaEntregaIfood({ neighborhood: 'Varadouro', reference: 'Perto da padaria', city: 'São Sebastião', state: 'SP' })!
+    expect(e.street).toBe('Rua não informada pelo iFood')
+    expect(e.neighborhood).toBe('Varadouro')
+    expect(e.number).toBe('S/N')
+    expect(enderecoDaEntregaIfood({ coordinates: { latitude: -23.8, longitude: -45.4 } })!.street).toBe('Rua não informada pelo iFood')
+    // o endereço completo do iFood continua valendo como rua
+    expect(enderecoDaEntregaIfood({ formattedAddress: 'Rua B, 20', neighborhood: 'C' })!.street).toBe('Rua B, 20')
+  })
+
   it('mesmo endereço é reaproveitado; outro número ou complemento vira endereço novo', () => {
     const e = enderecoDaEntregaIfood({ streetName: 'Rua A', streetNumber: '10', neighborhood: 'B', complement: 'Casa 2' })!
     expect(mesmoEndereco({ street: 'rua a', number: '10', complement: 'casa 2' }, e)).toBe(true)
