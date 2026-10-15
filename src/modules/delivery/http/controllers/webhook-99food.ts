@@ -6,7 +6,8 @@ import { sseManager } from '@/lib/sse-manager'
 import { env } from '@/env'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { chaveDoItem99 } from '../../services/food99-vinculos'
-import { avisoDa99, enderecoDa99 } from '../../services/food99-pedido'
+import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio } from '../../services/food99-pedido'
+import { produtoUnicoPeloNome } from '../../services/produto-por-nome'
 import { avancaSituacao } from '../../services/ifood-situacao'
 
 export interface DeliveryEventLog {
@@ -83,7 +84,10 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
   }
 
   try {
-    // 1. Extrair ID da loja da 99Food
+    // 1. ID da loja na 99Food. Fase 4 do Mergulho (10:N4): sem ele, antes caía no ID da loja de TESTE e o pedido ia para o banco
+    // de teste (db_restaurante), onde nenhuma loja vê. Agora o aviso sem loja que mexe em pedido segue o caminho da loja
+    // desconhecida (diário com erro e errno 1, para a 99 reenviar). No diário (21/09 a 14/10/2026) só o shopBindStatus veio sem
+    // loja no topo (4 vezes), e ele não mexe em pedido.
     const storeId = String(
       payload?.data?.order_info?.shop?.shop_id ||
       payload?.data?.order_info?.shop?.app_shop_id ||
@@ -92,26 +96,61 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
       payload?.shop_id ||
       payload?.shopId ||
       payload?.app_shop_id ||
-      '5764617543416810779'
-    )
+      ''
+    ).trim()
 
-    // 2. Descobrir a qual tenant pertence essa loja com total isolamento
-    const { dbName, prisma } = await resolveTenantForMerchant(storeId, 'FOOD99')
-
-    // 3. Processar tipo de evento (Novo Pedido, Status do Cardápio, etc.)
-    const eventType = headerType
-    console.log(`[99Food Webhook] Evento "${eventType}" recebido para o tenant ${dbName}`)
-
-    // 4. SÓ o evento orderNew cria pedido. orderConfirm/orderReady/orderCancel/orderFinish/orderCancelApply etc.
+    // 2. SÓ o evento orderNew cria pedido. orderConfirm/orderReady/orderCancel/orderFinish/orderCancelApply etc.
     // também trazem "order" no nome e antes criavam um pedido falso a cada notificação. Eventos sem "type"
     // (testes manuais antigos) continuam aceitos se trouxerem order_info.
+    const eventType = headerType
     const isNewOrderEvent = eventType === 'orderNew' || (eventType === 'UNKNOWN' && Boolean(payload?.data?.order_info))
     // Avisos de situação (13/10/2026): concluído, cancelado, pronto... A situação do Metrics é sempre a da plataforma (regra do
     // Thomás). Antes só o orderNew mexia no pedido: o 99 nº 1 da Katatau foi concluído às 09:52 e seguia "Saiu para entrega".
     const aviso = isNewOrderEvent ? null : avisoDa99(eventType)
-    if (!isNewOrderEvent && !aviso) {
-      console.log(`[99Food Webhook] Evento "${eventType}" registrado no diário (não muda pedido).`)
+    const mexeEmPedido = isNewOrderEvent || (aviso != null && journalOrderId != null)
+
+    if (!mexeEmPedido) {
+      // Resultado do envio do cardápio (10:N6): antes só ficava o texto cru no diário; agora o diário diz se deu certo e o que falhou
+      if (eventType === 'uploadMenuTaskStatus') {
+        const resultado = resultadoDoEnvioDoCardapio(payload?.data)
+        void writeJournal({
+          method: 'EVENT99',
+          endpoint: 'uploadMenuTaskStatus/aplicado',
+          request: { app_shop_id: storeId || null, assinatura: signStatus, ...resultado },
+          durationMs: Date.now() - startedAt,
+          success: resultado.ok,
+          error: resultado.ok ? undefined : resultado.mensagem || 'a 99 não aceitou o cardápio',
+        })
+        console.log(`[99Food Webhook] Envio do cardápio (tarefa ${resultado.taskId ?? '?'}): ${resultado.ok ? 'aceito' : 'RECUSADO'} ${resultado.mensagem}`)
+      } else {
+        console.log(`[99Food Webhook] Evento "${eventType}" registrado no diário (não muda pedido).`)
+      }
+      return reply.status(200).send({ errno: 0, errmsg: 'ok' })
     }
+
+    // 3. Assinatura (10:N2): conferida no diário real, 72 de 72 avisos de pedido e de loja com a assinatura certa (21/09 a
+    // 14/10/2026; só os 2 avisos de cardápio vieram com outra conta, e eles não mexem em pedido). Com
+    // FOOD99_RECUSAR_ASSINATURA_INVALIDA=1 no servidor, o aviso que mexe em pedido com assinatura errada ou sem assinatura é
+    // recusado. Desligado por padrão (só registra, como antes): ligar é decisão do Thomás.
+    if (process.env.FOOD99_RECUSAR_ASSINATURA_INVALIDA === '1' && (signStatus === 'invalida' || signStatus === 'cabecalho_ausente')) {
+      console.warn(`[99Food Webhook] Evento "${eventType}" RECUSADO: assinatura ${signStatus}.`)
+      void writeJournal({
+        method: 'EVENT99',
+        endpoint: `${eventType}:recusado`,
+        orderId: journalOrderId != null ? String(journalOrderId) : null,
+        request: { motivo: `assinatura ${signStatus}`, app_shop_id: storeId || null },
+        durationMs: Date.now() - startedAt,
+        success: false,
+        error: 'assinatura da 99 não confere (FOOD99_RECUSAR_ASSINATURA_INVALIDA=1)',
+      })
+      return reply.status(200).send({ errno: 1, errmsg: 'invalid signature' })
+    }
+
+    // 4. Descobrir a qual tenant pertence essa loja com total isolamento
+    if (!storeId) throw new Error('Aviso da 99 sem o ID da loja: não dá para saber de qual cliente é o pedido.')
+    const { dbName, prisma } = await resolveTenantForMerchant(storeId, 'FOOD99')
+    console.log(`[99Food Webhook] Evento "${eventType}" recebido para o tenant ${dbName}`)
+
     if (aviso && journalOrderId != null) {
       const pedido = await (prisma as any).pedido.findFirst({ where: { observacao: { contains: `[99Food] Pedido #${journalOrderId} ` } } })
       let resultado: string
@@ -262,8 +301,9 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         if (!matchedProduct && appItemId) {
           matchedProduct = await (prisma as any).product.findFirst({ where: { OR: [{ id: appItemId }, { barcode: appItemId }] } })
         }
+        // Nome igual só quando um único produto tem esse nome (mesma regra do iFood, Fase 4 do Mergulho 09:F4)
         if (!matchedProduct) {
-          matchedProduct = await (prisma as any).product.findFirst({ where: { name: { equals: itemName, mode: 'insensitive' } } })
+          matchedProduct = await produtoUnicoPeloNome(prisma, itemName)
         }
 
         const qty = Number(it.amount || 1) || 1

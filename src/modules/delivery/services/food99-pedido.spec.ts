@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { avisoDa99, enderecoDa99 } from './food99-pedido'
+import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio } from './food99-pedido'
 
 describe('endereço do pedido da 99', () => {
   it('o número vem de street_number e "casa" vira complemento (pedido real da Jessica, Katatau 13/10/2026)', () => {
@@ -28,5 +28,27 @@ describe('avisos da 99', () => {
     expect(avisoDa99('orderCancel')).toEqual({ tipo: 'cancelado' })
     expect(avisoDa99('shopStatus')).toBeNull()
     expect(avisoDa99('orderNew')).toBeNull()
+  })
+})
+
+describe('resultado do envio do cardápio para a 99 (Mergulho 10:N6)', () => {
+  // Formato do aviso uploadMenuTaskStatus conferido no diário real (21/09/2026), sem os endereços dos arquivos
+  it('status 1 e "success": aceito, com o número da tarefa', () => {
+    const r = resultadoDoEnvioDoCardapio({
+      status: 1, taskID: '5764666653499327821', message: 'success', appShopID: '5764607665299261602', createTime: 1789966455,
+      operationList: [{ successList: ['a.json'], operationType: 'parameterBuild' }, { successList: ['5764726129105768019'], operationType: 'createUploadTask' }],
+    })
+    expect(r).toEqual({ taskId: '5764666653499327821', ok: true, mensagem: 'success', falhas: [] })
+  })
+
+  it('outro status ou lista de falha numa etapa: recusado, com o que falhou', () => {
+    const r = resultadoDoEnvioDoCardapio({
+      status: 2, taskID: 1, message: 'partial',
+      operationList: [{ operationType: 'itemUpload', failList: ['item 12: preço inválido'], successList: ['item 13'] }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.falhas).toEqual(['itemUpload: item 12: preço inválido'])
+    expect(resultadoDoEnvioDoCardapio({ status: 1, operationList: [{ operationType: 'x', errorList: [{ id: 3 }] }] }).ok).toBe(false)
+    expect(resultadoDoEnvioDoCardapio(undefined)).toEqual({ taskId: null, ok: false, mensagem: '', falhas: [] })
   })
 })

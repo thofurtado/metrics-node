@@ -57,7 +57,14 @@ export async function postFood99Catalog(_request: FastifyRequest, reply: Fastify
     if (!decisao.pode) return reply.status(409).send({ message: decisao.motivo, shopId })
     const dbName = String((requestContext.get as any)('tenant') ?? '')
     const result = await catalogSyncService.syncCatalog(dbName, { food99AppShopId: shopId })
-    return reply.send({ message: 'Cardápio enviado para a 99. O resultado final chega em alguns segundos.', shopId, ...result })
+    // Fase 4 do Mergulho (10:N6): a 99 recusar o envio (ou faltar configuração) voltava como sucesso para a tela (424, e não 502:
+    // o Cloudflare esconde o corpo do 502 e a tela não mostraria o motivo)
+    const envio: any = result.platforms.food99
+    if (envio?.status !== 'ENVIADO') {
+      return reply.status(424).send({ message: `A 99 não recebeu o cardápio: ${envio?.mensagem || envio?.reason || 'sem resposta'}.`, shopId, ...result })
+    }
+    // Onde conferir: a 99 processa o cardápio depois; o resultado fica no diário e na tela de Integrações
+    return reply.send({ message: 'Cardápio enviado para a 99. Ela processa em cerca de 1 minuto: depois toque em "Ver cardápio da 99" para conferir os itens que entraram.', shopId, ...result })
   } catch (err: any) {
     if (err instanceof TabelaDeIntegracoesAusente) return reply.status(503).send({ message: err.message })
     return reply.status(500).send({ message: err?.message || 'Falha ao enviar o cardápio para a 99.' })

@@ -6,6 +6,7 @@ import {
   lerIntegracao, salvarIntegracao, TabelaDeIntegracoesAusente, PROVEDOR_FOOD99, PROVEDOR_IBPT,
 } from '../../services/tenant-integrations'
 import { limparCacheDeLojas } from '@/modules/delivery/services/delivery-tenant-resolver'
+import { lerUltimoEnvioDoCardapio } from '@/modules/delivery/services/ifood-events.service'
 
 // Aba "Integrações" das Configurações da web (25/09/2026): iFood, 99Food e De Olho no Imposto (IBPT).
 // Cada serviço salva só o que é dele. Não usar PUT /settings/company-profile aqui: ele regrava bairros e setores.
@@ -40,6 +41,7 @@ export async function getExternalIntegrations(request: FastifyRequest, reply: Fa
     if (!(err instanceof TabelaDeIntegracoesAusente)) throw err
     tabelaPronta = false
   }
+  const food99ShopId = String((food99?.settings as any)?.shopId ?? '')
   return reply.send({
     tabelaPronta,
     empresa: { cnpj: normalizarCnpj(empresa?.document) ?? '', uf: normalizarUf(empresa?.state) ?? '' },
@@ -49,7 +51,8 @@ export async function getExternalIntegrations(request: FastifyRequest, reply: Fa
       conectado: Boolean(empresa?.ifoodAccessToken),
       tokenExpiraEm: empresa?.ifoodTokenExpiresAt ?? null,
     },
-    food99: { shopId: String((food99?.settings as any)?.shopId ?? '') },
+    // Último envio do cardápio para a 99 e o resultado (Fase 4 do Mergulho, 10:N6); null quando nunca enviou
+    food99: { shopId: food99ShopId, ultimoEnvioCardapio: food99ShopId ? await lerUltimoEnvioDoCardapio(food99ShopId) : null },
   })
 }
 
