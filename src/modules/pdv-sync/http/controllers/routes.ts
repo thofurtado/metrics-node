@@ -24,6 +24,7 @@ import { getCostsSync } from './costs-sync-controller'
 import { postTablesSync, getTablesTelemetry } from './tables-sync-controller'
 import { postCashierOpenSync, postCashierMovementsSync, postCashierCloseSync, getOpenCashierSessions } from './cashier-sync-controller'
 import { postClusterVivo } from './cluster-controller'
+import { postCouriersSync, postCourierPayablesSync } from './couriers-sync-controller'
 import { getOrdersSituation } from './orders-situation-controller'
 import {
     getGarcomCardapio,
@@ -125,6 +126,10 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/sync/cashier/close', postCashierCloseSync)
     app.get('/api/pdv/sync/cashier/open-sessions', getOpenCashierSessions)
     app.post('/api/pdv/cashier/close', postCashierCloseSync)
+
+    // Motoboys e entregas/diárias a pagar (15/10/2026): o PDV é a fonte; a web só lê (relatório dos motoboys)
+    app.post('/api/pdv/sync/couriers', postCouriersSync)
+    app.post('/api/pdv/sync/courier-payables', postCourierPayablesSync)
 
     // Departamentos e Configurações Financeiras
     app.get('/api/pdv/sync/print-departments', getPrintDepartmentsSync)

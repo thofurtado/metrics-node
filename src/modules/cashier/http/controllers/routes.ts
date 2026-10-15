@@ -36,6 +36,7 @@ import {
     updateDeliveryPlatform,
     deleteDeliveryPlatform,
 } from './delivery-platforms-controller'
+import { getCouriers, getCouriersReport, getCourierPayables } from './couriers-report-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { verifyModuleAccess } from '@/http/middlewares/verify-module-access'
 
@@ -97,5 +98,10 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.post('/api/delivery-platforms', createDeliveryPlatform)
         protectedApp.put('/api/delivery-platforms/:id', updateDeliveryPlatform)
         protectedApp.delete('/api/delivery-platforms/:id', deleteDeliveryPlatform)
+
+        // Motoboys (15/10/2026): o que o PDV mandou, só leitura; trava do Caixa (Caixa ou Financeiro) por ser /api/cashier/
+        protectedApp.get('/api/cashier/couriers', getCouriers)
+        protectedApp.get('/api/cashier/couriers/report', getCouriersReport)
+        protectedApp.get('/api/cashier/couriers/:id/payables', getCourierPayables)
     })
 }

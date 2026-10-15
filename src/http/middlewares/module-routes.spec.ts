@@ -106,6 +106,17 @@ describe('Trava de módulo nas rotas (17:U1)', () => {
         expect(await chamar('GET', '/api/cashier/sessions', 'dono')).not.toBe(403)
     })
 
+    it('plataformas, repasse e motoboys (15/10/2026): mesma proteção das maquininhas, do financeiro e do caixa', async () => {
+        // Cadastro das plataformas: como /api/pos-machines (só o login)
+        expect(await chamar('GET', '/api/delivery-platforms', 'tecnico')).not.toBe(403)
+        // Repasse das plataformas: Financeiro
+        expect(await chamar('GET', '/platform-settlements', 'tecnico')).toBe(403)
+        expect(await chamar('GET', '/platform-settlements', 'dono')).not.toBe(403)
+        // Relatório dos motoboys: Caixa ou Financeiro
+        expect(await chamar('GET', '/api/cashier/couriers/report', 'tecnico')).toBe(403)
+        expect(await chamar('GET', '/api/cashier/couriers/report', 'caixa')).not.toBe(403)
+    })
+
     it('sem token continua 401', async () => {
         const r = await app.inject({ method: 'GET', url: '/transactions' })
         expect(r.statusCode).toBe(401)
