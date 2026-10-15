@@ -3,6 +3,39 @@ import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
+import {
+    arredondar2,
+    centavos,
+    compararComNavegador,
+    conferirItens,
+    nomeProvisorio,
+    normalizar,
+    situacaoDaLoja,
+    taxaDeEntrega,
+    type ItemConferido,
+} from '../../services/pedido-online-regras'
+import { carregarCatalogoDoPedido } from '../../services/pedido-online-catalogo'
+
+/** Telefone só com dígitos, sem o 55 do país. */
+function telefoneLimpo(bruto: string): string {
+    let digitos = (bruto || '').replace(/\D/g, '')
+    if ((digitos.length === 12 || digitos.length === 13) && digitos.startsWith('55')) digitos = digitos.substring(2)
+    return digitos
+}
+
+/** Assinatura dos itens para a trava contra pedido repetido (06:C8): mesmo produto, quantidade e preço. */
+function assinaturaDosItens(itens: { produto_id?: string | null; quantidade: number; valor_unitario: number }[]): string {
+    return itens
+        .map((i) => `${i.produto_id ?? ''}|${Number(i.quantidade)}|${centavos(i.valor_unitario)}`)
+        .sort()
+        .join(';')
+}
+
+/** Nome do item no aviso ao vivo para o PDV, montado com o cadastro (não com o texto do navegador). */
+function nomeDoItemConferido(c: ItemConferido, meiaPorcao: boolean): string {
+    if (c.sabores.length > 1) return c.sabores.map((s) => `1/${c.sabores.length} ${s}`).join(' + ')
+    return meiaPorcao ? `${c.produto.name} (1/2 porção)` : c.produto.name
+}
 
 export async function createOnlineOrder(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -43,68 +76,151 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             unit_cost: z.union([z.number(), z.string()]).nullable().optional().default(0).transform(v => v !== undefined && v !== null && v !== '' ? Number(v) : 0),
             notes: z.string().nullable().optional().transform(v => v || undefined),
             complements: z.any().nullable().optional(),
-            fractions: z.any().nullable().optional()
+            fractions: z.any().nullable().optional(),
+            // Cardápio do Marujo: meia porção (65% do preço), ver services/pedido-online-regras.ts
+            meia_porcao: z.boolean().nullable().optional()
         })).nullable().optional().default([]).transform(v => v || [])
     })
 
     const body = createOnlineOrderSchema.parse(request.body)
 
+    // Mergulho (06:C4, 06:C6, 15/10/2026): só o PDV (rota /api/pdv/orders com origem "PDV") manda um pedido já
+    // conferido no caixa, com preço e desconto do operador. Todo o resto é o cardápio online (ou alguém imitando
+    // ele) e passa pela conferência da nuvem: loja aberta, nome e WhatsApp, taxa do bairro e preço do cadastro.
+    // A rota do PDV continua sem chave porque o PDV 2.5.53 não manda nenhuma (fechar isso é a troca de chaves da Fase 0).
+    const caminho = (request.url || '').split('?')[0]
+    const pedidoDoPdv = caminho.startsWith('/api/pdv/') && body.origin === 'PDV'
+    const doCardapio = !pedidoDoPdv
+    const corpoBruto = (request.body || {}) as Record<string, unknown>
+    const tenant = requestContext.get('tenant')
+
     try {
+        // Reenvio do mesmo pedido (internet caiu depois de gravar): devolve o que já existe, antes de qualquer conferência
+        if (body.uuid) {
+            const existingByUuid = await prisma.pedido.findFirst({
+                where: { uuid: body.uuid },
+                include: { itens: true }
+            })
+            if (existingByUuid) {
+                return reply.status(200).send({
+                    order: {
+                        id: existingByUuid.uuid,
+                        display_id: existingByUuid.display_id,
+                        total_amount: existingByUuid.valor_final,
+                        status: existingByUuid.status_delivery
+                    }
+                })
+            }
+        }
+
         const isPdvOrigin = body.origin === 'PDV' || body.origin === 'Mesa' || body.origin === 'Balcao' || body.origin === 'Balcão'
-        const isTakeout = 
+        const isTakeout =
             (body.origin === 'Balcão' || body.origin === 'Balcao') ||
-            (body.street || '').toLowerCase().includes('retirada') || 
-            (body.neighborhood || '').toLowerCase().includes('balcão') || 
+            (body.street || '').toLowerCase().includes('retirada') ||
+            (body.neighborhood || '').toLowerCase().includes('balcão') ||
             (Boolean(body.notes) && body.notes!.toLowerCase().includes('retirada')) ||
             (!isPdvOrigin && (!body.street || !body.neighborhood))
 
         let resolvedDeliveryFee = isPdvOrigin ? body.delivery_fee : (isTakeout ? 0 : body.delivery_fee)
 
-        const companyProfile = await prisma.companyProfile.findFirst()
+        const companyProfile = await prisma.companyProfile.findFirst({ include: { businessHours: true } })
 
-        if (!isPdvOrigin && !isTakeout && companyProfile) {
-            let sectors: any[] = []
-            if (companyProfile.deliverySectors) {
-                sectors = typeof companyProfile.deliverySectors === 'string' 
-                    ? JSON.parse(companyProfile.deliverySectors) 
-                    : companyProfile.deliverySectors
+        // Conta conferida pela nuvem (só no pedido do cardápio)
+        let conferidos: ItemConferido[] = []
+        let subtotalConferido = 0
+        let totalConferido = 0
+
+        if (doCardapio) {
+            // 06:C4: a loja tem de estar aberta (pausa manual e horário do dia, com folga de 15 min depois de fechar)
+            const situacao = situacaoDaLoja(companyProfile)
+            if (!situacao.aberta) {
+                request.log.warn({ tenant, motivo: situacao.motivo }, '[Cardápio] Pedido recusado: loja fechada')
+                return reply.status(409).send({
+                    code: 'LOJA_FECHADA',
+                    message: `${situacao.motivo} O pedido não foi enviado.`
+                })
             }
-            const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-            
-            if (Array.isArray(sectors) && sectors.length > 0) {
-                const normOrderBairro = norm(body.neighborhood)
-                const matchedSector = sectors.find((s: any) =>
-                    (s.neighborhoods || []).some((n: string) => norm(n) === normOrderBairro)
-                )
 
-                if (matchedSector && matchedSector.fee !== undefined) {
-                    resolvedDeliveryFee = Number(matchedSector.fee)
-                } else if (sectors.find((s: any) => s?._type === 'neighborhood_policy')?.mode !== 'STRICT') {
-                    // Política FALLBACK (padrão): bairro fora dos setores é aceito com a taxa padrão da loja
-                    if (companyProfile.deliveryFee !== undefined && companyProfile.deliveryFee !== null) {
-                        resolvedDeliveryFee = Number(companyProfile.deliveryFee)
-                    }
-                } else {
-                    // Política STRICT: só atende bairros vinculados a algum setor
-                    const allowedNeighborhoods = sectors
-                        .flatMap((s: any) => s.neighborhoods || [])
-                        .map((n: string) => norm(n))
-                        .filter(Boolean)
+            // 06:C2: sem nome e WhatsApp a loja não consegue falar com o cliente (o cardápio já exige os dois)
+            const nomeInformado = typeof corpoBruto.client_name === 'string' ? corpoBruto.client_name.trim() : ''
+            const foneInformado = telefoneLimpo(typeof corpoBruto.client_phone === 'string' ? corpoBruto.client_phone : '')
+            if (!nomeInformado || foneInformado.length < 10 || foneInformado.length > 11 || /^0+$/.test(foneInformado)) {
+                return reply.status(400).send({
+                    code: 'CLIENTE_INCOMPLETO',
+                    message: 'Informe o seu nome e o WhatsApp com DDD para a loja poder falar com você.'
+                })
+            }
 
-                    if (allowedNeighborhoods.length > 0 && !allowedNeighborhoods.includes(normOrderBairro)) {
-                        return reply.status(400).send({
-                            message: `Desculpe, o bairro "${body.neighborhood}" não está na área de entrega atendida pela loja.`
-                        })
-                    }
+            if (body.items.length === 0) {
+                return reply.status(400).send({ code: 'CARRINHO_VAZIO', message: 'O carrinho está vazio.' })
+            }
+
+            // Taxa de entrega: a mesma que o cardápio mostrou para o bairro (setor ou taxa padrão)
+            if (isTakeout) {
+                resolvedDeliveryFee = 0
+            } else {
+                const entrega = taxaDeEntrega(companyProfile, body.neighborhood)
+                if (!entrega.atendido) {
+                    // Mesmo texto de antes: o cardápio reconhece "bairro"/"área de entrega" e leva o cliente ao WhatsApp
+                    return reply.status(400).send({
+                        message: `Desculpe, o bairro "${body.neighborhood}" não está na área de entrega atendida pela loja.`
+                    })
                 }
+                resolvedDeliveryFee = entrega.taxa
             }
+
+            // 06:C6: preço de cada item refeito com o cadastro (produto, sabores, complementos e "N grátis")
+            const catalogo = await carregarCatalogoDoPedido(prisma, body.items)
+            const conferencia = conferirItens(body.items, catalogo)
+            if (conferencia.problemas.some((p) => p.tipo === 'quantidade_invalida')) {
+                return reply.status(400).send({ code: 'QUANTIDADE_INVALIDA', message: 'Quantidade inválida em um item do carrinho.' })
+            }
+            if (conferencia.problemas.length > 0) {
+                request.log.warn(
+                    { tenant, caminho, problemas: conferencia.problemas.map((p) => p.detalhe) },
+                    '[Cardápio] Pedido recusado: item do carrinho não confere com o cadastro'
+                )
+                return reply.status(409).send({
+                    code: 'ITEM_INDISPONIVEL',
+                    message: 'Algum item do seu carrinho mudou ou saiu do cardápio. Atualize a página e monte o pedido de novo.',
+                    problemas: conferencia.problemas.map((p) => ({ index: p.indice, detalhe: p.detalhe }))
+                })
+            }
+
+            const conta = compararComNavegador(conferencia.itens, resolvedDeliveryFee, body, !isTakeout)
+            if (conta.divergencias.length > 0) {
+                // Registra antes de recusar: preço mudado no painel com o cardápio aberto, ou requisição mexida.
+                // O cardápio novo atualiza o carrinho com os valores abaixo e o cliente confirma de novo; nada fica travado.
+                request.log.warn(
+                    { tenant, caminho, divergencias: conta.divergencias, totalNavegador: body.total_amount, totalCadastro: conta.total },
+                    '[Cardápio] Pedido recusado: preço divergente do cadastro'
+                )
+                return reply.status(409).send({
+                    code: 'PRECO_DIVERGENTE',
+                    message: 'Os preços do cardápio mudaram desde que você abriu a página. Atualize a página para ver os valores de hoje e faça o pedido de novo.',
+                    itens: conferencia.itens.map((c) => ({ index: c.indice, product_id: c.produto.id, unit_price: c.unitarioNuvem })),
+                    subtotal: conta.subtotal,
+                    delivery_fee: conta.taxa,
+                    total_amount: conta.total
+                })
+            }
+
+            // Pedido mínimo (o cardápio já bloqueia; aqui vale para quem chamar a rota direto)
+            const minimo = Number(companyProfile?.minOrderValue || 0)
+            if (minimo > 0 && centavos(conta.subtotal) < centavos(minimo)) {
+                return reply.status(400).send({
+                    code: 'PEDIDO_MINIMO',
+                    message: `O pedido mínimo da loja é de R$ ${minimo.toFixed(2).replace('.', ',')} (sem a taxa de entrega).`
+                })
+            }
+
+            conferidos = conferencia.itens
+            subtotalConferido = conta.subtotal
+            totalConferido = conta.total
+            resolvedDeliveryFee = conta.taxa
         }
 
-            const rawDigits = body.client_phone.replace(/\D/g, '')
-        let cleanPhone = rawDigits
-        if ((cleanPhone.length === 12 || cleanPhone.length === 13) && cleanPhone.startsWith('55')) {
-            cleanPhone = cleanPhone.substring(2)
-        }
+        const cleanPhone = telefoneLimpo(body.client_phone)
 
         const phoneVariants = [cleanPhone, body.client_phone]
         if (cleanPhone.length === 11 && cleanPhone[2] === '9') {
@@ -116,9 +232,11 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         // Fase 2 do Mergulho (02:P3): pedido sem telefone (o PDV manda "00000000000") não junta clientes diferentes num só. O
         // PDV novo manda o código do cliente (o mesmo nos dois lados); sem ele, só reaproveita o cliente desse telefone que
-        // tem o MESMO nome. Antes todo pedido sem telefone caía no primeiro cliente "00000000000".
-        const semTelefone = /^0*$/.test(rawDigits)
-        let client = body.client_id
+        // tem o MESMO nome. Antes todo pedido sem telefone caía no primeiro cliente "00000000000". (O pedido do cardápio
+        // nunca chega aqui sem telefone: 06:C2 recusa antes.)
+        const semTelefone = /^0*$/.test(cleanPhone)
+        // O código do cliente só vale para o PDV: no cardápio, quem soubesse o código pegaria o cadastro de outro (06:C5)
+        let client = pedidoDoPdv && body.client_id
             ? await prisma.client.findUnique({ where: { id: body.client_id }, include: { addresses: true } })
             : null
         if (!client) {
@@ -133,7 +251,9 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         }
 
         let targetAddressId: string | null = null
-        const norm = (s?: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+        const norm = (s?: string | null) => normalizar(s)
+        // Nome digitado diferente do cadastro: vai na observação do pedido, sem trocar o cadastro (06:C5)
+        let nomeNoPedido: string | null = null
 
         if (!client) {
             const addressData = (!isTakeout && body.street && body.neighborhood) ? {
@@ -163,18 +283,32 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         } else {
             // Se o cliente já existia:
             // Atualiza telefone para 11 dígitos caso estivesse com 10
-            if (!semTelefone && cleanPhone.length === 11 && (client.phone ?? '').length !== 11) {
+            const dadosDoCliente: { phone?: string; name?: string } = {}
+            if (!semTelefone && cleanPhone.length === 11 && (client.phone || '').length !== 11) {
+                dadosDoCliente.phone = cleanPhone
+            }
+            if (doCardapio && norm(client.name) !== norm(body.client_name)) {
+                // 06:C5: quem sabe o telefone de alguém não troca mais o nome do cadastro dele. Só o nome provisório
+                // ("Cliente Delivery", número) vira o nome digitado; senão o nome digitado vai na observação.
+                if (nomeProvisorio(client.name)) dadosDoCliente.name = body.client_name.trim()
+                else nomeNoPedido = body.client_name.trim()
+            }
+            if (Object.keys(dadosDoCliente).length > 0) {
                 await prisma.client.update({
                     where: { id: client.id },
-                    data: { phone: cleanPhone }
+                    data: dadosDoCliente
                 })
+                if (dadosDoCliente.name) client.name = dadosDoCliente.name
             }
 
             // Para Retirada, NUNCA criamos endereço!
             if (!isTakeout && body.street && body.neighborhood) {
-                const matchingAddr = client.addresses?.find(a => 
+                // 06:C5: no pedido do cardápio o endereço só é reaproveitado se for igual em tudo (rua, número, bairro e
+                // complemento); senão vira um endereço novo, sem mexer nos que já existem. O pedido leva o que o cliente digitou.
+                const matchingAddr = client.addresses?.find(a =>
                     norm(a.street) === norm(body.street) &&
-                    norm(a.number) === norm(body.number)
+                    norm(a.number) === norm(body.number) &&
+                    (!doCardapio || (norm(a.neighborhood) === norm(body.neighborhood) && norm(a.complement) === norm(body.complement)))
                 )
 
                 if (matchingAddr) {
@@ -193,52 +327,80 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                             is_main: false
                         }
                     })
+                    client.addresses = [...(client.addresses || []), newAddr]
                     targetAddressId = newAddr.id
                 }
             }
         }
 
-        if (body.uuid) {
-            const existingByUuid = await prisma.pedido.findFirst({
-                where: { uuid: body.uuid },
-                include: { itens: true }
+        // Itens que vão para o banco: no cardápio, com o preço do cadastro; no PDV, como o caixa mandou
+        const itensParaGravar = doCardapio
+            ? conferidos.map((c) => {
+                const original = body.items[c.indice]
+                const observacao = [
+                    c.sabores.length > 1 ? `Sabores: ${nomeDoItemConferido(c, false)}` : null,
+                    original.meia_porcao ? '1/2 porção' : null,
+                    original.notes ? original.notes.trim() : null
+                ].filter(Boolean).join(' | ')
+                return {
+                    produto_id: c.produto.id,
+                    quantidade: c.quantidade,
+                    valor_unitario: c.unitarioNuvem,
+                    valor_total: arredondar2(c.unitarioNuvem * c.quantidade),
+                    observacao: observacao || null,
+                    complementos_json: c.complementos.length > 0
+                        ? JSON.stringify(c.complementos.map((x) => ({ name: x.name, price: x.price, quantity: x.quantity, option_id: x.option_id, group_id: x.group_id })))
+                        : null
+                }
             })
-            if (existingByUuid) {
+            : body.items.map(item => {
+                const itemNotes = item.notes ? item.notes.trim() : null
+                return {
+                    produto_id: (item.product_id && item.product_id.length > 10) ? item.product_id : undefined,
+                    quantidade: item.quantity,
+                    valor_unitario: item.unit_price,
+                    valor_total: item.unit_price * item.quantity,
+                    observacao: itemNotes,
+                    complementos_json: item.complements && item.complements.length > 0 ? JSON.stringify(item.complements) : null
+                }
+            })
+        const nomesParaAviso = doCardapio
+            ? conferidos.map((c) => nomeDoItemConferido(c, Boolean(body.items[c.indice]?.meia_porcao)))
+            : body.items.map((i) => i.name)
+        const valorFinal = doCardapio ? totalConferido : body.total_amount
+
+        // Trava contra pedido repetido (toque duplo, reenvio). Com uuid (cardápio novo e PDV) o reenvio já foi tratado
+        // lá em cima e dois pedidos iguais de verdade entram os dois; pedido sem telefone nunca é "repetição" (02:P3). Sem
+        // uuid (cardápio aberto antes desta versão), só é repetido se for o mesmo cliente, endereço, valor e itens em
+        // 2 minutos (06:C8: antes bastava o mesmo valor).
+        if (!body.uuid && !semTelefone) {
+            const recentDuplicateWindow = new Date(Date.now() - 2 * 60 * 1000)
+            const recentes = await prisma.pedido.findMany({
+                where: {
+                    cliente_id: client.id,
+                    valor_final: valorFinal,
+                    data_abertura: { gte: recentDuplicateWindow }
+                },
+                include: { itens: true },
+                orderBy: { data_abertura: 'desc' },
+                take: 5
+            })
+            const assinaturaNova = assinaturaDosItens(itensParaGravar)
+            const existingRecentOrder = recentes.find(p =>
+                (p.endereco_entrega_id ?? null) === (targetAddressId ?? null) &&
+                assinaturaDosItens(p.itens) === assinaturaNova
+            )
+
+            if (existingRecentOrder) {
                 return reply.status(200).send({
                     order: {
-                        id: existingByUuid.uuid,
-                        display_id: existingByUuid.display_id,
-                        total_amount: existingByUuid.valor_final,
-                        status: existingByUuid.status_delivery
+                        id: existingRecentOrder.uuid,
+                        display_id: existingRecentOrder.display_id,
+                        total_amount: existingRecentOrder.valor_final,
+                        status: existingRecentOrder.status_delivery
                     }
                 })
             }
-        }
-
-        // Trava Anti-Duplicidade (Idempotência). Fase 2 do Mergulho (02:P3): só para quem não manda o código do pedido (o
-        // cardápio, num clique duplo). O PDV manda o código (uuid) de cada pedido, e a busca logo acima já devolve o mesmo
-        // pedido num reenvio; e pedido sem telefone nunca é "repetição" de outro. Antes duas retiradas de R$ 30 seguidas no
-        // PDV viravam uma só (a nuvem devolvia o primeiro pedido no lugar do segundo).
-        const recentDuplicateWindow = new Date(Date.now() - 2 * 60 * 1000)
-        const existingRecentOrder = body.uuid || semTelefone ? null : await prisma.pedido.findFirst({
-            where: {
-                cliente_id: client.id,
-                valor_final: body.total_amount,
-                data_abertura: { gte: recentDuplicateWindow }
-            },
-            include: { itens: true },
-            orderBy: { data_abertura: 'desc' }
-        })
-
-        if (existingRecentOrder) {
-            return reply.status(200).send({
-                order: {
-                    id: existingRecentOrder.uuid,
-                    display_id: existingRecentOrder.display_id,
-                    total_amount: existingRecentOrder.valor_final,
-                    status: existingRecentOrder.status_delivery
-                }
-            })
         }
 
         // Número do dia: conta desde as 05:00 de Brasília (dia operacional), não desde a meia-noite
@@ -251,17 +413,18 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         const displayId = countToday + 1
 
         const infoPagamento = body.change_for ? body.payment_method_name + ' (Troco para R$ ' + body.change_for.toFixed(2) + ')' : body.payment_method_name
-        
+
         const obsPrefix = isTakeout ? '[Retirada no Balcão]' : 'Entrega (Delivery)'
         const fullObservations = [
             obsPrefix,
             'Pagamento: ' + infoPagamento,
             isTakeout ? 'Frete: R$ 0.00 (Retirada)' : 'Taxa: R$ ' + resolvedDeliveryFee.toFixed(2),
+            nomeNoPedido ? 'Nome no pedido: ' + nomeNoPedido : null,
             body.reference ? 'Ref: ' + body.reference : null,
             body.notes ? 'Obs: ' + body.notes : null
         ].filter(Boolean).join(' | ')
 
-        const subtotal = Math.max(0, body.total_amount - resolvedDeliveryFee)
+        const subtotal = doCardapio ? subtotalConferido : Math.max(0, body.total_amount - resolvedDeliveryFee)
 
         const activeCashier = await prisma.cashierSession.findFirst({
             where: { status: 'OPEN' },
@@ -271,32 +434,23 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         const pedido = await prisma.pedido.create({
             data: {
                 uuid: body.uuid || undefined,
-                display_id: body.display_id || displayId,
-                numero_diario: body.display_id || displayId,
+                // O cardápio não escolhe número nem situação do pedido: isso é do caixa
+                display_id: (pedidoDoPdv && body.display_id) || displayId,
+                numero_diario: (pedidoDoPdv && body.display_id) || displayId,
                 origem: isTakeout ? 'Balcão' : (body.origin || 'Delivery'),
                 caixa_id: activeCashier?.id || null,
                 cliente_id: client.id,
                 endereco_entrega_id: targetAddressId,
                 subtotal: subtotal,
                 valor_frete: resolvedDeliveryFee,
-                valor_final: body.total_amount,
+                valor_final: valorFinal,
                 valor_troco: body.change_for || 0,
-                status: body.status || 'Aberto',
-                status_delivery: body.status_delivery || 'Pendente',
+                status: (pedidoDoPdv && body.status) || 'Aberto',
+                status_delivery: (pedidoDoPdv && body.status_delivery) || 'Pendente',
                 observacao: fullObservations,
                 sincronizado_web: true,
                 itens: {
-                    create: body.items.map(item => {
-                        const itemNotes = item.notes ? item.notes.trim() : null
-                        return {
-                            produto_id: (item.product_id && item.product_id.length > 10) ? item.product_id : undefined,
-                            quantidade: item.quantity,
-                            valor_unitario: item.unit_price,
-                            valor_total: item.unit_price * item.quantity,
-                            observacao: itemNotes,
-                            complementos_json: item.complements && item.complements.length > 0 ? JSON.stringify(item.complements) : null
-                        }
-                    })
+                    create: itensParaGravar
                 }
             },
             include: {
@@ -306,15 +460,10 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
 
         // Notifica via SSE
         try {
-            const queryTenant = (request.query as { tenant?: string })?.tenant
-            const headerTenant = request.headers['x-tenant-domain'] as string
-            const originHost = request.headers.origin ? request.headers.origin.replace(/^https?:\/\//, '').split(':')[0] : ''
-            const host = queryTenant || headerTenant || originHost || (request.headers.host || '').split(':')[0] || request.hostname
-            
             const targetAddress = client.addresses?.find(a => a.id === targetAddressId)
-            const addressStr = isTakeout 
+            const addressStr = isTakeout
                 ? 'Retirada no Balcão (Sem Entrega)'
-                : (targetAddress 
+                : (targetAddress
                     ? `${targetAddress.street}, ${targetAddress.number} - ${targetAddress.neighborhood}`
                     : `${body.street}, ${body.number} - ${body.neighborhood}`)
 
@@ -336,7 +485,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
                 items: (pedido.itens || []).map((i, idx) => ({
                     id: i.uuid,
                     product_id: i.produto_id || body.items[idx]?.product_id || '',
-                    name: body.items[idx]?.name || i.observacao || 'Item',
+                    name: nomesParaAviso[idx] || i.observacao || 'Item',
                     quantity: i.quantidade,
                     price: i.valor_unitario,
                     observation: i.observacao,

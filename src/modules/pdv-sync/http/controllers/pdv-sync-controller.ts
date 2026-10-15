@@ -557,6 +557,20 @@ export async function getSystemConfigSync(request: FastifyRequest, reply: Fastif
 }
 
 
+/**
+ * Mergulho (07:S5, 15/10/2026): o código que veio do Athos já é de OUTRO produto na nuvem. Antes a nuvem mudava sempre
+ * esse outro produto para a faixa 900.000, mesmo um produto em uso no caixa (o operador digitava o código de sempre e não
+ * achava). Agora só muda o código de produto que nunca foi vendido (sobra de importação, como os 148 da Katatau em
+ * 08/10/2026); produto com venda no PDV ou no cardápio fica com o código, e o conflito volta na resposta e no registro.
+ */
+async function produtoJaVendido(productId: string): Promise<boolean> {
+    const [vendas, pedidos] = await Promise.all([
+        prisma.saleItem.count({ where: { product_id: productId } }),
+        prisma.pedidoItem.count({ where: { produto_id: productId } }),
+    ])
+    return vendas + pedidos > 0
+}
+
 export async function postProductsBulkSync(request: FastifyRequest, reply: FastifyReply) {
     const bulkSchema = z.object({
         products: z.array(
@@ -596,6 +610,11 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         _max: { display_id: true }
     })
     let currentMaxDisplayId = maxDisplay._max.display_id ?? 0
+    // Código livre fora da faixa 900.000, para produto novo cujo código do Athos ficou com um produto em uso (07:S5)
+    const maxNormal = await prisma.product.aggregate({ _max: { display_id: true }, where: { display_id: { lt: 900000 } } })
+    let proximoCodigoNormal = (maxNormal._max.display_id ?? 0) + 1
+    const conflitos: { codigo: number; produtoNaNuvem: string; produtoDoAthos: string; codigoQueFicou: number }[] = []
+    const renumerados: { produto: string; de: number; para: number }[] = []
 
     for (const p of products) {
         if (!p.name || !p.name.trim()) continue
@@ -650,15 +669,21 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 const conflict = await prisma.product.findUnique({
                     where: { display_id: p.displayId }
                 })
-                if (conflict && conflict.id !== existing.id) {
-                    currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
-                    await prisma.product.update({
-                        where: { id: conflict.id },
-                        data: { display_id: currentMaxDisplayId }
-                    })
+                if (conflict && conflict.id !== existing.id && await produtoJaVendido(conflict.id)) {
+                    // 07:S5: o outro produto está em uso com esse código: nenhum dos dois muda de código
+                    conflitos.push({ codigo: p.displayId, produtoNaNuvem: conflict.name, produtoDoAthos: name, codigoQueFicou: existing.display_id })
+                } else {
+                    if (conflict && conflict.id !== existing.id) {
+                        currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
+                        await prisma.product.update({
+                            where: { id: conflict.id },
+                            data: { display_id: currentMaxDisplayId }
+                        })
+                        renumerados.push({ produto: conflict.name, de: p.displayId, para: currentMaxDisplayId })
+                    }
+                    displayIdToUpdate = p.displayId
+                    currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
                 }
-                displayIdToUpdate = p.displayId
-                currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
             }
 
             const hasChanged = 
@@ -709,14 +734,22 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                 const conflict = await prisma.product.findUnique({
                     where: { display_id: p.displayId }
                 })
-                if (conflict) {
-                    currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
-                    await prisma.product.update({
-                        where: { id: conflict.id },
-                        data: { display_id: currentMaxDisplayId }
-                    })
+                if (conflict && await produtoJaVendido(conflict.id)) {
+                    // 07:S5: o código é de um produto em uso; o produto novo do Athos ganha um código livre
+                    while (await prisma.product.findUnique({ where: { display_id: proximoCodigoNormal } })) proximoCodigoNormal++
+                    targetDisplayId = proximoCodigoNormal++
+                    conflitos.push({ codigo: p.displayId, produtoNaNuvem: conflict.name, produtoDoAthos: name, codigoQueFicou: targetDisplayId })
+                } else {
+                    if (conflict) {
+                        currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
+                        await prisma.product.update({
+                            where: { id: conflict.id },
+                            data: { display_id: currentMaxDisplayId }
+                        })
+                        renumerados.push({ produto: conflict.name, de: p.displayId, para: currentMaxDisplayId })
+                    }
+                    targetDisplayId = p.displayId
                 }
-                targetDisplayId = p.displayId
             } else {
                 currentMaxDisplayId++
                 targetDisplayId = currentMaxDisplayId
@@ -753,11 +786,20 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         }
     }
 
+    if (conflitos.length > 0 || renumerados.length > 0) {
+        request.log.warn({ conflitos, renumerados }, '[Sync] Código do Athos já usado por outro produto na nuvem')
+    }
+
     return reply.status(200).send({
         created,
         updated,
         unchanged,
+        // 07:S5: o que não pôde receber o código do Athos (produto em uso) e o que mudou de código (nunca vendido)
+        conflitos,
+        renumerados,
         message: `Sincronização de produtos realizada com sucesso! (${created} criados, ${updated} atualizados, ${unchanged} inalterados).`
+            + (conflitos.length > 0 ? ` ${conflitos.length} código(s) do Athos já são de produtos em uso na nuvem e não foram trocados: ${conflitos.slice(0, 5).map((c) => `${c.codigo} (${c.produtoNaNuvem} x ${c.produtoDoAthos})`).join('; ')}${conflitos.length > 5 ? '...' : ''}.` : '')
+            + (renumerados.length > 0 ? ` ${renumerados.length} produto(s) nunca vendidos na nuvem mudaram para a faixa 900.000 para dar lugar ao código do Athos.` : '')
     })
 }
 /**
