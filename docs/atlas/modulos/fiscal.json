@@ -96,6 +96,22 @@
       ]
     },
     {
+      "id": "pdv-contingencia-parada",
+      "nome": "Aviso de notas em contingência paradas",
+      "ondeRoda": "PDV do computador servidor (com alguém logado)",
+      "chama": "Banco da loja (só leitura: conta pedidos em contingência pendentes)",
+      "frequencia": "a cada 1 min (dentro do relógio de 10 s dos sinais do PDV)",
+      "segundos": 60,
+      "quantos": "1 por PDV do servidor aberto",
+      "faz": "Mergulho 12:F2 (15/10/2026): conta as notas em contingência ainda Pendente (ou CancelarAposEnvio) fechadas há mais de 20 min e mostra o aviso de atenção em Notificações.",
+      "porque": "Quem transmite a contingência é o Serviço do PDV; parado, as notas acumulavam sem ninguém ver.",
+      "situacao": "ok",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:1806",
+        "Metrics.PDV/Metrics.PDV/MainWindow.Avisos.cs:126"
+      ]
+    },
+    {
       "id": "pdv-verificacao-sefaz",
       "nome": "Verificação ao vivo (SEFAZ e certificado)",
       "ondeRoda": "Todo PDV aberto",
