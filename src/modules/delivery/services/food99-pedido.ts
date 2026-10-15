@@ -51,3 +51,40 @@ export function avisoDa99(tipo: string): AvisoDa99 {
     default: return null
   }
 }
+
+export interface ResultadoDoEnvioDoCardapio {
+  taskId: string | null
+  ok: boolean
+  mensagem: string
+  /** O que a 99 disse que falhou (cada operação com lista de falhas), no máximo 20 linhas. */
+  falhas: string[]
+}
+
+/**
+ * Resultado do envio do cardápio (aviso uploadMenuTaskStatus). Fase 4 do Mergulho (10:N6, 15/10/2026). O envio é assíncrono: a
+ * resposta do envio só traz o número da tarefa e o resultado chega depois neste aviso. Conferido no diário real (21 e 24/09/2026,
+ * 2 envios aceitos): `status` 1 com `message` "success" e `operationList` com a `successList` de cada etapa. Um envio recusado
+ * nunca foi visto: qualquer `status` diferente de 1 conta como recusado, e as listas de falha de cada etapa (qualquer chave com
+ * "fail" ou "error" no nome) vão para o diário.
+ */
+export function resultadoDoEnvioDoCardapio(data: any): ResultadoDoEnvioDoCardapio {
+  const taskId = data?.taskID ?? data?.task_id ?? data?.taskId
+  const falhas: string[] = []
+  for (const op of Array.isArray(data?.operationList) ? data.operationList : []) {
+    for (const [chave, valor] of Object.entries(op ?? {})) {
+      if (!/fail|error/i.test(chave) || valor == null) continue
+      const itens = Array.isArray(valor) ? valor : [valor]
+      for (const item of itens) {
+        if (falhas.length >= 20) break
+        const descricao = typeof item === 'string' ? item : JSON.stringify(item)
+        falhas.push(`${texto(op?.operationType) || 'etapa'}: ${descricao.slice(0, 300)}`)
+      }
+    }
+  }
+  return {
+    taskId: taskId != null ? String(taskId) : null,
+    ok: Number(data?.status) === 1 && falhas.length === 0,
+    mensagem: texto(data?.message),
+    falhas,
+  }
+}

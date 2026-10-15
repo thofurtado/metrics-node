@@ -108,8 +108,17 @@ export interface EnderecoDaEntregaIfood {
  */
 export function enderecoDaEntregaIfood(endereco: any): EnderecoDaEntregaIfood | null {
   if (!endereco) return null
-  const rua = semBarra(endereco.streetName) || semBarra(endereco.formattedAddress)
-  if (!rua) return null
+  let rua = semBarra(endereco.streetName) || semBarra(endereco.formattedAddress)
+  if (!rua) {
+    // Fase 4 do Mergulho (09:F5): entrega sem rua (só bairro, referência, CEP ou coordenadas) ficava sem endereço nenhum, como se
+    // fosse retirada. Nos 109 pedidos de entrega do diário (14/09 a 14/10/2026) a rua sempre veio; se um dia faltar, o pedido
+    // sai com o que veio e o aviso no lugar da rua (a referência já vai na observação do pedido).
+    const temAlgo =
+      [endereco.neighborhood, endereco.district, endereco.reference, endereco.city, endereco.postalCode, endereco.complement, endereco.streetNumber]
+        .some((v) => semBarra(v)) || endereco.coordinates?.latitude != null
+    if (!temAlgo) return null
+    rua = 'Rua não informada pelo iFood'
+  }
   return {
     street: rua,
     number: semBarra(endereco.streetNumber) || 'S/N',

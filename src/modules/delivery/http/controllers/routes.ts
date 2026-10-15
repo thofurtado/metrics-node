@@ -4,7 +4,7 @@ import { webhookIfoodController } from './webhook-ifood'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { parseJsonKeepingLongIds } from '@/lib/json-safe-ids'
 
-import { ifoodCancelProbeController, ifoodDiagDataController, ifoodDiagPageController } from './ifood-diagnostic'
+import { exigirChaveDoDiagnostico, ifoodCancelProbeController, ifoodDiagDataController, ifoodDiagPageController } from './ifood-diagnostic'
 import {
   ifoodUserCodeController,
   ifoodExchangeTokenController,
@@ -77,18 +77,18 @@ export async function deliveryRoutes(app: FastifyInstance) {
   app.get('/delivery/status', deliveryStatusController)
   app.get('/api/delivery/status', deliveryStatusController)
 
-    // Auditoria persistente das chamadas iFood (JWT ou x-api-key obrigatório)
-    app.get('/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
-    app.get('/api/delivery/ifood/api-logs', { preHandler: verifyJwt }, ifoodApiLogsController)
+    // Auditoria persistente das chamadas iFood: o diário é de TODAS as lojas, então só com a chave do diagnóstico (09:F1)
+    app.get('/delivery/ifood/api-logs', { preHandler: exigirChaveDoDiagnostico }, ifoodApiLogsController)
+    app.get('/api/delivery/ifood/api-logs', { preHandler: exigirChaveDoDiagnostico }, ifoodApiLogsController)
 
-    // Diagnóstico sanitizado: não expõe corpo, payload ou credenciais.
-    app.get('/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
+    // Diário de um pedido (traz o corpo das respostas do iFood): só com a chave do diagnóstico (09:F1)
+    app.get('/delivery/ifood/cancellation-status/:orderId', { preHandler: exigirChaveDoDiagnostico }, ifoodCancellationStatusController)
 
     // Acompanhamento ao vivo do cancelamento (só funciona com IFOOD_DIAG_KEY definida; a chave vai em ?key=)
     app.get('/delivery/ifood/diag', ifoodDiagPageController)
     app.get('/delivery/ifood/diag/data', ifoodDiagDataController)
     app.post('/delivery/ifood/diag/cancel-probe', ifoodCancelProbeController)
-    app.get('/api/delivery/ifood/cancellation-status/:orderId', ifoodCancellationStatusController)
+    app.get('/api/delivery/ifood/cancellation-status/:orderId', { preHandler: exigirChaveDoDiagnostico }, ifoodCancellationStatusController)
 
     app.post('/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)
     app.post('/api/delivery/ifood/test-cancellation-patch', { preHandler: verifyJwt }, ifoodTestCancellationPatchController)

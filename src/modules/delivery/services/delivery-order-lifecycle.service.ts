@@ -9,6 +9,8 @@ interface LifecyclePedido {
   uuid: string
   observacao?: string | null
   display_id: number
+  /** Situação de entrega ANTES da mudança (o aviso da 99 de concluído pode ter chegado antes do PDV). */
+  status_delivery?: string | null
 }
 
 interface LifecycleOptions {
@@ -27,6 +29,14 @@ export function extractFood99Order(observacao?: string | null): { orderId: strin
   if (!m) return null
   const shop = obs.match(/\[99Loja:([^\]]+)\]/)
   return { orderId: m[1], appShopId: shop ? shop[1] : env.FOOD99_APP_SHOP_ID ?? null }
+}
+
+/**
+ * Pedido da 99 com entrega da PRÓPRIA loja (delivery_type 2): o webhook grava "| Entrega própria" na observação. Só nele a loja
+ * avisa a 99 que entregou (na entrega pela 99, quem conclui é ela).
+ */
+export function entregaPropriaDa99(observacao?: string | null): boolean {
+  return /\|\s*Entrega pr[oó]pria/i.test(observacao || '')
 }
 
 export function extractIfoodOrderId(observacao?: string | null): string | null {
@@ -142,6 +152,18 @@ export async function handleDeliveryOrderStatusChange(
     if (newStatus === 'conferencia') {
       const r = await food99Api.readyOrder(food99.appShopId, food99.orderId)
       console.log(`[99Food Lifecycle] Pedido ${food99.orderId} pronto: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
+      return r.ok
+    }
+    // Fase 4 do Mergulho (10:N1): entrega da própria loja concluída no PDV avisa a 99 (POST /v1/order/order/delivered). Antes
+    // ninguém avisava: no diário, 4 dos 16 pedidos de entrega própria da Katatau (13 e 14/10/2026) só foram concluídos pela
+    // 99 sozinha, 3h15 depois, e o cliente via "a caminho" esse tempo todo. Se a 99 já concluiu (aviso orderFinish), não chama.
+    if (newStatus === 'delivered' && entregaPropriaDa99(obs)) {
+      if (pedido.status_delivery === 'Entregue') {
+        console.log(`[99Food Lifecycle] Pedido ${food99.orderId} já concluído pela 99; nada a avisar.`)
+        return true
+      }
+      const r = await food99Api.deliveredOrder(food99.appShopId, food99.orderId)
+      console.log(`[99Food Lifecycle] Pedido ${food99.orderId} entregue: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
       return r.ok
     }
   }

@@ -3,6 +3,11 @@ import { getPrismaForDb, getIfoodCredentials } from '@/lib/tenant-manager'
 
 const MAX_AUDIT_BODY_LENGTH = 10000
 
+// Fase 4 do Mergulho (09:F2): toda chamada ao iFood tem tempo-limite. Antes só o cancelamento tinha (8 s); o polling, o ACK e o
+// detalhe do pedido ficavam sem, e uma conexão pendurada segurava a trava do polling (uma só para todas as lojas) por até 5
+// minutos, o tempo padrão do Node. No diário (14/09 a 15/10/2026, 260 mil consultas) a mais lenta levou 10,9 s.
+const IFOOD_TIMEOUT_MS = 20000
+
 function redactAuditBody(value: unknown): unknown {
   if (typeof value !== 'string') return value
 
@@ -100,7 +105,7 @@ export class IFoodApiService {
     let errorMessage: string | undefined
 
     try {
-      response = await fetch(url, init)
+      response = await fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(IFOOD_TIMEOUT_MS) })
       return response
     } catch (error: any) {
       errorMessage = error?.message || String(error)

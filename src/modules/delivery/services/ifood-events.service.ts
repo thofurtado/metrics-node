@@ -46,6 +46,29 @@ export async function writeJournal(entry: JournalEntry) {
   }
 }
 
+/**
+ * Último resultado do envio do cardápio para a 99 desta loja (aviso uploadMenuTaskStatus, gravado no diário pelo webhook).
+ * Fase 4 do Mergulho (10:N6): a tela de Integrações passa a poder mostrar se a 99 aceitou o cardápio. Só leitura; null sem envio.
+ */
+export async function lerUltimoEnvioDoCardapio(appShopId: string): Promise<{ em: Date; ok: boolean; mensagem: string; falhas: string[]; taskId: string | null } | null> {
+  const id = String(appShopId ?? '').trim()
+  if (!id) return null
+  try {
+    const prisma = await getPrismaForDb(process.env.IFOOD_AUDIT_DB || 'db_restaurante')
+    const linha = await (prisma as any).ifoodApiLog.findFirst({
+      where: { method: 'EVENT99', endpoint: 'uploadMenuTaskStatus/aplicado', request_body: { path: ['app_shop_id'], equals: id } },
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true, success: true, request_body: true },
+    })
+    if (!linha) return null
+    const r: any = linha.request_body || {}
+    return { em: linha.created_at, ok: Boolean(linha.success), mensagem: String(r.mensagem ?? ''), falhas: Array.isArray(r.falhas) ? r.falhas : [], taskId: r.taskId ?? null }
+  } catch (e: any) {
+    console.error('[99Food] Falha ao ler o último envio do cardápio no diário:', e?.message || e)
+    return null
+  }
+}
+
 export interface EventJournalInfo {
   /** Tempo (ms) entre receber os eventos e confirmar (ACK no polling; resposta 202 no webhook). */
   ackMs?: number
@@ -53,6 +76,8 @@ export interface EventJournalInfo {
   outcome?: string
   success?: boolean
   error?: string
+  /** Banco do cliente que recebeu o evento (o diário é um só para todas as lojas). Fase 4 do Mergulho (09:F3). */
+  tenant?: string
 }
 
 export function journalEvent(event: any, source: IfoodEventSource, info: EventJournalInfo = {}) {
@@ -71,6 +96,7 @@ export function journalEvent(event: any, source: IfoodEventSource, info: EventJo
       ackMs: info.ackMs ?? null,
       duplicate: Boolean(info.duplicate),
       outcome: info.outcome ?? null,
+      tenant: info.tenant ?? null,
     },
     durationMs: info.ackMs ?? 0,
     success: info.success ?? true,
