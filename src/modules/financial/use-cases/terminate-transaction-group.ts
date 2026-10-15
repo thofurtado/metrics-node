@@ -10,7 +10,7 @@ interface TerminateTransactionGroupRequest {
 export class TerminateTransactionGroupUseCase {
     constructor(private transactionsRepository: TransactionsRepository) { }
 
-    async execute({ groupId, lastKeptTransactionId }: TerminateTransactionGroupRequest): Promise<void> {
+    async execute({ groupId, lastKeptTransactionId }: TerminateTransactionGroupRequest): Promise<{ apagadas: number, pagasMantidas: number }> {
 
         // Use 'any' cast if properties are missing in type definition but exist in schema
         const group = await (prisma as any).transactionGroup.findUnique({
@@ -28,16 +28,22 @@ export class TerminateTransactionGroupUseCase {
             throw new ResourceNotFoundError()
         }
 
-        const transactionsToDelete = group.transactions.filter((t: any) => {
-            return new Date(t.date).getTime() > new Date(lastKeptTransaction.date).getTime()
-        })
+        // Fase 1 do Mergulho (13:D3): comparava o campo t.date, que não existe na tabela (o vencimento é
+        // data_vencimento). A data virava "não é número", nenhuma parcela era escolhida e a rota respondia
+        // sucesso sem apagar nada. Agora compara o vencimento. Parcela já paga ou gerada pela conferência de
+        // caixa nunca é apagada aqui (mesma regra do apagar comum): fica no grupo.
+        const limite = new Date(lastKeptTransaction.data_vencimento).getTime()
+        const futuras = group.transactions.filter((t: any) => new Date(t.data_vencimento).getTime() > limite)
+        const transactionsToDelete = futuras.filter((t: any) => !t.confirmed && !t.cashier_session_id)
+        const pagasMantidas = futuras.length - transactionsToDelete.length
 
         if (transactionsToDelete.length > 0) {
             await prisma.$transaction(async (tx) => {
                 // Delete future transactions
                 await tx.transaction.deleteMany({
                     where: {
-                        id: { in: transactionsToDelete.map((t: any) => t.id) }
+                        id: { in: transactionsToDelete.map((t: any) => t.id) },
+                        confirmed: false
                     }
                 })
 
@@ -57,5 +63,7 @@ export class TerminateTransactionGroupUseCase {
                 })
             })
         }
+
+        return { apagadas: transactionsToDelete.length, pagasMantidas }
     }
 }

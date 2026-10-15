@@ -24,3 +24,26 @@ export async function recalculateAccountBalance(request: FastifyRequest, reply: 
         throw error
     }
 }
+
+// Prévia do recálculo (Fase 1 do Mergulho, 13:D1): devolve o saldo de hoje e o que o recálculo gravaria, sem gravar.
+// Rota separada de propósito: a tela nova pede a prévia antes; se a nuvem ainda for a antiga, a prévia dá 404 e a tela
+// não recalcula nada.
+export async function previewRecalculateAccountBalance(request: FastifyRequest, reply: FastifyReply) {
+    const paramsSchema = z.object({
+        id: z.string().uuid()
+    })
+
+    const { id } = paramsSchema.parse(request.params)
+
+    const recalculateUseCase = new RecalculateAccountBalanceUseCase(new PrismaAccountsRepository())
+
+    try {
+        const { saldoAtual, saldoNovo } = await recalculateUseCase.execute({ id, simular: true })
+        return reply.status(200).send({ saldo_atual: saldoAtual, saldo_novo: saldoNovo })
+    } catch (error) {
+        if (error instanceof ResourceNotFoundError) {
+            return reply.status(404).send({ message: error.message })
+        }
+        throw error
+    }
+}

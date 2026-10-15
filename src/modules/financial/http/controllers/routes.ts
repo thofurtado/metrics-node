@@ -25,7 +25,7 @@ import { deleteAccount } from '@/modules/financial/http/controllers/deleteAccoun
 import { updatePayment } from '@/modules/financial/http/controllers/updatePayment'
 import { deletePayment } from '@/modules/financial/http/controllers/deletePayment'
 import { adjustAccountBalance } from '@/modules/financial/http/controllers/adjustAccountBalance'
-import { recalculateAccountBalance } from '@/modules/financial/http/controllers/recalculate-account-balance'
+import { recalculateAccountBalance, previewRecalculateAccountBalance } from '@/modules/financial/http/controllers/recalculate-account-balance'
 import { revertTransactionStatus } from '@/modules/financial/http/controllers/revertTransactionStatus'
 import { toggleTransactionChecked } from '@/modules/financial/http/controllers/toggleTransactionChecked'
 import { createRecurring } from './create-recurring'
@@ -53,6 +53,7 @@ export async function financialRoutes(app: FastifyInstance) {
     app.get('/accounts', getAccount)
     app.get('/account/:id/history', getAccountHistory)
     app.patch('/account/:id/adjust-balance', adjustAccountBalance)
+    app.get('/account/:id/recalculate-preview', previewRecalculateAccountBalance)
     app.patch('/account/:id/recalculate', recalculateAccountBalance)
     app.put('/account/:id', updateAccount)
     app.delete('/account/:id', deleteAccount)
