@@ -6,6 +6,13 @@ import { calculateRateio, confirmPayroll, createPayrollEntry, generatePayrollBat
 import { listHolidays, createCustomHoliday, removeHoliday } from "./holidays"
 import { listEmployeeGroups, createEmployeeGroup, updateEmployeeGroup, deleteEmployeeGroup } from "./employee-groups"
 import { apurar, obterRegra, resumo, salvarRegra } from "./ponto"
+import { verifyModuleAccess } from "@/http/middlewares/verify-module-access"
+
+// Fase 0 do Mergulho (17:U1): trava do módulo RH nas rotas de administração. Exceções que telas do Financeiro usam:
+// a lista de funcionários (baixa do vale em "Clientes a Prazo") e os feriados (vencimento em dia útil, que não é
+// dado sigiloso). As rotas do quiosque acima ficam fora (chave do Ponto, sem usuário).
+const travaRH = verifyModuleAccess("hr")
+const travaRHouFinanceiro = verifyModuleAccess("hr", "finance")
 
 // Rotas do Quiosque (Electron) - autenticadas via x-api-key
 export async function kioskRoutes(app: FastifyInstance) {
@@ -17,6 +24,12 @@ export async function kioskRoutes(app: FastifyInstance) {
 
 // Rotas Admin (Painel Metrics) - autenticadas via JWT
 export async function hrAdminRoutes(app: FastifyInstance) {
+    app.addHook("onRequest", async (request, reply) => {
+        const rota = `${request.method} ${request.routeOptions.url}`
+        if (rota === "GET /hr/holidays") return
+        if (rota === "GET /hr/employees") return travaRHouFinanceiro(request, reply)
+        return travaRH(request, reply)
+    })
     app.get("/hr/time-clocks", listTimeClocks)
     app.put("/hr/time-clocks/:id", updateTimeClock)
     app.post("/hr/time-clocks/upsert", upsertTimeClock)

@@ -5,9 +5,15 @@ import { AccountsRepository } from '@/modules/financial/repositories/accounts-re
 import { ProductsRepository } from '@/modules/items/repositories/products-repository'
 import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { prisma } from '@/lib/prisma'
+import { marcaDaOS } from '@/modules/financial/services/conta-do-cliente'
 
 interface ReopenTreatmentUseCaseRequest {
     treatment_id: string
+    /**
+     * Situação em que a O.S. fica depois de desfeita (padrão "pending"). Fase 1 do Mergulho (16:A2): o cancelamento de uma
+     * O.S. finalizada usa esta mesma reversão e já grava "canceled" na mesma transação.
+     */
+    nextStatus?: string
 }
 
 interface ReopenTreatmentUseCaseResponse {
@@ -36,7 +42,7 @@ export class ReopenTreatmentUseCase {
         private suppliesRepository: SuppliesRepository | any,
     ) { }
 
-    async execute({ treatment_id }: ReopenTreatmentUseCaseRequest): Promise<ReopenTreatmentUseCaseResponse> {
+    async execute({ treatment_id, nextStatus = 'pending' }: ReopenTreatmentUseCaseRequest): Promise<ReopenTreatmentUseCaseResponse> {
         const treatment = await this.treatmentsRepository.findById(treatment_id)
         if (!treatment) {
             throw new ResourceNotFoundError()
@@ -47,6 +53,22 @@ export class ReopenTreatmentUseCase {
         }
 
         const executeLogic = async (tx?: any) => {
+            // 0. Fase 1 do Mergulho (16:A3): o a prazo da O.S. está na conta do cliente. Conta ainda aberta sai junto; se o
+            //    cliente já pagou parte dela, a reabertura para (o dinheiro já entrou no financeiro pela baixa e não há como
+            //    devolvê-lo daqui sem deixar o caixa errado).
+            if (tx?.clientTab?.findMany) {
+                const contas = await tx.clientTab.findMany({
+                    where: { description: { contains: marcaDaOS(treatment_id) } },
+                    select: { id: true, is_paid: true },
+                })
+                if (contas.some((c: { is_paid: boolean }) => c.is_paid)) {
+                    throw new Error('O cliente já pagou (toda ou parte) a conta a prazo desta O.S. Estorne esse recebimento no financeiro antes de reabrir ou cancelar o atendimento.')
+                }
+                if (contas.length > 0) {
+                    await tx.clientTab.deleteMany({ where: { id: { in: contas.map((c: { id: string }) => c.id) }, is_paid: false } })
+                }
+            }
+
             // A. Estorna as transações financeiras vinculadas a esta O.S.
             const links = tx?.treatmentTransaction?.findMany
                 ? await tx.treatmentTransaction.findMany({
@@ -133,9 +155,9 @@ export class ReopenTreatmentUseCase {
             const reopened = tx?.treatment?.update
                 ? await tx.treatment.update({
                     where: { id: treatment_id },
-                    data: { status: 'pending', ending_date: null },
+                    data: { status: nextStatus, ending_date: null },
                 })
-                : await this.treatmentsRepository.update(treatment_id, { status: 'pending', ending_date: null } as any)
+                : await this.treatmentsRepository.update(treatment_id, { status: nextStatus, ending_date: null } as any)
 
             return { treatment: reopened }
         }

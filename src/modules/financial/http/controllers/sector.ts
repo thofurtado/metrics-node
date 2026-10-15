@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { UserAlreadyExistsError } from '@/modules/users/use-cases/user-already-exists-error'
 import { MakeSectorUseCase } from '@/modules/sectors/use-cases/factories/make-sector-use-case'
+import { prisma } from '@/lib/prisma'
 
 
 
@@ -41,3 +42,46 @@ export async function createSector(request: FastifyRequest, reply: FastifyReply)
 }
 
 
+
+// Fase 4 do Mergulho (17:U9): antes o setor (categoria de receita/despesa) só podia ser criado; nome digitado errado ou
+// setor que não se usa mais ficavam para sempre na lista. Agora o administrador renomeia e exclui (só o setor sem
+// nenhum lançamento: com lançamentos, excluir apagaria a categoria do histórico; renomeie em vez disso).
+const sectorParamsSchema = z.object({ id: z.string().uuid() })
+
+export async function updateSector(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = sectorParamsSchema.parse(request.params)
+    const bodySchema = z.object({
+        name: z.string().trim().min(1, 'Informe o nome do setor.').optional(),
+        budget: z.number().nullable().optional(),
+        type: z.enum(['in', 'out']).optional(),
+    })
+    const data = bodySchema.parse(request.body)
+
+    const atual = await prisma.sector.findUnique({ where: { id }, select: { id: true } })
+    if (!atual) {
+        return reply.status(404).send({ message: 'Setor não encontrado.' })
+    }
+    const sector = await prisma.sector.update({ where: { id }, data })
+    return reply.status(200).send(sector)
+}
+
+export async function deleteSector(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = sectorParamsSchema.parse(request.params)
+
+    const atual = await prisma.sector.findUnique({ where: { id }, select: { id: true } })
+    if (!atual) {
+        return reply.status(404).send({ message: 'Setor não encontrado.' })
+    }
+    const [lancamentos, caixa] = await Promise.all([
+        prisma.transaction.count({ where: { sector_id: id } }),
+        prisma.cashierEntry.count({ where: { sector_id: id } }),
+    ])
+    if (lancamentos + caixa > 0) {
+        return reply.status(409).send({
+            code: 'SECTOR_IN_USE',
+            message: `Este setor tem ${lancamentos + caixa} lançamento(s) e não pode ser excluído. Renomeie em vez de excluir.`,
+        })
+    }
+    await prisma.sector.delete({ where: { id } })
+    return reply.status(204).send()
+}

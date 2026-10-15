@@ -22,6 +22,9 @@ class FakeTreatmentsRepository {
 let deletedTransactionIds: string[] = []
 let updatedTreatmentData: any = null
 let links: any[] = []
+let tabs: any[] = []
+let deletedTabIds: string[] = []
+let tabFilter: any = null
 
 vi.mock('@/lib/prisma', () => ({
     prisma: {
@@ -43,6 +46,15 @@ vi.mock('@/lib/prisma', () => ({
             stock: {
                 create: async () => ({}),
             },
+            clientTab: {
+                findMany: async ({ where }: any) => {
+                    tabFilter = where
+                    return tabs
+                },
+                deleteMany: async ({ where }: any) => {
+                    deletedTabIds.push(...where.id.in)
+                },
+            },
         }),
     },
 }))
@@ -55,6 +67,9 @@ beforeEach(() => {
     deletedTransactionIds = []
     updatedTreatmentData = null
     links = []
+    tabs = []
+    deletedTabIds = []
+    tabFilter = null
     accountsRepository = new InMemoryAccountsRepository()
     productsRepository = new InMemoryProductsRepository()
     suppliesRepository = new InMemorySuppliesRepository()
@@ -160,5 +175,40 @@ describe('Reopen Treatment Use Case', () => {
 
         expect((await suppliesRepository.findById(supplyA.id))?.stock).toBe(12) // +1*2
         expect((await suppliesRepository.findById(supplyB.id))?.stock).toBe(11) // +0.5*2
+    })
+
+    // Fase 1 do Mergulho (16:A3 e 16:A2)
+    it('tira da conta do cliente o a prazo ainda aberto desta O.S.', async () => {
+        tabs = [{ id: 'tab-1', is_paid: false }]
+        const treatmentsRepository = new FakeTreatmentsRepository({ id: 'abcdef12-0000-0000-0000-000000000000', status: 'resolved', items: [] })
+        const sut = new ReopenTreatmentUseCase(treatmentsRepository as any, accountsRepository, productsRepository, suppliesRepository)
+
+        await sut.execute({ treatment_id: 'abcdef12-0000-0000-0000-000000000000' })
+
+        expect(tabFilter).toEqual({ description: { contains: 'O.S #abcdef12' } })
+        expect(deletedTabIds).toEqual(['tab-1'])
+    })
+
+    it('recusa reabrir quando o cliente já pagou parte do a prazo da O.S. (nada é desfeito)', async () => {
+        const account = await accountsRepository.create({ name: 'Caixa', balance: 500 } as any)
+        tabs = [{ id: 'tab-pago', is_paid: true }, { id: 'tab-saldo', is_paid: false }]
+        links = [{ transaction: { id: 'tx-1', operation: 'income', amount: 100, totalValue: 100, confirmed: true, account_id: account.id } }]
+        const treatmentsRepository = new FakeTreatmentsRepository({ id: 't1', status: 'resolved', items: [] })
+        const sut = new ReopenTreatmentUseCase(treatmentsRepository as any, accountsRepository, productsRepository, suppliesRepository)
+
+        await expect(sut.execute({ treatment_id: 't1' })).rejects.toThrow('já pagou')
+        expect(deletedTabIds).toEqual([])
+        expect(deletedTransactionIds).toEqual([])
+        expect(account.balance).toBe(500)
+    })
+
+    it('cancelar uma O.S. finalizada usa a mesma reversão e já grava "canceled"', async () => {
+        const treatmentsRepository = new FakeTreatmentsRepository({ id: 't1', status: 'resolved', items: [] })
+        const sut = new ReopenTreatmentUseCase(treatmentsRepository as any, accountsRepository, productsRepository, suppliesRepository)
+
+        const { treatment } = await sut.execute({ treatment_id: 't1', nextStatus: 'canceled' })
+
+        expect(treatment.status).toBe('canceled')
+        expect(updatedTreatmentData).toMatchObject({ status: 'canceled', ending_date: null })
     })
 })

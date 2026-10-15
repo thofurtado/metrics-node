@@ -65,6 +65,19 @@ export function contaComoRecebivel(conta: ContaDoCliente): RecebivelDaConta {
 }
 
 /**
+ * Fase 1 do Mergulho (16:A3): o a prazo de um atendimento (O.S.) também vai para a conta do cliente, como o fiado do PDV.
+ * A marca "O.S #xxxxxxxx" no texto liga a conta à O.S. (como "Pedido #xxxxxxxx" liga a conta à venda): a reabertura e o
+ * cancelamento da O.S. acham por ela o que tirar. Sem coluna nova no banco.
+ */
+export function marcaDaOS(treatmentId: string): string {
+    return `O.S #${treatmentId.slice(0, 8)}`
+}
+
+export function descricaoDaContaDaOS(treatmentId: string, nomeDoCliente: string | null | undefined): string {
+    return `Atendimento a Prazo - ${marcaDaOS(treatmentId)} (${nomeDoCliente || 'Cliente'})`
+}
+
+/**
  * Quanto a baixa recebe e quanto fica devendo. Parcial só quando é uma conta só e o valor pago é menor que o da conta (como
  * a baixa parcial das receitas); valor pago maior que a conta recebe só a conta.
  */
