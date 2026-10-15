@@ -18,7 +18,7 @@ function resposta() {
 const IFOOD = { id: '77777777-7777-4777-8777-777777777777', code: 'IFOOD', name: 'iFood', account_id: null }
 const REPASSE = new Date('2026-11-11T15:00:00.000Z')
 
-function transacao(parcial: Record<string, any>) {
+function transacao(parcial: Record<string, any>): any {
     return {
         id: 't', operation: 'income', amount: 0, totalValue: null, confirmed: false, account_id: 'conta-transacao', description: 'x',
         data_vencimento: REPASSE, platform_id: IFOOD.id, platform_settlement_id: null, cashier_session_id: 'caixa-1',
