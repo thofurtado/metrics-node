@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
+import { verifyModuleAccess } from '@/http/middlewares/verify-module-access'
 import {
     postParseNfe,
     postConfirmNfe,
@@ -16,7 +17,14 @@ import {
     getStockMovements
 } from './stock-dashboard-controller'
 
+// Fase 0 do Mergulho (17:U1): o estoque avançado (posição, ajustes, NF-e, inventário, movimentos) só é chamado pela tela
+// de Estoque da web, que exige o módulo Controle de Estoque. Cada rota já tem o verifyJwt próprio (roda antes).
+const travaEstoque = verifyModuleAccess('stock')
+
 export async function stockAdvancedRoutes(app: FastifyInstance) {
+    app.addHook('preHandler', async (request, reply) => {
+        if ((request.routeOptions.url || '').startsWith('/api/stock/')) return travaEstoque(request, reply)
+    })
     // 1. Posição de Estoque & Ajustes Rápidos
     app.get('/api/stock/overview', { onRequest: [verifyJwt] }, getStockOverview)
     app.post('/api/stock/adjust', { onRequest: [verifyJwt] }, postAdjustStockBalance)

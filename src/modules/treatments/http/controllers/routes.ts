@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 
 
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
+import { verifyModuleAccess, verifyModuleAccessPainel } from '@/http/middlewares/verify-module-access'
 import { createTreatment } from '@/modules/treatments/http/controllers/treatment'
 import { createItemTreatment } from '@/modules/treatments/http/controllers/treatment-item'
 import { getTreatments } from '@/modules/treatments/http/controllers/getTreatments'
@@ -16,8 +17,17 @@ import { reopen } from '@/modules/treatments/http/controllers/reopen'
 
 
 
+// Fase 0 do Mergulho (17:U1): trava do módulo Atendimento. /service-management é da tela inicial do app Gerencial e só
+// trava com TRAVA_MODULO_PAINEL=1 (ver verifyModuleAccessPainel).
+const travaAtendimento = verifyModuleAccess('service')
+const travaPainelAtendimento = verifyModuleAccessPainel('service')
+
 export async function treatmentsRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
+    app.addHook('onRequest', async (request, reply) => {
+        if (request.routeOptions.url === '/service-management') return travaPainelAtendimento(request, reply)
+        return travaAtendimento(request, reply)
+    })
 
     app.get('/treatments', getTreatments)
     app.get('/treatment/:id', getTreatment)

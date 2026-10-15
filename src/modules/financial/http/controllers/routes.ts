@@ -11,6 +11,7 @@ import { getTransferTransaction } from '@/modules/financial/http/controllers/get
 import { createPayment } from '@/modules/financial/http/controllers/payment'
 import { createPaymentEntry } from '@/modules/financial/http/controllers/paymentEntry'
 import { verifyUserRole } from '@/http/middlewares/verify-user-role'
+import { verifyModuleAccess, verifyModuleAccessPainel } from '@/http/middlewares/verify-module-access'
 import { changeTransactionStatus } from '@/modules/financial/http/controllers/changeTransactionPayment'
 import { deleteTransaction } from '@/modules/financial/http/controllers/deleteTransaction'
 import { deleteFutureTransactions } from '@/modules/financial/http/controllers/delete-future-transactions'
@@ -42,8 +43,22 @@ import { updateCreditCardPurchase, deleteCreditCardPurchase } from '@/modules/fi
 import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
 import { settleTermDebt } from '@/modules/financial/http/controllers/settle-term-debt'
 
+// Fase 0 do Mergulho (17:U1): trava do módulo Financeiro em todo este grupo, menos as listas que telas de outros módulos
+// também usam (a web do Caixa lê contas e setores; a O.S. lê as formas de pagamento e grava o pagamento previsto).
+const ROTAS_ABERTAS = new Set(['GET /accounts', 'GET /sectors', 'GET /payments', 'POST /payment-entry'])
+// Rotas da tela inicial do app Gerencial: só travam com TRAVA_MODULO_PAINEL=1 (ver verifyModuleAccessPainel).
+const ROTAS_DO_PAINEL = new Set(['GET /summary', 'GET /dashboard/operacional'])
+const travaFinanceiro = verifyModuleAccess('finance')
+const travaPainelFinanceiro = verifyModuleAccessPainel('finance')
+
 export async function financialRoutes(app: FastifyInstance) {
     app.addHook('onRequest', verifyJwt)
+    app.addHook('onRequest', async (request, reply) => {
+        const rota = `${request.method} ${request.routeOptions.url}`
+        if (ROTAS_ABERTAS.has(rota)) return
+        if (ROTAS_DO_PAINEL.has(rota)) return travaPainelFinanceiro(request, reply)
+        return travaFinanceiro(request, reply)
+    })
     app.get('/payment-agenda', getPaymentAgenda)
     app.get('/dashboard/operacional', getOperationalSummary)
     app.post('/sector', { onRequest: [verifyUserRole('ADMIN')] }, createSector)
