@@ -7,6 +7,8 @@ import { AccountsRepository } from '@/modules/financial/repositories/accounts-re
 import { ProductsRepository } from '@/modules/items/repositories/products-repository'
 import { SuppliesRepository } from '@/repositories/supplies-repository'
 import { prisma } from '@/lib/prisma'
+import { isTermPayment } from '@/modules/pdv-sync/services/cashier-sync-rules'
+import { descricaoDaContaDaOS } from '@/modules/financial/services/conta-do-cliente'
 
 interface FinishTreatmentUseCaseRequest {
     treatment_id: string
@@ -176,6 +178,29 @@ export class FinishTreatmentUseCase {
                     // "sumia" do financeiro sem nenhum aviso. Agora a finalização para com um erro claro.
                     if (!paymentMethod) {
                         throw new Error('Forma de pagamento não encontrada para um dos itens do pagamento. Corrija o pagamento antes de finalizar o atendimento.')
+                    }
+
+                    // Fase 1 do Mergulho (16:A3): o a prazo (fiado) da O.S. vai para a conta do cliente (client_tabs), o
+                    // registro oficial do fiado (decisão do Thomás de 25/09/2026). Antes virava uma receita pendente solta,
+                    // sem cliente: a dívida não aparecia na ficha do cliente nem no saldo a prazo do PDV. Não cria a receita
+                    // pendente junto (o painel já soma as contas no "a receber"; seria contar duas vezes); a receita nasce
+                    // na baixa da conta ("Clientes a Prazo"), como no fiado do PDV.
+                    if (isTermPayment(paymentMethod.name)) {
+                        const clientId = (treatment as any).client_id as string | null | undefined
+                        if (!clientId) {
+                            throw new Error('Pagamento a prazo precisa de um cliente no atendimento. Escolha o cliente da O.S. antes de finalizar.')
+                        }
+                        if (tx?.clientTab?.create) {
+                            await tx.clientTab.create({
+                                data: {
+                                    client_id: clientId,
+                                    amount: Number(Number(entry.amount).toFixed(2)),
+                                    description: descricaoDaContaDaOS(treatment.id, (treatment as any).clients?.name),
+                                    is_paid: false,
+                                }
+                            })
+                        }
+                        continue
                     }
 
                     let accountId = paymentMethod.account_id

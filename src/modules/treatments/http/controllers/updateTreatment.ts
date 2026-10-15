@@ -1,6 +1,7 @@
 import { MakeUpdateTreatmentUseCase } from '@/modules/treatments/use-cases/factories/make-update-treatment-use-case'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
+import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 
 export async function updateTreatment(request: FastifyRequest, reply: FastifyReply) {
 
@@ -39,6 +40,9 @@ export async function updateTreatment(request: FastifyRequest, reply: FastifyRep
             observations: observations ? observations : undefined
         })
     } catch (err) {
+        if (err instanceof ResourceNotFoundError) {
+            return reply.status(404).send({ message: err.message })
+        }
         if (err) {
             return reply.status(409).send({ message: err.message })
         }
