@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { GetEmployeeTimeClockStatusUseCase } from "../../use-cases/get-time-clock-status"
-import { RegisterTimeClockUseCase } from "../../use-cases/register-time-clock"
+import { RecusaDaBatida, RegisterTimeClockUseCase } from "../../use-cases/register-time-clock"
 import { PrismaEmployeesRepository } from "../../repositories/prisma/prisma-employees-repository"
 import { PrismaTimeClocksRepository } from "../../repositories/prisma/prisma-time-clocks-repository"
 
@@ -15,8 +15,7 @@ export async function getStatus(request: FastifyRequest, reply: FastifyReply) {
     })
 
     const { pin } = getStatusQuerySchema.parse(request.query)
-
-    console.log("Buscando PIN:", pin, "Tipo:", typeof pin)
+    // Fase 4 do Mergulho (01:R11): o PIN não vai mais para o registro do servidor (antes saía inteiro a cada consulta).
 
     const getStatusUseCase = new GetEmployeeTimeClockStatusUseCase(
         employeesRepository,
@@ -106,6 +105,17 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
             })
         }
 
+        // Fase 3/4 do Mergulho (01:R1, 01:R4, 01:R8): recusa de regra responde com o motivo. Inativo = 401 (igual à consulta
+        // do PIN); casa já preenchida ou fora da ordem = 409. Antes era 500 genérico e o Ponto mostrava "salvo sem internet".
+        // O Ponto antigo trata qualquer resposta que não seja 2xx do mesmo jeito de antes.
+        if (err instanceof RecusaDaBatida) {
+            return reply.status(err.codigo === "EMPLOYEE_INACTIVE" ? 401 : 409).send({
+                error: true,
+                message: err.mensagem,
+                code: err.codigo
+            })
+        }
+
         // Database/Prisma errors
         if (err.code && err.code.startsWith('P')) {
             return reply.status(503).send({
@@ -126,6 +136,8 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
 export async function syncOffline(request: FastifyRequest, reply: FastifyReply) {
     const syncOfflineBodySchema = z.object({
         punches: z.array(z.object({
+            // Número da batida no computador do Ponto (Ponto novo): volta na resposta para ele saber qual entrou e qual não
+            id: z.union([z.number(), z.string()]).optional(),
             pin: z.string(),
             action: z.enum(["clockIn", "breakStart", "breakEnd", "clockOut", "extraClockIn", "extraClockOut"]),
             timestamp: z.string()
@@ -144,31 +156,45 @@ export async function syncOffline(request: FastifyRequest, reply: FastifyReply) 
 
     for (const punch of punches) {
         try {
-            const { employee, timestamp: savedTimestamp } = await registerTimeClockUseCase.execute({
+            const resultado = await registerTimeClockUseCase.execute({
                 pin: punch.pin,
                 action: punch.action,
                 timestamp: punch.timestamp,
                 isOffline: true
             })
             results.push({
+                ...(punch.id !== undefined ? { id: punch.id } : {}),
                 pin: punch.pin,
                 action: punch.action,
-                timestamp: savedTimestamp,
-                success: true
+                timestamp: resultado.timestamp,
+                success: true,
+                ...("aviso" in resultado && resultado.aviso ? { aviso: resultado.aviso } : {})
             })
         } catch (err: any) {
-            console.error(`Error registering offline punch for PIN ${punch.pin}:`, err)
+            // Recusa de regra (inativo, casa já preenchida, sem a Entrada) é definitiva: reenviar não muda nada.
+            // Erro do banco é passageiro: o Ponto tem de tentar de novo.
+            const permanente = err instanceof RecusaDaBatida
+            console.error(`Batida da fila recusada (${punch.action}, ${punch.timestamp}): ${err?.message}`)
             errors.push({
+                ...(punch.id !== undefined ? { id: punch.id } : {}),
                 pin: punch.pin,
                 action: punch.action,
                 timestamp: punch.timestamp,
-                error: err.message || "Erro desconhecido"
+                error: err.message || "Erro desconhecido",
+                code: permanente ? err.codigo : "TRANSIENT_ERROR",
+                mensagem: permanente ? err.mensagem : "Falha passageira na nuvem: o Ponto tenta de novo",
+                permanente
             })
         }
     }
 
-    return reply.status(200).send({
-        success: true,
+    // Fase 3 do Mergulho (01:R3): antes respondia sempre 200 e o Ponto marcava todas como enviadas, inclusive as que deram erro.
+    // Agora: falha passageira (banco fora) = 503, e o Ponto (antigo e novo) guarda TODAS para reenviar (as que já entraram
+    // voltam como repetição e não duplicam). Só recusas definitivas = 200 com a lista de erros, que o Ponto novo lê e guarda.
+    const temFalhaPassageira = errors.some((e) => !e.permanente)
+
+    return reply.status(temFalhaPassageira ? 503 : 200).send({
+        success: !temFalhaPassageira,
         syncedCount: results.length,
         failedCount: errors.length,
         results,
