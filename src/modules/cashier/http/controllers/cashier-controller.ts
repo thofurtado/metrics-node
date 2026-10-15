@@ -1327,10 +1327,11 @@ export async function getCashierUsers(request: FastifyRequest, reply: FastifyRep
                 }
             ]
         },
+        // Fase 4 do Mergulho (14:X8): rota aberta (tela de entrada do caixa). Não entrega mais o e-mail: qualquer um com o
+        // endereço da loja via o e-mail dos administradores. O login do caixa usa o id, não o e-mail.
         select: {
             id: true,
             name: true,
-            email: true,
             role: true
         },
         orderBy: { name: 'asc' }

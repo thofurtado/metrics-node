@@ -33,13 +33,15 @@ import {
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 
 export async function cashierRoutes(app: FastifyInstance) {
-    // Rota pública para buscar operadores de caixa (ADMIN ou CASHIER) sem estar logado
+    // Rota pública para buscar operadores de caixa (ADMIN ou CASHIER) sem estar logado (só id, nome e papel)
     app.get('/api/cashier/users', getCashierUsers)
-    app.get('/api/cashier/employees', getCashierEmployees)
 
     // Rotas protegidas por JWT
     app.register(async (protectedApp) => {
         protectedApp.addHook('onRequest', verifyJwt)
+
+        // Fase 4 do Mergulho (14:X8): a lista de funcionários era aberta sem login; só é usada no lançamento, já logado.
+        protectedApp.get('/api/cashier/employees', getCashierEmployees)
 
         protectedApp.get('/api/cashier/sessions', getSessions)
         protectedApp.get('/api/cashier/monthly-audit', getMonthlyCashAudit)
