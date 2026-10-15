@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { prisma as defaultPrisma } from '../../../../lib/prisma'
+import { clientePublico } from './cliente-publico'
 
 export async function getClientByPhone(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma') || defaultPrisma
@@ -42,11 +43,6 @@ export async function getClientByPhone(request: FastifyRequest, reply: FastifyRe
         return reply.status(404).send({ message: 'Client not found.' })
     }
 
-    // Filtra endereços fantasmas de retirada
-    const cleanAddresses = (client.addresses || []).filter(a => 
-        !a.street?.toLowerCase().includes('retirada') &&
-        !a.neighborhood?.toLowerCase().includes('balcão')
-    )
-
-    return reply.status(200).send({ client: { ...client, addresses: cleanAddresses } })
+    // Mergulho (06:C5): rota pública, só sai o que o cardápio usa (nome e endereços), sem o resto do cadastro
+    return reply.status(200).send({ client: clientePublico(client) })
 }

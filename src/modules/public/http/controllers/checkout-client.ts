@@ -2,6 +2,8 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { prisma as defaultPrisma } from '../../../../lib/prisma'
+import { nomeProvisorio, normalizar, taxaDeEntrega } from '../../services/pedido-online-regras'
+import { clientePublico } from './cliente-publico'
 
 export async function checkoutClient(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma') || defaultPrisma
@@ -23,7 +25,7 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
     })
 
     const body = checkoutClientBodySchema.parse(request.body)
-    const { name, phone, street, number, neighborhood, city, state, zipcode, complement, isNewAddress } = body
+    const { name, phone, street, number, neighborhood, city, state, zipcode, complement } = body
 
     const rawDigits = phone.replace(/\D/g, '')
     let cleanPhone = rawDigits
@@ -31,36 +33,19 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
         cleanPhone = cleanPhone.substring(2)
     }
 
-    const isTakeout = Boolean(body.isTakeout) || 
-        street.toLowerCase().includes('retirada') || 
+    const isTakeout = Boolean(body.isTakeout) ||
+        street.toLowerCase().includes('retirada') ||
         neighborhood.toLowerCase().includes('balcão') ||
         !street || !neighborhood
 
-    // Validação de Bairros Atendidos por Setor (quando Delivery)
+    // Validação de Bairros Atendidos por Setor (quando Delivery): mesma regra do pedido e do cardápio
+    // (antes recusava bairro fora dos setores até na política FALLBACK, que aceita qualquer bairro)
     if (!isTakeout && neighborhood) {
         const companyProfile = await prisma.companyProfile.findFirst()
-        if (companyProfile) {
-            let sectors: any[] = []
-            if (companyProfile.deliverySectors) {
-                sectors = typeof companyProfile.deliverySectors === 'string'
-                    ? JSON.parse(companyProfile.deliverySectors)
-                    : companyProfile.deliverySectors
-            }
-            const norm = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
-            const allowedNeighborhoods = (Array.isArray(sectors) ? sectors : [])
-                .flatMap((s: any) => s.neighborhoods || [])
-                .map((n: string) => norm(n))
-                .filter(Boolean)
-
-            if (allowedNeighborhoods.length > 0) {
-                const normBairro = norm(neighborhood)
-                const isCovered = allowedNeighborhoods.some((n) => n === normBairro)
-                if (!isCovered) {
-                    return reply.status(400).send({
-                        message: `Desculpe, o bairro "${neighborhood}" não está na área de entrega atendida pela loja.`
-                    })
-                }
-            }
+        if (companyProfile && !taxaDeEntrega(companyProfile, neighborhood).atendido) {
+            return reply.status(400).send({
+                message: `Desculpe, o bairro "${neighborhood}" não está na área de entrega atendida pela loja.`
+            })
         }
     }
 
@@ -80,8 +65,6 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
             addresses: true
         }
     })
-
-    const norm = (s?: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
 
     if (!client) {
         // Cria cliente novo
@@ -109,13 +92,16 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
             }
         }) as any
     } else {
-        // Atualiza cliente existente
+        // Mergulho (06:C5, 15/10/2026): esta rota é pública e não confirma o dono do telefone (não há código por SMS ou
+        // WhatsApp). Antes ela trocava o nome do cadastro e o endereço principal de quem tivesse o telefone digitado.
+        // Agora, para cliente que já existe, ela só completa o que é seguro: o 9 do celular e o nome provisório
+        // ("Cliente Delivery"). Nome diferente vai na observação do pedido e endereço novo é gravado com o pedido
+        // (create-online-order.ts), sem tirar o principal nem alterar os endereços que já estão lá.
         const updateData: any = {}
-        if (client.name !== name) {
-            updateData.name = name
+        if (nomeProvisorio(client.name) && name.trim() && normalizar(name) !== normalizar(client.name)) {
+            updateData.name = name.trim()
         }
-        // Se o telefone anterior estava com 10 dígitos e agora temos 11 dígitos, atualiza para o formato completo
-        if (cleanPhone.length === 11 && client.phone.length !== 11) {
+        if (cleanPhone.length === 11 && (client.phone || '').length !== 11) {
             updateData.phone = cleanPhone
         }
 
@@ -124,49 +110,6 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
                 where: { id: client.id },
                 data: updateData
             })
-        }
-
-        // Se for Retirada no Balcão, NÃO mexe nem cria nenhum endereço!
-        if (!isTakeout && street && neighborhood) {
-            const existingAddress = client.addresses?.find(a => 
-                norm(a.street) === norm(street) && 
-                norm(a.number) === norm(number)
-            )
-
-            await prisma.address.updateMany({
-                where: { client_id: client.id },
-                data: { is_main: false }
-            })
-
-            if (existingAddress && !isNewAddress) {
-                // Reutiliza o endereço existente sem duplicar
-                await prisma.address.update({
-                    where: { id: existingAddress.id },
-                    data: {
-                        is_main: true,
-                        neighborhood,
-                        city: city || existingAddress.city,
-                        state: state || existingAddress.state,
-                        zipcode: zipcode || existingAddress.zipcode || undefined,
-                        complement: complement || existingAddress.complement || undefined
-                    }
-                })
-            } else {
-                // Cria novo endereço
-                await prisma.address.create({
-                    data: {
-                        client_id: client.id,
-                        street,
-                        number: number || 'S/N',
-                        neighborhood,
-                        city: city || 'Local',
-                        state: state || 'SP',
-                        zipcode: zipcode || undefined,
-                        complement: complement || undefined,
-                        is_main: true
-                    }
-                })
-            }
         }
 
         client = await prisma.client.findFirst({
@@ -182,11 +125,6 @@ export async function checkoutClient(request: FastifyRequest, reply: FastifyRepl
         }) as any
     }
 
-    // Filtra endereços fantasmas de retirada
-    const cleanAddresses = (client.addresses || []).filter(a => 
-        !a.street?.toLowerCase().includes('retirada') &&
-        !a.neighborhood?.toLowerCase().includes('balcão')
-    )
-
-    return reply.status(200).send({ client: { ...client, addresses: cleanAddresses } })
+    // Só o que o cardápio usa (nome e endereços); documento, e-mail e o resto do cadastro não saem nesta rota pública
+    return reply.status(200).send({ client: clientePublico(client) })
 }
