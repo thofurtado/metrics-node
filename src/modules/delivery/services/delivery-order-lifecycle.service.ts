@@ -149,10 +149,26 @@ export async function handleDeliveryOrderStatusChange(
       console.log(`[99Food Lifecycle] Confirmação do pedido ${food99.orderId}: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
       return r.ok
     }
+    // Entrega da própria loja (15/10/2026, pedido do Thomás com foto da Katatau): a 99 mostra "Entregando" ao cliente assim que
+    // recebe o "pronto", porque nesse modo ela não tem o passo "pronto, esperando o motoboy". Avisar na Conferência fazia o cliente
+    // ver "a caminho" horas antes de o motoboy sair (diário de 15/10: pronto 14:24, saída 16:55). Agora o "pronto" vai à 99 só no
+    // despacho (Na rua). Entrega feita pelo entregador da 99 e retirada continuam avisando na Conferência: alguém vem buscar.
+    const propria = entregaPropriaDa99(obs)
     if (newStatus === 'conferencia') {
+      if (propria) {
+        console.log(`[99Food Lifecycle] Pedido ${food99.orderId} pronto (entrega da loja): a 99 só é avisada no despacho.`)
+        return true
+      }
       const r = await food99Api.readyOrder(food99.appShopId, food99.orderId)
       console.log(`[99Food Lifecycle] Pedido ${food99.orderId} pronto: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
       return r.ok
+    }
+    if (newStatus === 'dispatched' && propria) {
+      const r = await food99Api.readyOrder(food99.appShopId, food99.orderId)
+      console.log(`[99Food Lifecycle] Pedido ${food99.orderId} saiu (entrega da loja), "pronto" na 99: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
+      // Pedido que ficou pronto antes desta versão já recebeu o "pronto" na Conferência e a 99 recusa o segundo aviso: não é erro
+      // para o caixa (a recusa fica no diário da 99).
+      return true
     }
     // Fase 4 do Mergulho (10:N1): entrega da própria loja concluída no PDV avisa a 99 (POST /v1/order/order/delivered). Antes
     // ninguém avisava: no diário, 4 dos 16 pedidos de entrega própria da Katatau (13 e 14/10/2026) só foram concluídos pela
@@ -161,6 +177,12 @@ export async function handleDeliveryOrderStatusChange(
       if (pedido.status_delivery === 'Entregue') {
         console.log(`[99Food Lifecycle] Pedido ${food99.orderId} já concluído pela 99; nada a avisar.`)
         return true
+      }
+      // Concluído sem passar por "Na rua" (o caixa deu baixa direto da Conferência): a 99 ainda não recebeu o "pronto", que agora
+      // só vai no despacho; manda antes do "entregue" (se ela recusar por já estar pronto, segue igual).
+      if (pedido.status_delivery !== 'SaiuEntrega') {
+        const pronto = await food99Api.readyOrder(food99.appShopId, food99.orderId)
+        console.log(`[99Food Lifecycle] Pedido ${food99.orderId} concluído sem despacho: "pronto" antes do "entregue": ok=${pronto.ok} errno=${pronto.errno ?? '-'}`)
       }
       const r = await food99Api.deliveredOrder(food99.appShopId, food99.orderId)
       console.log(`[99Food Lifecycle] Pedido ${food99.orderId} entregue: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
