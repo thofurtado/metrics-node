@@ -10,8 +10,10 @@ const db: any = {
         update: vi.fn(),
     },
     address: { create: vi.fn(async () => ({ id: 'end-1' })) },
+    product: { findMany: vi.fn(async () => []) },
     pedido: {
         findFirst: vi.fn(),
+        findMany: vi.fn(async () => []),
         count: vi.fn(async () => 3),
         create: vi.fn(async ({ data }: any) => ({ uuid: data.uuid ?? 'novo', display_id: data.display_id, valor_final: data.valor_final, status_delivery: data.status_delivery, itens: [] })),
     },
@@ -36,6 +38,9 @@ function pedidoDoPdv(extra: Record<string, unknown> = {}) {
         body: { origin: 'PDV', client_name: 'Ana', client_phone: '00000000000', street: 'Retirada Balcão', total_amount: 30, items: [], ...extra },
         headers: {},
         query: {},
+        // Mergulho (06:C6): só a rota do PDV com origem "PDV" grava sem a conferência do cardápio
+        url: '/api/pdv/orders',
+        log: { warn: vi.fn() },
     } as any
 }
 
@@ -62,8 +67,15 @@ describe('trava de pedido repetido (02:P3)', () => {
     })
 
     it('o cardápio (sem código, com telefone) continua protegido do clique duplo', async () => {
+        // Mergulho (06:C6, 06:C8): o pedido do cardápio é conferido com o cadastro e a trava compara também itens e endereço
+        db.product.findMany.mockResolvedValueOnce([{ id: 'p1', name: 'Marmita', price: 30, category_id: null, subcategory: null, complementGroups: [] }])
+        db.client.findFirst.mockResolvedValueOnce({ id: 'cli-1', name: 'Ana', phone: '11999990000', addresses: [{ id: 'end-1', street: 'Rua A', number: '1', neighborhood: 'Centro', complement: null }] })
+        db.pedido.findMany.mockResolvedValueOnce([{ ...pedidoAnterior, endereco_entrega_id: 'end-1', itens: [{ produto_id: 'p1', quantidade: 1, valor_unitario: 30 }] }])
         const r = resposta()
-        await createOnlineOrder({ ...pedidoDoPdv({ origin: 'Delivery', client_phone: '11999990000', street: 'Rua A', neighborhood: 'Centro' }) }, r)
+        await createOnlineOrder({
+            url: '/public/orders', headers: {}, query: {}, log: { warn: vi.fn() },
+            body: { origin: 'Delivery', client_name: 'Ana', client_phone: '11999990000', street: 'Rua A', number: '1', neighborhood: 'Centro', delivery_fee: 0, total_amount: 30, items: [{ product_id: 'p1', quantity: 1, unit_price: 30 }] },
+        } as any, r)
         expect(r.code).toBe(200)
         expect(r.body.order.id).toBe('anterior')
         expect(db.pedido.create).not.toHaveBeenCalled()
