@@ -200,28 +200,45 @@ export async function confirmPayroll(request: FastifyRequest, reply: FastifyRepl
     // formato que o resto do financeiro não reconhece (ele soma despesas por operation 'expense' e totalValue,
     // filtrando pelo vencimento). Resultado: a folha paga sumia das despesas e do painel. Agora grava no
     // mesmo formato das outras despesas pagas.
-    const agora = new Date()
-    const transaction = await prisma.transaction.create({
-        data: {
-            account_id,
-            amount: totalAmount,
-            operation: "expense",
-            description: `Folha de pagamento - ${agora.toLocaleDateString('pt-BR')}`,
-            confirmed: true,
-            totalValue: totalAmount,
-            data_vencimento: agora,
-            data_emissao: agora,
-            created_at: agora,
-        } as any
-    })
+    const conta = await prisma.account.findUnique({ where: { id: account_id }, select: { id: true } })
+    if (!conta) {
+        return reply.status(404).send({ message: "Conta não encontrada." })
+    }
 
-    // 3. Update Payroll Entries
-    await prisma.payrollEntry.updateMany({
-        where: { status: "PENDING" },
-        data: {
-            status: "PAID",
-            transaction_id: transaction.id
-        }
+    // Tudo ou nada: a despesa, a saída do saldo da conta (como as outras despesas pagas fazem) e a baixa dos
+    // lançamentos. Só são marcados como pagos os lançamentos que entraram na soma (antes, um lançamento criado
+    // no meio do caminho virava "pago" sem estar no valor da despesa).
+    const agora = new Date()
+    const transaction = await prisma.$transaction(async (tx) => {
+        const criada = await tx.transaction.create({
+            data: {
+                account_id,
+                amount: totalAmount,
+                operation: "expense",
+                description: `Folha de pagamento - ${agora.toLocaleDateString('pt-BR')}`,
+                confirmed: true,
+                totalValue: totalAmount,
+                data_vencimento: agora,
+                data_emissao: agora,
+                created_at: agora,
+            } as any
+        })
+
+        await tx.account.update({
+            where: { id: account_id },
+            data: { balance: { decrement: totalAmount } }
+        })
+
+        // 3. Update Payroll Entries
+        await tx.payrollEntry.updateMany({
+            where: { id: { in: entries.map((e: any) => e.id) }, status: "PENDING" },
+            data: {
+                status: "PAID",
+                transaction_id: criada.id
+            }
+        })
+
+        return criada
     })
 
     return reply.status(200).send({
