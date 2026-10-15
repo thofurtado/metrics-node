@@ -8,6 +8,10 @@ interface DeleteItemUseCaseRequest {
     itemId: string
 }
 
+// Fase 4 do Mergulho (15:E8): o item com vendas ou movimentações não é apagado, é desativado. Antes a rota respondia
+// 204 nos dois casos e a web dizia "Item removido"; agora o caso de uso diz o que aconteceu.
+export type DeleteItemResult = 'EXCLUIDO' | 'DESATIVADO'
+
 export class DeleteItemUseCase {
     constructor(
         private productsRepository: ProductsRepository,
@@ -15,7 +19,7 @@ export class DeleteItemUseCase {
         private suppliesRepository: SuppliesRepository
     ) { }
 
-    async execute({ itemId }: DeleteItemUseCaseRequest): Promise<void> {
+    async execute({ itemId }: DeleteItemUseCaseRequest): Promise<DeleteItemResult> {
         // Try to find and delete as Product
         const product = await this.productsRepository.findById(itemId)
         if (product) {
@@ -24,11 +28,12 @@ export class DeleteItemUseCase {
             } catch (err) {
                 if (err instanceof ResourceDependencyError) {
                     await this.productsRepository.update(itemId, { active: false })
+                    return 'DESATIVADO'
                 } else {
                     throw err
                 }
             }
-            return
+            return 'EXCLUIDO'
         }
 
         // Try to find and delete as Service
@@ -39,11 +44,12 @@ export class DeleteItemUseCase {
             } catch (err) {
                 if (err instanceof ResourceDependencyError) {
                     await this.servicesRepository.update(itemId, { active: false })
+                    return 'DESATIVADO'
                 } else {
                     throw err
                 }
             }
-            return
+            return 'EXCLUIDO'
         }
 
         // Try to find and delete as Supply
@@ -65,8 +71,9 @@ export class DeleteItemUseCase {
                 // I'll soft delete on error for now if it looks like constraint.
 
                 await this.suppliesRepository.update(itemId, { active: false })
+                return 'DESATIVADO'
             }
-            return
+            return 'EXCLUIDO'
         }
 
         throw new ResourceNotFoundError()

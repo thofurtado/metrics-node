@@ -12,7 +12,14 @@ export async function deleteItem(request: FastifyRequest, reply: FastifyReply) {
 
     try {
         const deleteItemUseCase = makeDeleteItemUseCase()
-        await deleteItemUseCase.execute({ itemId: id })
+        const resultado = await deleteItemUseCase.execute({ itemId: id })
+        // Mergulho 15:E8: desativado (tem vendas ou movimentações) responde 200 dizendo isso; excluído segue 204
+        if (resultado === 'DESATIVADO') {
+            return reply.status(200).send({
+                inactivated: true,
+                message: 'Este item tem vendas ou movimentações e não pode ser apagado: ele foi DESATIVADO e sai das listas, mas continua no histórico.',
+            })
+        }
         return reply.status(204).send()
     } catch (err) {
         console.error('[DeleteItem Error]:', err)
