@@ -1354,6 +1354,8 @@ model CourierPayable {
   day             String
   description     String?
   fee_charged     Float            @default(0)
+  /// Taxa da tabela do bairro (base do ganho por porcentagem, PDV 15/10/2026). Null = linha de antes da regra ou PDV antigo.
+  fee_table       Float?
   amount_due      Float            @default(0)
   status          String           @default("PENDENTE")
   reason          String?

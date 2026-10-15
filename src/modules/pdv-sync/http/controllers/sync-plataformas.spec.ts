@@ -88,6 +88,17 @@ describe('venda do PDV com PlataformaCodigo e EntregaPropria', () => {
         expect(tx.cashierEntry.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['e1'] } }, data: { platform_code: 'IFOOD', platform_own_delivery: false } })
     })
 
+    it('motoboy trocado no PDV (entrega da loja -> entregador do iFood): o reenvio só muda quem entregou, sem lançamento novo', async () => {
+        tx.sale.findUnique = vi.fn(async () => ({ cashier_session_id: CAIXA, total_amount: 50, discount: 0, status: 'COMPLETED', origin: 'iFood' }))
+        tx.cashierEntry.findMany = vi.fn(async () => [{ id: 'e1', identification: `iFood - Pedido #${VENDA.slice(0, 8)}`, payment_method: 'iFood', amount: 50, platform_code: 'IFOOD', platform_own_delivery: true }])
+        const r = resposta()
+        await postSalesSync({ body: [venda({ PlataformaCodigo: 'IFOOD', EntregaPropria: false }, [{ Method: 'Pago na plataforma', Amount: 50, IdentificadorUuid: IDENT_IFOOD }])] } as any, r)
+        expect(r.code).toBe(201)
+        expect(tx.cashierEntry.create).not.toHaveBeenCalled()
+        expect(tx.cashierEntry.deleteMany).not.toHaveBeenCalled()
+        expect(tx.cashierEntry.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['e1'] } }, data: { platform_code: 'IFOOD', platform_own_delivery: false } })
+    })
+
     it('reenvio igual para caixa conferido: aceita e não mexe', async () => {
         tx.sale.findUnique = vi.fn(async () => ({ cashier_session_id: CAIXA, total_amount: 50, discount: 0, status: 'COMPLETED', origin: 'iFood' }))
         tx.cashierSession.findUnique = vi.fn(async () => ({ status: 'CHECKED' }))

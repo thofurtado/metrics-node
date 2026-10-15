@@ -28,6 +28,8 @@ export interface EntregaAPagarDoPdv {
     Dia?: string | null
     Descricao?: string | null
     TaxaCobrada?: number | null
+    /** Taxa da tabela do bairro (base do ganho por porcentagem); o frete grátis do iFood não muda o que o motoboy recebe. */
+    TaxaDaTabela?: number | null
     ValorAPagar?: number | null
     Situacao?: string | null
     Motivo?: string | null
@@ -104,6 +106,7 @@ export function normalizarEntregaAPagar(e: EntregaAPagarDoPdv, motoboyJaChegou: 
         day: diaDaEntrega(e.Dia, data),
         description: e.Descricao?.trim() || null,
         fee_charged: centavos(e.TaxaCobrada),
+        fee_table: e.TaxaDaTabela === undefined || e.TaxaDaTabela === null ? null : centavos(e.TaxaDaTabela),
         amount_due: centavos(e.ValorAPagar),
         status: situacaoDaEntrega(e.Situacao),
         reason: e.Motivo?.trim() || null,

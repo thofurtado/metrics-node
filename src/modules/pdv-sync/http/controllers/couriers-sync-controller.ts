@@ -35,6 +35,8 @@ const entregaSchema = z.object({
     Dia: z.string().optional().nullable(),
     Descricao: z.string().optional().nullable(),
     TaxaCobrada: z.number().optional().nullable(),
+    // Taxa da tabela do bairro, base do ganho por porcentagem (PDV de 15/10/2026 em diante; o antigo não manda)
+    TaxaDaTabela: z.number().optional().nullable(),
     ValorAPagar: z.number().optional().nullable(),
     Situacao: z.string().optional().nullable(),
     Motivo: z.string().optional().nullable(),

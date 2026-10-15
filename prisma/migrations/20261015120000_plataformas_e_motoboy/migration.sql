@@ -98,6 +98,9 @@ CREATE TABLE IF NOT EXISTS "courier_payables" (
     CONSTRAINT "courier_payables_pkey" PRIMARY KEY ("id")
 );
 
+-- Taxa da tabela do bairro (base do ganho por porcentagem; o frete cobrado continua em fee_charged), 15/10/2026
+ALTER TABLE "courier_payables" ADD COLUMN IF NOT EXISTS "fee_table" DOUBLE PRECISION;
+
 CREATE INDEX IF NOT EXISTS "courier_payables_courier_uuid_idx" ON "courier_payables"("courier_uuid");
 CREATE INDEX IF NOT EXISTS "courier_payables_day_idx" ON "courier_payables"("day");
 

@@ -51,6 +51,13 @@ describe('normalização do que o PDV manda', () => {
         expect(normalizarEntregaAPagar({ Uuid: 'e1', MotoboyUuid: NOVO, Tipo: 'ENTREGA', Dia: '2026-10-15', ValorAPagar: 7, Situacao: 'PAGA', FormaPagamento: 'Pix', PagoEm: '2026-10-15T20:00:00Z' }, false))
             .toMatchObject({ id: 'e1', courier_uuid: NOVO, courier_id: null, kind: 'ENTREGA', day: '2026-10-15', amount_due: 7, status: 'PAGA', payment_method: 'Pix' })
     })
+
+    it('taxa da tabela (frete grátis do iFood): guarda a base do ganho ao lado do que o cliente pagou; PDV antigo = vazio', () => {
+        expect(normalizarEntregaAPagar({ Uuid: 'e2', MotoboyUuid: NOVO, TaxaCobrada: 0, TaxaDaTabela: 8.004, ValorAPagar: 8 }, true))
+            .toMatchObject({ fee_charged: 0, fee_table: 8, amount_due: 8 })
+        expect(normalizarEntregaAPagar({ Uuid: 'e3', MotoboyUuid: NOVO, TaxaCobrada: 6, ValorAPagar: 6 }, true).fee_table).toBeNull()
+        expect(normalizarEntregaAPagar({ Uuid: 'e4', MotoboyUuid: NOVO, TaxaDaTabela: 0 }, true).fee_table).toBe(0) // resto de pagamento em parte
+    })
 })
 
 describe('rotas do PDV em lote', () => {
@@ -85,6 +92,19 @@ describe('rotas do PDV em lote', () => {
         const [conhecido, desconhecido] = tx.courierPayable.upsert.mock.calls.map((c: any) => c[0].create)
         expect(conhecido).toMatchObject({ courier_uuid: HENRIQUE, courier_id: HENRIQUE })
         expect(desconhecido).toMatchObject({ courier_uuid: NOVO, courier_id: null, kind: 'DIARIA', status: 'PAGA' })
+    })
+
+    it('entregas: a TaxaDaTabela do lote vai para fee_table, e a troca de motoboy no PDV muda o dono da mesma linha', async () => {
+        const r = resposta()
+        await postCourierPayablesSync({ body: [
+            { Uuid: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3', MotoboyUuid: HENRIQUE, Tipo: 'ENTREGA', Dia: '2026-10-15', TaxaCobrada: 0, TaxaDaTabela: 8, ValorAPagar: 8, Situacao: 'PENDENTE' },
+        ] } as any, r)
+        expect(r.body.Aceitos).toEqual(['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3'])
+        const chamada = tx.courierPayable.upsert.mock.calls[0][0]
+        expect(chamada.where).toEqual({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3' })
+        expect(chamada.create).toMatchObject({ fee_charged: 0, fee_table: 8 })
+        // upsert pelo uuid: a linha que o PDV passou para outro motoboy troca de dono, sem linha nova
+        expect(chamada.update).toMatchObject({ courier_uuid: HENRIQUE, courier_id: HENRIQUE, fee_table: 8 })
     })
 
     it('corpo que não é lista: 400', async () => {
