@@ -36,7 +36,7 @@ export async function getCouriersReport(request: FastifyRequest, reply: FastifyR
     const [linhas, motoboys] = await Promise.all([
         prisma.courierPayable.findMany({
             where: { day: { gte: de, lte: ate } },
-            select: { courier_uuid: true, kind: true, day: true, amount_due: true, status: true, payment_method: true },
+            select: { courier_uuid: true, order_uuid: true, kind: true, day: true, amount_due: true, status: true, payment_method: true },
         }),
         prisma.deliveryCourier.findMany({
             select: { id: true, name: true, active: true, earning_mode: true, value_per_delivery: true, daily_rate: true },

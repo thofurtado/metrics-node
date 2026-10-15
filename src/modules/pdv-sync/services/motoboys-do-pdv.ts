@@ -119,6 +119,8 @@ export function normalizarEntregaAPagar(e: EntregaAPagarDoPdv, motoboyJaChegou: 
 
 export interface LinhaAPagar {
     courier_uuid: string
+    /** Pedido da entrega: o pagamento parcial do PDV divide a linha (parte paga + resto) com o MESMO pedido. */
+    order_uuid?: string | null
     kind: string
     day: string
     amount_due: number
@@ -169,15 +171,25 @@ function totaisVazios(): TotaisDoMotoboy {
     return { entregas: 0, diarias: 0, nao_pagas: 0, ganho: 0, pago_dinheiro: 0, pago_pix: 0, pago_outros: 0, pago: 0, pendente: 0 }
 }
 
-function somar(t: TotaisDoMotoboy, l: LinhaAPagar) {
+/**
+ * Soma uma linha. O valor soma sempre; a CONTAGEM de entregas e diárias é por pedido e por dia (`vistos`): no pagamento parcial o
+ * PDV divide a linha em parte paga + resto (mesmo pedido, taxa 0), e sem isso uma entrega paga em duas vezes contaria 2.
+ */
+function somar(t: TotaisDoMotoboy, l: LinhaAPagar, vistos: Set<string>) {
     const valor = Number(l.amount_due) || 0
     const situacao = situacaoDaEntrega(l.status)
+    const diaria = tipoDaEntrega(l.kind) === 'DIARIA'
+    const chave = diaria ? `D|${l.day}` : l.order_uuid ? `E|${l.order_uuid}` : null
+    const novo = chave === null || !vistos.has(chave)
+    if (chave) vistos.add(chave)
     if (situacao === 'NAO_PAGA') {
-        t.nao_pagas++
+        if (novo) t.nao_pagas++
         return
     }
-    if (tipoDaEntrega(l.kind) === 'DIARIA') t.diarias++
-    else t.entregas++
+    if (novo) {
+        if (diaria) t.diarias++
+        else t.entregas++
+    }
     t.ganho += valor
     if (situacao === 'PAGA') {
         t.pago += valor
@@ -196,20 +208,20 @@ function arredondarTotais<T extends TotaisDoMotoboy>(t: T): T {
 }
 
 export function relatorioDosMotoboys(linhas: LinhaAPagar[], motoboys: MotoboyCadastrado[]) {
-    const porMotoboy = new Map<string, { totais: TotaisDoMotoboy; dias: Map<string, TotaisDoMotoboy> }>()
+    const porMotoboy = new Map<string, { totais: TotaisDoMotoboy; vistos: Set<string>; dias: Map<string, { t: TotaisDoMotoboy; vistos: Set<string> }> }>()
     for (const l of linhas) {
         let m = porMotoboy.get(l.courier_uuid)
         if (!m) {
-            m = { totais: totaisVazios(), dias: new Map() }
+            m = { totais: totaisVazios(), vistos: new Set(), dias: new Map() }
             porMotoboy.set(l.courier_uuid, m)
         }
-        somar(m.totais, l)
+        somar(m.totais, l, m.vistos)
         let dia = m.dias.get(l.day)
         if (!dia) {
-            dia = totaisVazios()
+            dia = { t: totaisVazios(), vistos: new Set() }
             m.dias.set(l.day, dia)
         }
-        somar(dia, l)
+        somar(dia.t, l, dia.vistos)
     }
 
     const cadastro = new Map(motoboys.map(m => [m.id, m]))
@@ -228,9 +240,9 @@ export function relatorioDosMotoboys(linhas: LinhaAPagar[], motoboys: MotoboyCad
             diaria: c?.daily_rate ?? 0,
             sem_cadastro: !c,
             ...(m?.totais ?? totaisVazios()),
-            dias: [...(m?.dias ?? new Map<string, TotaisDoMotoboy>()).entries()]
+            dias: [...(m?.dias ?? new Map<string, { t: TotaisDoMotoboy }>()).entries()]
                 .sort(([a], [b]) => a.localeCompare(b))
-                .map(([dia, t]) => arredondarTotais({ dia, ...t })),
+                .map(([dia, d]) => arredondarTotais({ dia, ...d.t })),
         }))
     }
     resultado.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))

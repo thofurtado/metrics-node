@@ -119,6 +119,18 @@ describe('relatório dos motoboys', () => {
         expect(r.totais).toMatchObject({ ganho: 59.5, pago: 44, pendente: 15.5 })
     })
 
+    it('entrega paga em duas vezes (parte + resto do PDV) conta 1 entrega; a diária dividida conta 1 diária', () => {
+        const r = relatorioDosMotoboys([
+            { courier_uuid: 'm1', order_uuid: 'p1', kind: 'ENTREGA', day: '2026-10-15', amount_due: 3, status: 'PAGA', payment_method: 'Pix' },
+            { courier_uuid: 'm1', order_uuid: 'p1', kind: 'ENTREGA', day: '2026-10-15', amount_due: 3, status: 'PENDENTE', payment_method: null },
+            { courier_uuid: 'm1', order_uuid: 'p2', kind: 'ENTREGA', day: '2026-10-15', amount_due: 6, status: 'PENDENTE', payment_method: null },
+            { courier_uuid: 'm1', order_uuid: null, kind: 'DIARIA', day: '2026-10-15', amount_due: 20, status: 'PAGA', payment_method: 'Dinheiro' },
+            { courier_uuid: 'm1', order_uuid: null, kind: 'DIARIA', day: '2026-10-15', amount_due: 30, status: 'PENDENTE', payment_method: null },
+        ], [{ id: 'm1', name: 'Teste', active: true, earning_mode: 'FIXO', value_per_delivery: 6, daily_rate: 50 }])
+        expect(r.motoboys[0]).toMatchObject({ entregas: 2, diarias: 1, ganho: 62, pago: 23, pago_pix: 3, pago_dinheiro: 20, pendente: 39 })
+        expect(r.motoboys[0].dias[0]).toMatchObject({ entregas: 2, diarias: 1 })
+    })
+
     it('a rota usa o período (padrão: do dia 1º até hoje) e filtra pelo dia', async () => {
         for (const k of Object.keys(db)) delete db[k]
         db.courierPayable = { findMany: vi.fn(async () => linhas) }
