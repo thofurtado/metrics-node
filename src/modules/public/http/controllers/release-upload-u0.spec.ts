@@ -154,6 +154,7 @@ describe('U0: Desarmar auto-update forçado, Upload Atômico e Validação de Lo
     await sendCommand(mockRequest, mockReply)
 
     expect(mockReply.status).toHaveBeenCalledWith(200)
-    expect(mockReply.send).toHaveBeenCalledWith({ message: 'Comando enviado com sucesso.' })
+    // Mergulho (08:W6): a resposta ganhou `confirmado` (Windy antigo não responde: confirmado = false)
+    expect(mockReply.send).toHaveBeenCalledWith(expect.objectContaining({ message: 'Comando enviado com sucesso.', confirmado: false }))
   })
 })

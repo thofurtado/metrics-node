@@ -29,6 +29,12 @@ export async function telemetryRoutes(app: FastifyInstance) {
     const domain = req.headers['x-tenant-domain'] as string;
     
     connectionManager.addConnection(id, connection);
+    // Mergulho (08:W6): o Windy novo responde aos comandos (command_ack) por este mesmo WebSocket
+    connection.on('message', (dados: any) => {
+      try {
+        connectionManager.receberMensagem(id, dados.toString());
+      } catch { }
+    });
     
     if (domain) {
       try {
@@ -56,7 +62,7 @@ export async function telemetryRoutes(app: FastifyInstance) {
 
     connection.on('close', async () => {
       clearInterval(pingInterval);
-      connectionManager.removeConnection(id);
+      connectionManager.removeConnection(id, connection);
       
       if (domain) {
         try {

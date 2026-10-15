@@ -32,5 +32,28 @@ export async function sendCommand(
     return reply.status(404).send({ message: 'Equipamento não está online ou conectado no momento.' })
   }
 
-  return reply.status(200).send({ message: 'Comando enviado com sucesso.' })
+  // Mergulho (08:W6): espera alguns segundos a resposta do Windy. Antes respondia "enviado" sem saber se ele recebeu.
+  // Windy antigo não responde: segue como antes ("enviado", sem confirmação).
+  const confirmacao = typeof sent === 'string'
+    // ATUALIZAR_PDV: o Windy fala com o Serviço do PDV antes de responder (até ~20 s); o resto responde na hora
+    ? await connectionManager.aguardarConfirmacao(id, sent, command === 'ATUALIZAR_PDV' ? 20000 : 8000)
+    : { confirmado: false as const }
+
+  if (confirmacao.confirmado && confirmacao.ok === false) {
+    return reply.status(422).send({
+      message: `O equipamento recebeu o comando, mas não conseguiu executar: ${confirmacao.detalhe || 'sem detalhe'}`,
+      confirmado: true,
+      ok: false,
+    })
+  }
+
+  if (confirmacao.confirmado) {
+    return reply.status(200).send({
+      message: confirmacao.detalhe ? `O equipamento confirmou: ${confirmacao.detalhe}` : 'O equipamento confirmou o comando.',
+      confirmado: true,
+      ok: true,
+    })
+  }
+
+  return reply.status(200).send({ message: 'Comando enviado com sucesso.', confirmado: false })
 }
