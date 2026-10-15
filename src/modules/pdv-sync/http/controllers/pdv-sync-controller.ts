@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
-import { splitStockMovements } from '../../services/stock-movement-rules'
+import { codigoDoMovimento, splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
 import { funcionarioEntraNoPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { categoriasDaMaquininha, tipoDoIdentificador } from '../../services/pagamentos-do-pdv'
@@ -272,6 +272,8 @@ export async function postClientsSync(request: FastifyRequest, reply: FastifyRep
 export async function postStocksSync(request: FastifyRequest, reply: FastifyReply) {
     const stockMovementSchema = z.array(
         z.object({
+            // Código do movimento no PDV (PDV novo, 02:P4): reenvio do mesmo movimento não mexe no estoque de novo
+            uuid: z.string().uuid().optional().nullable(),
             productId: z.union([z.string().uuid(), z.number()]), // backend agora aceita UUID ou Int
             quantity: z.number(),
             type: z.enum(['IN', 'OUT']),
@@ -289,7 +291,17 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
         console.warn(`[Sync] ${ignoredUnknown.length} movimentação(ões) de estoque com motivo desconhecido ignorada(s).`)
     }
 
-    // Vamos processar de forma transacional
+    // Fase 2 do Mergulho (02:P4): cada movimento tem código (o do PDV ou um calculado do conteúdo) e a linha de estoque e o
+    // saldo do produto mudam juntos (transação). Reenvio do mesmo movimento é reconhecido e não mexe no estoque de novo.
+    // "accepted" = o que o PDV pode marcar como enviado (aplicado agora, já aplicado antes ou ignorado pela regra).
+    const accepted: string[] = []
+    const ignored: { uuid: string; reason: string }[] = []
+    for (const mov of [...ignoredSales, ...ignoredUnknown]) {
+        if (mov.uuid) accepted.push(mov.uuid)
+    }
+    let applied = 0
+    let repeated = 0
+
     for (const mov of movements) {
         // Encontra o UUID do produto usando id ou display_id
         const product = await prisma.product.findFirst({
@@ -300,36 +312,55 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
 
         if (!product) {
             console.warn(`[Sync] Produto com identificador ${mov.productId} não encontrado.`)
+            if (mov.uuid) ignored.push({ uuid: mov.uuid, reason: 'PRODUTO_NAO_ENCONTRADO' })
             continue // Skip se não achar, para não travar os outros
         }
 
-        // Insere a movimentação
-        await prisma.stock.create({
-            data: {
-                product_id: product.id,
-                quantity: mov.quantity,
-                operation: mov.type,
-                description: mov.reason as StockReason, // só chegam aqui motivos de APPLICABLE_REASONS
-                created_at: mov.createdAt ? new Date(mov.createdAt) : new Date()
-            }
-        })
+        const codigo = codigoDoMovimento(mov)
+        if (codigo && await prisma.stock.findUnique({ where: { id: codigo }, select: { id: true } })) {
+            repeated++
+            if (mov.uuid) accepted.push(mov.uuid)
+            continue
+        }
 
-        // Atualiza o saldo do produto
-        await prisma.product.update({
-            where: { id: product.id },
-            data: {
-                stock: mov.type === 'IN' 
-                    ? { increment: mov.quantity } 
-                    : { decrement: mov.quantity }
-            }
-        })
+        try {
+            await prisma.$transaction([
+                prisma.stock.create({
+                    data: {
+                        ...(codigo ? { id: codigo } : {}),
+                        product_id: product.id,
+                        quantity: mov.quantity,
+                        operation: mov.type,
+                        description: mov.reason as StockReason, // só chegam aqui motivos de APPLICABLE_REASONS
+                        created_at: mov.createdAt ? new Date(mov.createdAt) : new Date()
+                    }
+                }),
+                // Atualiza o saldo do produto
+                prisma.product.update({
+                    where: { id: product.id },
+                    data: {
+                        stock: mov.type === 'IN' 
+                            ? { increment: mov.quantity } 
+                            : { decrement: mov.quantity }
+                    }
+                }),
+            ])
+            applied++
+        } catch (err: any) {
+            // Dois envios do mesmo movimento ao mesmo tempo: o segundo bate no código repetido e não mexe no estoque
+            if (err?.code === 'P2002') { repeated++ } else { throw err }
+        }
+        if (mov.uuid) accepted.push(mov.uuid)
     }
 
     return reply.status(201).send({
         message: 'Movimentações sincronizadas com sucesso',
-        applied: movements.length,
+        applied,
+        repeated,
         ignored_sales: ignoredSales.length,
         ignored_unknown: ignoredUnknown.length,
+        accepted,
+        ignored,
     })
 }
 
@@ -842,13 +873,16 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                             cashier_session_id: existingSale.cashier_session_id ?? '__sem_caixa__',
                             type: 'SALE',
                             source: 'PDV',
-                            OR: [{ sale_id: canc.PedidoUuid }, { identification: { contains: saleEntryTag(canc.PedidoUuid) } }],
+                            // Pelo texto só o lançamento antigo, sem a venda gravada (02:P7: o texto leva só 8 caracteres do código)
+                            OR: [{ sale_id: canc.PedidoUuid }, { sale_id: null, identification: { contains: saleEntryTag(canc.PedidoUuid) } }],
                         }
                     }),
                     // Fiado da venda cancelada sai da conta do cliente (10/10/2026; a parte já paga fica). Antes o cliente
                     // continuava devendo na nuvem e o saldo voltava ao PDV na sincronia seguinte.
+                    // Fase 2 do Mergulho (02:P7): só a conta do caixa DA venda. A conta é achada pelos 8 primeiros caracteres
+                    // do código da venda; antes, cancelar uma venda apagava o a prazo de QUALQUER venda que começasse igual.
                     prisma.clientTab.deleteMany({
-                        where: { is_paid: false, description: { contains: saleEntryTag(canc.PedidoUuid) } }
+                        where: { is_paid: false, description: { contains: saleEntryTag(canc.PedidoUuid) }, cashier_session_id: existingSale.cashier_session_id }
                     }),
                     // Vale de consumo criado pela venda nas versões até 2.6.107 (hoje o vale nasce só na conferência)
                     prisma.payrollEntry.deleteMany({
