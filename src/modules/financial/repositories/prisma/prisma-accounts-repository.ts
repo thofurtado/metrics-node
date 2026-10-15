@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
+import { AccountLinks, AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
 
 export class PrismaAccountsRepository implements AccountsRepository {
 
@@ -88,8 +88,21 @@ export class PrismaAccountsRepository implements AccountsRepository {
     }
 
     async delete(id: string): Promise<void> {
-        await prisma.account.delete({
-            where: { id },
-        })
+        // Mergulho 13:D2: os ajustes de saldo são o histórico da própria conta e o banco recusa apagar a conta com
+        // eles (erro 500). Só chega aqui conta sem lançamento, cartão, forma de pagamento nem maquininha (countLinks).
+        await prisma.$transaction([
+            prisma.accountAdjustment.deleteMany({ where: { account_id: id } }),
+            prisma.account.delete({ where: { id } }),
+        ])
+    }
+
+    async countLinks(id: string): Promise<AccountLinks> {
+        const [transactions, creditCards, paymentMethods, posMachines] = await Promise.all([
+            prisma.transaction.count({ where: { account_id: id } }),
+            prisma.creditCard.count({ where: { account_id: id } }),
+            prisma.payment.count({ where: { account_id: id } }),
+            prisma.pOSMachine.count({ where: { account_id: id } }),
+        ])
+        return { transactions, creditCards, paymentMethods, posMachines }
     }
 }
