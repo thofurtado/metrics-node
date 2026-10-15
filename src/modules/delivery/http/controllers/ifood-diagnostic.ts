@@ -35,6 +35,17 @@ function guard(request: FastifyRequest, reply: FastifyReply): boolean {
   return true
 }
 
+/**
+ * Trava das outras rotas que leem o diário central (Fase 4 do Mergulho, 09:F1, 15/10/2026). O diário é um só para todas as lojas
+ * (fica no IFOOD_AUDIT_DB, hoje o db_restaurante) e guarda o pedido inteiro do iFood: nome, endereço e contato do cliente.
+ * Antes, qualquer usuário logado de QUALQUER loja (ou a chave do Ponto) lia o diário de todas em /delivery/ifood/api-logs, e
+ * /delivery/ifood/cancellation-status lia sem login nenhum. Nenhum app usa essas rotas: agora pedem a mesma chave da página do
+ * diagnóstico (?key=, variável IFOOD_DIAG_KEY).
+ */
+export async function exigirChaveDoDiagnostico(request: FastifyRequest, reply: FastifyReply) {
+  if (!guard(request, reply)) return reply
+}
+
 interface TimelineEntry {
   at: string
   kind: 'EVENT' | 'PDV' | 'CALL' | 'ACK'
