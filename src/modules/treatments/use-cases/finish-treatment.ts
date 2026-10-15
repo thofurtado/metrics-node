@@ -222,11 +222,15 @@ export class FinishTreatmentUseCase {
                                     operation: 'income',
                                     description: transactionDescription,
                                     confirmed: isConfirmed,
+                                    // Fase 1 do Mergulho (16:A10): o painel soma as receitas PAGAS pelo totalValue; a O.S.
+                                    // gravava só o amount, então o recebimento pago sumia da receita do mês. Mesmo padrão
+                                    // do financeiro (transaction.ts): pago preenche totalValue, pendente fica null.
+                                    totalValue: isConfirmed ? installmentAmount : null,
                                     data_vencimento: dueDate,
                                     data_emissao: new Date(),
                                     payment_method: paymentMethod.name || 'OUTROS',
                                     sector_id: (treatment as any).sector_id || null,
-                                }
+                                } as any
                             })
                         } else if (this.transactionsRepository?.create) {
                             transaction = await this.transactionsRepository.create({
@@ -235,9 +239,10 @@ export class FinishTreatmentUseCase {
                                 operation: 'income',
                                 description: transactionDescription,
                                 confirmed: isConfirmed,
+                                totalValue: isConfirmed ? installmentAmount : null,
                                 data_vencimento: dueDate,
                                 data_emissao: new Date(),
-                            })
+                            } as any)
                         }
 
                         if (tx?.treatmentTransaction?.create && transaction) {

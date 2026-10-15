@@ -196,16 +196,23 @@ export async function confirmPayroll(request: FastifyRequest, reply: FastifyRepl
 
     const { account_id } = confirmBodySchema.parse(request.body)
 
-    // Transaction
+    // Fase 1 do Mergulho (17:U5): a folha gravava operation 'SAIDA', valor negativo e sem vencimento — um
+    // formato que o resto do financeiro não reconhece (ele soma despesas por operation 'expense' e totalValue,
+    // filtrando pelo vencimento). Resultado: a folha paga sumia das despesas e do painel. Agora grava no
+    // mesmo formato das outras despesas pagas.
+    const agora = new Date()
     const transaction = await prisma.transaction.create({
         data: {
             account_id,
-            amount: -totalAmount, // Expense
-            operation: "SAIDA", // or Expense type
-            description: `Payroll/Rateio Batch Confirmation - ${new Date().toLocaleDateString()}`,
+            amount: totalAmount,
+            operation: "expense",
+            description: `Folha de pagamento - ${agora.toLocaleDateString('pt-BR')}`,
             confirmed: true,
-            created_at: new Date()
-        }
+            totalValue: totalAmount,
+            data_vencimento: agora,
+            data_emissao: agora,
+            created_at: agora,
+        } as any
     })
 
     // 3. Update Payroll Entries
