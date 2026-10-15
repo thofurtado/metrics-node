@@ -23,6 +23,7 @@ import { getLatestPdvVersion, downloadLatestPdv, uploadPdvRelease } from './pdv-
 import { getClientsSummaryForWindy, bindDeviceFromWindy, getTenantByCode } from './windy-device'
 import { getEquipmentHistory } from './get-equipment-history'
 import { getIfoodCredentialsStatusController, saveIfoodCredentialsController } from './saas-ifood-credentials'
+import { chaveOuLoginNaTransicao, exigirChaveOuLogin } from '../autorizacao-pedidos'
 
 export async function publicRoutes(app: FastifyInstance) {
     app.get('/public/menu', getMenu)
@@ -39,18 +40,22 @@ export async function publicRoutes(app: FastifyInstance) {
     app.post('/public/db-sync-all', syncAllTenantsDb)
     app.get('/public/profile', getProfile)
 
-    // Pipeline do CardÃ¡pio Online & PDV
+    // Pipeline do Cardápio Online & PDV
+    // Fase 0 do Mergulho (02:P1): sem chave, só o que o cardápio precisa (criar o pedido, acompanhar a situação e o aviso no
+    // celular). A lista do dia, a mudança de situação, os motivos de cancelamento e o vínculo com o caixa pedem a chave do
+    // PDV ou o login da loja: a web (que sempre manda o login) já fica fechada; as rotas do PDV, em dois passos (ver
+    // autorizacao-pedidos.ts). O canal ao vivo decide sozinho o que manda (orders-stream.ts).
     app.post('/public/orders', createOnlineOrder)
-    app.post('/api/pdv/orders', createOnlineOrder)
-    app.get('/public/orders/pending', getPendingOnlineOrders)
-    app.get('/api/pdv/orders/pending', getPendingOnlineOrders)
+    app.post('/api/pdv/orders', { preHandler: chaveOuLoginNaTransicao }, createOnlineOrder)
+    app.get('/public/orders/pending', { preHandler: exigirChaveOuLogin }, getPendingOnlineOrders)
+    app.get('/api/pdv/orders/pending', { preHandler: chaveOuLoginNaTransicao }, getPendingOnlineOrders)
     app.get('/public/orders/stream', ordersStream)
     app.get('/api/pdv/orders/stream', ordersStream)
     app.get('/public/orders/:id/status', getOnlineOrderStatus)
-    app.get('/public/orders/:id/cancellation-reasons', getOrderCancellationReasons)
-    app.get('/api/pdv/orders/:id/cancellation-reasons', getOrderCancellationReasons)
-    app.patch('/public/orders/:id/status', updateOnlineOrderStatus)
-    app.post('/public/orders/associate-orphans', associateOrphanOrders)
+    app.get('/public/orders/:id/cancellation-reasons', { preHandler: exigirChaveOuLogin }, getOrderCancellationReasons)
+    app.get('/api/pdv/orders/:id/cancellation-reasons', { preHandler: chaveOuLoginNaTransicao }, getOrderCancellationReasons)
+    app.patch('/public/orders/:id/status', { preHandler: exigirChaveOuLogin }, updateOnlineOrderStatus)
+    app.post('/public/orders/associate-orphans', { preHandler: exigirChaveOuLogin }, associateOrphanOrders)
 
     // Web Push Notifications
     app.get('/public/orders/vapid-public-key', async (_req, reply) => {
@@ -67,10 +72,10 @@ export async function publicRoutes(app: FastifyInstance) {
         return reply.status(400).send({ message: 'Missing id or subscription.' })
     })
 
-    app.patch('/api/pdv/orders/:id/status', updateOnlineOrderStatus)
+    app.patch('/api/pdv/orders/:id/status', { preHandler: chaveOuLoginNaTransicao }, updateOnlineOrderStatus)
 
-    // DistribuiÃ§Ã£o, VinculaÃ§Ã£o e Auto-Update do Windy
-    // ProntuÃ¡rio e HistÃ³rico PÃºblico de Equipamento
+    // Distribuição, Vinculação e Auto-Update do Windy
+    // Prontuário e Histórico Público de Equipamento
     app.get('/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/equipments/:id/history', getEquipmentHistory)
     app.get('/api/public/windy/clients-summary', getClientsSummaryForWindy)
@@ -84,7 +89,7 @@ export async function publicRoutes(app: FastifyInstance) {
     app.get('/downloads/Metrics_Windy_Setup.exe', downloadLatestWindy)
     app.post('/api/admin/downloads/windy', uploadWindyRelease)
 
-    // DistribuiÃ§Ã£o e Auto-Update do Metrics PDV
+    // Distribuição e Auto-Update do Metrics PDV
     app.get('/api/public/pdv/latest', getLatestPdvVersion)
     app.get('/public/pdv/latest', getLatestPdvVersion)
     app.get('/api/public/pdv/download', downloadLatestPdv)

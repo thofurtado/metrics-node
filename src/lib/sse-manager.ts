@@ -16,6 +16,21 @@ interface SseConnection {
     reply: FastifyReply
     banco: string
     connectedAt: Date
+    /** false = conexão sem a chave do PDV nem o login da loja (02:P1): recebe só o aviso, sem os dados do cliente. */
+    completo: boolean
+}
+
+/**
+ * O que uma conexão sem chave recebe (Fase 0 do Mergulho, 02:P1): só o código, o número e a situação do pedido. O caixa da
+ * web usa o aviso só para buscar a lista de novo (com o login); nome, telefone, CPF, endereço e itens não saem.
+ */
+export function avisoSemDadosDoCliente(data: any): Record<string, unknown> {
+    const resumo: Record<string, unknown> = {}
+    if (!data || typeof data !== 'object') return resumo
+    for (const campo of ['id', 'order_id', 'display_id', 'status', 'status_delivery', 'updated_at']) {
+        if (data[campo] !== undefined) resumo[campo] = data[campo]
+    }
+    return resumo
 }
 
 /** O banco da loja da requisição atual, que o gancho de toda requisição pôs em requestContext 'tenant'. */
@@ -36,13 +51,13 @@ class SseManager {
     }
 
     /** Guarda a conexão do PDV ou do caixa da web no banco da loja (o nome que o gancho pôs em requestContext 'tenant'). */
-    public addConnection(banco: string, reply: FastifyReply): SseConnection {
+    public addConnection(banco: string, reply: FastifyReply, completo = true): SseConnection {
         const key = chaveDoBanco(banco)
         if (!this.conexoesPorBanco.has(key)) {
             this.conexoesPorBanco.set(key, new Set())
         }
 
-        const conn: SseConnection = { reply, banco: key, connectedAt: new Date() }
+        const conn: SseConnection = { reply, banco: key, connectedAt: new Date(), completo }
         this.conexoesPorBanco.get(key)!.add(conn)
         console.log(`[SSE] Conectado: ${key} (${this.conexoesPorBanco.get(key)!.size} conexão(ões) nessa loja)`)
         return conn
@@ -67,10 +82,14 @@ class SseManager {
         }
 
         const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`
+        let resumido: string | null = null
         let sentCount = 0
         for (const conn of Array.from(connections)) {
             try {
-                conn.reply.raw.write(payload)
+                if (!conn.completo && resumido === null) {
+                    resumido = `event: ${eventName}\ndata: ${JSON.stringify(avisoSemDadosDoCliente(data))}\n\n`
+                }
+                conn.reply.raw.write(conn.completo ? payload : resumido!)
                 sentCount++
             } catch (err) {
                 console.error(`[SSE] Erro ao enviar '${eventName}' para ${key}:`, err)

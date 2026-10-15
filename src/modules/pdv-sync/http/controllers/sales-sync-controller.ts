@@ -255,8 +255,11 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             //    nunca é mexida. Antes a conta só era criada: venda cancelada continuava devendo e o saldo voltava ao PDV.
             //    O consumo de funcionário NÃO vira vale aqui: o vale nasce num lugar só, na conferência do caixa (antes nascia
             //    aqui e de novo na conferência, e o funcionário seria descontado em dobro).
+            // Fase 2 do Mergulho (02:P7): a conta é ligada à venda pelos 8 primeiros caracteres do código ("Pedido #1f9408ee"),
+            // e duas vendas podem começar igual. Agora só vale a conta do caixa DA venda (é onde ela sempre é criada, e a
+            // baixa parcial na web copia o caixa): antes, mexer numa venda podia apagar ou mudar o a prazo de outra.
             const storedTabs = await tx.clientTab.findMany({
-                where: { description: { contains: saleEntryTag(sale.Uuid) } },
+                where: { description: { contains: saleEntryTag(sale.Uuid) }, cashier_session_id: targetSessionId },
                 select: { id: true, client_id: true, amount: true, is_paid: true },
             })
             const tabPlan = planClientTabs(storedTabs, desiredClientTabs(sale.Status, positivePayments.map((pay, i) => ({
@@ -481,5 +484,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         throw err
     }
 
-    return reply.status(201).send({ message: 'Vendas e baixas de CMV sincronizadas com sucesso' })
+    // Fase 4 do Mergulho (02:P11): diz quais vendas foram aceitas, como os cancelamentos e os movimentos de caixa. Hoje o lote
+    // é tudo ou nada (uma recusa desfaz o lote inteiro com 409), então são todas; o PDV novo só marca como enviadas as que
+    // estiverem aqui, e nada se perde se um dia a nuvem passar a pular uma venda.
+    return reply.status(201).send({ message: 'Vendas e baixas de CMV sincronizadas com sucesso', accepted: sales.map(s => s.Uuid) })
 }

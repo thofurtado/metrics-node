@@ -34,6 +34,16 @@ import {
     postGarcomPedirConta
 } from './garcom-cloud-controller'
 
+/**
+ * A chave do PDV (cabeçalho x-api-key). Fase 0 do Mergulho (02:P1, 15/10/2026): uma regra só, usada pela sincronia e pelas
+ * rotas de pedidos do PDV (public/http/autorizacao-pedidos.ts). A troca de chaves (02:P2) muda a regra AQUI, e as duas
+ * seguem juntas.
+ */
+export function chaveDoPdvValida(header: unknown): boolean {
+    const validKey = process.env.PDV_API_KEY || 'chave-secreta-pdv-123'
+    return typeof header === 'string' && header !== '' && header === validKey
+}
+
 export async function pdvSyncRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
         // Rotas do Garçom Móvel podem autenticar via chave específica ou passar direto para testes de salão
@@ -41,9 +51,7 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
             return
         }
 
-        const apiKey = request.headers['x-api-key']
-        const validKey = process.env.PDV_API_KEY || 'chave-secreta-pdv-123'
-        if (apiKey !== validKey) {
+        if (!chaveDoPdvValida(request.headers['x-api-key'])) {
             return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API PDV inválida' })
         }
     })

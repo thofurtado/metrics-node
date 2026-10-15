@@ -5,6 +5,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
+import { entrouSemChave } from '../autorizacao-pedidos'
 
 export async function updateOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -29,7 +30,11 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method, card_machine, delivery_man, cancel_code, cancel_reason, skip_platform } = bodySchema.parse(request.body);
+    const corpo = bodySchema.parse(request.body);
+    const { status, payment_method, card_machine, delivery_man, cancel_code, cancel_reason, skip_platform } = corpo;
+    // Fase 0 do Mergulho (02:P1): sem a chave do PDV nem o login (passo 1 da transição), a chamada não escolhe caixa nem lança
+    // dinheiro nele. O PDV nunca manda o caixa nesta rota; só a web, que agora entra sempre com o login.
+    const cashier_session_id = entrouSemChave(request) ? undefined : corpo.cashier_session_id;
     const tenantDbName = requestContext.get('tenant') as string | undefined;
 
     try {
@@ -125,12 +130,26 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
                 observacao: updatedObs
             }
         });
-        // Notifica o ciclo de vida para o iFood e 99Food
-                if (existingPedido.origem === 'Delivery' && status !== 'cancelled') {
-            handleDeliveryOrderStatusChange(existingPedido, status, { dbName: tenantDbName }).catch(e =>
+        // Notifica o ciclo de vida para o iFood e 99Food. Fase 4 do Mergulho (02:P14): antes ia "solto" e a resposta era sempre
+        // sucesso; se o iFood/99 recusasse a confirmação ou o despacho, o erro ficava só no registro da nuvem e o PDV achava que
+        // tinha dado certo. Agora espera a plataforma (até 8 s) e devolve o resultado em platform_ok/platform_message. A
+        // resposta continua 200, porque a situação na nuvem mudou de verdade (o PDV antigo não lê esses campos).
+        let platformOk: boolean | null = null
+        if (existingPedido.origem === 'Delivery' && status !== 'cancelled') {
+            const avisoDaPlataforma = handleDeliveryOrderStatusChange(existingPedido, status, { dbName: tenantDbName }).catch(e => {
                 console.error('[Delivery Lifecycle Hook Error]:', e)
-            );
+                return false
+            })
+            platformOk = await Promise.race([
+                avisoDaPlataforma,
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 8000).unref?.()),
+            ])
         }
+        const platformMessage = platformOk === false
+            ? `A plataforma (iFood/99) não confirmou a mudança para "${status}". A situação mudou no Metrics; confira o pedido no portal da plataforma.`
+            : platformOk === null && existingPedido.origem === 'Delivery' && status !== 'cancelled'
+                ? 'A plataforma não respondeu a tempo; a confirmação segue em segundo plano.'
+                : null
 
 
         // Se o status for 'delivered' e tiver cashier_session_id, lança automaticamente na sessão de caixa
@@ -212,7 +231,9 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
 
         return reply.status(200).send({
             message: 'Status atualizado para ' + status,
-            pedido: updated
+            pedido: updated,
+            platform_ok: platformOk,
+            platform_message: platformMessage
         });
     } catch (error) {
         console.error('Erro ao atualizar status do pedido em pedidos:', error);

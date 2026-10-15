@@ -90,6 +90,17 @@ export async function postTablesSync(request: FastifyRequest, reply: FastifyRepl
                 })
             }
         }
+
+        // Fase 4 do Mergulho (02:P10): o PDV manda a foto de TODAS as mesas abertas, e a mesa fechada simplesmente não vem
+        // (ninguém manda "Livre"). Antes ela ficava para sempre no painel do dono. Agora sai a que não veio na foto, menos a
+        // que tem item lançado pelo garçom na nuvem (contingência sem o PDV: é o único registro daquele consumo).
+        const naFoto = tables.map(t => t.identificador)
+        await (prisma as any).activeTable.deleteMany({
+            where: {
+                identifier: { notIn: naFoto },
+                items: { none: { waiter_name: { not: null } } },
+            }
+        })
     } catch (tableErr) {
         console.error('[Sync] Falha ao persistir snapshot de mesas ativas:', tableErr)
     }
