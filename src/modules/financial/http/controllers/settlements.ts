@@ -116,6 +116,12 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
         return reply.status(400).send({ message: 'Esta liquidação já está pendente, não há o que reverter.' })
     }
 
+    // Mergulho 13:D8 (revisão de 15/10/2026): a reversão tira o valor do saldo, o que só é certo para RECEITA (a lista de
+    // liquidações só mostra receitas). A rota aceitava qualquer lançamento pago: com uma despesa, tirava o valor de novo.
+    if (transaction.operation !== 'income') {
+        return reply.status(400).send({ message: 'Só um recebimento (liquidação) pode ser revertido aqui.' })
+    }
+
     try {
         await prisma.$transaction(async (tx) => {
             // Reversão perfeita: a liquidação (automática ou manual) creditou o saldo da conta ao
