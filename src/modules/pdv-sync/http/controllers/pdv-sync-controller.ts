@@ -477,13 +477,15 @@ export async function getPaymentsSync(request: FastifyRequest, reply: FastifyRep
         AccountId: p.account_id,
         Active: p.active,
         SefazTpag: p.sefaz_tPag,
+        // Tipo da forma (15/10/2026): "PLATAFORMA" = paga no app do iFood/99 (o PDV usa no despacho do pago no app); null = comum
+        Kind: p.kind ?? null,
         CreatedAt: p.created_at
     }))
     return reply.status(200).send(formatted)
 }
 
 export async function getPaymentIdentifiersSync(request: FastifyRequest, reply: FastifyReply) {
-    const identifiers = await prisma.paymentIdentifier.findMany({ where: { active: true } })
+    const identifiers = await prisma.paymentIdentifier.findMany({ where: { active: true }, include: { platform: { select: { code: true } } } })
     // "Type" no formato do PDV (10/10/2026): o PDV lê o tipo por esse campo, que não vinha, e os identificadores da web
     // chegavam vazios e nunca apareciam no PDV. Nome sem espaço sobrando ("Correntista " na Katatau).
     const formatted = identifiers.map(i => ({
@@ -494,6 +496,8 @@ export async function getPaymentIdentifiersSync(request: FastifyRequest, reply: 
         IsStockEvasion: i.is_stock_evasion,
         PaymentMethodId: i.payment_method_id,
         Active: i.active,
+        // Plataforma do identificador da forma "Pago na plataforma" (15/10/2026): "IFOOD", "99FOOD" ou null
+        PlatformCode: i.platform?.code ?? null,
         CreatedAt: i.created_at
     }))
     return reply.status(200).send(formatted)

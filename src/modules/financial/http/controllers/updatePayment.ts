@@ -16,11 +16,13 @@ export async function updatePayment(request: FastifyRequest, reply: FastifyReply
         active_for_out: z.boolean().optional(),
         active_for_in: z.boolean().optional(),
         account_id: z.string().uuid().optional().nullable(),
+        // Tipo da forma (15/10/2026): null volta a forma comum; 'PLATAFORMA' = paga no app do iFood/99; sem o campo, não mexe
+        kind: z.enum(['PLATAFORMA']).optional().nullable(),
     })
 
     const { id } = updatePaymentParamsSchema.parse(request.params)
     const { name, installment_limit, in_sight,
-            show_in_menu, active_for_out, active_for_in, account_id } = updatePaymentBodySchema.parse(request.body)
+            show_in_menu, active_for_out, active_for_in, account_id, kind } = updatePaymentBodySchema.parse(request.body)
 
     try {
         const updatePaymentUseCase = MakeUpdatePaymentUseCase()
@@ -34,6 +36,7 @@ export async function updatePayment(request: FastifyRequest, reply: FastifyReply
             active_for_out: show_in_menu !== undefined ? show_in_menu : active_for_out,
             active_for_in,
             account_id: account_id || undefined,
+            kind,
         })
     } catch (err) {
         if (err instanceof ResourceNotFoundError) {

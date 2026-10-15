@@ -286,6 +286,9 @@ model Payment {
   active_for_in      Boolean              @default(true)
   active_for_out     Boolean              @default(true)
   sefaz_tPag         String?
+  // Tipo da forma (15/10/2026): nulo = forma comum; "PLATAFORMA" = paga no app do iFood/99 (a plataforma repassa depois,
+  // com a comissão descontada). A plataforma de cada venda vem do identificador (payment_identifiers.platform_id).
+  kind               String?
   created_at         DateTime             @default(now())
   updated_at         DateTime             @default(now()) @updatedAt
   InstallmentPayment InstallmentPayment[]
@@ -332,6 +335,7 @@ model Account {
   payments            Payment[]
   transactions        Transaction[]
   adjustments         AccountAdjustment[]
+  deliveryPlatforms   DeliveryPlatform[]
 
   @@map("accounts")
 }
@@ -391,6 +395,12 @@ model Transaction {
   attachment_url        String?
   credit_card_id        String?
   treatment_id          String?
+  // Plataforma de entrega (15/10/2026): o repasse (receita) e a comissão (despesa) que a conferência do caixa cria para o
+  // iFood/99 levam a plataforma, para a Liquidação achar o par. platform_settlement_id junta o que foi baixado de uma vez
+  // (repasse, comissões e o ajuste da diferença), para desfazer a liquidação inteira.
+  platform_id            String?
+  platform_settlement_id String?
+  platform              DeliveryPlatform?     @relation(fields: [platform_id], references: [id], onDelete: SetNull)
   treatments            Treatment?            @relation(fields: [treatment_id], references: [id])
   InstallmentPayment    InstallmentPayment[]
   payrollEntries        PayrollEntry[]
@@ -412,6 +422,8 @@ model Transaction {
   @@index([sector_id])
   @@index([supplier_id])
   @@index([cashier_session_id])
+  @@index([platform_id])
+  @@index([platform_settlement_id])
   @@map("transactions")
 }
 
@@ -773,10 +785,13 @@ model PaymentIdentifier {
   is_correntista_debt Boolean  @default(false)
   is_stock_evasion    Boolean  @default(false)
   active              Boolean  @default(true)
+  // Plataforma de entrega do identificador da forma "Pago na plataforma" (iFood, 99Food), 15/10/2026
+  platform_id         String?
   created_at          DateTime @default(now())
   updated_at          DateTime @default(now()) @updatedAt
 
-  paymentMethod Payment? @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
+  paymentMethod Payment?          @relation(fields: [payment_method_id], references: [id], onDelete: SetNull)
+  platform      DeliveryPlatform? @relation(fields: [platform_id], references: [id], onDelete: SetNull)
 
   @@map("payment_identifiers")
 }
@@ -897,6 +912,11 @@ model CashierEntry {
 
   // Venda que gerou o lançamento (antes só pelo texto "Balcao - Pedido #1f9408ee")
   sale_id            String?
+
+  // Venda de pedido do iFood/99 (15/10/2026, vem do PDV: PlataformaCodigo e EntregaPropria), paga no app OU em dinheiro:
+  // a conferência lança a comissão da plataforma. Nulo = venda comum ou PDV antigo.
+  platform_code         String?
+  platform_own_delivery Boolean?
 
   session  CashierSession @relation(fields: [cashier_session_id], references: [id])
   client   Client?        @relation(fields: [client_id], references: [id], onDelete: SetNull)
@@ -1281,4 +1301,70 @@ model TenantIntegration {
   updated_at DateTime @default(now()) @updatedAt
 
   @@map("tenant_integrations")
+}
+
+/// Plataformas de entrega (iFood, 99Food...), 15/10/2026: comissões, taxa do pagamento online e quando a plataforma repassa.
+/// Cada loja cadastra as suas (cada loja tem o seu banco). Sem conta = o repasse fica na Conta de Transação até a Liquidação.
+model DeliveryPlatform {
+  id                               String              @id @default(uuid())
+  code                             String              @unique
+  name                             String
+  account_id                       String?
+  commission_own_delivery_pct      Float               @default(0)
+  commission_platform_delivery_pct Float               @default(0)
+  online_payment_fee_pct           Float               @default(0)
+  monthly_fee                      Float               @default(0)
+  payout_weeks_after               Int                 @default(1)
+  active                           Boolean             @default(true)
+  created_at                       DateTime            @default(now())
+  updated_at                       DateTime            @default(now()) @updatedAt
+  account                          Account?            @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  identifiers                      PaymentIdentifier[]
+  transactions                     Transaction[]
+
+  @@map("delivery_platforms")
+}
+
+/// Motoboys do PDV (15/10/2026). O id é o Uuid do motoboy no PDV, que é a fonte: a web só lê.
+model DeliveryCourier {
+  id                 String           @id
+  name               String
+  phone              String?
+  earning_mode       String           @default("FIXO")
+  value_per_delivery Float            @default(0)
+  daily_rate         Float            @default(0)
+  active             Boolean          @default(true)
+  earning_since      DateTime?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @default(now()) @updatedAt
+  payables           CourierPayable[]
+
+  @@map("delivery_couriers")
+}
+
+/// Entregas e diárias a pagar ao motoboy (15/10/2026). O id é o Uuid da EntregaAPagar do PDV. courier_uuid guarda sempre o
+/// motoboy que o PDV mandou; courier_id liga ao cadastro quando ele já chegou (o lote não cai por motoboy que ainda não subiu).
+model CourierPayable {
+  id              String           @id
+  courier_uuid    String
+  courier_id      String?
+  kind            String
+  order_uuid      String?
+  occurred_at     DateTime
+  day             String
+  description     String?
+  fee_charged     Float            @default(0)
+  amount_due      Float            @default(0)
+  status          String           @default("PENDENTE")
+  reason          String?
+  settlement_uuid String?
+  paid_at         DateTime?
+  payment_method  String?
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @default(now()) @updatedAt
+  courier         DeliveryCourier? @relation(fields: [courier_id], references: [id], onDelete: SetNull)
+
+  @@index([courier_uuid])
+  @@index([day])
+  @@map("courier_payables")
 }

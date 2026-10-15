@@ -12,10 +12,13 @@ export async function createPayment(request: FastifyRequest, reply: FastifyReply
         name: z.string(),
         installment_limit: z.number(),
         in_sight: z.boolean(),
-        account_id: z.string()
+        // Sem conta só a forma do tipo Plataforma (o repasse cai na conta da plataforma)
+        account_id: z.string().optional().nullable(),
+        // Tipo da forma (15/10/2026): nulo = comum; 'PLATAFORMA' = paga no app do iFood/99
+        kind: z.enum(['PLATAFORMA']).optional().nullable(),
     })
 
-    const { name, installment_limit, in_sight, account_id } = registerBodySchema.parse(request.body)
+    const { name, installment_limit, in_sight, account_id, kind } = registerBodySchema.parse(request.body)
     let payment
     try {
 
@@ -25,7 +28,8 @@ export async function createPayment(request: FastifyRequest, reply: FastifyReply
             name,
             installment_limit,
             in_sight,
-            account_id
+            account_id: account_id || undefined,
+            kind: kind ?? null,
         })
     } catch (err) {
 

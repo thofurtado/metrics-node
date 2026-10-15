@@ -40,6 +40,7 @@ export class PrismaPaymentsRepository implements PaymentsRepository {
                 active: true,
                 active_for_in: true,
                 active_for_out: true,
+                kind: true,
                 created_at: true,
                 updated_at: true,
                 accounts: true,

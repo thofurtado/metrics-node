@@ -30,6 +30,12 @@ import {
     deletePaymentIdentifier,
     updateCashierSessionBalance
 } from './cashier-controller'
+import {
+    getDeliveryPlatforms,
+    createDeliveryPlatform,
+    updateDeliveryPlatform,
+    deleteDeliveryPlatform,
+} from './delivery-platforms-controller'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
 import { verifyModuleAccess } from '@/http/middlewares/verify-module-access'
 
@@ -85,5 +91,11 @@ export async function cashierRoutes(app: FastifyInstance) {
         protectedApp.post('/api/payment-identifiers', createPaymentIdentifier)
         protectedApp.put('/api/payment-identifiers/:id', updatePaymentIdentifier)
         protectedApp.delete('/api/payment-identifiers/:id', deletePaymentIdentifier)
+
+        // Plataformas de entrega (iFood, 99Food), 15/10/2026: mesmo padrão e mesma proteção das maquininhas
+        protectedApp.get('/api/delivery-platforms', getDeliveryPlatforms)
+        protectedApp.post('/api/delivery-platforms', createDeliveryPlatform)
+        protectedApp.put('/api/delivery-platforms/:id', updateDeliveryPlatform)
+        protectedApp.delete('/api/delivery-platforms/:id', deleteDeliveryPlatform)
     })
 }

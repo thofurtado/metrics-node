@@ -12,6 +12,8 @@ interface UpdatePaymentUseCaseRequest {
     active_for_out?: boolean
     active_for_in?: boolean
     account_id?: string
+    /** undefined = não mexe; null = forma comum; 'PLATAFORMA' (15/10/2026) */
+    kind?: string | null
 }
 
 interface UpdatePaymentUseCaseResponse {
@@ -32,7 +34,8 @@ export class UpdatePaymentUseCase {
         show_in_menu,
         active_for_out,
         active_for_in,
-        account_id
+        account_id,
+        kind
     }: UpdatePaymentUseCaseRequest): Promise<any> {
         const payment = await this.paymentsRepository.findById(id)
 
@@ -54,7 +57,8 @@ export class UpdatePaymentUseCase {
             in_sight,
             active_for_out: isMenuOut,
             active_for_in,
-            account_id
+            account_id,
+            kind
         })
 
         return {

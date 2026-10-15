@@ -12,6 +12,8 @@ import {
     desiredClientTabs,
     paymentKind,
     planClientTabs,
+    plataformaDaVenda,
+    plataformaMudou,
     saleEntryTag,
     saleFieldsChanged,
     sameEntries,
@@ -35,6 +37,10 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         OriginIdentifier: z.string().optional().nullable(),
         Status: z.string().default('COMPLETED'),
         CreatedAt: z.string().optional(),
+        // Pedido do iFood/99 (PDV novo, 15/10/2026): de qual plataforma é a venda ("IFOOD", "99FOOD") e se a entrega foi da
+        // loja, mesmo paga em dinheiro: a conferência lança a comissão. Sem os campos (PDV antigo), nada muda.
+        PlataformaCodigo: z.string().max(40).optional().nullable(),
+        EntregaPropria: z.boolean().optional().nullable(),
         Payments: z.array(z.object({
             PaymentMethodUuid: z.string().uuid().optional().nullable(),
             Method: z.string(),
@@ -84,6 +90,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
     // PDV ("Cartão de Crédito", "Vale Refeição (VR/Sodexo/Alelo)") e a conferência, que procura pelos nomes da web, não achava a
     // taxa nem o prazo de recebimento da maquininha.
     const identificadores = new Map<string, string>()
+    // Plataforma do identificador (o "iFood" da forma "Pago na plataforma"), para a venda que não diz a plataforma
+    const plataformaDoIdentificador = new Map<string, string | null>()
     const maquininhas = new Map<string, string>()
     const metodoDoPagamento = new WeakMap<object, string>()
     for (const sale of sales) {
@@ -93,8 +101,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         }
     }
     if (identificadores.size > 0) {
-        for (const i of await prisma.paymentIdentifier.findMany({ where: { id: { in: [...identificadores.keys()] } }, select: { id: true, name: true } })) {
+        for (const i of await prisma.paymentIdentifier.findMany({ where: { id: { in: [...identificadores.keys()] } }, select: { id: true, name: true, platform: { select: { code: true } } } })) {
             identificadores.set(i.id, i.name)
+            plataformaDoIdentificador.set(i.id, i.platform?.code ?? null)
         }
     }
     if (maquininhas.size > 0) {
@@ -135,9 +144,10 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                         // Pela venda (coluna sale_id, desde 2.6.89) ou, para lançamento antigo, pelo texto
                         OR: [{ sale_id: sale.Uuid }, { sale_id: null, identification: { contains: saleEntryTag(sale.Uuid) } }],
                     },
-                    select: { id: true, identification: true, payment_method: true, amount: true }
+                    select: { id: true, identification: true, payment_method: true, amount: true, platform_code: true, platform_own_delivery: true }
                 })
                 : []
+            const plataforma = plataformaDaVenda(sale, sale.Payments.map(p => (p.IdentificadorUuid ? plataformaDoIdentificador.get(p.IdentificadorUuid) : null)))
             const entriesChanged = !sameEntries(
                 storedEntries.map(e => ({ identification: e.identification ?? '', payment_method: e.payment_method, amount: e.amount })),
                 desiredEntries,
@@ -163,6 +173,11 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             if (!changesSession) {
                 if (existingSale && existingSale.origin === null) {
                     await tx.sale.update({ where: { id: sale.Uuid }, data: detalhes })
+                }
+                // A plataforma chegou depois (PDV atualizado reenviando): completa os lançamentos, menos em caixa conferido
+                // (a conferência já lançou o financeiro; desfazer e conferir de novo pega a plataforma)
+                if (session && session.status !== 'CHECKED' && plataformaMudou(storedEntries, plataforma)) {
+                    await tx.cashierEntry.updateMany({ where: { id: { in: storedEntries.map(e => e.id) } }, data: plataforma! })
                 }
                 continue // reenvio idêntico: nada mais a gravar
             }
@@ -244,10 +259,15 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                             bank: positivePayments[i]?.PosMachineName || null,
                             client_id: paymentLinks[i]?.clientId ?? null,
                             employee_id: paymentLinks[i]?.employeeId ?? null,
+                            // Pedido do iFood/99: a plataforma e quem entregou (a conferência lança a comissão)
+                            platform_code: plataforma?.platform_code ?? null,
+                            platform_own_delivery: plataforma?.platform_own_delivery ?? null,
                             created_at: saleCreatedAt
                         }
                     })
                 }
+            } else if (plataformaMudou(storedEntries, plataforma)) {
+                await tx.cashierEntry.updateMany({ where: { id: { in: storedEntries.map(e => e.id) } }, data: plataforma! })
             }
 
             // 5. Fiado: a conta do cliente acompanha a venda (decisão de 25/09: é o registro oficial do fiado). Venda nova abre a

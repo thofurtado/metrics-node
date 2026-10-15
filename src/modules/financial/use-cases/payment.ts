@@ -4,12 +4,15 @@ import { ThisNameAlreadyExistsError } from '@/errors/this-name-already-exists-er
 import { OnlyNaturalNumbersError } from '@/errors/only-natural-numbers-error'
 import { AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
+import { KIND_PLATAFORMA } from '@/modules/cashier/services/plataformas'
 
 interface PaymentUseCaseRequest {
     name: string,
     installment_limit: number,
     in_sight: boolean,
     account_id?: string
+    /** null = forma comum; 'PLATAFORMA' = paga no app do iFood/99 (15/10/2026) */
+    kind?: string | null
 }
 interface PaymentUseCaseResponse {
     payment: Payment
@@ -21,7 +24,7 @@ export class PaymentUseCase {
         private accountsRepository: AccountsRepository
     ) { }
     async execute({
-        name,installment_limit,in_sight, account_id
+        name,installment_limit,in_sight, account_id, kind
     }: PaymentUseCaseRequest): Promise<PaymentUseCaseResponse> {
 
         const sameNamePayment = await this.paymentsRepository.findByName(name)
@@ -33,13 +36,16 @@ export class PaymentUseCase {
         let findedAccount
         if(account_id)
             findedAccount = await this.accountsRepository.findById(account_id)
-        if(!findedAccount)
+        // A forma Plataforma não precisa de conta: o repasse vai para a conta da plataforma (cadastro de plataformas)
+        const ehPlataforma = kind === KIND_PLATAFORMA
+        if(!findedAccount && !(ehPlataforma && !account_id))
             throw new ResourceNotFoundError()
         const payment = await this.paymentsRepository.create({
             name,
             installment_limit,
             in_sight,
-            account_id
+            account_id: account_id || null,
+            kind: ehPlataforma ? KIND_PLATAFORMA : null,
         })
         return {
             payment

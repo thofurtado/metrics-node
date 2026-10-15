@@ -1,10 +1,22 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
-import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-operacional'
+import { dataDoDiaOperacional, diaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { z } from 'zod'
 import { isTermPayment, saleEntryTag } from '@/modules/pdv-sync/services/cashier-sync-rules'
 import { categoriaDeCartao } from '@/modules/pdv-sync/services/pagamentos-do-pdv'
 import { motivoParaNaoAlterarSaldoInicial } from '@/modules/cashier/services/cashier-session-rules'
+import {
+    METODO_DA_PLATAFORMA,
+    SETOR_MOTOBOY,
+    SETOR_TAXAS_DE_PLATAFORMA,
+    contaDaFormaPix,
+    ehDespesaDoMotoboy,
+    montarFormasDaPlataforma,
+    planoDasPlataformas,
+    saiDaGaveta,
+    vencimentoDoDia,
+} from '@/modules/cashier/services/plataformas'
+import { setoresPorNome } from '@/modules/cashier/services/garantir-setor'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
@@ -503,6 +515,33 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             normalizeString(a.name).includes('cofre')
         ) || defaultAccount
         let totalDespesasDinheiro = 0
+        const contaTransitoria = accounts.find(a => a.is_transit) || null
+
+        // Plataformas (15/10/2026, plano 2.2): quais vendas são do iFood/99 (pela forma Plataforma + identificador, pelos textos
+        // antigos "(pago no app)" ou pelo código que o PDV manda, inclusive paga em dinheiro) e o repasse/comissão de cada uma.
+        const formasDePagamento = await tx.payment.findMany({ select: { name: true, kind: true, account_id: true, active: true } })
+        const identificadoresDePlataforma = await tx.paymentIdentifier.findMany({
+            where: { platform_id: { not: null } },
+            select: { name: true, platform: { select: { code: true } } },
+        })
+        const plataformas = await tx.deliveryPlatform.findMany()
+        // Venda antiga (sem o código no lançamento): a plataforma do pedido que a nuvem recebeu, pelo mesmo código da venda
+        const vendasSemCodigo = [...new Set(session.entries
+            .filter(e => e.type === 'SALE' && e.sale_id && !e.platform_code && !e.is_withdrawal)
+            .map(e => e.sale_id as string))]
+        const pedidosDasVendas = vendasSemCodigo.length > 0
+            ? await tx.pedido.findMany({ where: { uuid: { in: vendasSemCodigo } }, select: { uuid: true, plataforma: true } })
+            : []
+        const planoPlataformas = planoDasPlataformas(session.entries, {
+            plataformas,
+            formas: montarFormasDaPlataforma(formasDePagamento, identificadoresDePlataforma),
+            plataformaDoPedido: new Map(pedidosDasVendas.filter(p => p.plataforma).map(p => [p.uuid, p.plataforma as string])),
+        }, diaOperacional(new Date(session.opened_at)))
+        const garantirSetor = setoresPorNome(tx)
+
+        // Despesa paga no Pix (plano 2.4): fica na conta da forma Pix, paga; sem conta, pendente e sem conta (o dono baixa)
+        const contaPix = contaDaFormaPix(formasDePagamento)
+        const saidasPixPorConta = new Map<string, number>()
 
         const vendasPorBanco = new Map<string, number>()
         const vendasAPrazo = new Map<string, number>()
@@ -523,20 +562,34 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
 
             // Sangria (Retirada de Dinheiro Físico)
             if (entry.is_withdrawal) {
-                const isVale = Boolean(entry.employee_id) || 
-                    normIdent.includes('vale') || 
-                    normIdent.includes('vt') || 
-                    normIdent.includes('funcionario') || 
-                    entry.type === 'WITHDRAWAL_EMPLOYEE'
+                // Despesa do PDV (SaidaOperacional, tipo EXPENSE) sem funcionário é despesa: o texto não decide (15/10/2026).
+                // Antes, um acerto como "[Motoboy] Acerto de Valentina" tinha "vale" no texto, virava vale sem funcionário e
+                // parava a conferência inteira; e "troco" no texto virava recolhimento e a despesa sumia.
+                const despesaDoPdv = entry.type === 'EXPENSE' && !entry.employee_id
+                const isVale = !despesaDoPdv && (Boolean(entry.employee_id) ||
+                    normIdent.includes('vale') ||
+                    normIdent.includes('vt') ||
+                    normIdent.includes('funcionario') ||
+                    entry.type === 'WITHDRAWAL_EMPLOYEE')
 
-                const isRecolhimentoDonoOuCofre = 
+                // Paga no Pix (o acerto do motoboy): não sai da gaveta nem do Caixa Central (plano 2.4)
+                const pagoNoPix = !saiDaGaveta(entry)
+                const saida = pagoNoPix
+                    ? { account_id: contaPix, confirmed: Boolean(contaPix), payment_method: 'PIX' }
+                    : { account_id: centralAccount?.id || null, confirmed: true, payment_method: 'DINHEIRO' }
+                const registrarSaida = (valor: number) => {
+                    if (!pagoNoPix) totalDespesasDinheiro += valor
+                    else if (contaPix) saidasPixPorConta.set(contaPix, (saidasPixPorConta.get(contaPix) || 0) + valor)
+                }
+
+                const isRecolhimentoDonoOuCofre = !despesaDoPdv && (
                     entry.type === 'WITHDRAWAL_OWNER' ||
                     normIdent.includes('samir') ||
                     normIdent.includes('manobra') ||
                     normIdent.includes('troco') ||
                     normIdent.includes('cofre') ||
                     normIdent.includes('recolhimento') ||
-                    (normIdent === 'sangria' && !entry.sector_id) // Sangria genérica sem setor = recolhimento/cofre
+                    (normIdent === 'sangria' && !entry.sector_id)) // Sangria genérica sem setor = recolhimento/cofre
 
                 if (isVale) {
                     const employeeId = await resolveActiveEmployeeId(tx, entry)
@@ -552,47 +605,51 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         }
                     })
 
-                    // Gera a transação financeira de despesa vinculada ao Caixa Central
+                    // Gera a transação financeira de despesa vinculada ao Caixa Central (no Pix: à conta da forma Pix)
                     await tx.transaction.create({
                         data: {
                             operation: 'expense',
                             amount,
                             totalValue: amount,
-                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted} - Vale: ${entry.identification || 'Funcionário'}`,
+                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted} - Vale: ${entry.identification || 'Funcionário'}${pagoNoPix ? ' (Pix)' : ''}`,
                             cashier_session_id: session.id,
-                            confirmed: true,
-                            payment_method: 'DINHEIRO',
-                            account_id: centralAccount?.id || null,
+                            ...saida,
                             data_vencimento: session.opened_at,
                             data_emissao: session.opened_at,
                         }
                     })
-                    totalDespesasDinheiro += amount
+                    registrarSaida(amount)
                 } else if (isRecolhimentoDonoOuCofre) {
                     // Recolhimento do Dono / Retirada de Troco / Depósito em Cofre:
                     // Adiantamento do Caixa Central. Não gera nova despesa contábil pois todo o dinheiro de vendas entra no Caixa Central.
                     continue
                 } else {
-                    // Despesa operacional real da empresa (músico, fornecedor, mercado, compras com setor)
+                    // Despesa operacional real da empresa (músico, fornecedor, mercado, compras com setor). Sem setor e com o texto
+                    // antigo do acerto do motoboy ("[Motoboy]"): setor "Motoboy", criado se faltar (plano 2.4).
+                    const sectorId = entry.sector_id
+                        || (ehDespesaDoMotoboy(entry.identification) ? await garantirSetor(SETOR_MOTOBOY) : null)
                     await tx.transaction.create({
                         data: {
                             operation: 'expense',
                             amount,
                             totalValue: amount,
-                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}${entry.identification ? ` - ${entry.identification}` : ''}`,
+                            description: `Sangria Caixa ${session.period} ${operatorName} ${dateFormatted}${entry.identification ? ` - ${entry.identification}` : ''}${pagoNoPix ? ' (Pix)' : ''}`,
                             cashier_session_id: session.id,
-                            confirmed: true,
-                            payment_method: 'DINHEIRO',
-                            account_id: centralAccount?.id || null,
+                            ...saida,
                             data_vencimento: session.opened_at,
                             data_emissao: session.opened_at,
-                            sector_id: entry.sector_id || null,
+                            sector_id: sectorId,
                         }
                     })
-                    totalDespesasDinheiro += amount
+                    registrarSaida(amount)
                 }
                 continue
             }
+
+            // Venda paga no app de uma plataforma cadastrada: vira o repasse da plataforma (abaixo), nunca "a receber" da
+            // maquininha nem a prazo. A venda da plataforma paga na entrega (dinheiro, cartão) segue o caminho de sempre; só
+            // a comissão dela entra na despesa da plataforma.
+            if (planoPlataformas.noRepasse.has(entry.id)) continue
 
             // Lançamento de Vale / Consumação para Funcionário (Integrado com PayrollEntry do RH)
             if (entry.employee_id || normIdent.includes('funcionario') || normMethod.includes('funcionario')) {
@@ -805,6 +862,62 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             })
         }
 
+        // Despesas pagas no Pix: saem da conta da forma Pix (a reversão da conferência devolve, como as outras pagas)
+        for (const [contaId, total] of saidasPixPorConta) {
+            if (total === 0) continue
+            await tx.account.update({ where: { id: contaId }, data: { balance: { decrement: total } } })
+        }
+
+        // Plataformas (plano 2.2): por plataforma, o repasse (receita pendente, valor cheio das pagas no app) e as comissões
+        // (despesa pendente no setor "Taxas de plataforma"), vencendo na data do repasse e marcadas com a plataforma, para a
+        // Liquidação baixar as duas juntas. A conta é a da plataforma, passando pela Conta de Transação como a maquininha
+        // ([DEST: conta]); plataforma sem conta fica na Conta de Transação até a Liquidação.
+        for (const grupo of planoPlataformas.grupos) {
+            const { plataforma } = grupo
+            const destino = plataforma.account_id
+            const conta = contaTransitoria?.id ?? destino ?? null
+            const marcaDestino = contaTransitoria && destino ? ` [DEST: ${destino}]` : ''
+            const vencimento = vencimentoDoDia(grupo.dataRepasse)
+            const repasseEm = vencimento.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+            if (grupo.receita > 0) {
+                await tx.transaction.create({
+                    data: {
+                        operation: 'income',
+                        amount: grupo.receita,
+                        totalValue: grupo.receita,
+                        description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${plataforma.name} (repasse de ${repasseEm})${marcaDestino}`,
+                        cashier_session_id: session.id,
+                        confirmed: false,
+                        payment_method: METODO_DA_PLATAFORMA,
+                        account_id: conta,
+                        data_vencimento: vencimento,
+                        data_emissao: session.opened_at,
+                        interest: 0,
+                        platform_id: plataforma.id,
+                    }
+                })
+            }
+            if (grupo.comissao > 0) {
+                await tx.transaction.create({
+                    data: {
+                        operation: 'expense',
+                        amount: grupo.comissao,
+                        totalValue: grupo.comissao,
+                        description: `Comissão ${plataforma.name} - Caixa ${session.period} ${operatorName} ${dateFormatted} (${grupo.vendas} venda(s), repasse de ${repasseEm})${marcaDestino}`,
+                        cashier_session_id: session.id,
+                        confirmed: false,
+                        payment_method: METODO_DA_PLATAFORMA,
+                        account_id: conta,
+                        sector_id: await garantirSetor(SETOR_TAXAS_DE_PLATAFORMA),
+                        data_vencimento: vencimento,
+                        data_emissao: session.opened_at,
+                        platform_id: plataforma.id,
+                    }
+                })
+            }
+        }
+
         // Criar transação de RESUMO para a listagem (não afeta saldos devido ao tipo)
         await tx.transaction.create({
             data: {
@@ -825,7 +938,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             data: { status: 'CHECKED' }
         })
 
-        return { message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession }
+        // avisos: plataforma sem cadastro, venda paga no app sem plataforma (a web mostra depois de conferir)
+        return { message: 'Caixa auditado e consolidado financeiramente.', session: updatedSession, avisos: planoPlataformas.avisos }
         }) // fim do prisma.$transaction: se qualquer passo falhar (ex.: funcionário inválido), nada é gravado
 
         return reply.status(200).send(result)
@@ -850,6 +964,20 @@ export async function revertCashierAudit(request: FastifyRequest, reply: Fastify
 
         if (session.status !== 'CHECKED') {
             return reply.status(400).send({ message: 'Apenas caixas conferidos podem ser revertidos.' })
+        }
+
+        // Repasse de plataforma já liquidado (15/10/2026): a liquidação junta o repasse de vários caixas, as comissões e o
+        // ajuste da diferença numa baixa só. Desfazer só este caixa deixaria o resto da baixa no banco sem o par. Primeiro
+        // desfaça a liquidação do repasse (Liquidações), depois a conferência.
+        const repasseLiquidado = await prisma.transaction.findFirst({
+            where: { cashier_session_id: session.id, platform_settlement_id: { not: null } },
+            select: { description: true },
+        })
+        if (repasseLiquidado) {
+            return reply.status(409).send({
+                code: 'REPASSE_LIQUIDADO',
+                message: `O repasse da plataforma deste caixa já foi liquidado ("${repasseLiquidado.description}"). Desfaça a liquidação do repasse em Liquidações antes de reverter a conferência.`,
+            })
         }
 
         const result = await prisma.$transaction(async (tx) => {
@@ -1006,7 +1134,8 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
             const bank = (entry.bank || '').toUpperCase().trim()
 
             if (entry.is_withdrawal) {
-                sangrias += amt
+                // Saída paga no Pix (acerto do motoboy, 15/10/2026) não tirou dinheiro da gaveta
+                if (saiDaGaveta(entry)) sangrias += amt
             } else if (entry.is_addition) {
                 suprimentos += amt
             } else if (method.toLowerCase() === 'dinheiro' || bank === 'CAIXA') {
@@ -1236,7 +1365,7 @@ export async function deletePOSMachine(request: FastifyRequest, reply: FastifyRe
 export async function getPaymentIdentifiers(request: FastifyRequest, reply: FastifyReply) {
     const identifiers = await prisma.paymentIdentifier.findMany({
         orderBy: { name: 'asc' },
-        include: { paymentMethod: true }
+        include: { paymentMethod: true, platform: true }
     });
     return reply.status(200).send(identifiers);
 }
@@ -1247,6 +1376,8 @@ export async function createPaymentIdentifier(request: FastifyRequest, reply: Fa
         payment_method_id: z.string().optional().nullable(),
         is_correntista_debt: z.boolean().default(false),
         is_stock_evasion: z.boolean().default(false),
+        // Plataforma do identificador da forma "Pago na plataforma" (iFood, 99Food), 15/10/2026
+        platform_id: z.string().uuid().optional().nullable(),
     })
     const data = bodySchema.parse(request.body)
 
@@ -1256,15 +1387,19 @@ export async function createPaymentIdentifier(request: FastifyRequest, reply: Fa
     if (existing) {
         return reply.status(400).send({ message: 'Já existe um identificador cadastrado com esse nome.' })
     }
+    if (data.platform_id && !(await prisma.deliveryPlatform.findUnique({ where: { id: data.platform_id }, select: { id: true } }))) {
+        return reply.status(400).send({ message: 'Plataforma não encontrada.' })
+    }
 
     const identifier = await prisma.paymentIdentifier.create({
         data: {
             name: data.name,
             payment_method_id: data.payment_method_id || null,
             is_correntista_debt: data.is_correntista_debt,
-            is_stock_evasion: data.is_stock_evasion
+            is_stock_evasion: data.is_stock_evasion,
+            platform_id: data.platform_id || null,
         },
-        include: { paymentMethod: true }
+        include: { paymentMethod: true, platform: true }
     })
     return reply.status(201).send(identifier)
 }
@@ -1276,7 +1411,9 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
         payment_method_id: z.string().optional().nullable(),
         is_correntista_debt: z.boolean().optional(),
         is_stock_evasion: z.boolean().optional(),
-        active: z.boolean().optional()
+        active: z.boolean().optional(),
+        // null tira a plataforma; sem o campo, não mexe
+        platform_id: z.string().uuid().optional().nullable(),
     })
     const { id } = paramsSchema.parse(request.params)
     const data = bodySchema.parse(request.body)
@@ -1289,6 +1426,9 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
             return reply.status(400).send({ message: 'Já existe um identificador cadastrado com esse nome.' })
         }
     }
+    if (data.platform_id && !(await prisma.deliveryPlatform.findUnique({ where: { id: data.platform_id }, select: { id: true } }))) {
+        return reply.status(400).send({ message: 'Plataforma não encontrada.' })
+    }
 
     const identifier = await prisma.paymentIdentifier.update({
         where: { id },
@@ -1297,9 +1437,10 @@ export async function updatePaymentIdentifier(request: FastifyRequest, reply: Fa
             payment_method_id: data.payment_method_id !== undefined ? data.payment_method_id : undefined,
             is_correntista_debt: data.is_correntista_debt,
             is_stock_evasion: data.is_stock_evasion,
-            active: data.active
+            active: data.active,
+            platform_id: data.platform_id !== undefined ? data.platform_id : undefined,
         },
-        include: { paymentMethod: true }
+        include: { paymentMethod: true, platform: true }
     })
     return reply.status(200).send(identifier)
 }

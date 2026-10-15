@@ -15,6 +15,8 @@ import {
     shouldApplyClose,
     terminalToStore,
 } from '../../services/cashier-sync-rules'
+import { setorDaDespesa } from '@/modules/cashier/services/plataformas'
+import { setoresPorNome } from '@/modules/cashier/services/garantir-setor'
 
 /**
  * Determina o período do dia caso não seja informado
@@ -164,9 +166,14 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
         valor: z.number(),
         data_transacao: z.string().optional(),
         observacao: z.string().optional().nullable(),
-        payment_method: z.string().optional().default('Dinheiro'),
+        payment_method: z.string().optional().nullable(),
         // Funcionário do vale (PDV 2.5.23 em diante): o funcionário do RH ou o usuário ligado a um
         employee_id: z.string().uuid().optional().nullable(),
+        // Setor da despesa (PDV novo, 15/10/2026): o nome, ex.: "Motoboy". Aceita "categoria" e "Categoria", e a forma também
+        // como "PaymentMethod" (o PDV manda este lote em minúsculas; o DTO do PDV tem os nomes com maiúscula)
+        categoria: z.string().optional().nullable(),
+        Categoria: z.string().optional().nullable(),
+        PaymentMethod: z.string().optional().nullable(),
     }))
 
     const movements = movementsSchema.parse(request.body)
@@ -180,6 +187,7 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
     const ignored: { uuid: string; reason: string }[] = []
 
     await prisma.$transaction(async (tx) => {
+        const garantirSetor = setoresPorNome(tx)
         for (const mov of movements) {
             // Verifica se a sessão de caixa existe
             const session = await tx.cashierSession.findUnique({
@@ -221,29 +229,41 @@ export async function postCashierMovementsSync(request: FastifyRequest, reply: F
                 employeeId = employee?.id ?? null
             }
 
+            // Forma da saída (15/10/2026): "Pix" no acerto do motoboy no Pix (não sai da gaveta nem do Caixa Central na
+            // conferência). Sem forma = Dinheiro, como sempre.
+            const forma = (mov.payment_method || mov.PaymentMethod || '').trim() || 'Dinheiro'
+
+            // Setor da despesa (SaidaOperacional) pelo nome que o PDV mandou (sem acento/maiúscula; cria o setor se faltar), ou
+            // "Motoboy" para o texto antigo "[Motoboy] Acerto de ...". Só na despesa: sangria com setor viraria despesa na
+            // conferência. Sem nada: não mexe no setor que alguém escolheu na web.
+            const nomeDoSetor = entryType === 'EXPENSE' ? setorDaDespesa(mov.categoria ?? mov.Categoria, ident) : null
+            const sectorId = nomeDoSetor ? await garantirSetor(nomeDoSetor) : null
+
             await tx.cashierEntry.upsert({
                 where: { id: mov.uuid },
                 update: {
                     amount: mov.valor,
-                    payment_method: mov.payment_method || 'Dinheiro',
+                    payment_method: forma,
                     is_withdrawal: isWithdrawal,
                     is_addition: isAddition,
                     type: entryType,
                     identification: ident,
                     // PDV antigo não manda: não apaga o funcionário que alguém escolheu na web
                     ...(employeeId ? { employee_id: employeeId } : {}),
+                    ...(sectorId ? { sector_id: sectorId } : {}),
                 },
                 create: {
                     id: mov.uuid,
                     cashier_session_id: mov.cashier_session_id,
                     amount: mov.valor,
-                    payment_method: mov.payment_method || 'Dinheiro',
+                    payment_method: forma,
                     is_withdrawal: isWithdrawal,
                     is_addition: isAddition,
                     is_checked: false,
                     type: entryType,
                     identification: ident,
                     employee_id: employeeId,
+                    sector_id: sectorId,
                     created_at: createdAt,
                 }
             })

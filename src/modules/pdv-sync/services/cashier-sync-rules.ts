@@ -349,3 +349,47 @@ export function normalizeCounted(counted: Record<string, unknown> | null | undef
 export function shouldReverseStock(destino: string | null | undefined, alreadyRestored: boolean): boolean {
     return !alreadyRestored && (destino || '').trim().toUpperCase() === 'ESTORNO'
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Venda de plataforma (15/10/2026, plano das plataformas 2.2): o PDV diz de qual plataforma é a venda (iFood, 99Food) e se a
+// entrega foi da loja, inclusive na paga em dinheiro (decisão D4 do Thomás: ela também paga comissão). Vai em todos os
+// lançamentos da venda (cashier_entries.platform_code / platform_own_delivery).
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface PlataformaDaVenda {
+    platform_code: string | null
+    platform_own_delivery: boolean | null
+}
+
+/** Código de plataforma: só letras e números, em maiúsculas ("99Food" → 99FOOD). Vazio = null. */
+function codigoDaPlataforma(texto: string | null | undefined): string | null {
+    const c = (texto ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+    return c || null
+}
+
+/**
+ * A plataforma da venda: o que o PDV mandou (PlataformaCodigo, PDV novo) ou, sem isso, a do identificador do pagamento
+ * ligado a uma plataforma ("iFood" da forma "Pago na plataforma"). undefined = o PDV não disse nada (PDV antigo): os
+ * lançamentos guardados não são mexidos.
+ */
+export function plataformaDaVenda(
+    sale: { PlataformaCodigo?: string | null; EntregaPropria?: boolean | null },
+    codigosDosIdentificadores: (string | null | undefined)[],
+): PlataformaDaVenda | undefined {
+    const doPdv = sale.PlataformaCodigo !== undefined
+    const doIdentificador = codigosDosIdentificadores.map(codigoDaPlataforma).find(c => c) ?? null
+    if (!doPdv && !doIdentificador && sale.EntregaPropria === undefined) return undefined
+    return {
+        platform_code: codigoDaPlataforma(sale.PlataformaCodigo) ?? doIdentificador,
+        platform_own_delivery: sale.EntregaPropria ?? null,
+    }
+}
+
+/** Os lançamentos guardados têm outra plataforma/entrega que a venda diz agora? */
+export function plataformaMudou(
+    guardados: { platform_code: string | null; platform_own_delivery: boolean | null }[],
+    desejada: PlataformaDaVenda | undefined,
+): boolean {
+    if (!desejada) return false
+    return guardados.some(e => (e.platform_code ?? null) !== desejada.platform_code || (e.platform_own_delivery ?? null) !== desejada.platform_own_delivery)
+}
