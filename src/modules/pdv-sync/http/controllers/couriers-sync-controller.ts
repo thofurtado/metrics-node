@@ -16,7 +16,8 @@ import {
 
 const motoboySchema = z.object({
     Uuid: z.string().uuid(),
-    Nome: z.string().trim().min(1),
+    // Nome vazio não derruba o motoboy (o PDV marca o lote como enviado em qualquer 2xx): vira "Motoboy sem nome"
+    Nome: z.string().optional().nullable(),
     Telefone: z.string().optional().nullable(),
     FormaGanho: z.string().optional().nullable(),
     ValorPorEntrega: z.number().optional().nullable(),

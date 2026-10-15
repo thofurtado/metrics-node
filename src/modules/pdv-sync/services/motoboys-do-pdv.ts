@@ -10,7 +10,7 @@ export type SituacaoDaEntrega = 'PENDENTE' | 'PAGA' | 'NAO_PAGA'
 
 export interface MotoboyDoPdv {
     Uuid: string
-    Nome: string
+    Nome?: string | null
     Telefone?: string | null
     FormaGanho?: string | null
     ValorPorEntrega?: number | null
@@ -82,7 +82,7 @@ export function formaDoPagamento(texto: string | null | undefined): 'Dinheiro' |
 export function normalizarMotoboy(m: MotoboyDoPdv) {
     return {
         id: m.Uuid,
-        name: m.Nome.trim(),
+        name: (m.Nome ?? '').trim() || 'Motoboy sem nome',
         phone: m.Telefone?.trim() || null,
         earning_mode: formaDeGanho(m.FormaGanho),
         value_per_delivery: centavos(m.ValorPorEntrega),
