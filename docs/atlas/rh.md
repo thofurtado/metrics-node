@@ -1,6 +1,6 @@
 # RH e ponto
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/rh.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 15/10/2026 a partir do código e de `modulos/rh.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -76,14 +76,18 @@ Funcionários, batidas de ponto (o dia do ponto vira às 04:00 de Brasília), po
 ### Relógio de ponto: envio de batidas — Ok
 - **Frequência:** a cada 30 s, só se houver batida não enviada
 - **Onde roda:** Computador do Metrics.Ponto → `Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)`
+- **A cada vez:** Manda as pendentes, cada uma com o número dela no computador, e lê a resposta batida por batida: enviada, recusada (fica guardada no computador com o motivo e aparece na barra por 48 h) ou passageira (banco da nuvem fora: a nuvem responde 503 e tudo tenta de novo).
 - **Por que existe:** Batida feita sem internet sobe quando a internet volta.
-- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:205`
+- **Desde:** 15/10/2026 (Mergulho 01:R3; antes, com 200, marcava todas como enviadas)
+- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:221`, `Metrics.Ponto/ApiService.cs (SyncOfflinePunchesAsync)`, `metrics-node/src/modules/hr/http/controllers/time-clock.ts (syncOffline)`
 
 ### Relógio de ponto: lista de funcionários — Ok
-- **Frequência:** ao abrir e a cada 30 min
+- **Frequência:** ao abrir e a cada 5 min com internet (falhou: tenta de novo a cada 30 s)
 - **Onde roda:** Computador do Metrics.Ponto → `Nuvem: GET /hr/employees/sync`
-- **Por que existe:** Funcionário novo pode bater o ponto sem reiniciar o relógio.
-- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:207`
+- **A cada vez:** Troca a lista do computador pela lista de ATIVOS da nuvem: entra quem é novo e sai quem foi desligado. Só troca com resposta de verdade (falha ao baixar não apaga nada).
+- **Por que existe:** Funcionário novo pode bater o ponto sem internet, e quem saiu do RH não bate mais pelo computador.
+- **Desde:** 15/10/2026 (Mergulho 01:R1 e 01:R10; antes só ao abrir e nos minutos :00 e :30, e nunca tirava ninguém)
+- **Onde no código:** `Metrics.Ponto/MainWindow.xaml.cs:247`, `Metrics.Ponto/DatabaseService.cs (ReplaceEmployees)`
 
 ## Tabelas e Estrutura de Dados
 

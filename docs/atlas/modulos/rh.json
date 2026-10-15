@@ -249,21 +249,28 @@
       "porque": "Batida feita sem internet sobe quando a internet volta.",
       "situacao": "ok",
       "ondeNoCodigo": [
-        "Metrics.Ponto/MainWindow.xaml.cs:205"
-      ]
+        "Metrics.Ponto/MainWindow.xaml.cs:221",
+        "Metrics.Ponto/ApiService.cs (SyncOfflinePunchesAsync)",
+        "metrics-node/src/modules/hr/http/controllers/time-clock.ts (syncOffline)"
+      ],
+      "faz": "Manda as pendentes, cada uma com o número dela no computador, e lê a resposta batida por batida: enviada, recusada (fica guardada no computador com o motivo e aparece na barra por 48 h) ou passageira (banco da nuvem fora: a nuvem responde 503 e tudo tenta de novo).",
+      "desde": "15/10/2026 (Mergulho 01:R3; antes, com 200, marcava todas como enviadas)"
     },
     {
       "id": "ponto-funcionarios",
       "nome": "Relógio de ponto: lista de funcionários",
       "ondeRoda": "Computador do Metrics.Ponto",
       "chama": "Nuvem: GET /hr/employees/sync",
-      "frequencia": "ao abrir e a cada 30 min",
-      "segundos": 1800,
-      "porque": "Funcionário novo pode bater o ponto sem reiniciar o relógio.",
+      "frequencia": "ao abrir e a cada 5 min com internet (falhou: tenta de novo a cada 30 s)",
+      "segundos": 300,
+      "porque": "Funcionário novo pode bater o ponto sem internet, e quem saiu do RH não bate mais pelo computador.",
       "situacao": "ok",
       "ondeNoCodigo": [
-        "Metrics.Ponto/MainWindow.xaml.cs:207"
-      ]
+        "Metrics.Ponto/MainWindow.xaml.cs:247",
+        "Metrics.Ponto/DatabaseService.cs (ReplaceEmployees)"
+      ],
+      "faz": "Troca a lista do computador pela lista de ATIVOS da nuvem: entra quem é novo e sai quem foi desligado. Só troca com resposta de verdade (falha ao baixar não apaga nada).",
+      "desde": "15/10/2026 (Mergulho 01:R1 e 01:R10; antes só ao abrir e nos minutos :00 e :30, e nunca tirava ninguém)"
     }
   ]
 }
