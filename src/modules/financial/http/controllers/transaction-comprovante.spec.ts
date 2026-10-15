@@ -10,6 +10,13 @@ const estado = vi.hoisted(() => ({
     pasta: '',
     anexos: new Map<string, string>(),
     execute: null as any,
+    repetido: null as null | { id: string },
+    ondeRepetido: null as any,
+}))
+
+// Mergulho 13:D11: a procura de lançamento repetido vai ao banco; aqui ela devolve o que o teste mandar
+vi.mock('@/lib/prisma', () => ({
+    prisma: { transaction: { findFirst: async (args: any) => { estado.ondeRepetido = args.where; return estado.repetido } } },
 }))
 
 vi.mock('@/modules/financial/use-cases/factories/make-transaction-use-case', () => ({
@@ -52,6 +59,8 @@ describe('Criar despesa a partir do comprovante', () => {
         estado.pasta = await fs.mkdtemp(path.join(os.tmpdir(), 'comprovantes-'))
         await fs.writeFile(path.join(estado.pasta, NOME), 'foto')
         estado.anexos = new Map()
+        estado.repetido = null
+        estado.ondeRepetido = null
         let n = 0
         estado.execute = vi.fn(async () => ({ transaction: { id: `despesa-${++n}` } }))
     })
@@ -92,5 +101,59 @@ describe('Criar despesa a partir do comprovante', () => {
         expect(r.code).toBe(200)
         expect(r.body.receipt_linked).toBeUndefined()
         expect(await naLista()).toEqual([NOME])
+    })
+})
+
+describe('Lançamento repetido (Mergulho 13:D11)', () => {
+    beforeEach(async () => {
+        estado.pasta = await fs.mkdtemp(path.join(os.tmpdir(), 'comprovantes-'))
+        await fs.writeFile(path.join(estado.pasta, NOME), 'foto')
+        estado.repetido = null
+        estado.execute = vi.fn(async () => ({ transaction: { id: 'despesa-1' } }))
+    })
+
+    afterEach(async () => {
+        await fs.rm(estado.pasta, { recursive: true, force: true })
+    })
+
+    it('igual a um de agora há pouco: recusa com o código e não cria', async () => {
+        estado.repetido = { id: 'despesa-antiga' }
+        const r = resposta()
+        await createTransaction(envio(), r)
+        expect(r.code).toBe(409)
+        expect(r.body.code).toBe('LANCAMENTO_REPETIDO')
+        expect(r.body.transaction_id).toBe('despesa-antiga')
+        expect(estado.execute).not.toHaveBeenCalled()
+    })
+
+    it('repetido com comprovante: o comprovante continua na lista', async () => {
+        estado.repetido = { id: 'despesa-antiga' }
+        const r = resposta()
+        await createTransaction(envio({ receipt_filename: NOME }), r)
+        expect(r.code).toBe(409)
+        expect(await naLista()).toEqual([NOME])
+    })
+
+    it('de propósito (allow_repeat): cria mesmo havendo um igual', async () => {
+        estado.repetido = { id: 'despesa-antiga' }
+        const r = resposta()
+        await createTransaction(envio({ allow_repeat: true }), r)
+        expect(r.code).toBe(200)
+        expect(estado.execute).toHaveBeenCalledTimes(1)
+    })
+
+    it('procura com os padrões de gravação (descrição vazia, forma BOLETO)', async () => {
+        await createTransaction(envio({ description: null }), resposta())
+        expect(estado.ondeRepetido.description).toBe('')
+        expect(estado.ondeRepetido.payment_method).toBe('BOLETO')
+        expect(estado.ondeRepetido.amount).toBe(596.5)
+        expect(estado.ondeRepetido.created_at.gte).toBeInstanceOf(Date)
+    })
+
+    it('parcelado não passa pela procura', async () => {
+        estado.repetido = { id: 'despesa-antiga' }
+        const r = resposta()
+        await createTransaction(envio({ installments_count: 3 }), r)
+        expect(r.code).toBe(200)
     })
 })
