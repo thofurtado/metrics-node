@@ -922,10 +922,28 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
     const startOfMonth = new Date(targetYear, targetMonth, 1)
     const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59)
 
+    // Fase 4 do Mergulho (14:X2): antes carregava, com os lançamentos, todos os caixas do começo do mês até hoje
+    // (num mês antigo, meses inteiros a mais; a resposta já era filtrada no fim). Só o caixa seguinte ao mês é
+    // necessário, para comparar a abertura dele com o troco do último caixa do mês: carrega o mês e o primeiro dia
+    // com caixa depois dele (o dia inteiro, porque a ordem é por dia e depois por turno).
+    const primeiroDepoisDoMes = await prisma.cashierSession.findFirst({
+        where: { opened_at: { gt: endOfMonth } },
+        orderBy: { opened_at: 'asc' },
+        select: { opened_at: true }
+    })
+    const limiteDaBusca = primeiroDepoisDoMes
+        ? new Date(
+            primeiroDepoisDoMes.opened_at.getFullYear(),
+            primeiroDepoisDoMes.opened_at.getMonth(),
+            primeiroDepoisDoMes.opened_at.getDate() + 1
+        )
+        : null
+
     const sessions = await prisma.cashierSession.findMany({
         where: {
             opened_at: {
                 gte: startOfMonth,
+                ...(limiteDaBusca ? { lt: limiteDaBusca } : { lte: endOfMonth }),
             }
         },
         include: { entries: true }
