@@ -19,6 +19,8 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         status: z.string().nullable().optional(),
         client_name: z.string().nullable().optional().default('Cliente Delivery').transform(v => v || 'Cliente Delivery'),
         client_phone: z.string().nullable().optional().default('00000000000').transform(v => v || '00000000000'),
+        // Código do cliente (o mesmo no PDV e na nuvem), mandado pelo PDV novo (02:P3)
+        client_id: z.string().uuid().nullable().optional(),
         street: z.string().nullable().optional().default('').transform(v => v || ''),
         number: z.union([z.string(), z.number()]).nullable().optional().transform(v => v !== undefined && v !== null ? String(v).trim() : ''),
         neighborhood: z.string().nullable().optional().default('').transform(v => v || ''),
@@ -112,14 +114,23 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             phoneVariants.push(cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2))
         }
 
-        let client = await prisma.client.findFirst({
-            where: {
-                phone: { in: Array.from(new Set(phoneVariants)) }
-            },
-            include: {
-                addresses: true
-            }
-        })
+        // Fase 2 do Mergulho (02:P3): pedido sem telefone (o PDV manda "00000000000") não junta clientes diferentes num só. O
+        // PDV novo manda o código do cliente (o mesmo nos dois lados); sem ele, só reaproveita o cliente desse telefone que
+        // tem o MESMO nome. Antes todo pedido sem telefone caía no primeiro cliente "00000000000".
+        const semTelefone = /^0*$/.test(rawDigits)
+        let client = body.client_id
+            ? await prisma.client.findUnique({ where: { id: body.client_id }, include: { addresses: true } })
+            : null
+        if (!client) {
+            client = await prisma.client.findFirst({
+                where: semTelefone
+                    ? { phone: { in: Array.from(new Set(phoneVariants)) }, name: { equals: body.client_name, mode: 'insensitive' } }
+                    : { phone: { in: Array.from(new Set(phoneVariants)) } },
+                include: {
+                    addresses: true
+                }
+            })
+        }
 
         let targetAddressId: string | null = null
         const norm = (s?: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
@@ -152,7 +163,7 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
         } else {
             // Se o cliente já existia:
             // Atualiza telefone para 11 dígitos caso estivesse com 10
-            if (cleanPhone.length === 11 && client.phone.length !== 11) {
+            if (!semTelefone && cleanPhone.length === 11 && (client.phone ?? '').length !== 11) {
                 await prisma.client.update({
                     where: { id: client.id },
                     data: { phone: cleanPhone }
@@ -204,9 +215,12 @@ export async function createOnlineOrder(request: FastifyRequest, reply: FastifyR
             }
         }
 
-        // Trava Anti-Duplicidade (Idempotência)
+        // Trava Anti-Duplicidade (Idempotência). Fase 2 do Mergulho (02:P3): só para quem não manda o código do pedido (o
+        // cardápio, num clique duplo). O PDV manda o código (uuid) de cada pedido, e a busca logo acima já devolve o mesmo
+        // pedido num reenvio; e pedido sem telefone nunca é "repetição" de outro. Antes duas retiradas de R$ 30 seguidas no
+        // PDV viravam uma só (a nuvem devolvia o primeiro pedido no lugar do segundo).
         const recentDuplicateWindow = new Date(Date.now() - 2 * 60 * 1000)
-        const existingRecentOrder = await prisma.pedido.findFirst({
+        const existingRecentOrder = body.uuid || semTelefone ? null : await prisma.pedido.findFirst({
             where: {
                 cliente_id: client.id,
                 valor_final: body.total_amount,
