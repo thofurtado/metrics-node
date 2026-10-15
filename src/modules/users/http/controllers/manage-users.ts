@@ -126,6 +126,20 @@ export async function updateUser(request: FastifyRequest, reply: FastifyReply) {
         const upperRole = role.toUpperCase()
         updateData.role = upperRole === 'MEMBER' ? 'TECHNICIAN' : upperRole
     }
+
+    // Fase 0 do Mergulho (achado 17:U2): não deixar a loja ficar SEM nenhum administrador. Se este usuário é ADMIN e o
+    // papel está sendo rebaixado, só permite se existir outro ADMIN (senão o dono se trancava para fora).
+    if (updateData.role && updateData.role !== 'ADMIN') {
+        const alvo = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+        if (alvo?.role === 'ADMIN') {
+            const totalAdmins = await prisma.user.count({ where: { role: 'ADMIN' } })
+            if (totalAdmins <= 1) {
+                return reply.status(409).send({
+                    message: 'Esta loja ficaria sem administrador. Promova outro usuário a administrador antes de rebaixar este.',
+                })
+            }
+        }
+    }
     if (password_hash) {
         updateData.password_hash = password_hash
     }
