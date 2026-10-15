@@ -4,6 +4,7 @@ import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-opera
 import { z } from 'zod'
 import { isTermPayment, saleEntryTag } from '@/modules/pdv-sync/services/cashier-sync-rules'
 import { categoriaDeCartao } from '@/modules/pdv-sync/services/pagamentos-do-pdv'
+import { motivoParaNaoAlterarSaldoInicial } from '@/modules/cashier/services/cashier-session-rules'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
@@ -1353,8 +1354,15 @@ export async function updateCashierSessionBalance(request: FastifyRequest, reply
         return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
     }
 
-    if (session.status === 'CLOSED' || session.status === 'AUDITED') {
-        return reply.status(400).send({ message: 'Não é possível alterar o saldo de um caixa já fechado ou auditado.' })
+    // Fase 1 do Mergulho (14:X1): antes só recusava 'CLOSED'/'AUDITED' (nunca gravados) e o fundo de um caixa
+    // fechado ou conferido podia mudar. Agora: conferido ninguém muda; em conferência, só o ADMIN.
+    const requesterId = request.user?.sub
+    const requester = requesterId
+        ? await prisma.user.findUnique({ where: { id: requesterId }, select: { role: true } })
+        : null
+    const recusa = motivoParaNaoAlterarSaldoInicial(session.status, requester?.role === 'ADMIN')
+    if (recusa) {
+        return reply.status(400).send({ message: recusa })
     }
 
     const updatedSession = await prisma.cashierSession.update({
