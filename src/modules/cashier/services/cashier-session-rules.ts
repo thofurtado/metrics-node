@@ -26,3 +26,18 @@ export function motivoParaNaoAlterarSaldoInicial(status: string | null | undefin
     }
     return null
 }
+
+/** Marca que liga o vale do RH (payroll_entries) ao caixa que o gerou: "(Caixa <uuid da sessão>)". */
+const MARCA_DO_CAIXA = /\(Caixa [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\)/i
+
+/**
+ * Fase 4 do Mergulho (14:X4): o vale gerado pela conferência só se liga ao caixa pela marca no texto (não há coluna
+ * para isso; ver relatório). Se o RH editar a descrição e apagar a marca, desfazer a conferência ou excluir o caixa
+ * deixa o vale para trás e conferir de novo cria outro (vale em dobro). Ao editar, a marca volta para o fim do texto.
+ */
+export function manterMarcaDoCaixa(descricaoAtual: string | null | undefined, novaDescricao: string | undefined): string | undefined {
+    if (novaDescricao === undefined) return undefined
+    const marca = (descricaoAtual || '').match(MARCA_DO_CAIXA)?.[0]
+    if (!marca || novaDescricao.includes(marca)) return novaDescricao
+    return `${novaDescricao.trim()} ${marca}`
+}

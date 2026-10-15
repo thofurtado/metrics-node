@@ -3,6 +3,7 @@ import { z } from "zod"
 import { CalculatePointRateioUseCase } from "../../use-cases/payroll/calculate-rateio"
 import { GeneratePayrollBatchUseCase } from "../../use-cases/payroll/generate-batch"
 import { prisma } from "../../../../lib/prisma"
+import { manterMarcaDoCaixa } from "../../../cashier/services/cashier-session-rules"
 
 export async function calculateRateio(request: FastifyRequest, reply: FastifyReply) {
     const calculateRateioBodySchema = z.object({
@@ -344,7 +345,8 @@ export async function updatePayrollEntry(request: FastifyRequest, reply: Fastify
         where: { id },
         data: {
             amount: amount,
-            description: description
+            // Mergulho 14:X4: o vale da conferência de caixa guarda a marca "(Caixa <id>)"; editar o texto não a apaga
+            description: manterMarcaDoCaixa(entry.description, description)
         }
     })
 
