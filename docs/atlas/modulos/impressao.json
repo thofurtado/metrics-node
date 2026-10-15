@@ -175,14 +175,17 @@
       "id": "kds-itens",
       "nome": "Tela da cozinha (KDS): itens",
       "ondeRoda": "TV ou box da cozinha",
-      "chama": "Core Service da loja: /api/kds/items",
+      "chama": "Core Service da loja: /api/kds/items (e, no app novo, os toques guardados em POST /api/kds/items/{id}/status e os cancelados em /api/kds/cancelados)",
       "frequencia": "a cada 5 s",
       "segundos": 5,
       "quantos": "1 por tela de cozinha",
-      "porque": "Mostrar na cozinha os itens a preparar.",
+      "faz": "Mergulho 05:K5, K7, K8 (15/10/2026): a cada volta, primeiro envia os toques guardados no aparelho (fila no SharedPreferences, na ordem, com a hora do toque), depois busca os itens e os cancelados dos últimos 15 min (só leitura da tabela itens_cancelados). Sem rede, a última lista fica na tela com a faixa 'Sem conexão'.",
+      "porque": "Mostrar na cozinha os itens a preparar, sem perder o toque do cozinheiro quando o Wi-Fi oscila e avisando o prato cancelado no PDV.",
       "situacao": "ok",
       "ondeNoCodigo": [
-        "metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74"
+        "metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74",
+        "metrics-kds/app/src/main/java/com/example/metrics_kdv/DatabaseManager.kt:196",
+        "Metrics.PDV/Metrics.CoreService/Program.cs:305"
       ]
     },
     {
