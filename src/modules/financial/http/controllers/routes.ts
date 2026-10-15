@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { verifyJwt } from '@/http/middlewares/verify-jwt'
-import { createSector } from '@/modules/financial/http/controllers/sector'
+import { createSector, updateSector, deleteSector } from '@/modules/financial/http/controllers/sector'
 import { getSector } from '@/modules/financial/http/controllers/getSector'
 import { createAccount } from '@/modules/financial/http/controllers/account'
 import { getAccount } from '@/modules/financial/http/controllers/getAccount'
@@ -63,6 +63,9 @@ export async function financialRoutes(app: FastifyInstance) {
     app.get('/dashboard/operacional', getOperationalSummary)
     app.post('/sector', { onRequest: [verifyUserRole('ADMIN')] }, createSector)
     app.get('/sectors', getSector)
+    // Fase 4 do Mergulho (17:U9): renomear e excluir (sem lançamentos) o setor, só administrador
+    app.put('/sector/:id', { onRequest: [verifyUserRole('ADMIN')] }, updateSector)
+    app.delete('/sector/:id', { onRequest: [verifyUserRole('ADMIN')] }, deleteSector)
 
     app.post('/account', createAccount)
     app.get('/accounts', getAccount)
