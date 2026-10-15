@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { contaComoRecebivel, janelaDasContasDoMes, type RecebivelDaConta } from '../../services/conta-do-cliente'
+import { desfazerLiquidacaoDoRepasse } from './platform-settlements'
 
 const CARD_PAYMENT_METHODS = [
     'CREDITO', 'DEBITO', 'PIX', 'VOUCHER', 
@@ -27,7 +28,8 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
         sortDir: z.string().optional().default('desc'),
         month: z.string().optional(),
         year: z.string().optional(),
-        type: z.enum(['automatic', 'term', 'all']).optional().default('automatic'),
+        // 'platform' (15/10/2026): os repasses do iFood/99 (a baixa junto com as comissões é em /platform-settlements)
+        type: z.enum(['automatic', 'term', 'platform', 'all']).optional().default('automatic'),
     })
     const { page, limit, sortBy, sortDir, month, year, type } = querySchema.parse(request.query)
     const take = parseInt(limit, 10)
@@ -40,6 +42,9 @@ export async function listSettlements(request: FastifyRequest, reply: FastifyRep
 
     if (type === 'automatic') {
         whereClause.payment_method = { in: CARD_PAYMENT_METHODS }
+        whereClause.cashier_session_id = { not: null }
+    } else if (type === 'platform') {
+        whereClause.platform_id = { not: null }
         whereClause.cashier_session_id = { not: null }
     } else if (type === 'term') {
         whereClause.OR = [
@@ -122,6 +127,13 @@ export async function revertSettlement(request: FastifyRequest, reply: FastifyRe
         return reply.status(400).send({ message: 'Só um recebimento (liquidação) pode ser revertido aqui.' })
     }
 
+    // Repasse de plataforma (15/10/2026): foi baixado junto com as comissões e o ajuste; desfaz a liquidação inteira, senão as
+    // comissões ficariam pagas sem o repasse.
+    if (transaction.platform_settlement_id) {
+        await desfazerLiquidacaoDoRepasse(transaction.platform_settlement_id)
+        return reply.status(200).send({ message: 'Liquidação do repasse desfeita: o repasse e as comissões voltaram a pendentes.' })
+    }
+
     try {
         await prisma.$transaction(async (tx) => {
             // Reversão perfeita: a liquidação (automática ou manual) creditou o saldo da conta ao
@@ -155,7 +167,7 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
         sortDir: z.string().optional().default('asc'),
         month: z.string().optional(),
         year: z.string().optional(),
-        type: z.enum(['automatic', 'term', 'all']).optional().default('all'),
+        type: z.enum(['automatic', 'term', 'platform', 'all']).optional().default('all'),
     })
     const { page, limit, sortBy, sortDir, month, year, type } = querySchema.parse(request.query)
     const take = parseInt(limit, 10)
@@ -168,6 +180,8 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
 
     if (type === 'automatic') {
         whereClause.payment_method = { in: CARD_PAYMENT_METHODS }
+    } else if (type === 'platform') {
+        whereClause.platform_id = { not: null }
     } else if (type === 'term') {
         whereClause.OR = [
             { payment_method: { in: TERM_PAYMENT_METHODS } },
@@ -183,7 +197,7 @@ export async function getPendingSettlements(request: FastifyRequest, reply: Fast
         const startOfMonth = new Date(y, m - 1, 1, 0, 0, 0, 0)
         const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999)
         
-        if (type === 'automatic') {
+        if (type === 'automatic' || type === 'platform') {
             whereClause.OR = [
                 { data_emissao: { gte: startOfMonth, lte: endOfMonth } },
                 { data_vencimento: { gte: startOfMonth, lte: endOfMonth } }

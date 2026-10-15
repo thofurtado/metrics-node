@@ -42,6 +42,7 @@ import { listSettlements, revertSettlement, getPendingSettlements } from '@/modu
 import { updateCreditCardPurchase, deleteCreditCardPurchase } from '@/modules/financial/http/controllers/credit-card-purchases'
 import { triggerSettlement } from '@/modules/financial/http/controllers/trigger-settlement'
 import { settleTermDebt } from '@/modules/financial/http/controllers/settle-term-debt'
+import { listPlatformSettlements, settlePlatformPayout, revertPlatformSettlement } from '@/modules/financial/http/controllers/platform-settlements'
 
 // Fase 0 do Mergulho (17:U1): trava do módulo Financeiro em todo este grupo, menos as listas que telas de outros módulos
 // também usam (a web do Caixa lê contas e setores; a O.S. lê as formas de pagamento e grava o pagamento previsto).
@@ -91,6 +92,10 @@ export async function financialRoutes(app: FastifyInstance) {
     app.delete('/settlements/:id', revertSettlement)
     app.post('/trigger-settlement', { onRequest: [verifyUserRole('ADMIN')] }, triggerSettlement)
     app.post('/settle-term-debt', { onRequest: [verifyUserRole('ADMIN')] }, settleTermDebt)
+    // Repasse das plataformas (iFood/99), 15/10/2026: baixa o repasse junto com as comissões da mesma plataforma e data
+    app.get('/platform-settlements', listPlatformSettlements)
+    app.post('/platform-settlements', { onRequest: [verifyUserRole('ADMIN')] }, settlePlatformPayout)
+    app.delete('/platform-settlements/:id', { onRequest: [verifyUserRole('ADMIN')] }, revertPlatformSettlement)
 
     app.patch('/transaction-groups/:groupId/terminate', terminateTransactionGroup)
     app.put('/transaction-groups/:groupId/readjust', readjustTransactionGroup)
