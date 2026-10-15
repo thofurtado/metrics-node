@@ -60,8 +60,8 @@ export const app = fastify({
 app.register(fastifyRequestContext)
 
 app.addHook('onRequest', async (request, reply) => {
-    // Ignora a verificaÃƒÂ§ÃƒÂ£o de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
-    // TambÃƒÂ©m ignora arquivos estÃƒÂ¡ticos da pasta de uploads apenas para requisiÃƒÂ§ÃƒÂµes GET
+    // Ignora a verificação de tenant para rotas de health check, provisionamento e OPTIONS (Preflight do CORS)
+    // Também ignora arquivos estáticos da pasta de uploads apenas para requisições GET
     if (
         request.method === 'OPTIONS' || 
         request.url === '/public/health' || 
@@ -83,7 +83,7 @@ app.addHook('onRequest', async (request, reply) => {
         return;
     }
 
-        // 1. Identificar o domÃ­nio pelo qual a API foi chamada
+        // 1. Identificar o domínio pelo qual a API foi chamada
     let domain = request.hostname || '';
     
     // 2. Fallbacks em ordem de prioridade: header customizado, query param, Origin, Referer
@@ -113,7 +113,7 @@ app.addHook('onRequest', async (request, reply) => {
     // Remove porta se houver (ex: localhost:3333 -> localhost)
     domain = domain.split(':')[0];
 
-    // Remove o 'www.' e 'api.' para garantir que as requisiÃ§Ãµes encontrem o cliente base
+    // Remove o 'www.' e 'api.' para garantir que as requisições encontrem o cliente base
     domain = domain.replace(/^www\./, '');
     domain = domain.replace(/^api\./, '');
 
@@ -137,15 +137,15 @@ app.addHook('onRequest', async (request, reply) => {
         } catch (e) {}
     }
 
-    // 3. Busca a conexÃƒÂ£o do Prisma no TenantManager
+    // 3. Busca a conexão do Prisma no TenantManager
     const tenantPrisma = await getPrismaForDomain(domain);
     const tenantDbName = await getDbNameForDomain(domain);
     
     if (!tenantPrisma || !tenantDbName) {
-        return reply.status(403).send({ message: `Acesso Negado: Cliente nÃƒÂ£o reconhecido ou inativo para o domÃƒÂ­nio (${domain}).` });
+        return reply.status(403).send({ message: `Acesso Negado: Cliente não reconhecido ou inativo para o domínio (${domain}).` });
     }
 
-    // 4. Injeta a conexÃƒÂ£o Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
+    // 4. Injeta a conexão Prisma e o nome real do Tenant perfeitamente isolados no contexto atual
     requestContext.set('prisma', tenantPrisma);
     requestContext.set('tenant', tenantDbName);
     requestContext.set('tenantDomain', domain);
@@ -217,7 +217,7 @@ app.register(async (instance) => {
         const apiKey = request.headers['x-api-key']
         const validKey = process.env.API_KEY_PONTO || 'metrics_secret_key_2026'
         if (apiKey !== validKey) {
-            return reply.status(401).send({ message: 'Acesso nÃƒÂ£o autorizado: Chave de API invÃƒÂ¡lida' })
+            return reply.status(401).send({ message: 'Acesso não autorizado: Chave de API inválida' })
         }
     })
     instance.register(kioskRoutes)
@@ -238,17 +238,17 @@ app.setErrorHandler((error, _, reply) => {
     if (error instanceof ZodError) {
         return reply
             .status(400)
-            .send({ message: 'Erro de validaÃƒÂ§ÃƒÂ£o', issues: error.format() })
+            .send({ message: 'Erro de validação', issues: error.format() })
     }
 
     if (error instanceof ResourceNotFoundError) {
-        return reply.status(404).send({ message: 'Recurso nÃƒÂ£o encontrado' })
+        return reply.status(404).send({ message: 'Recurso não encontrado' })
     }
 
     if (env.NODE_ENV !== 'production') {
         console.error(error)
     } else {
-        // Logging habilitado temporariamente para debugar o erro 500 em produÃƒÂ§ÃƒÂ£o (Coolify)
+        // Logging habilitado temporariamente para debugar o erro 500 em produção (Coolify)
         console.error('ERRO INTERNO (PROD):', error)
         //TODO: deveriamos fazer o logo para uma ferramenta externa como datadog/ new relic/sentry
     }
