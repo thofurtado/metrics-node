@@ -5,6 +5,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { requestContext } from '@fastify/request-context'
 import { sseManager, bancoDaRequisicao } from '@/lib/sse-manager'
+import { entrouSemChave } from '../autorizacao-pedidos'
 
 export async function updateOnlineOrderStatus(request: FastifyRequest, reply: FastifyReply) {
     const prisma = requestContext.get('prisma')
@@ -29,7 +30,11 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
     });
 
     const { id } = paramsSchema.parse(request.params);
-    const { status, cashier_session_id, payment_method, card_machine, delivery_man, cancel_code, cancel_reason, skip_platform } = bodySchema.parse(request.body);
+    const corpo = bodySchema.parse(request.body);
+    const { status, payment_method, card_machine, delivery_man, cancel_code, cancel_reason, skip_platform } = corpo;
+    // Fase 0 do Mergulho (02:P1): sem a chave do PDV nem o login (passo 1 da transição), a chamada não escolhe caixa nem lança
+    // dinheiro nele. O PDV nunca manda o caixa nesta rota; só a web, que agora entra sempre com o login.
+    const cashier_session_id = entrouSemChave(request) ? undefined : corpo.cashier_session_id;
     const tenantDbName = requestContext.get('tenant') as string | undefined;
 
     try {

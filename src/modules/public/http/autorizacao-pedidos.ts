@@ -77,5 +77,11 @@ export async function exigirChaveOuLogin(request: FastifyRequest, reply: Fastify
 export async function chaveOuLoginNaTransicao(request: FastifyRequest, reply: FastifyReply) {
     if (await quemPede(request)) return
     if (pedidosExigemChave()) return reply.status(401).send({ message: MENSAGEM_SEM_CHAVE })
+    ;(request as any).pedidoSemChave = true
     avisarSemChave(request.routeOptions?.url ?? request.url.split('?')[0])
+}
+
+/** A chamada entrou sem chave nem login (passo 1)? Aí ela não lança dinheiro em caixa (o PDV nunca manda o caixa). */
+export function entrouSemChave(request: FastifyRequest): boolean {
+    return (request as any).pedidoSemChave === true
 }
