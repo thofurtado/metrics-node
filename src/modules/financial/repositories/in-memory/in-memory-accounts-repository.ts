@@ -1,5 +1,5 @@
 import { Account, Prisma } from '@prisma/client'
-import { AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
+import { AccountLinks, AccountsRepository } from '@/modules/financial/repositories/accounts-repository'
 import { randomUUID } from 'node:crypto'
 
 
@@ -82,5 +82,12 @@ export class InMemoryAccountsRepository implements AccountsRepository {
         if (index !== -1) {
             this.items.splice(index, 1)
         }
+    }
+
+    // Vínculos simulados nos testes (por padrão, nenhum)
+    public links: Record<string, Partial<AccountLinks>> = {}
+
+    async countLinks(id: string): Promise<AccountLinks> {
+        return { transactions: 0, creditCards: 0, paymentMethods: 0, posMachines: 0, ...this.links[id] }
     }
 }

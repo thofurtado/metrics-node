@@ -4,6 +4,7 @@ import { InMemoryProductsRepository } from '@/modules/items/repositories/in-memo
 import { InMemoryServicesRepository } from '@/modules/items/repositories/in-memory/in-memory-services-repository'
 import { InMemorySuppliesRepository } from '@/modules/items/repositories/in-memory/in-memory-supplies-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
+import { ResourceDependencyError } from '@/errors/resource-dependency-error'
 
 let productsRepository: InMemoryProductsRepository
 let servicesRepository: InMemoryServicesRepository
@@ -26,10 +27,22 @@ describe('Delete Item Use Case', () => {
             display_id: 1
         })
 
-        await sut.execute({ itemId: item.id })
+        const resultado = await sut.execute({ itemId: item.id })
 
         const deletedItem = await productsRepository.findById(item.id)
         expect(deletedItem).toBeNull()
+        expect(resultado).toBe('EXCLUIDO')
+    })
+
+    // Mergulho 15:E8: com vendas/movimentações o banco recusa apagar; o item é desativado e o caso de uso diz isso
+    it('item com histórico é desativado e o resultado diz DESATIVADO', async () => {
+        const item = await productsRepository.create({ name: 'Coca', price: 8, stock: 0, display_id: 2 })
+        productsRepository.delete = async () => { throw new ResourceDependencyError() }
+
+        const resultado = await sut.execute({ itemId: item.id })
+
+        expect(resultado).toBe('DESATIVADO')
+        expect((await productsRepository.findById(item.id))?.active).toBe(false)
     })
 
     /*

@@ -1109,7 +1109,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
         const transactionsToUpdate = await prisma.transaction.findMany({
             where: {
                 id: { in: ids },
-                confirmed: false // Apenas as que ainda não estão pagas
+                confirmed: false, // Apenas as que ainda não estão pagas
+                // Fase 4 do Mergulho (13:D5): compra no cartão de crédito não é paga aqui. Paga em lote, o valor saía da
+                // conta na hora e a compra sumia da fatura do sistema (que ficava menor que a do banco). Ela é paga
+                // pelo "Pagar fatura", que tira o total da conta uma vez. Mesma regra da lista de lançamentos.
+                OR: [
+                    { credit_card_id: null },
+                    { payment_method: { not: 'CREDIT_CARD' } }
+                ]
             }
         })
 

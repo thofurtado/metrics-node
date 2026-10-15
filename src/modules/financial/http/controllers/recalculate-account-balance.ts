@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { RecalculateAccountBalanceUseCase } from '@/modules/financial/use-cases/recalculate-account-balance'
+import { RecalculateAccountBalanceUseCase, RecalculoBloqueadoError } from '@/modules/financial/use-cases/recalculate-account-balance'
 import { PrismaAccountsRepository } from '@/modules/financial/repositories/prisma/prisma-accounts-repository'
 import { ResourceNotFoundError } from '@/errors/resource-not-found-error'
 
@@ -21,6 +21,10 @@ export async function recalculateAccountBalance(request: FastifyRequest, reply: 
         if (error instanceof ResourceNotFoundError) {
             return reply.status(404).send({ message: error.message })
         }
+        // Mergulho 13:D1: conta com acerto manual não é recalculada (o recálculo apagaria o acerto)
+        if (error instanceof RecalculoBloqueadoError) {
+            return reply.status(409).send({ code: 'RECALCULO_BLOQUEADO', message: error.message })
+        }
         throw error
     }
 }
@@ -38,8 +42,8 @@ export async function previewRecalculateAccountBalance(request: FastifyRequest, 
     const recalculateUseCase = new RecalculateAccountBalanceUseCase(new PrismaAccountsRepository())
 
     try {
-        const { saldoAtual, saldoNovo } = await recalculateUseCase.execute({ id, simular: true })
-        return reply.status(200).send({ saldo_atual: saldoAtual, saldo_novo: saldoNovo })
+        const { saldoAtual, saldoNovo, motivoBloqueio } = await recalculateUseCase.execute({ id, simular: true })
+        return reply.status(200).send({ saldo_atual: saldoAtual, saldo_novo: saldoNovo, bloqueado: motivoBloqueio ?? null })
     } catch (error) {
         if (error instanceof ResourceNotFoundError) {
             return reply.status(404).send({ message: error.message })

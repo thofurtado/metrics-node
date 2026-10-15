@@ -4,6 +4,7 @@ import { dataDoDiaOperacional, intervaloDoDiaOperacional } from '@/lib/dia-opera
 import { z } from 'zod'
 import { isTermPayment, saleEntryTag } from '@/modules/pdv-sync/services/cashier-sync-rules'
 import { categoriaDeCartao } from '@/modules/pdv-sync/services/pagamentos-do-pdv'
+import { motivoParaNaoAlterarSaldoInicial } from '@/modules/cashier/services/cashier-session-rules'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
     const openSchema = z.object({
@@ -921,10 +922,28 @@ export async function getMonthlyCashAudit(request: FastifyRequest, reply: Fastif
     const startOfMonth = new Date(targetYear, targetMonth, 1)
     const endOfMonth = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59)
 
+    // Fase 4 do Mergulho (14:X2): antes carregava, com os lançamentos, todos os caixas do começo do mês até hoje
+    // (num mês antigo, meses inteiros a mais; a resposta já era filtrada no fim). Só o caixa seguinte ao mês é
+    // necessário, para comparar a abertura dele com o troco do último caixa do mês: carrega o mês e o primeiro dia
+    // com caixa depois dele (o dia inteiro, porque a ordem é por dia e depois por turno).
+    const primeiroDepoisDoMes = await prisma.cashierSession.findFirst({
+        where: { opened_at: { gt: endOfMonth } },
+        orderBy: { opened_at: 'asc' },
+        select: { opened_at: true }
+    })
+    const limiteDaBusca = primeiroDepoisDoMes
+        ? new Date(
+            primeiroDepoisDoMes.opened_at.getFullYear(),
+            primeiroDepoisDoMes.opened_at.getMonth(),
+            primeiroDepoisDoMes.opened_at.getDate() + 1
+        )
+        : null
+
     const sessions = await prisma.cashierSession.findMany({
         where: {
             opened_at: {
                 gte: startOfMonth,
+                ...(limiteDaBusca ? { lt: limiteDaBusca } : { lte: endOfMonth }),
             }
         },
         include: { entries: true }
@@ -1308,10 +1327,11 @@ export async function getCashierUsers(request: FastifyRequest, reply: FastifyRep
                 }
             ]
         },
+        // Fase 4 do Mergulho (14:X8): rota aberta (tela de entrada do caixa). Não entrega mais o e-mail: qualquer um com o
+        // endereço da loja via o e-mail dos administradores. O login do caixa usa o id, não o e-mail.
         select: {
             id: true,
             name: true,
-            email: true,
             role: true
         },
         orderBy: { name: 'asc' }
@@ -1353,8 +1373,15 @@ export async function updateCashierSessionBalance(request: FastifyRequest, reply
         return reply.status(404).send({ message: 'Sessão de caixa não encontrada.' })
     }
 
-    if (session.status === 'CLOSED' || session.status === 'AUDITED') {
-        return reply.status(400).send({ message: 'Não é possível alterar o saldo de um caixa já fechado ou auditado.' })
+    // Fase 1 do Mergulho (14:X1): antes só recusava 'CLOSED'/'AUDITED' (nunca gravados) e o fundo de um caixa
+    // fechado ou conferido podia mudar. Agora: conferido ninguém muda; em conferência, só o ADMIN.
+    const requesterId = request.user?.sub
+    const requester = requesterId
+        ? await prisma.user.findUnique({ where: { id: requesterId }, select: { role: true } })
+        : null
+    const recusa = motivoParaNaoAlterarSaldoInicial(session.status, requester?.role === 'ADMIN')
+    if (recusa) {
+        return reply.status(400).send({ message: recusa })
     }
 
     const updatedSession = await prisma.cashierSession.update({

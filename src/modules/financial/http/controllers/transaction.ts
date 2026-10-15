@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { MakeTransactionUseCase } from '@/modules/financial/use-cases/factories/make-transaction-use-case'
 import { ComprovanteReservado, ComprovanteJaUsadoError, NomeDeComprovanteInvalidoError } from '@/modules/uploads/comprovante-pendente'
 import { pastaDeComprovantes, anexoDaDespesa } from '@/modules/uploads/http/controllers/upload'
+import { prisma } from '@/lib/prisma'
+import { CODIGO_REPETIDO, MENSAGEM_REPETIDO, ondeProcurarRepetido } from '@/modules/financial/services/lancamento-repetido'
 
 
 
@@ -37,6 +39,8 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         credit_card_id: z.string().uuid().nullish(),
         // Comprovante da lista "Comprovantes" que vira esta despesa (01/10/2026): reservado antes de criar, anexado no mesmo envio
         receipt_filename: z.string().nullish(),
+        // Mergulho 13:D11: lançar de novo um lançamento igual a um de agora há pouco, de propósito (a web pergunta antes)
+        allow_repeat: z.boolean().nullish(),
     })
 
     // console.log('Payload Recebido:', JSON.stringify(request.body, null, 2))
@@ -63,6 +67,7 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         totalValue,
         credit_card_id,
         receipt_filename,
+        allow_repeat,
     } = registerBodySchema.parse(request.body)
 
     const effectiveDestinationAccountId = destination_account_id || (destination_account as string) || null
@@ -73,6 +78,21 @@ export async function createTransaction(request: FastifyRequest, reply: FastifyR
         }
         if (effectiveDestinationAccountId === account_id) {
             return reply.status(400).send({ message: 'A conta de destino deve ser diferente da conta de origem.' })
+        }
+    }
+
+    // Mergulho 13:D11: clique duplo ou reenvio do mesmo pedido não cria um segundo lançamento igual (só lançamento único;
+    // o parcelado grava cada parcela com outro valor). Fica antes da reserva do comprovante, para ele não sair da lista.
+    if (!allow_repeat && !(installments_count && installments_count > 1)) {
+        const repetido = await prisma.transaction.findFirst({
+            where: ondeProcurarRepetido({
+                operation, amount, account_id, description, payment_method, credit_card_id, supplier_id, sector_id,
+                data_vencimento: data_vencimento || null,
+            }),
+            select: { id: true },
+        })
+        if (repetido) {
+            return reply.status(409).send({ code: CODIGO_REPETIDO, message: MENSAGEM_REPETIDO, transaction_id: repetido.id })
         }
     }
 
