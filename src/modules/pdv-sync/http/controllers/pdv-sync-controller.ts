@@ -1,13 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import type { StockReason } from '@prisma/client'
+import type { Product, StockReason } from '@prisma/client'
 import { codigoDoMovimento, splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
 import { funcionarioEntraNoPdv, funcionarioInativo, funcionarioInativoParaPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { categoriasDaMaquininha, tipoDoIdentificador } from '../../services/pagamentos-do-pdv'
 import { hash } from 'bcryptjs'
 import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, cfopCoerente, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
+import { COBERTURA_MINIMA_DO_ESPELHO, INICIO_FAIXA_AFASTADOS, mesmoProduto, planoDoEspelho } from '../../services/codigo-do-sistema-da-loja'
 import { randomBytes } from 'node:crypto'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
@@ -23,6 +24,10 @@ export async function getProductsSync(request: FastifyRequest, reply: FastifyRep
         } : {
             active: true
         },
+        // Na ordem em que mudaram (16/10/2026): o PDV ainda acha produto pelo NOME quando não conhece o id. Com a ordem, a cópia
+        // desativada pelo espelho (antes) chega antes do produto certo de mesmo nome criado pelo envio (depois), e o produto
+        // certo não é trocado pela cópia no PDV
+        orderBy: { updated_at: 'asc' },
         select: {
             id: true,
             name: true,
@@ -583,21 +588,42 @@ export async function getSystemConfigSync(request: FastifyRequest, reply: Fastif
 
 
 /**
- * Mergulho (07:S5, 15/10/2026): o código que veio do Athos já é de OUTRO produto na nuvem. Antes a nuvem mudava sempre
- * esse outro produto para a faixa 900.000, mesmo um produto em uso no caixa (o operador digitava o código de sempre e não
- * achava). Agora só muda o código de produto que nunca foi vendido (sobra de importação, como os 148 da Katatau em
- * 08/10/2026); produto com venda no PDV ou no cardápio fica com o código, e o conflito volta na resposta e no registro.
+ * Produto em uso: com venda no PDV (sale_items), item de pedido do cardápio/iFood/99 (pedido_itens) ou vínculo com item de
+ * plataforma (delivery_item_mappings). Vendas e pedidos guardam só o id do produto, não o nome: renomear um produto em uso
+ * para OUTRO produto mudaria o nome no histórico (e o vínculo do iFood passaria a apontar o produto errado).
  */
-async function produtoJaVendido(productId: string): Promise<boolean> {
-    const [vendas, pedidos] = await Promise.all([
+async function produtoEmUso(productId: string): Promise<boolean> {
+    const [vendas, pedidos, vinculos] = await Promise.all([
         prisma.saleItem.count({ where: { product_id: productId } }),
         prisma.pedidoItem.count({ where: { produto_id: productId } }),
+        prisma.deliveryItemMapping.count({ where: { product_id: productId } }),
     ])
-    return vendas + pedidos > 0
+    return vendas + pedidos + vinculos > 0
 }
 
+/**
+ * Envio em lote do Sync (sistema antigo da loja -> nuvem).
+ *
+ * Com o código do sistema da loja (displayId; no Athos, o idproduto), O CÓDIGO MANDA (16/10/2026, Katatau): o produto é o
+ * que tem esse display_id. Existe: atualiza (nome, código de barras, preço, custo, categoria, ativo...). Não existe: cria com
+ * esse código. Antes a nuvem procurava pelo nome ou pelo código de barras e mudava códigos (faixa 900.000 e o "conflito" do
+ * Mergulho 07:S5); o produto que estava num código que não é do Athos agora é desativado pelo espelho (postProductsEspelhoSync).
+ * - O nome que chegou é de OUTRO produto (ver mesmoProduto; aqui só o nome conta, porque é o nome que o histórico mostra) e o
+ *   produto do código já foi usado: o antigo sai do código (faixa 900.000, inativo, com o histórico e o nome de quando foi
+ *   vendido) e nasce um produto novo no código.
+ * - OUTRO produto e nunca usado (nem o nome nem o código de barras batem): o mesmo registro passa a ser o produto do Athos com
+ *   os dados do Athos, como um produto novo (código de barras, descrição, fiscais, estoque; a foto sai), para não herdar nada
+ *   do produto errado. Mesmo código de barras = o mesmo cadastro com o nome mudado.
+ * - O MESMO produto: atualiza como sempre; CSOSN/CFOP já preenchidos na nuvem ficam (nuvem 2.6.127.0).
+ * Sem displayId (outros sistemas): procura pelo nome ou pelo código de barras, como antes.
+ *
+ * Estoque (16/10/2026, Katatau): a loja vende pelo Metrics e o saldo da nuvem é baixado pelas vendas; o do Athos fica parado.
+ * Produto que já existe NÃO recebe o estoque do sistema da loja (nem conta como mudança); só o produto novo nasce com ele.
+ * `estoqueDoSistemaDaLoja: true` no corpo (opção do Sync, por loja) volta ao comportamento antigo.
+ */
 export async function postProductsBulkSync(request: FastifyRequest, reply: FastifyReply) {
     const bulkSchema = z.object({
+        estoqueDoSistemaDaLoja: z.boolean().nullable().optional(),
         products: z.array(
             z.object({
                 externalId: z.string().nullable().optional(),
@@ -625,7 +651,8 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         )
     })
 
-    const { products } = bulkSchema.parse(request.body)
+    const { products, estoqueDoSistemaDaLoja } = bulkSchema.parse(request.body)
+    const estoqueDaLojaVale = estoqueDoSistemaDaLoja === true
 
     let created = 0
     let updated = 0
@@ -635,11 +662,10 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         _max: { display_id: true }
     })
     let currentMaxDisplayId = maxDisplay._max.display_id ?? 0
-    // Código livre fora da faixa 900.000, para produto novo cujo código do Athos ficou com um produto em uso (07:S5)
-    const maxNormal = await prisma.product.aggregate({ _max: { display_id: true }, where: { display_id: { lt: 900000 } } })
-    let proximoCodigoNormal = (maxNormal._max.display_id ?? 0) + 1
-    const conflitos: { codigo: number; produtoNaNuvem: string; produtoDoAthos: string; codigoQueFicou: number }[] = []
-    const renumerados: { produto: string; de: number; para: number }[] = []
+    // Mudou o nome no código: de que produto para qual (outroProduto = não é o mesmo produto renomeado; ver mesmoProduto)
+    const renomeados: { codigo: number; de: string; para: string; outroProduto: boolean }[] = []
+    // Produto já usado que deu lugar ao produto do Athos no código (ficou inativo na faixa 900.000, com o histórico)
+    const substituidos: { codigo: number; produtoAntigo: string; codigoDoAntigo: number; produtoNovo: string }[] = []
 
     for (const p of products) {
         if (!p.name || !p.name.trim()) continue
@@ -678,77 +704,93 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
             }
         }
 
-        // 2. Busca se o produto ja existe pelo nome ou codigo de barras
-        const existing = await prisma.product.findFirst({
-            where: {
-                OR: [
-                    { name: { equals: name, mode: 'insensitive' } },
-                    ...(p.barcode && p.barcode.trim() ? [{ barcode: p.barcode.trim() }] : [])
-                ]
-            }
-        })
-
-        if (existing) {
-            let displayIdToUpdate: number | undefined = undefined
-            if (p.displayId && existing.display_id !== p.displayId) {
-                const conflict = await prisma.product.findUnique({
-                    where: { display_id: p.displayId }
-                })
-                if (conflict && conflict.id !== existing.id && await produtoJaVendido(conflict.id)) {
-                    // 07:S5: o outro produto está em uso com esse código: nenhum dos dois muda de código
-                    conflitos.push({ codigo: p.displayId, produtoNaNuvem: conflict.name, produtoDoAthos: name, codigoQueFicou: existing.display_id })
-                } else {
-                    if (conflict && conflict.id !== existing.id) {
-                        currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
-                        await prisma.product.update({
-                            where: { id: conflict.id },
-                            data: { display_id: currentMaxDisplayId }
-                        })
-                        renumerados.push({ produto: conflict.name, de: p.displayId, para: currentMaxDisplayId })
-                    }
-                    displayIdToUpdate = p.displayId
-                    currentMaxDisplayId = Math.max(currentMaxDisplayId, p.displayId)
+        // 2. O produto: pelo código do sistema da loja (o código manda); sem código, pelo nome ou pelo código de barras
+        let existing: Product | null
+        let outroProduto = false
+        if (p.displayId) {
+            existing = await prisma.product.findUnique({ where: { display_id: p.displayId } })
+            // O NOME decide o histórico (as vendas guardam só o id do produto); o código de barras só ajuda a reconhecer o
+            // mesmo cadastro em produto nunca usado. Katatau: o 3022 "MOUSSE GRANDE UNID" (1 venda) tem o código de barras
+            // do Snickers do Athos e não pode virar "SNICKERS MOUSSE" na venda dele
+            if (existing && !mesmoProduto(existing.name, null, name, null)) {
+                if (await produtoEmUso(existing.id)) {
+                    // Já vendido/usado: o antigo sai do código com o histórico e nasce um produto novo no código
+                    currentMaxDisplayId = Math.max(currentMaxDisplayId, INICIO_FAIXA_AFASTADOS) + 1
+                    await prisma.product.update({
+                        where: { id: existing.id },
+                        data: { display_id: currentMaxDisplayId, active: false, updated_at: new Date() }
+                    })
+                    substituidos.push({ codigo: p.displayId, produtoAntigo: existing.name, codigoDoAntigo: currentMaxDisplayId, produtoNovo: name })
+                    existing = null
+                } else if (!mesmoProduto(existing.name, existing.barcode, name, p.barcode)) {
+                    // Nunca usado e nem o código de barras bate: é outro produto (com o mesmo código de barras é o mesmo
+                    // cadastro com o nome mudado, ex.: "SABAO ASSIM NEUTRO 800 G" -> "900 G", e fica o fiscal revisado)
+                    outroProduto = true
                 }
             }
+        } else {
+            existing = await prisma.product.findFirst({
+                where: {
+                    OR: [
+                        { name: { equals: name, mode: 'insensitive' } },
+                        ...(p.barcode && p.barcode.trim() ? [{ barcode: p.barcode.trim() }] : [])
+                    ]
+                }
+            })
+        }
 
-            const hasChanged = 
-                (displayIdToUpdate !== undefined) ||
+        if (existing) {
+            const estoqueMudou = (outroProduto || estoqueDaLojaVale) && p.stock !== undefined && p.stock !== null && existing.stock !== p.stock
+            const hasChanged =
+                outroProduto ||
+                existing.name !== name ||
                 existing.price !== p.price ||
                 (p.cost !== undefined && p.cost !== null && existing.cost !== p.cost) ||
-                (p.stock !== undefined && p.stock !== null && existing.stock !== p.stock) ||
+                estoqueMudou ||
                 (p.active !== undefined && p.active !== null && existing.active !== p.active) ||
                 (categoryId && existing.category_id !== categoryId) ||
                 (p.barcode && existing.barcode !== p.barcode.trim()) ||
                 (p.description && existing.description !== p.description)
 
             if (hasChanged) {
+                if (existing.name !== name && p.displayId) renomeados.push({ codigo: p.displayId, de: existing.name, para: name, outroProduto })
+                // OUTRO produto no código (nunca usado): os dados são os do sistema da loja, como num produto novo
+                const doSistema = outroProduto
                 await prisma.product.update({
                     where: { id: existing.id },
                     data: {
-                        ...(displayIdToUpdate !== undefined ? { display_id: displayIdToUpdate } : {}),
                         name,
                         price: p.price,
-                        cost: p.cost !== undefined && p.cost !== null ? p.cost : existing.cost,
-                        stock: p.stock !== undefined && p.stock !== null ? p.stock : existing.stock,
+                        cost: p.cost !== undefined && p.cost !== null ? p.cost : (doSistema ? 0 : existing.cost),
+                        // Estoque de produto que já existe: o saldo é o da nuvem (baixado pelas vendas); fora do update para não
+                        // gravar por cima de uma venda que baixou o saldo enquanto o lote rodava
+                        ...(doSistema || estoqueDaLojaVale
+                            ? { stock: p.stock !== undefined && p.stock !== null ? p.stock : (doSistema ? 0 : existing.stock) }
+                            : {}),
                         // Código fiscal fora do formato não entra; o que já está gravado fica (a limpeza é na saída): ver lib/codigos-fiscais.ts
-                        barcode: codigoBarrasValido(p.barcode) ?? existing.barcode,
-                        ncm: ncmValido(p.ncm) ?? existing.ncm,
-                        cest: cestValido(p.cest) ?? existing.cest,
+                        barcode: doSistema ? codigoBarrasValido(p.barcode) : codigoBarrasValido(p.barcode) ?? existing.barcode,
+                        ncm: doSistema ? ncmValido(p.ncm) : ncmValido(p.ncm) ?? existing.ncm,
+                        cest: doSistema ? cestValido(p.cest) : cestValido(p.cest) ?? existing.cest,
                         // CSOSN e CFOP já preenchidos na nuvem ficam (16/10/2026, Katatau): o cadastro fiscal foi revisado na
                         // nuvem e o Athos mandava combinações erradas a cada mudança de preço. Vazio na nuvem = vem do sistema
-                        // da loja, já acertado (cfopCoerente). Para mudar depois: web, Produtos › Fiscal.
-                        cfop: existing.cfop ?? cfopCoerente(existing.csosn ?? csosnValido(p.csosn), cfopValido(p.cfop)),
-                        csosn: existing.csosn ?? csosnValido(p.csosn),
-                        cst_icms: cstIcmsValido(p.cstIcms) ?? existing.cst_icms,
-                        origem: p.origem !== undefined && p.origem !== null ? p.origem : existing.origem,
-                        cst_pis: cstPisCofinsValido(p.cstPis) ?? existing.cst_pis,
-                        aliquota_pis: p.aliquotaPis !== undefined && p.aliquotaPis !== null ? p.aliquotaPis : existing.aliquota_pis,
-                        cst_cofins: cstPisCofinsValido(p.cstCofins) ?? existing.cst_cofins,
-                        aliquota_cofins: p.aliquotaCofins !== undefined && p.aliquotaCofins !== null ? p.aliquotaCofins : existing.aliquota_cofins,
+                        // da loja, já acertado (cfopCoerente). Para mudar depois: web, Produtos › Fiscal. Outro produto no
+                        // código: o revisado era do produto errado, então vale o do sistema da loja (acertado).
+                        cfop: doSistema
+                            ? cfopCoerente(csosnValido(p.csosn), cfopValido(p.cfop))
+                            : existing.cfop ?? cfopCoerente(existing.csosn ?? csosnValido(p.csosn), cfopValido(p.cfop)),
+                        csosn: doSistema ? csosnValido(p.csosn) : existing.csosn ?? csosnValido(p.csosn),
+                        cst_icms: doSistema ? cstIcmsValido(p.cstIcms) : cstIcmsValido(p.cstIcms) ?? existing.cst_icms,
+                        origem: p.origem !== undefined && p.origem !== null ? p.origem : (doSistema ? 0 : existing.origem),
+                        cst_pis: doSistema ? cstPisCofinsValido(p.cstPis) : cstPisCofinsValido(p.cstPis) ?? existing.cst_pis,
+                        aliquota_pis: p.aliquotaPis !== undefined && p.aliquotaPis !== null ? p.aliquotaPis : (doSistema ? 0 : existing.aliquota_pis),
+                        cst_cofins: doSistema ? cstPisCofinsValido(p.cstCofins) : cstPisCofinsValido(p.cstCofins) ?? existing.cst_cofins,
+                        aliquota_cofins: p.aliquotaCofins !== undefined && p.aliquotaCofins !== null ? p.aliquotaCofins : (doSistema ? 0 : existing.aliquota_cofins),
                         category_id: categoryId ?? existing.category_id,
-                        subcategory_id: subcategoryId ?? existing.subcategory_id,
-                        active: p.active !== undefined && p.active !== null ? p.active : existing.active,
-                        description: p.description !== undefined && p.description !== null ? p.description : existing.description,
+                        subcategory_id: doSistema ? subcategoryId : subcategoryId ?? existing.subcategory_id,
+                        active: p.active !== undefined && p.active !== null ? p.active : (doSistema ? true : existing.active),
+                        description: p.description !== undefined && p.description !== null ? p.description : (doSistema ? null : existing.description),
+                        // A foto era do produto errado (o sistema da loja não manda foto)
+                        ...(doSistema ? { image_url: null } : {}),
                         updated_at: new Date()
                     }
                 })
@@ -759,25 +801,8 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         } else {
             let targetDisplayId: number
             if (p.displayId) {
-                const conflict = await prisma.product.findUnique({
-                    where: { display_id: p.displayId }
-                })
-                if (conflict && await produtoJaVendido(conflict.id)) {
-                    // 07:S5: o código é de um produto em uso; o produto novo do Athos ganha um código livre
-                    while (await prisma.product.findUnique({ where: { display_id: proximoCodigoNormal } })) proximoCodigoNormal++
-                    targetDisplayId = proximoCodigoNormal++
-                    conflitos.push({ codigo: p.displayId, produtoNaNuvem: conflict.name, produtoDoAthos: name, codigoQueFicou: targetDisplayId })
-                } else {
-                    if (conflict) {
-                        currentMaxDisplayId = Math.max(currentMaxDisplayId, 900000) + 1
-                        await prisma.product.update({
-                            where: { id: conflict.id },
-                            data: { display_id: currentMaxDisplayId }
-                        })
-                        renumerados.push({ produto: conflict.name, de: p.displayId, para: currentMaxDisplayId })
-                    }
-                    targetDisplayId = p.displayId
-                }
+                // O código está livre (não havia produto, ou o produto usado acabou de sair dele)
+                targetDisplayId = p.displayId
             } else {
                 currentMaxDisplayId++
                 targetDisplayId = currentMaxDisplayId
@@ -814,20 +839,92 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
         }
     }
 
-    if (conflitos.length > 0 || renumerados.length > 0) {
-        request.log.warn({ conflitos, renumerados }, '[Sync] Código do Athos já usado por outro produto na nuvem')
+    if (substituidos.length > 0 || renomeados.length > 0) {
+        request.log.warn({ substituidos, renomeados }, '[Sync] Produtos que mudaram de nome pelo código do sistema da loja')
     }
 
+    const outros = renomeados.filter((r) => r.outroProduto).length
     return reply.status(200).send({
         created,
         updated,
         unchanged,
-        // 07:S5: o que não pôde receber o código do Athos (produto em uso) e o que mudou de código (nunca vendido)
-        conflitos,
-        renumerados,
+        renomeados,
+        substituidos,
         message: `Sincronização de produtos realizada com sucesso! (${created} criados, ${updated} atualizados, ${unchanged} inalterados).`
-            + (conflitos.length > 0 ? ` ${conflitos.length} código(s) do Athos já são de produtos em uso na nuvem e não foram trocados: ${conflitos.slice(0, 5).map((c) => `${c.codigo} (${c.produtoNaNuvem} x ${c.produtoDoAthos})`).join('; ')}${conflitos.length > 5 ? '...' : ''}.` : '')
-            + (renumerados.length > 0 ? ` ${renumerados.length} produto(s) nunca vendidos na nuvem mudaram para a faixa 900.000 para dar lugar ao código do Athos.` : '')
+            + (renomeados.length > 0 ? ` ${renomeados.length} produto(s) mudaram de nome pelo código do sistema da loja${outros > 0 ? ` (${outros} eram outro produto, nunca vendido)` : ''}.` : '')
+            + (substituidos.length > 0 ? ` ${substituidos.length} produto(s) já vendidos estavam no código de outro produto do sistema da loja: ficaram inativos na faixa 900.000 com o histórico, e o código ganhou um produto novo: ${substituidos.slice(0, 5).map((s) => `${s.codigo} (${s.produtoAntigo} -> ${s.produtoNovo})`).join('; ')}${substituidos.length > 5 ? '...' : ''}.` : '')
+    })
+}
+
+/**
+ * Espelho do sistema da loja (16/10/2026, Katatau: "não pode haver produto a mais"). O Sync manda a lista COMPLETA dos
+ * códigos do Athos (ativos e inativos); produto ATIVO da nuvem cujo código não está na lista, ou está inativo no Athos, vai
+ * para inativo com updated_at agora (o PDV e o cardápio deixam de mostrar). Nunca apaga (as vendas apontam para o produto e o
+ * PDV só enxerga o que muda por updated_at) e nunca ativa (quem ativa é o envio do produto).
+ * - Trava: se a lista tem o código de menos de 80% dos produtos ativos da nuvem, recusa (HTTP 409) e explica: o Athos pode
+ *   ter sido lido pela metade, ou é o banco errado. Lista vazia também é recusada.
+ * - `simular: true` devolve o que mudaria, sem gravar nada.
+ * - A nuvem não guarda a origem do produto (não há marca de "criado na web"): TODO produto entra no espelho. Loja com Sync do
+ *   Athos não deve cadastrar produto pela web (ele seria desativado); na Katatau todos vieram do Athos.
+ */
+export async function postProductsEspelhoSync(request: FastifyRequest, reply: FastifyReply) {
+    const schema = z.object({
+        produtos: z.array(z.object({ codigo: z.number().int().positive(), ativo: z.boolean() })),
+        simular: z.boolean().nullable().optional(),
+    })
+    const { produtos, simular } = schema.parse(request.body)
+
+    const naNuvem = await prisma.product.findMany({ select: { id: true, display_id: true, name: true, active: true } })
+    const plano = planoDoEspelho(naNuvem, produtos)
+    const resumo = (p: { display_id: number; name: string }) => ({ codigo: p.display_id, nome: p.name })
+    const corpo = {
+        simulado: simular === true,
+        codigosNaLista: plano.codigosNaLista,
+        ativosNaNuvem: plano.ativosNaNuvem,
+        cobertos: plano.cobertos,
+        cobertura: Math.round(plano.cobertura * 1000) / 10,
+        foraDoSistema: plano.foraDoSistema.map(resumo),
+        inativosNoSistema: plano.inativosNoSistema.map(resumo),
+    }
+
+    if (plano.recusar) {
+        const motivo = plano.codigosNaLista === 0
+            ? 'A lista de códigos do sistema da loja veio vazia: nada foi desativado.'
+            : `A lista do sistema da loja tem ${plano.codigosNaLista} códigos e cobre só ${plano.cobertos} dos ${plano.ativosNaNuvem} produtos ativos da nuvem `
+                + `(${corpo.cobertura}%, o mínimo é ${COBERTURA_MINIMA_DO_ESPELHO * 100}%). Pode ser o banco do Athos lido pela metade ou o banco errado: `
+                + 'nada foi desativado. Confira a leitura do Athos e tente de novo.'
+        request.log.warn({ codigosNaLista: plano.codigosNaLista, ativosNaNuvem: plano.ativosNaNuvem, cobertos: plano.cobertos }, '[Sync] Espelho recusado pela trava dos 80%')
+        return reply.status(409).send({ ...corpo, recusado: true, desativados: 0, message: motivo })
+    }
+
+    const ids = [...plano.foraDoSistema, ...plano.inativosNoSistema].map((p) => p.id)
+    const total = ids.length
+    if (simular === true) {
+        return reply.status(200).send({
+            ...corpo, recusado: false, desativados: 0,
+            message: `Simulação: ${plano.foraDoSistema.length} produto(s) ativos da nuvem com código que não existe no sistema da loja e `
+                + `${plano.inativosNoSistema.length} inativo(s) lá iriam para inativo (${total} no total). Nada foi gravado.`
+        })
+    }
+
+    let desativados = 0
+    const agora = new Date()
+    for (let i = 0; i < ids.length; i += 500) {
+        const r = await prisma.product.updateMany({
+            where: { id: { in: ids.slice(i, i + 500) } },
+            data: { active: false, updated_at: agora }
+        })
+        desativados += r.count
+    }
+    if (desativados > 0) {
+        request.log.warn({ desativados, foraDoSistema: corpo.foraDoSistema.slice(0, 50), inativosNoSistema: corpo.inativosNoSistema.slice(0, 50) },
+            '[Sync] Espelho: produtos que não existem (ou estão inativos) no sistema da loja foram desativados')
+    }
+    return reply.status(200).send({
+        ...corpo, recusado: false, desativados,
+        message: desativados > 0
+            ? `${desativados} produto(s) da nuvem foram para inativo: ${plano.foraDoSistema.length} com código que não existe no sistema da loja e ${plano.inativosNoSistema.length} inativo(s) lá.`
+            : 'A nuvem já está igual ao sistema da loja: nenhum produto mudou.'
     })
 }
 /**

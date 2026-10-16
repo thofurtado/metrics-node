@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import {
     getProductsSync,
     postProductsBulkSync,
+    postProductsEspelhoSync,
     getUsersSync,
     getEmployeesSync,
     postStocksSync,
@@ -73,6 +74,8 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.get('/api/pdv/sync/products', getProductsSync)
     app.post('/api/pdv/sync/products/bulk', postProductsBulkSync)
     app.post('/api/pdv/products/bulk', postProductsBulkSync)
+    // Espelho do sistema da loja (16/10/2026): a lista completa dos códigos do Athos; o que não está nela vai para inativo
+    app.post('/api/pdv/sync/products/espelho', postProductsEspelhoSync)
     app.get('/api/pdv/products', getProductsSync)
 
     // Custos vigentes (produto e complemento) para o PDV congelar em cada venda
