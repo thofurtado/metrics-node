@@ -106,5 +106,30 @@
       "caixa-vendas",
       "financeiro"
     ]
+  },
+  {
+    "termo": "Total vendido",
+    "significado": "Tudo o que a loja vendeu no caixa ou no período, sem as vendas canceladas: o total que o PDV fechou (itens − desconto + entrega + serviço + couvert), mais o que foi lançado no caixa da web sem venda registrada.",
+    "exemplo": "60 vendas de hoje somam R$ 1.905,68 vendidos, mesmo que parte seja a prazo ou do iFood.",
+    "modulos": [
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Total recebido",
+    "significado": "O dinheiro que de fato entrou: os pagamentos em dinheiro, Pix, cartões e vale (as formas que o caixa conta), por forma e por maquininha. A prazo e o pago no app do iFood/99 ficam de fora (ainda não entraram).",
+    "exemplo": "Vendido R$ 1.905,68 − a prazo R$ 193,09 − aplicativos a receber R$ 186,50 + caixinha R$ 10,00 = Recebido R$ 1.536,09.",
+    "modulos": [
+      "caixa-vendas"
+    ]
+  },
+  {
+    "termo": "Sem contagem física",
+    "significado": "As formas que o caixa não conta na gaveta nem na maquininha porque o dinheiro ainda não entrou: a prazo (fiado, consumo de funcionário, permuta, cortesia) e o pago no aplicativo (iFood, 99Food), que chega no repasse.",
+    "exemplo": "No fechamento do PDV e na conta da web, R$ 798,94 de a prazo e aplicativos ficam à parte e não viram quebra de caixa.",
+    "modulos": [
+      "caixa-vendas",
+      "financeiro"
+    ]
   }
 ]

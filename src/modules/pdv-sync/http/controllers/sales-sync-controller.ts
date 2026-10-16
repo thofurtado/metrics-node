@@ -27,6 +27,8 @@ import {
     funcionarioDoVendedor,
     gravarNotaFiscal,
     notaFiscalSchema,
+    numeracaoDaVenda,
+    numeracaoQueFalta,
     temVendedor,
 } from '../../services/dados-da-venda'
 
@@ -42,6 +44,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         ValorServico: z.number().optional().default(0),
         ValorFrete: z.number().optional().default(0),
         ClienteUuid: z.string().uuid().optional().nullable(),
+        // Número do pedido no PDV e a senha do dia (o PDV sempre mandou; a nuvem guarda desde o módulo Vendas, 16/10/2026)
+        DisplayId: z.number().int().optional().nullable(),
+        NumeroDiario: z.number().int().optional().nullable(),
         // Mesa ou comanda de onde a venda veio ("Mesa 07"), para relatório por mesa
         OriginIdentifier: z.string().optional().nullable(),
         Status: z.string().default('COMPLETED'),
@@ -155,7 +160,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
             //    Antes, venda de caixa fechado (ou sem caixa) caía no caixa aberto mais recente de QUALQUER terminal.
             const existingSale = await tx.sale.findUnique({
                 where: { id: sale.Uuid },
-                select: { cashier_session_id: true, total_amount: true, discount: true, status: true, origin: true }
+                select: { cashier_session_id: true, total_amount: true, discount: true, status: true, origin: true, display_id: true, daily_number: true, client_id: true }
             })
             const targetSessionId = chooseSaleSessionId(sale.CashierSessionId, existingSale?.cashier_session_id)
             const session = targetSessionId
@@ -198,9 +203,12 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 service_fee: sale.ValorServico ?? 0,
                 cover_charge: sale.ValorCouvert ?? 0,
             }
+            // Número, senha e cliente (módulo Vendas): também só completam a venda, então valem até em caixa conferido
+            const numeracao = await numeracaoDaVenda(tx, sale)
             if (!changesSession) {
-                if (existingSale && existingSale.origin === null) {
-                    await tx.sale.update({ where: { id: sale.Uuid }, data: detalhes })
+                const faltam = existingSale ? numeracaoQueFalta(existingSale, numeracao) : {}
+                if (existingSale && (existingSale.origin === null || Object.keys(faltam).length > 0)) {
+                    await tx.sale.update({ where: { id: sale.Uuid }, data: { ...(existingSale.origin === null ? detalhes : {}), ...faltam } })
                 }
                 // A plataforma chegou depois (PDV atualizado reenviando): completa os lançamentos, menos em caixa conferido
                 // (a conferência já lançou o financeiro; desfazer e conferir de novo pega a plataforma)
@@ -260,6 +268,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     status: sale.Status,
                     cashier_session_id: targetSessionId,
                     ...detalhes,
+                    ...numeracao,
                 },
                 create: {
                     id: sale.Uuid,
@@ -269,6 +278,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     cashier_session_id: targetSessionId,
                     created_at: saleCreatedAt,
                     ...detalhes,
+                    ...numeracao,
                 }
             })
             // NFC-e da venda (Vendas, etapa 1): a mesma regra da rota da nota (a mudança mais velha não passa por cima da nova)
