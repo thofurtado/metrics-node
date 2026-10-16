@@ -98,3 +98,32 @@ describe('código do Athos já usado por outro produto na nuvem (Mergulho 07:S5)
         expect(r.body).toMatchObject({ created: 1, conflitos: [], renumerados: [] })
     })
 })
+
+// Katatau (16/10/2026): o cadastro fiscal foi revisado na nuvem; o Athos não pode voltar o CFOP/CSOSN errado
+describe('CSOSN e CFOP vindos do sistema da loja', () => {
+    beforeEach(() => {
+        for (const k of Object.keys(db)) delete db[k]
+        produtos = []
+        vendidos = new Set()
+        montarBanco()
+    })
+
+    it('mudança de preço no Athos não troca o CSOSN/CFOP já acertado na nuvem', async () => {
+        produtos = [{ ...produto('rothmans', 'ROTHMANS GLOBAL RED BOX', 2162), csosn: '500', cfop: '5405' }]
+        await sincronizar([{ name: 'ROTHMANS GLOBAL RED BOX', displayId: 2162, price: 12, csosn: '500', cfop: '5102' }])
+        const p = produtos.find((x) => x.id === 'rothmans')!
+        expect(p.price).toBe(12)
+        expect(p).toMatchObject({ csosn: '500', cfop: '5405' })
+    })
+
+    it('produto sem CSOSN/CFOP na nuvem recebe o do Athos, já combinando', async () => {
+        produtos = [{ ...produto('camel', 'CAMEL BOX', 2555), csosn: null, cfop: null }]
+        await sincronizar([{ name: 'CAMEL BOX', displayId: 2555, price: 12, csosn: '500', cfop: '5102' }])
+        expect(produtos.find((x) => x.id === 'camel')).toMatchObject({ csosn: '500', cfop: '5405' })
+    })
+
+    it('produto novo do Athos entra com o CFOP combinando com o CSOSN', async () => {
+        await sincronizar([{ name: 'DETERGENTE', displayId: 3601, price: 3, csosn: '102', cfop: '5405' }])
+        expect(produtos.find((x) => x.name === 'DETERGENTE')).toMatchObject({ csosn: '102', cfop: '5102' })
+    })
+})

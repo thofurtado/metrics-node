@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido, origemValida, fiscaisLimpos } from './codigos-fiscais'
+import { cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido, origemValida, fiscaisLimpos, cfopCoerente } from './codigos-fiscais'
 
 // Caso da Katatau (09/10/2026): FRUIT-TELLA chegou com cst_icms "18,0" (a alíquota) e travou a sincronização do PDV inteiro.
 describe('Códigos fiscais do produto', () => {
@@ -44,5 +44,26 @@ describe('Códigos fiscais do produto', () => {
     expect(p.csosn).toBe('102')
     expect(p.ncm).toBe('17049020')
     expect(p.barcode).toBe('7895144028019')
+  })
+})
+
+// Katatau (16/10/2026): o Athos mandava CSOSN 500 com CFOP 5102 e a SEFAZ recusava a nota (386)
+describe('CFOP que combina com o CSOSN', () => {
+  it('substituição (500) sai com 5405', () => {
+    expect(cfopCoerente('500', '5102')).toBe('5405')
+    expect(cfopCoerente('500', '5403')).toBe('5405')
+    expect(cfopCoerente('500', '5405')).toBe('5405')
+  })
+  it('combustível com 500 fica com o CFOP dele', () => {
+    expect(cfopCoerente('500', '5656')).toBe('5656')
+  })
+  it('sem substituição não usa CFOP de substituição', () => {
+    expect(cfopCoerente('102', '5405')).toBe('5102')
+    expect(cfopCoerente('101', '5403')).toBe('5102')
+    expect(cfopCoerente('102', '5101')).toBe('5101')
+  })
+  it('sem CSOSN ou sem CFOP não inventa', () => {
+    expect(cfopCoerente(null, '5102')).toBe('5102')
+    expect(cfopCoerente('500', null)).toBeNull()
   })
 })

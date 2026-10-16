@@ -7,7 +7,7 @@ import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services
 import { funcionarioEntraNoPdv, funcionarioInativo, funcionarioInativoParaPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { categoriasDaMaquininha, tipoDoIdentificador } from '../../services/pagamentos-do-pdv'
 import { hash } from 'bcryptjs'
-import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
+import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, cfopCoerente, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
 import { randomBytes } from 'node:crypto'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
@@ -734,8 +734,11 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                         barcode: codigoBarrasValido(p.barcode) ?? existing.barcode,
                         ncm: ncmValido(p.ncm) ?? existing.ncm,
                         cest: cestValido(p.cest) ?? existing.cest,
-                        cfop: cfopValido(p.cfop) ?? existing.cfop,
-                        csosn: csosnValido(p.csosn) ?? existing.csosn,
+                        // CSOSN e CFOP já preenchidos na nuvem ficam (16/10/2026, Katatau): o cadastro fiscal foi revisado na
+                        // nuvem e o Athos mandava combinações erradas a cada mudança de preço. Vazio na nuvem = vem do sistema
+                        // da loja, já acertado (cfopCoerente). Para mudar depois: web, Produtos › Fiscal.
+                        cfop: existing.cfop ?? cfopCoerente(existing.csosn ?? csosnValido(p.csosn), cfopValido(p.cfop)),
+                        csosn: existing.csosn ?? csosnValido(p.csosn),
                         cst_icms: cstIcmsValido(p.cstIcms) ?? existing.cst_icms,
                         origem: p.origem !== undefined && p.origem !== null ? p.origem : existing.origem,
                         cst_pis: cstPisCofinsValido(p.cstPis) ?? existing.cst_pis,
@@ -792,7 +795,7 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
                     barcode: codigoBarrasValido(p.barcode),
                     ncm: ncmValido(p.ncm),
                     cest: cestValido(p.cest),
-                    cfop: cfopValido(p.cfop),
+                    cfop: cfopCoerente(csosnValido(p.csosn), cfopValido(p.cfop)),
                     csosn: csosnValido(p.csosn),
                     cst_icms: cstIcmsValido(p.cstIcms),
                     origem: p.origem ?? 0,

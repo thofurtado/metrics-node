@@ -37,6 +37,19 @@ export function cfopValido(v: unknown): string | null {
     return /^\d{4}$/.test(t) ? t : null
 }
 
+/**
+ * CFOP que combina com o CSOSN na NFC-e (16/10/2026, Katatau: o Athos mandava CSOSN 500 com CFOP 5102 e a SEFAZ recusava com
+ * 386). ICMS já pago por substituição (500) sai com 5405 (5656/5667 são de combustível e ficam); sem substituição
+ * (101/102/103/300/400) não usa CFOP de substituição (5401/5403/5405) e sai com 5102. Parecer:
+ * _claude-sync/relatorios/PARECER-ST-KATATAU-2026-10-16.md.
+ */
+export function cfopCoerente(csosn: string | null, cfop: string | null): string | null {
+    if (!cfop || !csosn) return cfop
+    if (csosn === '500' && !['5405', '5656', '5667'].includes(cfop)) return '5405'
+    if (['101', '102', '103', '300', '400'].includes(csosn) && ['5401', '5403', '5405'].includes(cfop)) return '5102'
+    return cfop
+}
+
 /** NCM: só dígitos, até 8; aceita com pontos ("2106.90.90") e grava sem. */
 export function ncmValido(v: unknown): string | null {
     const t = semPontos(v)
