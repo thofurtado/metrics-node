@@ -14,8 +14,10 @@ import {
     montarFormasDaPlataforma,
     planoDasPlataformas,
     saiDaGaveta,
+    textoDoDetalheDoRepasse,
     vencimentoDoDia,
 } from '@/modules/cashier/services/plataformas'
+import { lerValoresDasVendas } from '@/modules/delivery/services/valores-da-plataforma'
 import { setoresPorNome } from '@/modules/cashier/services/garantir-setor'
 
 export async function openCashierSession(request: FastifyRequest, reply: FastifyReply) {
@@ -496,6 +498,13 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             return employee.id
         }
 
+        // Valores dos pedidos do iFood/99 (15/10/2026, tabela pedido_valores_plataforma): lidos FORA da transação, porque na loja
+        // que ainda não rodou o Sincronizar a tabela não existe, e um erro dentro da transação derrubaria a conferência inteira.
+        // Sem a linha (venda antiga, 99 sem dados), a venda segue como antes.
+        const valoresDasVendas = await lerValoresDasVendas(prisma, session.entries
+            .filter(e => e.type === 'SALE' && e.sale_id && !e.is_withdrawal)
+            .map(e => e.sale_id as string))
+
         const result = await prisma.$transaction(async (tx) => {
         // Limpa transações e vales anteriores criados para essa sessão para evitar duplicações ao re-auditar
         // (Excluindo Destino de Caixa, pois são tratados na resolução de divergência)
@@ -536,6 +545,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             plataformas,
             formas: montarFormasDaPlataforma(formasDePagamento, identificadoresDePlataforma),
             plataformaDoPedido: new Map(pedidosDasVendas.filter(p => p.plataforma).map(p => [p.uuid, p.plataforma as string])),
+            valoresDaVenda: valoresDasVendas,
         }, diaOperacional(new Date(session.opened_at)))
         const garantirSetor = setoresPorNome(tx)
 
@@ -872,6 +882,8 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
         // (despesa pendente no setor "Taxas de plataforma"), vencendo na data do repasse e marcadas com a plataforma, para a
         // Liquidação baixar as duas juntas. A conta é a da plataforma, passando pela Conta de Transação como a maquininha
         // ([DEST: conta]); plataforma sem conta fica na Conta de Transação até a Liquidação.
+        // Venda com os valores da plataforma (15/10/2026, "conta corrente da plataforma"): o repasse é o expected_gross (pago no
+        // app) ou o desconto que a plataforma bancou (pago na entrega); o texto do repasse diz a diferença para as vendas.
         for (const grupo of planoPlataformas.grupos) {
             const { plataforma } = grupo
             const destino = plataforma.account_id
@@ -879,6 +891,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
             const marcaDestino = contaTransitoria && destino ? ` [DEST: ${destino}]` : ''
             const vencimento = vencimentoDoDia(grupo.dataRepasse)
             const repasseEm = vencimento.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            const detalheDoRepasse = textoDoDetalheDoRepasse(plataforma.name, grupo.detalhe)
 
             if (grupo.receita > 0) {
                 await tx.transaction.create({
@@ -886,7 +899,7 @@ export async function auditCashierSession(request: FastifyRequest, reply: Fastif
                         operation: 'income',
                         amount: grupo.receita,
                         totalValue: grupo.receita,
-                        description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${plataforma.name} (repasse de ${repasseEm})${marcaDestino}`,
+                        description: `Caixa ${session.period} ${operatorName} ${dateFormatted} - ${plataforma.name} (repasse de ${repasseEm}${detalheDoRepasse ? `; ${detalheDoRepasse}` : ''})${marcaDestino}`,
                         cashier_session_id: session.id,
                         confirmed: false,
                         payment_method: METODO_DA_PLATAFORMA,

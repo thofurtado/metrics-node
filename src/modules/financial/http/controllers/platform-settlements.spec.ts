@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({ prisma: db }))
 
 import { listPlatformSettlements, revertPlatformSettlement, settlePlatformPayout } from './platform-settlements'
 import { revertSettlement } from './settlements'
-import { agruparRepasses, ajusteDoRepasse, contaDoRepasse, descricaoDesfeita, descricaoLiquidada } from '../../services/repasse-da-plataforma'
+import { agruparRepasses, ajusteDoRepasse, contaDoRepasse, descricaoDesfeita, descricaoLiquidada, sentidoDoSaldo } from '../../services/repasse-da-plataforma'
 
 function resposta() {
     const r: any = { code: 0, body: null }
@@ -187,5 +187,69 @@ describe('lista dos repasses', () => {
         expect(db.transaction.findMany.mock.calls[0][0].where).toMatchObject({ confirmed: false })
         expect(r.body.data).toHaveLength(1)
         expect(r.body.data[0].previsto).toBe(127.2)
+    })
+})
+
+describe('saldo negativo: a pagar à plataforma (15/10/2026, "conta corrente da plataforma")', () => {
+    // Semana só com pedidos pagos na entrega: o iFood deve à loja 10,00 de incentivo e cobra 25,00 de comissão
+    const NEGATIVO = [
+        transacao({ id: 'r1', amount: 10, totalValue: 10, description: 'Caixa Turno 01 Ana 13/10/2026 - iFood (repasse de 11/11/2026; incentivo do iFood R$ 10,00 de 2 venda(s) paga(s) na entrega)' }),
+        transacao({ id: 'c1', operation: 'expense', amount: 25, totalValue: 25, description: 'Comissão iFood - Caixa 13/10' }),
+    ]
+    const CONTA = '88888888-8888-4888-8888-888888888888'
+    let saldos: any[]
+    let criadas: any[]
+    beforeEach(() => {
+        for (const k of Object.keys(db)) delete db[k]
+        saldos = []
+        criadas = []
+        const tx = {
+            transaction: {
+                update: vi.fn(),
+                create: vi.fn(async ({ data }: any) => { criadas.push(data); return { operation: data.operation, amount: data.amount, totalValue: data.totalValue, account_id: data.account_id } }),
+            },
+            account: { update: vi.fn(async ({ where, data }: any) => { saldos.push({ id: where.id, ...data.balance }) }) },
+            sector: { findMany: vi.fn(async () => [{ id: 's-taxas', name: 'Taxas de plataforma' }]), create: vi.fn() },
+        }
+        db.deliveryPlatform = { findUnique: vi.fn(async () => IFOOD), findMany: vi.fn(async () => [IFOOD]) }
+        db.transaction = { findMany: vi.fn(async () => NEGATIVO.map(t => ({ ...t }))) }
+        db.account = { findMany: vi.fn(async () => [{ id: 'conta-transacao', is_transit: true }, { id: CONTA, is_transit: false }]) }
+        db.$transaction = vi.fn(async (fn: any) => fn(tx))
+    })
+
+    it('o grupo diz o saldo e o sentido: negativo = A_PAGAR, positivo = A_RECEBER, zero = ZERADO', () => {
+        const [negativo] = agruparRepasses(NEGATIVO as any, [IFOOD])
+        expect(negativo).toMatchObject({ total_receitas: 10, total_comissoes: 25, previsto: -15, saldo_previsto: -15, sentido: 'A_PAGAR' })
+        const [positivo] = agruparRepasses(PENDENTES as any, [IFOOD])
+        expect(positivo).toMatchObject({ saldo_previsto: 127.2, sentido: 'A_RECEBER' })
+        const [zerado] = agruparRepasses([NEGATIVO[0], transacao({ id: 'c2', operation: 'expense', amount: 10, totalValue: 10 })] as any, [IFOOD])
+        expect(zerado).toMatchObject({ previsto: 0, sentido: 'ZERADO' })
+        expect(sentidoDoSaldo(-0.004)).toBe('ZERADO')
+    })
+
+    it('sem conta: pede a conta de onde saiu o pagamento, já dizendo o saldo a pagar', async () => {
+        const r = resposta()
+        await settlePlatformPayout({ body: { platform_id: IFOOD.id, payout_date: '2026-11-11' } } as any, r)
+        expect(r.code).toBe(400)
+        expect(r.body).toMatchObject({ code: 'ESCOLHA_A_CONTA', saldo_previsto: -15, sentido: 'A_PAGAR' })
+        expect(r.body.message).toContain('de onde saiu o pagamento')
+    })
+
+    it('liquida o saldo negativo: a conta perde o que a loja pagou e a resposta diz A_PAGAR', async () => {
+        const r = resposta()
+        await settlePlatformPayout({ body: { platform_id: IFOOD.id, payout_date: '2026-11-11', account_id: CONTA } } as any, r)
+        expect(r.code).toBe(200)
+        expect(r.body).toMatchObject({ previsto: -15, saldo_previsto: -15, recebido: -15, sentido: 'A_PAGAR', diferenca: 0 })
+        expect(r.body.message).toContain('a loja pagou R$ 15,00 à plataforma')
+        expect(saldos).toEqual([{ id: CONTA, increment: -15 }])
+        expect(criadas).toHaveLength(0)
+    })
+
+    it('pagou mais que o previsto (boleto de 16,00): o ajuste é despesa e a conta perde 16,00', async () => {
+        const r = resposta()
+        await settlePlatformPayout({ body: { platform_id: IFOOD.id, payout_date: '2026-11-11', account_id: CONTA, received_amount: -16, reason: 'boleto com mensalidade' } } as any, r)
+        expect(r.body).toMatchObject({ recebido: -16, sentido: 'A_PAGAR', diferenca: -1 })
+        expect(criadas[0]).toMatchObject({ operation: 'expense', amount: 1, sector_id: 's-taxas' })
+        expect(saldos).toEqual([{ id: CONTA, increment: -16 }])
     })
 })

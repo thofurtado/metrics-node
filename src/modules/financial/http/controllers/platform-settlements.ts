@@ -17,6 +17,7 @@ import {
     descricaoLiquidada,
     efeitoNoSaldo,
     ehAjusteDoRepasse,
+    sentidoDoSaldo,
 } from '../../services/repasse-da-plataforma'
 
 /**
@@ -73,6 +74,9 @@ export async function listPlatformSettlements(request: FastifyRequest, reply: Fa
  * Baixa o repasse de uma plataforma numa data: os repasses (receitas) e as comissões (despesas) pendentes dessa plataforma e
  * data, de todos os caixas, vão para a conta e ficam pagos; a conta recebe o que caiu (received_amount; sem ele, o previsto).
  * A diferença vira um ajuste com motivo, no setor "Taxas de plataforma".
+ * Saldo negativo (15/10/2026, "conta corrente da plataforma"): as comissões e taxas passaram as receitas (pedidos pagos na
+ * entrega), então a loja é que paga a plataforma (boleto, débito). received_amount vai NEGATIVO (o que saiu da conta), a conta
+ * escolhida perde esse valor e a resposta diz sentido "A_PAGAR". Zero também liquida (só fecha o que estava pendente).
  */
 export async function settlePlatformPayout(request: FastifyRequest, reply: FastifyReply) {
     const corpo = z.object({
@@ -106,15 +110,23 @@ export async function settlePlatformPayout(request: FastifyRequest, reply: Fasti
     const contas = await prisma.account.findMany({ select: { id: true, is_transit: true } })
     const deTransacao = new Set(contas.filter(c => c.is_transit).map(c => c.id))
     const destino = contaDoRepasse(account_id, plataforma.account_id, pendentes, deTransacao)
+    const [grupo] = agruparRepasses(pendentes, [plataforma])
+    const aPagar = grupo.sentido === 'A_PAGAR'
     if (!destino) {
-        return reply.status(400).send({ code: 'ESCOLHA_A_CONTA', message: `O ${plataforma.name} não tem conta ligada. Escolha a conta onde o repasse caiu.` })
+        return reply.status(400).send({
+            code: 'ESCOLHA_A_CONTA',
+            saldo_previsto: grupo.previsto,
+            sentido: grupo.sentido,
+            message: aPagar
+                ? `O ${plataforma.name} não tem conta ligada. Escolha a conta de onde saiu o pagamento à plataforma.`
+                : `O ${plataforma.name} não tem conta ligada. Escolha a conta onde o repasse caiu.`,
+        })
     }
     if (!contas.some(c => c.id === destino)) return reply.status(400).send({ message: 'Conta não encontrada.' })
     if (deTransacao.has(destino)) {
         return reply.status(400).send({ message: 'A Conta de Transação só guarda o repasse até a baixa. Escolha a conta do banco onde ele caiu.' })
     }
 
-    const [grupo] = agruparRepasses(pendentes, [plataforma])
     const recebido = received_amount ?? grupo.previsto
     const ajuste = ajusteDoRepasse(grupo.previsto, recebido)
     if (ajuste && !reason) {
@@ -157,12 +169,18 @@ export async function settlePlatformPayout(request: FastifyRequest, reply: Fasti
         }
     })
 
+    const sentido = sentidoDoSaldo(recebido)
+    const valorBR = Math.abs(recebido).toFixed(2).replace('.', ',')
     return reply.status(200).send({
-        message: `Repasse do ${plataforma.name} de ${dataBR} liquidado.`,
+        message: sentido === 'A_PAGAR'
+            ? `Saldo do ${plataforma.name} de ${dataBR} liquidado: a loja pagou R$ ${valorBR} à plataforma.`
+            : `Repasse do ${plataforma.name} de ${dataBR} liquidado.`,
         settlement_id: settlementId,
         account_id: destino,
         previsto: grupo.previsto,
+        saldo_previsto: grupo.previsto,
         recebido,
+        sentido,
         diferenca: ajuste ? (ajuste.operation === 'income' ? ajuste.amount : -ajuste.amount) : 0,
     })
 }

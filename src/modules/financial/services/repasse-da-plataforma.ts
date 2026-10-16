@@ -32,6 +32,19 @@ export interface PlataformaDoRepasse {
 }
 
 const centavos = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100
+
+export type SentidoDoSaldo = 'A_RECEBER' | 'A_PAGAR' | 'ZERADO'
+
+/**
+ * Para que lado vai o saldo da plataforma numa data (15/10/2026, "conta corrente da plataforma", aprovada pelo Thomás): com
+ * pedidos pagos na entrega a plataforma não tem o que repassar e só cobra a comissão, então o saldo pode ficar negativo. Aí a
+ * Liquidação é "a pagar à plataforma": a loja paga a diferença e a conta escolhida perde esse valor.
+ */
+export function sentidoDoSaldo(saldo: number): SentidoDoSaldo {
+    const v = centavos(saldo)
+    if (Math.abs(v) < 0.01) return 'ZERADO'
+    return v > 0 ? 'A_RECEBER' : 'A_PAGAR'
+}
 const valor = (t: { totalValue: number | null; amount: number }) => Number(t.totalValue ?? t.amount ?? 0)
 
 /** O ajuste da diferença é o único lançamento da baixa que não veio de um caixa. */
@@ -49,8 +62,13 @@ export interface GrupoDoRepasse {
     ajustes: TransacaoDoRepasse[]
     total_receitas: number
     total_comissoes: number
-    /** Repasse − comissões: o que a plataforma deve depositar */
+    /** Repasse − comissões: o que a plataforma deve depositar. Negativo = a loja deve à plataforma (ver sentido) */
     previsto: number
+    /** O mesmo previsto, com o nome que a tela usa para o saldo da "conta corrente da plataforma" (15/10/2026) */
+    saldo_previsto: number
+    /** A_RECEBER: a plataforma deposita; A_PAGAR: as comissões e taxas passaram as receitas e a loja paga a diferença (boleto,
+     *  débito); ZERADO: nada a mexer. Pendente: pelo previsto; liquidado: pelo que de fato caiu/saiu */
+    sentido: SentidoDoSaldo
     /** Liquidado: previsto + ajustes (o que caiu na conta). Pendente: null */
     recebido: number | null
     /** Caixas de onde vieram o repasse e as comissões */
@@ -71,7 +89,8 @@ export function agruparRepasses(transacoes: TransacaoDoRepasse[], plataformas: P
             g = {
                 chave, situacao: liquidado ? 'LIQUIDADO' : 'PENDENTE', settlement_id: t.platform_settlement_id,
                 plataforma: porId.get(t.platform_id) ?? null, payout_date: dia,
-                receitas: [], comissoes: [], ajustes: [], total_receitas: 0, total_comissoes: 0, previsto: 0, recebido: null, caixas: [],
+                receitas: [], comissoes: [], ajustes: [], total_receitas: 0, total_comissoes: 0, previsto: 0, saldo_previsto: 0,
+                sentido: 'ZERADO', recebido: null, caixas: [],
             }
             grupos.set(chave, g)
         }
@@ -89,10 +108,12 @@ export function agruparRepasses(transacoes: TransacaoDoRepasse[], plataformas: P
         g.total_receitas = centavos(g.receitas.reduce((s, t) => s + valor(t), 0))
         g.total_comissoes = centavos(g.comissoes.reduce((s, t) => s + valor(t), 0))
         g.previsto = centavos(g.total_receitas - g.total_comissoes)
+        g.saldo_previsto = g.previsto
         if (g.situacao === 'LIQUIDADO') {
             const ajustes = g.ajustes.reduce((s, t) => s + (t.operation === 'income' ? valor(t) : -valor(t)), 0)
             g.recebido = centavos(g.previsto + ajustes)
         }
+        g.sentido = sentidoDoSaldo(g.recebido ?? g.previsto)
     }
     return [...grupos.values()].sort((a, b) => a.payout_date.localeCompare(b.payout_date) || (a.plataforma?.name ?? '').localeCompare(b.plataforma?.name ?? ''))
 }

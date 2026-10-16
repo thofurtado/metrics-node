@@ -178,18 +178,181 @@ export function vendaDePlataforma(
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Valores do pedido da plataforma (tabela pedido_valores_plataforma, 15/10/2026): "conta corrente da plataforma"
+// ---------------------------------------------------------------------------------------------------------------
+
+/** O que a conferência usa da linha do pedido (services/valores-da-plataforma.ts). O código da venda é o uuid do pedido. */
+export interface ValoresDaVenda {
+    platform?: string
+    items_value: number | null
+    delivery_fee: number | null
+    service_fee: number | null
+    discount_store: number | null
+    discount_platform: number | null
+    discount_other: number | null
+    customer_paid: number | null
+    paid_online: boolean
+    own_delivery: boolean | null
+    expected_gross: number | null
+    /** pedidos.valor_final: o total do pedido que o PDV recebeu (a venda) */
+    valor_do_pedido?: number | null
+}
+
+/** O que uma venda (um lançamento) de plataforma põe do lado da plataforma: receita, bases da comissão e o detalhe do texto. */
+export interface BasesDaVenda {
+    /** Receita pendente (o que a plataforma vai pagar à loja por esta venda) */
+    repasse: number
+    /** Sobre o que se calcula a comissão (% da entrega da loja ou da plataforma) */
+    baseComissao: number
+    /** Sobre o que se calcula a taxa do pagamento online (0 quando pago na entrega) */
+    baseTaxaOnline: number
+    entregaPropria: boolean
+    /** Usou os valores da plataforma (false = venda antiga ou sem dados: como antes) */
+    comValores: boolean
+    /** Para o texto do repasse: o incentivo da plataforma que a venda não tem, a taxa de serviço e o frete da entrega da
+     *  plataforma (que não são da loja) e o que sobrar (a venda no caixa diferente do pedido) */
+    incentivo: number
+    taxaDeServico: number
+    freteDaPlataforma: number
+    outraDiferenca: number
+}
+
+/**
+ * Base de cálculo de UMA venda de plataforma. É o único lugar da regra, aprovada pelo Thomás em 15/10/2026 ("conta corrente
+ * da plataforma") e que ainda vai ser confirmada com o extrato real (comissão com ou sem o frete, antes ou depois do desconto
+ * da loja). A venda e o caixa NÃO mudam: isto é só o lado da plataforma.
+ *
+ * Sem os valores da plataforma (venda antiga, 99 sem dados): como antes, tudo sobre o valor da venda; pago no app vira repasse.
+ * Com os valores:
+ * - PAGO NO APP: (+) repasse = expected_gross (itens + frete da entrega da loja − desconto da loja: inclui o incentivo da
+ *   plataforma e não inclui a taxa de serviço); (−) comissão sobre expected_gross; (−) taxa online sobre o que o cliente pagou;
+ * - PAGO NA ENTREGA (dinheiro ou maquininha da loja): o dinheiro segue o caminho de sempre (gaveta/maquininha); do lado da
+ *   plataforma, (+) só o desconto que a PLATAFORMA bancou (ela deve isso à loja) e (−) a comissão sobre expected_gross; sem
+ *   taxa online.
+ * "Pago no app" é o que o caixa registrou (a forma do lançamento), porque é o caminho que o dinheiro fez de verdade.
+ * Quem entregou: o que a plataforma disse (deliveredBy / delivery_type); sem isso, o que o PDV mandou; sem nada, a loja.
+ * parte: a fração da venda neste lançamento (venda paga em mais de um lançamento); 1 no caso normal.
+ */
+export function basesDaVendaDePlataforma(
+    valorDoLancamento: number,
+    venda: Pick<VendaDePlataforma, 'pagoNoApp' | 'entregaPropria'>,
+    valores: ValoresDaVenda | null | undefined,
+    parte = 1,
+): BasesDaVenda {
+    const valor = Number(valorDoLancamento) || 0
+    const zerado = { incentivo: 0, taxaDeServico: 0, freteDaPlataforma: 0, outraDiferenca: 0 }
+    if (!valores || valores.expected_gross == null || !(parte > 0)) {
+        return {
+            repasse: venda.pagoNoApp ? valor : 0,
+            baseComissao: valor,
+            baseTaxaOnline: venda.pagoNoApp ? valor : 0,
+            entregaPropria: venda.entregaPropria,
+            comValores: false,
+            ...zerado,
+        }
+    }
+
+    const entregaPropria = valores.own_delivery ?? venda.entregaPropria
+    const bruto = valores.expected_gross * parte
+
+    if (!venda.pagoNoApp) {
+        const incentivo = Math.max(0, (valores.discount_platform ?? 0) * parte)
+        return { repasse: incentivo, baseComissao: bruto, baseTaxaOnline: 0, entregaPropria, comValores: true, ...zerado, incentivo }
+    }
+
+    const taxaDeServico = (valores.service_fee ?? 0) * parte
+    const freteDaPlataforma = valores.own_delivery === false ? (valores.delivery_fee ?? 0) * parte : 0
+    const incentivoDaPlataforma = ((valores.discount_platform ?? 0) + (valores.discount_other ?? 0)) * parte
+    // O que o repasse tem a mais que a venda, fora a taxa e o frete que não são da loja. No iFood a venda é o que o cliente pagou
+    // (o incentivo do iFood fica de fora dela); na 99 a venda já vem com o incentivo da 99 (real_price). Por isso a conta.
+    const sobra = bruto - valor + taxaDeServico + freteDaPlataforma
+    const incentivoForaDaVenda = Math.abs(sobra - incentivoDaPlataforma) < Math.abs(sobra) ? incentivoDaPlataforma : 0
+    return {
+        repasse: bruto,
+        baseComissao: bruto,
+        baseTaxaOnline: valores.customer_paid != null ? valores.customer_paid * parte : valor,
+        entregaPropria,
+        comValores: true,
+        incentivo: incentivoForaDaVenda,
+        taxaDeServico,
+        freteDaPlataforma,
+        outraDiferenca: sobra - incentivoForaDaVenda,
+    }
+}
+
+/** Resumo, por plataforma, das vendas que usaram os valores da plataforma (para o texto do repasse). */
+export interface DetalheDoRepasse {
+    vendasNoApp: number
+    /** Soma das vendas pagas no app (como estão no caixa) */
+    valorDasVendas: number
+    /** Soma do repasse dessas vendas */
+    repasseDasVendas: number
+    incentivo: number
+    taxaDeServico: number
+    freteDaPlataforma: number
+    outraDiferenca: number
+    /** Vendas pagas na entrega com desconto bancado pela plataforma, e o total desse desconto (receita) */
+    vendasNaEntrega: number
+    incentivoNaEntrega: number
+}
+
+const arredondarDetalhe = (d: DetalheDoRepasse): DetalheDoRepasse => ({
+    ...d,
+    valorDasVendas: arredondar(d.valorDasVendas),
+    repasseDasVendas: arredondar(d.repasseDasVendas),
+    incentivo: arredondar(d.incentivo),
+    taxaDeServico: arredondar(d.taxaDeServico),
+    freteDaPlataforma: arredondar(d.freteDaPlataforma),
+    outraDiferenca: arredondar(d.outraDiferenca),
+    incentivoNaEntrega: arredondar(d.incentivoNaEntrega),
+})
+
+const detalheVazio = (): DetalheDoRepasse => ({
+    vendasNoApp: 0, valorDasVendas: 0, repasseDasVendas: 0, incentivo: 0, taxaDeServico: 0, freteDaPlataforma: 0,
+    outraDiferenca: 0, vendasNaEntrega: 0, incentivoNaEntrega: 0,
+})
+
+/** "do iFood", "da 99Food" */
+function daPlataforma(nome: string): string {
+    return /^99/.test(normalizarNome(nome)) ? `da ${nome}` : `do ${nome}`
+}
+
+/**
+ * O texto que explica a diferença entre o repasse e as vendas, no lançamento do repasse. Ex.: "valores do iFood em 1
+ * venda(s) paga(s) no app: vendas R$ 53,32, repasse R$ 60,89; inclui incentivo do iFood R$ 8,97; sem a taxa de serviço R$ 1,40".
+ * Vazio quando nenhuma venda usou os valores da plataforma.
+ */
+export function textoDoDetalheDoRepasse(nome: string, d: DetalheDoRepasse): string {
+    const partes: string[] = []
+    if (d.vendasNoApp > 0) {
+        partes.push(`valores ${daPlataforma(nome)} em ${d.vendasNoApp} venda(s) paga(s) no app: vendas ${moeda(d.valorDasVendas)}, repasse ${moeda(d.repasseDasVendas)}`)
+        if (arredondar(d.incentivo) >= 0.01) partes.push(`inclui incentivo ${daPlataforma(nome)} ${moeda(d.incentivo)}`)
+        if (arredondar(d.taxaDeServico) >= 0.01) partes.push(`sem a taxa de serviço ${moeda(d.taxaDeServico)}`)
+        if (arredondar(d.freteDaPlataforma) >= 0.01) partes.push(`sem o frete da entrega ${daPlataforma(nome)} ${moeda(d.freteDaPlataforma)}`)
+        if (Math.abs(arredondar(d.outraDiferenca)) >= 0.01) partes.push(`diferença de ${moeda(d.outraDiferenca)} entre a venda no caixa e o pedido`)
+    }
+    if (d.vendasNaEntrega > 0 && arredondar(d.incentivoNaEntrega) >= 0.01) {
+        partes.push(`incentivo ${daPlataforma(nome)} ${moeda(d.incentivoNaEntrega)} de ${d.vendasNaEntrega} venda(s) paga(s) na entrega`)
+    }
+    return partes.join('; ')
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // O que a conferência lança para as plataformas
 // ---------------------------------------------------------------------------------------------------------------
 
 export interface GrupoDaPlataforma {
     plataforma: PlataformaCadastrada
     dataRepasse: string
-    /** Soma das vendas pagas no app, valor cheio: a receita pendente (o repasse) */
+    /** A receita pendente (o repasse): as pagas no app pelo valor cheio, ou pelo expected_gross quando a venda tem os valores da
+     *  plataforma; as pagas na entrega com os valores, o desconto que a plataforma bancou (basesDaVendaDePlataforma) */
     receita: number
     /** Comissão (loja entrega × plataforma entrega) de todas as vendas + taxa online das pagas no app: a despesa pendente */
     comissao: number
     vendas: number
     vendasNoApp: number
+    /** O que veio dos valores da plataforma (15/10/2026), para o texto do repasse */
+    detalhe: DetalheDoRepasse
 }
 
 export interface PlanoDasPlataformas {
@@ -205,6 +368,8 @@ export interface ContextoDasPlataformas {
     formas: FormasDaPlataforma
     /** sale_id → pedidos.plataforma */
     plataformaDoPedido: Map<string, string>
+    /** sale_id → valores da plataforma do pedido (15/10/2026); sem a linha, a venda segue como antes */
+    valoresDaVenda?: Map<string, ValoresDaVenda>
 }
 
 /**
@@ -223,6 +388,16 @@ export function planoDasPlataformas(
     const noRepasse = new Set<string>()
     const semCadastro = new Map<string, { vendas: number; total: number }>()
     const semPlataforma = { vendas: 0, total: 0 }
+    const formaDiferente = new Map<string, number>()
+
+    // Venda em mais de um lançamento: cada um leva a sua parte dos valores da plataforma (o valor dele ÷ o total da venda, que é
+    // o maior entre o total do pedido e a soma dos lançamentos dela neste caixa)
+    const somaDaVenda = new Map<string, number>()
+    for (const l of lancamentos) {
+        if (!l.sale_id || !ctx.valoresDaVenda?.has(l.sale_id)) continue
+        if (!vendaDePlataforma(l, ctx.formas, ctx.plataformaDoPedido.get(l.sale_id), codigos)) continue
+        somaDaVenda.set(l.sale_id, (somaDaVenda.get(l.sale_id) ?? 0) + Number(l.amount))
+    }
 
     for (const l of lancamentos) {
         const venda = vendaDePlataforma(l, ctx.formas, l.sale_id ? ctx.plataformaDoPedido.get(l.sale_id) : null, codigos)
@@ -247,18 +422,41 @@ export function planoDasPlataformas(
             grupo = {
                 plataforma,
                 dataRepasse: dataDoRepasse(diaDoCaixa, plataforma.payout_weeks_after),
-                receita: 0, comissao: 0, comissaoBruta: 0, vendas: 0, vendasNoApp: 0,
+                receita: 0, comissao: 0, comissaoBruta: 0, vendas: 0, vendasNoApp: 0, detalhe: detalheVazio(),
             }
             grupos.set(plataforma.id, grupo)
         }
-        const pctEntrega = venda.entregaPropria ? plataforma.commission_own_delivery_pct : plataforma.commission_platform_delivery_pct
-        grupo.comissaoBruta += valor * (Number(pctEntrega) || 0) / 100
+
+        const valores = l.sale_id ? ctx.valoresDaVenda?.get(l.sale_id) : undefined
+        const totalDaVenda = l.sale_id ? Math.max(Number(valores?.valor_do_pedido) || 0, somaDaVenda.get(l.sale_id) ?? 0) : 0
+        const bases = basesDaVendaDePlataforma(valor, venda, valores, totalDaVenda > 0 ? valor / totalDaVenda : 1)
+        if (bases.comValores && valores && valores.paid_online !== venda.pagoNoApp) {
+            formaDiferente.set(plataforma.name, (formaDiferente.get(plataforma.name) ?? 0) + 1)
+        }
+
+        const pctEntrega = bases.entregaPropria ? plataforma.commission_own_delivery_pct : plataforma.commission_platform_delivery_pct
+        grupo.comissaoBruta += bases.baseComissao * (Number(pctEntrega) || 0) / 100
+        grupo.comissaoBruta += bases.baseTaxaOnline * (Number(plataforma.online_payment_fee_pct) || 0) / 100
+        grupo.receita += bases.repasse
         grupo.vendas++
         if (venda.pagoNoApp) {
-            grupo.receita += valor
-            grupo.comissaoBruta += valor * (Number(plataforma.online_payment_fee_pct) || 0) / 100
             grupo.vendasNoApp++
             noRepasse.add(l.id)
+        }
+        if (bases.comValores) {
+            const d = grupo.detalhe
+            if (venda.pagoNoApp) {
+                d.vendasNoApp++
+                d.valorDasVendas += valor
+                d.repasseDasVendas += bases.repasse
+                d.incentivo += bases.incentivo
+                d.taxaDeServico += bases.taxaDeServico
+                d.freteDaPlataforma += bases.freteDaPlataforma
+                d.outraDiferenca += bases.outraDiferenca
+            } else if (bases.repasse > 0) {
+                d.vendasNaEntrega++
+                d.incentivoNaEntrega += bases.repasse
+            }
         }
     }
 
@@ -267,12 +465,20 @@ export function planoDasPlataformas(
         const nome = NOMES_CONHECIDOS[codigo] ?? codigo
         avisos.push(`Cadastre a plataforma ${nome} em Plataformas: ${s.vendas} venda(s) dela (${moeda(s.total)}) ficaram como antes, sem a comissão, e o que foi pago no app vence no dia.`)
     }
+    for (const [nome, n] of formaDiferente) {
+        avisos.push(`${n} venda(s) ${daPlataforma(nome)} com a forma diferente da que a plataforma informou (pago no app × na entrega): conferida(s) pela forma que o caixa registrou.`)
+    }
     if (semPlataforma.vendas > 0) {
         avisos.push(`${semPlataforma.vendas} venda(s) paga(s) no app (${moeda(semPlataforma.total)}) não dizem de qual plataforma são e ficaram como antes. Ligue cada identificador da forma "Pago na plataforma" à sua plataforma.`)
     }
 
     return {
-        grupos: [...grupos.values()].map(({ comissaoBruta, ...g }) => ({ ...g, receita: arredondar(g.receita), comissao: arredondar(comissaoBruta) })),
+        grupos: [...grupos.values()].map(({ comissaoBruta, detalhe, ...g }) => ({
+            ...g,
+            receita: arredondar(g.receita),
+            comissao: arredondar(comissaoBruta),
+            detalhe: arredondarDetalhe(detalhe),
+        })),
         noRepasse,
         avisos,
     }
