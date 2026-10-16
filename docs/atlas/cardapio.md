@@ -50,10 +50,10 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Frequência:** a cada 5 min (padrão, configurável) e a cada mudança da planilha
 - **Onde roda:** Computador da loja com o Metrics.Sync (Athos, Excel…) → `Nuvem: POST /api/pdv/sync/products/bulk`
 - **Quantos:** Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo
-- **A cada vez:** Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Antes mandava o catálogo inteiro toda vez e a nuvem procura cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos (22,9 bilhões em uma semana), 70% de um núcleo do banco.
+- **A cada vez:** Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Nuvem 2.6.128.0 + Sync 1.4.9.0 (16/10/2026, locais): com o código do Athos (displayId) O CÓDIGO MANDA, a nuvem acha o produto pelo display_id (índice único) e não mais pelo nome; produto já existente não recebe o estoque do Athos (opção EstoqueDoSistemaDaLoja). Antes mandava o catálogo inteiro toda vez e a nuvem procurava cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos.
 - **Por que existe:** Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).
-- **Proposta:** Na nuvem, buscar os produtos da loja uma vez só e comparar na memória (o envio manual completo ainda faz uma busca sem índice por produto).
-- **Onde no código:** `Metrics.Sync/Services/EnvioIncremental.cs:22`, `Metrics.Sync/Services/SyncOrchestrator.cs:205`, `Metrics.Sync/Models/SyncConfig.cs:18`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497`
+- **Proposta:** Publicar a nuvem 2.6.128.0 e o Sync 1.4.9.0. Origens sem código (Excel e outras) ainda procuram cada produto pelo nome sem índice: buscar os produtos da loja uma vez só e comparar na memória.
+- **Onde no código:** `Metrics.Sync/Services/EnvioIncremental.cs:22`, `Metrics.Sync/Services/SyncOrchestrator.cs:272`, `Metrics.Sync/Models/SyncConfig.cs:18`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:622`
 
 ### Versão do cardápio do celular (Serviço do PDV) — Ok
 - **Frequência:** a cada 20 s (e em cada /api/garcom/cardapio)
@@ -73,6 +73,16 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Por que existe:** Trazer para o PDV só os produtos alterados na nuvem (o carimbo evita baixar à toa). Regra do Thomás (09/10/2026): o PDV tem todos os produtos ativos; o cardápio online só os marcados Cardápio. Antes os 1.750 produtos da Katatau fora do cardápio ficavam no caixa com o código antigo, sem código de barras e sem NCM.
 - **Proposta:** Baixar a foto só quando a foto mudou (melhoria pequena).
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:73`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:209`, `Metrics.PDV/Metrics.Shared/Services/CodigosDosProdutos.cs:26`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:12`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:311`
+
+### Metrics.Sync: espelho do Athos (desativa na nuvem o que não existe no Athos) — Ok
+- **Frequência:** em cada rodada do Sync, antes do envio dos produtos; a rodada automática só chama a nuvem quando a lista do Athos mudou ou a cada 6 h; Sincronizar agora e Enviar todos os produtos sempre chamam
+- **Onde roda:** Computador da loja com o Metrics.Sync (só origem Athos, opção EspelhoDoAthos) → `Banco do Athos (SELECT idproduto, statusproduto) → Nuvem: POST /api/pdv/sync/products/espelho`
+- **Quantos:** 1 chamada por rodada (lista de ~3.600 códigos na Katatau); a nuvem lê os produtos da loja uma vez
+- **A cada vez:** Manda a lista completa dos códigos do Athos (ativos e inativos); a nuvem põe inativo (updated_at agora) o produto ativo cujo código não está na lista ou está inativo no Athos. Nunca apaga, nunca ativa. Trava: recusa (HTTP 409) se a lista cobre menos de 80% dos produtos ativos da nuvem; simular=true só diz o que mudaria.
+- **Por que existe:** Regra do Thomás (16/10/2026, Katatau): o código no Metrics é o do Athos e não pode haver produto a mais na nuvem (149 cópias na faixa 900.000).
+- **Se espaçar:** Produto apagado ou inativado no Athos demora mais para sumir do PDV e do cardápio.
+- **Desde:** 16/10/2026 (nuvem 2.6.128.0 + Sync 1.4.9.0, locais)
+- **Onde no código:** `Metrics.Sync/Services/EspelhoDoAthos.cs:23`, `Metrics.Sync/Services/SyncOrchestrator.cs:397`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:863`, `metrics-node/src/modules/pdv-sync/services/codigo-do-sistema-da-loja.ts:123`
 
 ## Tabelas e Estrutura de Dados
 

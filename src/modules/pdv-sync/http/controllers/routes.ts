@@ -18,6 +18,7 @@ import {
     postCancellationsSync, getCancellationsSync
 } from './pdv-sync-controller'
 import { postSalesSync } from './sales-sync-controller'
+import { postSalesFiscalSync } from './sales-fiscal-sync-controller'
 import { createDeliveryItemMapping } from '@/modules/delivery/http/controllers/delivery-item-mapping'
 import { postIfoodDeliveryCode } from './delivery-code-controller'
 import { getIbptSync } from './ibpt-sync-controller'
@@ -99,6 +100,8 @@ export async function pdvSyncRoutes(app: FastifyInstance) {
     app.post('/api/pdv/stocks', postStocksSync)
     app.post('/api/pdv/sync/sales', postSalesSync)
     app.post('/api/pdv/sales', postSalesSync)
+    // NFC-e que mudou depois que a venda subiu (Vendas, etapa 1, 16/10/2026): emitida pelo F9, contingência autorizada, cancelada
+    app.post('/api/pdv/sync/sales/fiscal', postSalesFiscalSync)
 
     // Cancelamentos Unificados
     app.post('/api/pdv/sync/cancellations', postCancellationsSync)

@@ -527,6 +527,7 @@ model Employee {
   payrollEntries     PayrollEntry[]
   timeClocks         TimeClock[]
   cashierEntries     CashierEntry[]
+  soldItems          SaleItem[]
 
   @@map("employees")
 }
@@ -721,6 +722,18 @@ model Sale {
   service_fee        Float?   @default(0)
   cover_charge       Float?   @default(0)
 
+  // NFC-e da venda (Vendas, etapa 1, 16/10/2026; ver modules/pdv-sync/services/dados-da-venda.ts). Vazio = venda antiga ("—").
+  // nfce_status: SEM_NOTA, RECUSADA, CONTINGENCIA, AUTORIZADA, CONTINGENCIA_RECUSADA, CANCELAMENTO_PENDENTE, CANCELADA,
+  // CANCELAMENTO_FALHOU. nfce_changed_at = quando a nota mudou no PDV (a mudança mais velha nunca passa por cima da nova).
+  nfce_status      String?
+  nfce_number      Int?
+  nfce_series      Int?
+  nfce_environment String?
+  nfce_key         String?
+  nfce_contingency Boolean?
+  nfce_reason      String?
+  nfce_changed_at  DateTime?
+
   items          SaleItem[]
   entries        CashierEntry[]
   treatment      Treatment?      @relation(fields: [treatment_id], references: [id])
@@ -745,12 +758,25 @@ model SaleItem {
   cost_source      String?
   cost_snapshot    Json?
 
-  sale    Sale     @relation(fields: [sale_id], references: [id])
-  product Product? @relation(fields: [product_id], references: [id])
-  service Service? @relation(fields: [service_id], references: [id])
-  supply  Supply?  @relation(fields: [supply_id], references: [id])
+  // Como o item foi vendido no PDV (Vendas, etapa 1, 16/10/2026). Vazio = venda antiga ("—").
+  // seller_*: o vendedor (quem lançou o item); seller_employee_id só quando é funcionário do RH; seller_number = o número do
+  // vendedor no PDV (ordem de cadastro). complements = as escolhas [{ grupo, nome, quantidade, preco, observacaoRapida }]
+  // (quantidade por UMA unidade do item; o preço já está no preço do item). note = só o texto livre da observação.
+  sold_name          String?
+  seller_employee_id String?
+  seller_name        String?
+  seller_number      Int?
+  complements        Json?
+  note               String?
+
+  sale    Sale      @relation(fields: [sale_id], references: [id])
+  product Product?  @relation(fields: [product_id], references: [id])
+  service Service?  @relation(fields: [service_id], references: [id])
+  supply  Supply?   @relation(fields: [supply_id], references: [id])
+  seller  Employee? @relation(fields: [seller_employee_id], references: [id], onDelete: SetNull)
   stocks  Stock[]
 
+  @@index([seller_employee_id])
   @@map("sale_items")
 }
 

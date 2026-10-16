@@ -944,6 +944,35 @@
       "metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)",
       "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs"
      ]
+    },
+    {
+     "id": "regra-venda-produto-a-produto",
+     "titulo": "Cada venda sobe com o item como foi vendido e com a NFC-e",
+     "regra": "O PDV manda em cada venda, por item: o nome como foi vendido (pizza de sabores, item de delivery sem vínculo), o vendedor (quem lançou: o funcionário do RH quando é um, o nome e o número do vendedor), as escolhas (complementos e observações rápidas, com grupo, quantidade e preço) e só o texto livre da observação; e na venda a NFC-e (situação, número, série, ambiente, chave, se saiu em contingência e o motivo da recusa). Situações: SEM_NOTA, RECUSADA, CONTINGENCIA, AUTORIZADA, CONTINGENCIA_RECUSADA, CANCELAMENTO_PENDENTE, CANCELADA, CANCELAMENTO_FALHOU. Tudo opcional: o PDV antigo não manda e nada muda; venda antiga fica com \"—\". Item que já estava na nuvem só é completado no que falta, nunca trocado.",
+     "porque": "O módulo Vendas da web mostra venda por venda e produto por produto (D3); sem o nome congelado, o histórico mudaria junto com o cadastro, e sem o vendedor e a nota não há aba Vendedores nem a nota no detalhe da venda (D4). Não mexe em dinheiro, caixa nem estoque, então completa a venda até em caixa conferido.",
+     "decididoPor": "Thomás Furtado",
+     "data": "16/10/2026",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts",
+      "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs (MontarPayloadVenda, EscolhasDoItem, ObservacaoLivreDoItem)",
+      "Metrics.PDV/Metrics.Shared/Services/NotaFiscalDaVenda.cs (Situacao, Montar)"
+     ]
+    },
+    {
+     "id": "regra-nota-que-muda-depois",
+     "titulo": "A nota que muda depois da venda sobe sozinha, e a mais velha nunca passa por cima da nova",
+     "regra": "Ao gravar, o PDV carimba a hora em que a nota de uma venda mudou (pedidos.nfce_alterada_em; um lugar só, no AppDbContext, para todas as telas e o serviço): emitida pelo F9 \"Emitir a nota\", contingência autorizada, cancelada na SEFAZ (também a que cancela quando a internet volta), recusada. A venda que já subiu e tem carimbo mais novo que o da nuvem (pedidos.nfce_na_nuvem_em) manda só a nota pela rota POST /api/pdv/sync/sales/fiscal, na sincronia de 5 em 5 minutos, sem reenviar a venda. A nuvem guarda a hora (sales.nfce_changed_at) e só aceita a mudança igual ou mais nova. A nota só é dada por entregue quando a nuvem responde notaFiscal: true; com a nuvem antiga (404) o PDV espera 1 hora e tenta de novo, sem contar como falha.",
+     "porque": "A nota muda depois da venda em vários lugares (tela Vendas, cancelamento, serviço da contingência) e o envio da venda e o da nota podem chegar fora de ordem. Reenviar a venda inteira esbarraria nas regras do caixa (caixa conferido recusa mudança); a nota não é dinheiro e precisa chegar sempre.",
+     "decididoPor": "Thomás Furtado",
+     "data": "16/10/2026",
+     "ondeNoCodigo": [
+      "Metrics.PDV/Metrics.Shared/Services/NotaFiscalDaVenda.cs (MarcarMudancas, ParaEnviar)",
+      "Metrics.PDV/Metrics.Shared/Data/AppDbContext.cs (SaveChangesAsync)",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)",
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-fiscal-sync-controller.ts",
+      "metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts (gravarNotaFiscal, ondeGravarANota)"
+     ]
     }
    ],
    "funcoes": [
@@ -1211,6 +1240,30 @@
       "nuvem:CashierSession",
       "nuvem:CashierEntry"
      ]
+    },
+    {
+     "nome": "AtualizarNotaDaVenda",
+     "oQueFaz": "Recebe do PDV a NFC-e de vendas que já subiram e mudaram depois, e grava só as colunas da nota (nunca dinheiro, caixa, itens ou estoque).",
+     "entradas": [
+      "lista de { Uuid da venda, NotaFiscal: Situacao, Numero, Serie, Ambiente, Chave, Contingencia, Motivo, AlteradaEm }"
+     ],
+     "saidas": [
+      "accepted (gravadas ou a nuvem já tinha uma mais nova)",
+      "naoEncontradas (a nuvem não tem a venda)",
+      "notaFiscal: true"
+     ],
+     "motivo": "A tela Vendas da web mostra a situação real da nota (autorizada, cancelada, contingência, sem nota) mesmo quando ela muda depois da venda; idempotente para o PDV poder repetir sem medo.",
+     "ondeNoCodigo": [
+      "metrics-node/src/modules/pdv-sync/http/controllers/sales-fiscal-sync-controller.ts",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)"
+     ],
+     "usadaPor": [
+      "PDV (sincronia de 5 em 5 minutos)"
+     ],
+     "tabelas": [
+      "nuvem:Sale",
+      "pdv:Pedido"
+     ]
     }
    ],
    "trabalhos": [
@@ -1218,17 +1271,18 @@
      "id": "pdv-envio-vendas-caixa",
      "nome": "Envio de vendas, caixas e cancelamentos para a nuvem",
      "ondeRoda": "Core Service do computador servidor da loja (sincronia geral)",
-     "chama": "Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations",
+     "chama": "Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations, /sync/sales/fiscal (nota que mudou depois da venda)",
      "frequencia": "venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência",
      "segundos": 300,
      "quantos": "1 por loja",
-     "faz": "Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff).",
+     "faz": "Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff). A nota que muda depois sobe pela rota da nota, até 100 por rodada; nuvem antiga (404) = espera 1 hora.",
      "porque": "A nuvem (web, relatórios, financeiro) tem de ter tudo o que o PDV vendeu, mesmo depois de a internet cair.",
      "situacao": "ok",
      "ondeNoCodigo": [
       "Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157",
       "Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200",
-      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530"
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530",
+      "Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)"
      ]
     },
     {
@@ -1612,15 +1666,35 @@
      "frequencia": "a cada 5 min (padrão, configurável) e a cada mudança da planilha",
      "segundos": 300,
      "quantos": "Só lojas com integração de ERP; ⌈produtos/250⌉ lotes por ciclo",
-     "faz": "Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Antes mandava o catálogo inteiro toda vez e a nuvem procura cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos (22,9 bilhões em uma semana), 70% de um núcleo do banco.",
+     "faz": "Desde o Sync 1.4.3.0 (09/10/2026) a rodada automática manda só os produtos novos ou alterados desde o último envio aceito (impressão digital de cada produto guardada no computador da loja); Sincronizar agora (manual) manda tudo. Nuvem 2.6.128.0 + Sync 1.4.9.0 (16/10/2026, locais): com o código do Athos (displayId) O CÓDIGO MANDA, a nuvem acha o produto pelo display_id (índice único) e não mais pelo nome; produto já existente não recebe o estoque do Athos (opção EstoqueDoSistemaDaLoja). Antes mandava o catálogo inteiro toda vez e a nuvem procurava cada produto pelo nome sem índice: na Katatau (3.200 produtos) eram ~10 milhões de linhas lidas a cada 5 minutos.",
      "porque": "Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).",
      "situacao": "atencao",
-     "proposta": "Na nuvem, buscar os produtos da loja uma vez só e comparar na memória (o envio manual completo ainda faz uma busca sem índice por produto).",
+     "proposta": "Publicar a nuvem 2.6.128.0 e o Sync 1.4.9.0. Origens sem código (Excel e outras) ainda procuram cada produto pelo nome sem índice: buscar os produtos da loja uma vez só e comparar na memória.",
      "ondeNoCodigo": [
       "Metrics.Sync/Services/EnvioIncremental.cs:22",
-      "Metrics.Sync/Services/SyncOrchestrator.cs:205",
+      "Metrics.Sync/Services/SyncOrchestrator.cs:272",
       "Metrics.Sync/Models/SyncConfig.cs:18",
-      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497"
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:622"
+     ]
+    },
+    {
+     "id": "sync-erp-espelho",
+     "nome": "Metrics.Sync: espelho do Athos (desativa na nuvem o que não existe no Athos)",
+     "ondeRoda": "Computador da loja com o Metrics.Sync (só origem Athos, opção EspelhoDoAthos)",
+     "chama": "Banco do Athos (SELECT idproduto, statusproduto) → Nuvem: POST /api/pdv/sync/products/espelho",
+     "frequencia": "em cada rodada do Sync, antes do envio dos produtos; a rodada automática só chama a nuvem quando a lista do Athos mudou ou a cada 6 h; Sincronizar agora e Enviar todos os produtos sempre chamam",
+     "segundos": 300,
+     "quantos": "1 chamada por rodada (lista de ~3.600 códigos na Katatau); a nuvem lê os produtos da loja uma vez",
+     "faz": "Manda a lista completa dos códigos do Athos (ativos e inativos); a nuvem põe inativo (updated_at agora) o produto ativo cujo código não está na lista ou está inativo no Athos. Nunca apaga, nunca ativa. Trava: recusa (HTTP 409) se a lista cobre menos de 80% dos produtos ativos da nuvem; simular=true só diz o que mudaria.",
+     "porque": "Regra do Thomás (16/10/2026, Katatau): o código no Metrics é o do Athos e não pode haver produto a mais na nuvem (149 cópias na faixa 900.000).",
+     "seEspacar": "Produto apagado ou inativado no Athos demora mais para sumir do PDV e do cardápio.",
+     "situacao": "ok",
+     "desde": "16/10/2026 (nuvem 2.6.128.0 + Sync 1.4.9.0, locais)",
+     "ondeNoCodigo": [
+      "Metrics.Sync/Services/EspelhoDoAthos.cs:23",
+      "Metrics.Sync/Services/SyncOrchestrator.cs:397",
+      "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:863",
+      "metrics-node/src/modules/pdv-sync/services/codigo-do-sistema-da-loja.ts:123"
      ]
     },
     {
@@ -4091,11 +4165,11 @@
  },
  "ligacoes_entre_modulos": [],
  "schema": {
-  "gerado_em": "2026-10-16T02:45:57",
+  "gerado_em": "2026-10-16T19:29:55",
   "origens": {
    "nuvem": {
     "arquivo": "metrics-node/prisma/schema.prisma",
-    "versao": "a089b1f 2026-10-16",
+    "versao": "35a0cdd 2026-10-16",
     "tabelas": 68
    },
    "saas": {
@@ -4105,7 +4179,7 @@
    },
    "pdv": {
     "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-    "versao": "d828f3f 2026-10-16",
+    "versao": "f44b0fb 2026-10-16",
     "tabelas": 46
    }
   },
@@ -8529,6 +8603,16 @@
       "refs": [],
       "on_delete": null,
       "nome": null
+     },
+     {
+      "campo": "soldItems",
+      "alvo": "nuvem:SaleItem",
+      "lista": true,
+      "opcional": false,
+      "fks": [],
+      "refs": [],
+      "on_delete": null,
+      "nome": null
      }
     ]
    },
@@ -9667,6 +9751,94 @@
       "unico": false,
       "padrao": "0",
       "comentario": null
+     },
+     {
+      "nome": "nfce_status",
+      "coluna": "nfce_status",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": "NFC-e da venda (Vendas, etapa 1, 16/10/2026; ver modules/pdv-sync/services/dados-da-venda.ts). Vazio = venda antiga (\"—\"). nfce_status: SEM_NOTA, RECUSADA, CONTINGENCIA, AUTORIZADA, CONTINGENCIA_RECUSADA, CANCELAMENTO_PENDENTE, CANCELADA, CANCELAMENTO_FALHOU. nfce_changed_at = quando a nota mudou no PDV (a mudança mais velha nunca passa por cima da nova)."
+     },
+     {
+      "nome": "nfce_number",
+      "coluna": "nfce_number",
+      "tipo": "Int",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_series",
+      "coluna": "nfce_series",
+      "tipo": "Int",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_environment",
+      "coluna": "nfce_environment",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_key",
+      "coluna": "nfce_key",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_contingency",
+      "coluna": "nfce_contingency",
+      "tipo": "Boolean",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_reason",
+      "coluna": "nfce_reason",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "nfce_changed_at",
+      "coluna": "nfce_changed_at",
+      "tipo": "DateTime",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
      }
     ],
     "relacoes": [
@@ -9856,6 +10028,72 @@
       "unico": false,
       "padrao": null,
       "comentario": null
+     },
+     {
+      "nome": "sold_name",
+      "coluna": "sold_name",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": "Como o item foi vendido no PDV (Vendas, etapa 1, 16/10/2026). Vazio = venda antiga (\"—\"). seller_*: o vendedor (quem lançou o item); seller_employee_id só quando é funcionário do RH; seller_number = o número do vendedor no PDV (ordem de cadastro). complements = as escolhas [{ grupo, nome, quantidade, preco, observacaoRapida }] (quantidade por UMA unidade do item; o preço já está no preço do item). note = só o texto livre da observação."
+     },
+     {
+      "nome": "seller_employee_id",
+      "coluna": "seller_employee_id",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "seller_name",
+      "coluna": "seller_name",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "seller_number",
+      "coluna": "seller_number",
+      "tipo": "Int",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "complements",
+      "coluna": "complements",
+      "tipo": "Json",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
+     },
+     {
+      "nome": "note",
+      "coluna": "note",
+      "tipo": "String",
+      "enum": false,
+      "opcional": true,
+      "chave": false,
+      "unico": false,
+      "padrao": null,
+      "comentario": null
      }
     ],
     "relacoes": [
@@ -9913,6 +10151,20 @@
        "id"
       ],
       "on_delete": null,
+      "nome": null
+     },
+     {
+      "campo": "seller",
+      "alvo": "nuvem:Employee",
+      "lista": false,
+      "opcional": true,
+      "fks": [
+       "seller_employee_id"
+      ],
+      "refs": [
+       "id"
+      ],
+      "on_delete": "SetNull",
       "nome": null
      },
      {

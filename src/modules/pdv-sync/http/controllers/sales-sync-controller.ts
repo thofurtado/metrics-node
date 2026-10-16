@@ -20,6 +20,15 @@ import {
     type PaymentKind,
 } from '../../services/cashier-sync-rules'
 import { metodoNaConferencia } from '../../services/pagamentos-do-pdv'
+import {
+    camposDoItem,
+    camposNovosDoItemSchema,
+    camposQueFaltam,
+    funcionarioDoVendedor,
+    gravarNotaFiscal,
+    notaFiscalSchema,
+    temVendedor,
+} from '../../services/dados-da-venda'
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
     const saleSchema = z.array(z.object({
@@ -41,6 +50,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         // loja, mesmo paga em dinheiro: a conferência lança a comissão. Sem os campos (PDV antigo), nada muda.
         PlataformaCodigo: z.string().max(40).optional().nullable(),
         EntregaPropria: z.boolean().optional().nullable(),
+        // NFC-e da venda (Vendas, etapa 1, 16/10/2026): situação, número, série, ambiente e chave. Sem o campo (PDV antigo),
+        // a venda fica sem os dados da nota ("—" na web), como antes.
+        NotaFiscal: notaFiscalSchema.optional().nullable(),
         Payments: z.array(z.object({
             PaymentMethodUuid: z.string().uuid().optional().nullable(),
             Method: z.string(),
@@ -81,6 +93,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 Quantity: z.number().positive().optional().default(1),
                 Cost: z.number().optional().nullable(),
             })).optional(),
+            // Como o item foi vendido (Vendas, etapa 1): nome, vendedor, complementos escolhidos e observação livre. Opcionais.
+            ...camposNovosDoItemSchema,
         })),
     }))
 
@@ -120,6 +134,20 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
         }
     }
 
+    // Funcionário do RH de cada vendedor (Vendas, etapa 1): uma consulta por vendedor no envio
+    const funcionarios = new Map<string, string | null>()
+    type ItemDaVenda = (typeof sales)[number]['Items'][number]
+    type Cliente = Prisma.TransactionClient
+    const funcionarioDoItem = (tx: Cliente, item: ItemDaVenda) =>
+        temVendedor(item) ? funcionarioDoVendedor(tx, item.VendedorId, funcionarios) : Promise.resolve(null)
+    // Item que já está na nuvem (venda do PDV antigo reenviada pelo novo): completa só o que falta, nunca troca o gravado.
+    // Não mexe em dinheiro nem em estoque, então vale também em caixa conferido.
+    const completarItem = async (tx: Cliente, item: ItemDaVenda, guardado: Parameters<typeof camposQueFaltam>[0]) => {
+        const novos = camposDoItem(item, guardado.seller_employee_id == null ? await funcionarioDoItem(tx, item) : null)
+        const faltam = camposQueFaltam(guardado, novos)
+        if (Object.keys(faltam).length > 0) await tx.saleItem.update({ where: { id: item.Uuid }, data: faltam })
+    }
+
     try {
         await prisma.$transaction(async (tx) => {
         for (const sale of sales) {
@@ -152,11 +180,11 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 storedEntries.map(e => ({ identification: e.identification ?? '', payment_method: e.payment_method, amount: e.amount })),
                 desiredEntries,
             )
-            const storedItemIds = new Set((await tx.saleItem.findMany({
+            const storedItems = new Map((await tx.saleItem.findMany({
                 where: { id: { in: sale.Items.map(i => i.Uuid) } },
-                select: { id: true }
-            })).map(i => i.id))
-            const hasNewItems = sale.Items.some(i => !storedItemIds.has(i.Uuid))
+                select: { id: true, sold_name: true, seller_employee_id: true, seller_name: true, seller_number: true, complements: true, note: true }
+            })).map(i => [i.id, i]))
+            const hasNewItems = sale.Items.some(i => !storedItems.has(i.Uuid))
             const changesSession = !existingSale || saleFieldsChanged(existingSale, sale) || entriesChanged || hasNewItems
 
             const rejection = checkSaleSession(targetSessionId, session, changesSession)
@@ -178,6 +206,13 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                 // (a conferência já lançou o financeiro; desfazer e conferir de novo pega a plataforma)
                 if (session && session.status !== 'CHECKED' && plataformaMudou(storedEntries, plataforma)) {
                     await tx.cashierEntry.updateMany({ where: { id: { in: storedEntries.map(e => e.id) } }, data: plataforma! })
+                }
+                // A nota que mudou depois (emitida pelo F9, contingência autorizada, cancelada) e os dados do item que faltam:
+                // não mexem em dinheiro, então completam a venda até em caixa conferido (Vendas, etapa 1)
+                if (sale.NotaFiscal) await gravarNotaFiscal(tx, sale.Uuid, sale.NotaFiscal)
+                for (const item of sale.Items) {
+                    const guardado = storedItems.get(item.Uuid)
+                    if (guardado) await completarItem(tx, item, guardado)
                 }
                 continue // reenvio idêntico: nada mais a gravar
             }
@@ -236,6 +271,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     ...detalhes,
                 }
             })
+            // NFC-e da venda (Vendas, etapa 1): a mesma regra da rota da nota (a mudança mais velha não passa por cima da nova)
+            if (sale.NotaFiscal) await gravarNotaFiscal(tx, sale.Uuid, sale.NotaFiscal)
 
             // 4. Lançamentos de caixa da venda: só no caixa DELA. Se mudaram (pagamento alterado, cancelamento), troca todos;
             //    antes, trocar a forma com um pagamento não chegava à nuvem e com vários pagamentos duplicava.
@@ -325,7 +362,9 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                     }
                 }
 
-                if (!existingItem) {
+                if (existingItem) {
+                    await completarItem(tx, item, existingItem)
+                } else {
                     // Custo congelado do item: usa o que o PDV congelou na venda e completa o que faltar pelo cadastro
                     const cost = await buildItemCost(tx, item)
 
@@ -341,6 +380,8 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                             complements_cost: cost.complements_cost,
                             cost_source: cost.source,
                             cost_snapshot: cost.snapshot as unknown as Prisma.InputJsonValue,
+                            // Nome como vendido, vendedor, complementos e observação (Vendas, etapa 1); PDV antigo: nada
+                            ...camposDoItem(item, await funcionarioDoItem(tx, item)),
                         }
                     })
 
@@ -507,5 +548,7 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
     // Fase 4 do Mergulho (02:P11): diz quais vendas foram aceitas, como os cancelamentos e os movimentos de caixa. Hoje o lote
     // é tudo ou nada (uma recusa desfaz o lote inteiro com 409), então são todas; o PDV novo só marca como enviadas as que
     // estiverem aqui, e nada se perde se um dia a nuvem passar a pular uma venda.
-    return reply.status(201).send({ message: 'Vendas e baixas de CMV sincronizadas com sucesso', accepted: sales.map(s => s.Uuid) })
+    // notaFiscal: esta nuvem guarda a NFC-e e os dados do item (Vendas, etapa 1). O PDV só dá a nota por entregue quando vê isto;
+    // com a nuvem antiga, ele manda a nota de novo pela rota própria quando a nuvem for atualizada.
+    return reply.status(201).send({ message: 'Vendas e baixas de CMV sincronizadas com sucesso', accepted: sales.map(s => s.Uuid), notaFiscal: true })
 }

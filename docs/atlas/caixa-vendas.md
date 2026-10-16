@@ -128,6 +128,18 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Decisão:** 10/10/2026 por Thomás Furtado
 - **Onde no código:** `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/src/modules/cashier/http/controllers/cashier-controller.ts (auditCashierSession)`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs`
 
+### Cada venda sobe com o item como foi vendido e com a NFC-e (`regra-venda-produto-a-produto`)
+- **Regra:** O PDV manda em cada venda, por item: o nome como foi vendido (pizza de sabores, item de delivery sem vínculo), o vendedor (quem lançou: o funcionário do RH quando é um, o nome e o número do vendedor), as escolhas (complementos e observações rápidas, com grupo, quantidade e preço) e só o texto livre da observação; e na venda a NFC-e (situação, número, série, ambiente, chave, se saiu em contingência e o motivo da recusa). Situações: SEM_NOTA, RECUSADA, CONTINGENCIA, AUTORIZADA, CONTINGENCIA_RECUSADA, CANCELAMENTO_PENDENTE, CANCELADA, CANCELAMENTO_FALHOU. Tudo opcional: o PDV antigo não manda e nada muda; venda antiga fica com "—". Item que já estava na nuvem só é completado no que falta, nunca trocado.
+- **Por que é assim:** O módulo Vendas da web mostra venda por venda e produto por produto (D3); sem o nome congelado, o histórico mudaria junto com o cadastro, e sem o vendedor e a nota não há aba Vendedores nem a nota no detalhe da venda (D4). Não mexe em dinheiro, caixa nem estoque, então completa a venda até em caixa conferido.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs (MontarPayloadVenda, EscolhasDoItem, ObservacaoLivreDoItem)`, `Metrics.PDV/Metrics.Shared/Services/NotaFiscalDaVenda.cs (Situacao, Montar)`
+
+### A nota que muda depois da venda sobe sozinha, e a mais velha nunca passa por cima da nova (`regra-nota-que-muda-depois`)
+- **Regra:** Ao gravar, o PDV carimba a hora em que a nota de uma venda mudou (pedidos.nfce_alterada_em; um lugar só, no AppDbContext, para todas as telas e o serviço): emitida pelo F9 "Emitir a nota", contingência autorizada, cancelada na SEFAZ (também a que cancela quando a internet volta), recusada. A venda que já subiu e tem carimbo mais novo que o da nuvem (pedidos.nfce_na_nuvem_em) manda só a nota pela rota POST /api/pdv/sync/sales/fiscal, na sincronia de 5 em 5 minutos, sem reenviar a venda. A nuvem guarda a hora (sales.nfce_changed_at) e só aceita a mudança igual ou mais nova. A nota só é dada por entregue quando a nuvem responde notaFiscal: true; com a nuvem antiga (404) o PDV espera 1 hora e tenta de novo, sem contar como falha.
+- **Por que é assim:** A nota muda depois da venda em vários lugares (tela Vendas, cancelamento, serviço da contingência) e o envio da venda e o da nota podem chegar fora de ordem. Reenviar a venda inteira esbarraria nas regras do caixa (caixa conferido recusa mudança); a nota não é dinheiro e precisa chegar sempre.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/NotaFiscalDaVenda.cs (MarcarMudancas, ParaEnviar)`, `Metrics.PDV/Metrics.Shared/Data/AppDbContext.cs (SaveChangesAsync)`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-fiscal-sync-controller.ts`, `metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts (gravarNotaFiscal, ondeGravarANota)`
+
 ## Funções de Negócio
 
 ### `AbrirTurnoCaixa`
@@ -210,6 +222,14 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Usada por:** ['Gestor Financeiro', 'Dono do Restaurante']
 - **Tabelas afetadas:** `nuvem:CashierSession`, `nuvem:CashierEntry`
 
+### `AtualizarNotaDaVenda`
+- **O que faz:** Recebe do PDV a NFC-e de vendas que já subiram e mudaram depois, e grava só as colunas da nota (nunca dinheiro, caixa, itens ou estoque).
+- **Motivo de negócio:** A tela Vendas da web mostra a situação real da nota (autorizada, cancelada, contingência, sem nota) mesmo quando ela muda depois da venda; idempotente para o PDV poder repetir sem medo.
+- **Entradas:** lista de { Uuid da venda, NotaFiscal: Situacao, Numero, Serie, Ambiente, Chave, Contingencia, Motivo, AlteradaEm }
+- **Saídas:** accepted (gravadas ou a nuvem já tinha uma mais nova), naoEncontradas (a nuvem não tem a venda), notaFiscal: true
+- **Usada por:** ['PDV (sincronia de 5 em 5 minutos)']
+- **Tabelas afetadas:** `nuvem:Sale`, `pdv:Pedido`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Caixa do servidor visto pelo terminal — Ok
@@ -226,11 +246,11 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 
 ### Envio de vendas, caixas e cancelamentos para a nuvem — Ok
 - **Frequência:** venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência
-- **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations`
+- **Onde roda:** Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open|movements|close, /sync/cancellations, /sync/sales/fiscal (nota que mudou depois da venda)`
 - **Quantos:** 1 por loja
-- **A cada vez:** Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff).
+- **A cada vez:** Zero chamadas quando não há pendência; espera mais a cada falha (SyncBackoff). A nota que muda depois sobe pela rota da nota, até 100 por rodada; nuvem antiga (404) = espera 1 hora.
 - **Por que existe:** A nuvem (web, relatórios, financeiro) tem de ter tudo o que o PDV vendeu, mesmo depois de a internet cair.
-- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530`
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/SincronizacaoVendaService.cs:157`, `Metrics.PDV/Metrics.Shared/Services/SincronizacaoCaixaService.cs:200`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs:530`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)`
 
 ## Tabelas e Estrutura de Dados
 

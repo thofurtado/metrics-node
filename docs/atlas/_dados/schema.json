@@ -1,9 +1,9 @@
 {
- "gerado_em": "2026-10-16T02:45:57",
+ "gerado_em": "2026-10-16T19:29:55",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "a089b1f 2026-10-16",
+   "versao": "35a0cdd 2026-10-16",
    "tabelas": 68
   },
   "saas": {
@@ -13,7 +13,7 @@
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "d828f3f 2026-10-16",
+   "versao": "f44b0fb 2026-10-16",
    "tabelas": 46
   }
  },
@@ -4437,6 +4437,16 @@
      "refs": [],
      "on_delete": null,
      "nome": null
+    },
+    {
+     "campo": "soldItems",
+     "alvo": "nuvem:SaleItem",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
     }
    ]
   },
@@ -5575,6 +5585,94 @@
      "unico": false,
      "padrao": "0",
      "comentario": null
+    },
+    {
+     "nome": "nfce_status",
+     "coluna": "nfce_status",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "NFC-e da venda (Vendas, etapa 1, 16/10/2026; ver modules/pdv-sync/services/dados-da-venda.ts). Vazio = venda antiga (\"—\"). nfce_status: SEM_NOTA, RECUSADA, CONTINGENCIA, AUTORIZADA, CONTINGENCIA_RECUSADA, CANCELAMENTO_PENDENTE, CANCELADA, CANCELAMENTO_FALHOU. nfce_changed_at = quando a nota mudou no PDV (a mudança mais velha nunca passa por cima da nova)."
+    },
+    {
+     "nome": "nfce_number",
+     "coluna": "nfce_number",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_series",
+     "coluna": "nfce_series",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_environment",
+     "coluna": "nfce_environment",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_key",
+     "coluna": "nfce_key",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_contingency",
+     "coluna": "nfce_contingency",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_reason",
+     "coluna": "nfce_reason",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "nfce_changed_at",
+     "coluna": "nfce_changed_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -5764,6 +5862,72 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "sold_name",
+     "coluna": "sold_name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Como o item foi vendido no PDV (Vendas, etapa 1, 16/10/2026). Vazio = venda antiga (\"—\"). seller_*: o vendedor (quem lançou o item); seller_employee_id só quando é funcionário do RH; seller_number = o número do vendedor no PDV (ordem de cadastro). complements = as escolhas [{ grupo, nome, quantidade, preco, observacaoRapida }] (quantidade por UMA unidade do item; o preço já está no preço do item). note = só o texto livre da observação."
+    },
+    {
+     "nome": "seller_employee_id",
+     "coluna": "seller_employee_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "seller_name",
+     "coluna": "seller_name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "seller_number",
+     "coluna": "seller_number",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "complements",
+     "coluna": "complements",
+     "tipo": "Json",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "note",
+     "coluna": "note",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -5821,6 +5985,20 @@
       "id"
      ],
      "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "seller",
+     "alvo": "nuvem:Employee",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "seller_employee_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
      "nome": null
     },
     {
