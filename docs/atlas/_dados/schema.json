@@ -1,9 +1,9 @@
 {
- "gerado_em": "2026-10-16T20:42:31",
+ "gerado_em": "2026-10-16T20:55:47",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "682c4d8 2026-10-16",
+   "versao": "cc07a8d 2026-10-16",
    "tabelas": 68
   },
   "saas": {
@@ -2138,6 +2138,83 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "user_id",
+     "coluna": "user_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "quem fez (usuário da web; no estorno, quem cancelou no PDV)"
+    },
+    {
+     "nome": "user_name",
+     "coluna": "user_name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "balance_after",
+     "coluna": "balance_after",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "saldo do produto/insumo logo depois deste movimento"
+    },
+    {
+     "nome": "note",
+     "coluna": "note",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "\"Estorno da venda #123\", motivo do ajuste, \"Inventário\""
+    },
+    {
+     "nome": "document_key",
+     "coluna": "document_key",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "NF-e de compra da entrada (chave)"
+    },
+    {
+     "nome": "document_number",
+     "coluna": "document_number",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "cancellation_id",
+     "coluna": "cancellation_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "cancelamento do PDV que gerou o estorno (cancellation_audits.id)"
     }
    ],
    "relacoes": [
@@ -9653,6 +9730,17 @@
      "unico": false,
      "padrao": "false",
      "comentario": null
+    },
+    {
+     "nome": "stock_destination",
+     "coluna": "stock_destination",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Escolha do operador: ESTORNO (devolver ao estoque) ou DESPERDICIO (16/10/2026; vazio nos cancelamentos antigos)"
     },
     {
      "nome": "cancelled_at",

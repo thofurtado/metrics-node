@@ -26,14 +26,19 @@ describe('movimento de estoque reenviado (02:P4)', () => {
         zerar()
         linhas.clear()
         db.product = {
-            findFirst: vi.fn(async () => ({ id: 'prod-1' })),
-            update: vi.fn(async () => ({})),
+            findFirst: vi.fn(async () => ({ id: 'prod-1', cost: 4 })),
+            update: vi.fn(async () => ({ stock: 8 })),
         }
         db.stock = {
             findUnique: vi.fn(async ({ where }: any) => linhas.get(where.id) ?? null),
             create: vi.fn(async ({ data }: any) => { linhas.set(data.id, data); return data }),
         }
-        db.$transaction = vi.fn(async (ops: any[]) => Promise.all(ops))
+        // Desde a etapa 4 (16/10/2026) o movimento passa por registrarMovimento numa transação interativa
+        db.__emTransacao = false
+        db.$transaction = vi.fn(async (fn: any) => {
+            db.__emTransacao = true
+            try { return await fn(db) } finally { db.__emTransacao = false }
+        })
     })
 
     const lote = [{ uuid: '11111111-1111-4111-8111-111111111111', productId: '7c9e6679-7425-40de-944b-e07fc1f90ae7', quantity: 2, type: 'OUT', reason: 'QUEBRA', createdAt: '2026-10-15T03:10:00Z' }]
@@ -56,10 +61,17 @@ describe('movimento de estoque reenviado (02:P4)', () => {
         expect(db.product.update).toHaveBeenCalledTimes(1)
     })
 
-    it('a linha de estoque e o saldo do produto mudam juntos (transação)', async () => {
+    it('a linha de estoque e o saldo do produto mudam juntos (transação), com o saldo logo depois na linha', async () => {
+        const dentro: boolean[] = []
+        db.product.update = vi.fn(async () => { dentro.push(db.__emTransacao); return { stock: 8 } })
+        db.stock.create = vi.fn(async ({ data }: any) => { dentro.push(db.__emTransacao); linhas.set(data.id, data); return data })
         await postStocksSync({ body: lote } as any, resposta())
         expect(db.$transaction).toHaveBeenCalledTimes(1)
-        expect(db.$transaction.mock.calls[0][0]).toHaveLength(2)
+        expect(dentro).toEqual([true, true])
+        expect(db.product.update.mock.calls[0][0]).toMatchObject({ where: { id: 'prod-1' }, data: { stock: { decrement: 2 } } })
+        expect(db.stock.create.mock.calls[0][0].data).toMatchObject({
+            id: lote[0].uuid, product_id: 'prod-1', operation: 'OUT', description: 'QUEBRA', quantity: 2, balance_after: 8, unit_cost: 4,
+        })
     })
 
     it('produto que não existe na nuvem não é marcado como aceito', async () => {

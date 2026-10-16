@@ -31,6 +31,19 @@ import {
     numeracaoQueFalta,
     temVendedor,
 } from '../../services/dados-da-venda'
+import { baixarItemVendido, carregarItemDaBaixa, planejarBaixa } from '@/modules/stock/services/baixa-da-venda'
+
+/**
+ * O operador escolheu "Registrar como desperdício" ao cancelar este item (o cancelamento sobe antes da venda no ciclo do PDV).
+ * Vale para a venda cancelada que ainda não estava na nuvem: sem isso a saída do produto que foi para o lixo se perdia.
+ */
+async function foiDesperdicio(tx: Prisma.TransactionClient, saleItemId: string): Promise<boolean> {
+    const registro = await tx.cancellationAudit.findFirst({
+        where: { item_id: saleItemId, stock_destination: 'DESPERDICIO' },
+        select: { id: true },
+    })
+    return !!registro
+}
 
 export async function postSalesSync(request: FastifyRequest, reply: FastifyReply) {
     const saleSchema = z.array(z.object({
@@ -395,155 +408,14 @@ export async function postSalesSync(request: FastifyRequest, reply: FastifyReply
                         }
                     })
 
-                    if (sale.Status === 'COMPLETED') {
-                        // CASO A: Venda Fracionada (Pizza Meio-a-Meio / Frações)
-                        if (item.Fractions && item.Fractions.length > 0) {
-                            for (const frac of item.Fractions) {
-                                const fracProd = await tx.product.findUnique({
-                                    where: { id: frac.ProductId },
-                                    include: { compositions: { include: { supply: true } } }
-                                })
-
-                                if (fracProd && fracProd.compositions.length > 0) {
-                                    for (const comp of fracProd.compositions) {
-                                        const deduction = comp.quantity * frac.Fraction * item.Quantity
-
-                                        await tx.stock.create({
-                                            data: {
-                                                supply_id: comp.supply_id,
-                                                quantity: deduction,
-                                                unit_cost: comp.supply.cost,
-                                                sale_item_id: item.Uuid,
-                                                operation: 'OUT',
-                                                description: 'VENDA',
-                                                created_at: saleCreatedAt
-                                            }
-                                        })
-
-                                        await tx.supply.update({
-                                            where: { id: comp.supply_id },
-                                            data: { stock: { decrement: deduction } }
-                                        })
-                                    }
-                                } else if (fracProd) {
-                                    // Sabor que é produto simples (sem ficha técnica): baixa a fração do próprio produto
-                                    const deduction = frac.Fraction * item.Quantity
-
-                                    await tx.stock.create({
-                                        data: {
-                                            product_id: fracProd.id,
-                                            quantity: deduction,
-                                            unit_cost: fracProd.cost ?? null,
-                                            sale_item_id: item.Uuid,
-                                            operation: 'OUT',
-                                            description: 'VENDA',
-                                            created_at: saleCreatedAt
-                                        }
-                                    })
-
-                                    await tx.product.update({
-                                        where: { id: fracProd.id },
-                                        data: { stock: { decrement: deduction } }
-                                    })
-                                }
-                            }
-                        }
-                        // CASO B: Produto Inteiro (Composto ou Simples)
-                        else if (item.ProductId) {
-                            const prod = await tx.product.findUnique({
-                                where: { id: item.ProductId },
-                                include: { compositions: { include: { supply: true } } }
-                            })
-
-                            if (prod) {
-                                if (prod.is_composite && prod.compositions.length > 0) {
-                                    // Baixa proporcional de cada insumo da receita
-                                    for (const comp of prod.compositions) {
-                                        const deduction = comp.quantity * item.Quantity
-
-                                        await tx.stock.create({
-                                            data: {
-                                                supply_id: comp.supply_id,
-                                                quantity: deduction,
-                                                unit_cost: comp.supply.cost,
-                                                sale_item_id: item.Uuid,
-                                                operation: 'OUT',
-                                                description: 'VENDA',
-                                                created_at: saleCreatedAt
-                                            }
-                                        })
-
-                                        await tx.supply.update({
-                                            where: { id: comp.supply_id },
-                                            data: { stock: { decrement: deduction } }
-                                        })
-                                    }
-                                } else {
-                                    // Baixa direta do estoque do produto simples
-                                    await tx.stock.create({
-                                        data: {
-                                            product_id: prod.id,
-                                            quantity: item.Quantity,
-                                            sale_item_id: item.Uuid,
-                                            operation: 'OUT',
-                                            description: 'VENDA',
-                                            created_at: saleCreatedAt
-                                        }
-                                    })
-
-                                    await tx.product.update({
-                                        where: { id: prod.id },
-                                        data: { stock: { decrement: item.Quantity } }
-                                    })
-                                }
-                            }
-                        }
-
-                        // CASO C: Baixa de Insumos dos Adicionais Vinculados (Complements com ficha técnica e quantidade)
-                        if (item.Complements && item.Complements.length > 0) {
-                            for (const compOpt of item.Complements) {
-                                let targetSupplyId = compOpt.LinkedSupplyId
-                                let targetQuantity = 1.0
-
-                                if (compOpt.OptionId) {
-                                    const dbOpt = await tx.complementOption.findUnique({
-                                        where: { id: compOpt.OptionId }
-                                    })
-                                    if (dbOpt && dbOpt.linked_supply_id) {
-                                        targetSupplyId = dbOpt.linked_supply_id
-                                        targetQuantity = (dbOpt as any).supply_quantity || 1.0
-                                    }
-                                }
-
-                                if (targetSupplyId) {
-                                    const supply = await tx.supply.findUnique({
-                                        where: { id: targetSupplyId }
-                                    })
-
-                                    if (supply) {
-                                        // Quantidade escolhida da opção (ex.: 2x bacon) multiplica o consumo do insumo
-                                        const deduction = targetQuantity * (compOpt.Quantity ?? 1) * item.Quantity
-
-                                        await tx.stock.create({
-                                            data: {
-                                                supply_id: supply.id,
-                                                quantity: deduction,
-                                                unit_cost: supply.cost,
-                                                sale_item_id: item.Uuid,
-                                                operation: 'OUT',
-                                                description: 'VENDA',
-                                                created_at: saleCreatedAt
-                                            }
-                                        })
-
-                                        await tx.supply.update({
-                                            where: { id: supply.id },
-                                            data: { stock: { decrement: deduction } }
-                                        })
-                                    }
-                                }
-                            }
-                        }
+                    // Baixa do estoque (regra D8 do Thomás, 16/10/2026, em stock/services/baixa-da-venda.ts): ficha técnica baixa
+                    // os insumos, complemento com insumo baixa o insumo, produto sem ficha baixa ele mesmo; cada linha guarda o
+                    // saldo logo depois. Venda cancelada só baixa quando o operador escolheu "desperdício" no cancelamento que
+                    // chegou antes dela (venda cancelada que ainda não tinha subido, decisão de 28/09/2026): a saída fica e o
+                    // histórico mostra como perda. Nunca trava: o saldo pode ficar negativo (D5).
+                    if (sale.Status === 'COMPLETED' || (sale.Status === 'CANCELLED' && await foiDesperdicio(tx, item.Uuid))) {
+                        const plano = planejarBaixa(await carregarItemDaBaixa(tx, item, cost.unit_cost))
+                        await baixarItemVendido(tx, plano, { saleItemId: item.Uuid, criadoEm: saleCreatedAt })
                     }
                 }
             }

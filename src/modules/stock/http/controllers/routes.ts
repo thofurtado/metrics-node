@@ -14,12 +14,14 @@ import {
     postCreateStockSupply,
     getActiveInventorySession,
     getRecipeConsumption,
-    getStockMovements
 } from './stock-dashboard-controller'
+import { getItemStockHistory, getStockItemsSearch, getStockMovements, getStockOrigin } from './stock-history-controller'
 
 // Fase 0 do Mergulho (17:U1): o estoque avançado (posição, ajustes, NF-e, inventário, movimentos) só é chamado pela tela
 // de Estoque da web, que exige o módulo Controle de Estoque. Cada rota já tem o verifyJwt próprio (roda antes).
 const travaEstoque = verifyModuleAccess('stock')
+// Histórico na ficha do produto (Mercadorias, D6): quem tem o módulo Itens OU o Controle de Estoque vê
+const travaHistoricoDoItem = verifyModuleAccess('items', 'stock')
 
 export async function stockAdvancedRoutes(app: FastifyInstance) {
     app.addHook('preHandler', async (request, reply) => {
@@ -43,6 +45,10 @@ export async function stockAdvancedRoutes(app: FastifyInstance) {
     app.get('/api/stock/inventory/:id', { onRequest: [verifyJwt] }, getInventorySessionDetails)
     app.post('/api/stock/inventory/apply', { onRequest: [verifyJwt] }, postApplyInventorySession)
 
-    // 5. Histórico / Extrato de Movimentações
+    // 5. Histórico / Extrato de Movimentações (D6: a mesma consulta no Controle de Estoque e na ficha do produto)
     app.get('/api/stock/movements', { onRequest: [verifyJwt] }, getStockMovements)
+    app.get('/api/stock/origin', { onRequest: [verifyJwt] }, getStockOrigin)
+    app.get('/api/stock/items', { onRequest: [verifyJwt] }, getStockItemsSearch)
+    app.get('/items/:id/stock-history', { onRequest: [verifyJwt], preHandler: [travaHistoricoDoItem] }, getItemStockHistory)
+    app.get('/items/stock-origin', { onRequest: [verifyJwt], preHandler: [travaHistoricoDoItem] }, getStockOrigin)
 }

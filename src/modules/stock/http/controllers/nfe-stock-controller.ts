@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { NfeParserService } from '../../services/nfe-parser.service'
 import { GeminiAiService, CandidateItem } from '../../../ai/services/gemini-ai.service'
+import { registrarMovimento, usuarioDaRequisicao } from '../../services/movimento-de-estoque'
 
 const nfeParser = new NfeParserService()
 const geminiAi = new GeminiAiService()
@@ -127,11 +128,25 @@ export async function postParseNfe(request: FastifyRequest, reply: FastifyReply)
     }
 }
 
+/** Número da nota pela chave de 44 números (posições 26 a 34), quando a tela não manda o número. */
+export function numeroDaChave(chave: string | null | undefined): string | null {
+    const so = (chave ?? '').replace(/\D/g, '')
+    if (so.length !== 44) return null
+    return String(Number(so.slice(25, 34)))
+}
+
+/**
+ * Entrada de mercadorias pela NF-e de compra (D5: as compras entram pelo Metrics, somam ao estoque e atualizam o custo).
+ * Etapa 4 (16/10/2026): cada entrada guarda a nota (chave e número), quem deu entrada e o saldo logo depois, para o histórico
+ * do produto abrir a nota. A mesma nota não entra duas vezes. Item sem produto/insumo escolhido é recusado com o nome (antes
+ * a tela mandava um código inventado e mostrava "creditada" mesmo com a nuvem recusando). Nota sem valor não zera o custo.
+ */
 export async function postConfirmNfe(request: FastifyRequest, reply: FastifyReply) {
     const confirmSchema = z.object({
         header: z.object({
-            chaveNfe: z.string(),
-            numeroNota: z.string(),
+            chaveNfe: z.string().optional().default(''),
+            numeroNota: z.string().optional(),
+            numeroNfe: z.string().optional(),
             fornecedor: z.object({
                 cnpj: z.string(),
                 razaoSocial: z.string()
@@ -141,10 +156,12 @@ export async function postConfirmNfe(request: FastifyRequest, reply: FastifyRepl
             supplierProductCode: z.string(),
             supplierProductName: z.string(),
             supplierUnit: z.string(),
-            supplierQuantity: z.number().positive(),
+            supplierQuantity: z.number().min(0),
+            /** Quantidade que entra no estoque, na unidade do produto/insumo (já convertida pela tela). */
+            stockQuantity: z.number().min(0).optional(),
             supplierUnitPrice: z.number().min(0),
             targetType: z.enum(['SUPPLY', 'PRODUCT']),
-            targetId: z.string().uuid(),
+            targetId: z.string().uuid({ message: 'Escolha o produto ou insumo de cada item da nota.' }),
             conversionFactor: z.number().positive().default(1.0),
             saveMapping: z.boolean().default(true),
             batchNumber: z.string().optional().nullable(),
@@ -157,17 +174,47 @@ export async function postConfirmNfe(request: FastifyRequest, reply: FastifyRepl
                 costPerPortion: z.number().optional(),
                 portionSupplyName: z.string().optional()
             }).optional().nullable()
-        }))
+        })).min(1, 'A nota não tem nenhum item para dar entrada.')
     })
 
     const { header, items } = confirmSchema.parse(request.body)
+    const chave = header.chaveNfe.replace(/\D/g, '')
+    const numero = (header.numeroNota || header.numeroNfe || '').trim() || numeroDaChave(chave)
+    const usuario = await usuarioDaRequisicao(request)
+
+    // A mesma nota duas vezes somaria o estoque em dobro (duplo clique, rascunho reaberto)
+    if (chave) {
+        const jaEntrou = await prisma.stock.findFirst({ where: { document_key: chave }, select: { created_at: true, user_name: true } })
+        if (jaEntrou) {
+            const quando = jaEntrou.created_at.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })
+            return reply.status(409).send({
+                message: `Esta nota já deu entrada em ${quando}${jaEntrou.user_name ? ` por ${jaEntrou.user_name}` : ''}. Nada foi somado de novo.`,
+                code: 'NOTA_JA_ENTROU',
+            })
+        }
+    }
+
+    // Todo item precisa apontar para um produto/insumo que existe
+    const faltam: string[] = []
+    for (const item of items) {
+        const existe = item.targetType === 'SUPPLY'
+            ? await prisma.supply.findUnique({ where: { id: item.targetId }, select: { id: true } })
+            : await prisma.product.findUnique({ where: { id: item.targetId }, select: { id: true } })
+        if (!existe) faltam.push(item.supplierProductName)
+    }
+    if (faltam.length > 0) {
+        return reply.status(400).send({ message: `Escolha o produto ou insumo destes itens da nota: ${faltam.join(', ')}.`, code: 'ITEM_SEM_VINCULO', items: faltam })
+    }
 
     let totalStockAdded = 0
+    const documento = { chave: chave || null, numero }
 
     await prisma.$transaction(async (tx) => {
         for (const item of items) {
-            const stockQty = item.supplierQuantity * item.conversionFactor
-            const unitCost = item.conversionFactor > 0 ? (item.supplierUnitPrice / item.conversionFactor) : item.supplierUnitPrice
+            const fator = item.conversionFactor > 0 ? item.conversionFactor : 1
+            const stockQty = item.stockQuantity ?? item.supplierQuantity * fator
+            const unitCost = item.supplierUnitPrice / fator
+            if (!(stockQty > 0)) continue // não entregue
 
             // 1. Salva ou atualiza o De-Para para futuras notas se solicitado
             if (item.saveMapping) {
@@ -182,7 +229,7 @@ export async function postConfirmNfe(request: FastifyRequest, reply: FastifyRepl
                         supplier_name: header.fornecedor.razaoSocial,
                         supplier_product_name: item.supplierProductName,
                         supplier_unit: item.supplierUnit,
-                        conversion_factor: item.conversionFactor,
+                        conversion_factor: fator,
                         supply_id: item.targetType === 'SUPPLY' ? item.targetId : null,
                         product_id: item.targetType === 'PRODUCT' ? item.targetId : null,
                     },
@@ -192,109 +239,64 @@ export async function postConfirmNfe(request: FastifyRequest, reply: FastifyRepl
                         supplier_product_code: item.supplierProductCode,
                         supplier_product_name: item.supplierProductName,
                         supplier_unit: item.supplierUnit,
-                        conversion_factor: item.conversionFactor,
+                        conversion_factor: fator,
                         supply_id: item.targetType === 'SUPPLY' ? item.targetId : null,
                         product_id: item.targetType === 'PRODUCT' ? item.targetId : null,
                     }
                 })
             }
 
-            // 2. Grava a movimentação de entrada no histórico Stock
-            const expDate = item.expirationDate ? new Date(item.expirationDate) : null
-
-            await tx.stock.create({
-                data: {
-                    operation: 'IN',
-                    description: 'COMPRA',
-                    quantity: stockQty,
-                    unit_cost: unitCost,
-                    supplier_cnpj: header.fornecedor.cnpj,
-                    batch_number: item.batchNumber || null,
-                    expiration_date: expDate,
-                    supply_id: item.targetType === 'SUPPLY' ? item.targetId : null,
-                    product_id: item.targetType === 'PRODUCT' ? item.targetId : null,
-                }
-            })
-
-            // 3. Atualiza o saldo e custo no cadastro
-            if (item.portioning && item.portioning.enabled && item.portioning.portionCount > 0) {
-                // Trata o porcionamento para a cozinha
-                const portionName = item.portioning.portionSupplyName || `${item.supplierProductName} ${item.portioning.portionSizeGrams}g Porcionada`
-                const portionCost = item.portioning.costPerPortion || (stockQty > 0 ? (stockQty * unitCost) / item.portioning.portionCount : unitCost)
-
-                // Localiza ou cria o insumo porcionado
-                let portionedSupply = await tx.supply.findFirst({
-                    where: { name: portionName }
-                })
-
-                if (!portionedSupply) {
-                    portionedSupply = await tx.supply.create({
-                        data: {
-                            name: portionName,
-                            unit: 'UN',
-                            cost: portionCost,
-                            stock: item.portioning.portionCount,
-                            category: 'Porcionados / Carnes'
-                        }
-                    })
-                } else {
-                    await tx.supply.update({
-                        where: { id: portionedSupply.id },
-                        data: {
-                            stock: { increment: item.portioning.portionCount },
-                            cost: portionCost
-                        }
-                    })
-                }
-
-                // Registra a movimentação de entrada da porção pronta
-                await tx.stock.create({
-                    data: {
-                        operation: 'IN',
-                        description: 'AJUSTE_POSITIVO',
-                        quantity: item.portioning.portionCount,
-                        unit_cost: portionCost,
-                        batch_number: item.batchNumber || null,
-                        expiration_date: expDate,
-                        supply_id: portionedSupply.id
-                    }
-                })
-
-                // Mantém registro da matéria-prima bruta com saldo zero ou aparas
-                if (item.targetType === 'SUPPLY') {
-                    await tx.supply.update({
-                        where: { id: item.targetId },
-                        data: {
-                            cost: unitCost
-                        }
-                    })
-                }
-            } else {
-                if (item.targetType === 'SUPPLY') {
-                    await tx.supply.update({
-                        where: { id: item.targetId },
-                        data: {
-                            stock: { increment: stockQty },
-                            cost: unitCost
-                        }
-                    })
-                } else {
-                    await tx.product.update({
-                        where: { id: item.targetId },
-                        data: {
-                            stock: { increment: stockQty },
-                            cost: unitCost
-                        }
-                    })
-                }
+            const validade = item.expirationDate ? new Date(item.expirationDate) : null
+            const comum = {
+                operacao: 'IN' as const,
+                motivo: 'COMPRA' as const,
+                usuario,
+                documento,
+                fornecedorCnpj: header.fornecedor.cnpj,
+                lote: item.batchNumber || null,
+                validade: validade && !Number.isNaN(validade.getTime()) ? validade : null,
             }
 
-            totalStockAdded += stockQty
+            // 2. Entrada no estoque (o saldo e a linha juntos; a linha guarda a nota, quem deu entrada e o saldo depois)
+            if (item.portioning && item.portioning.enabled && item.portioning.portionCount > 0) {
+                // Porcionamento (opcional, ainda em decisão): a peça entra já em porções, num insumo próprio
+                const portionName = item.portioning.portionSupplyName || `${item.supplierProductName} ${item.portioning.portionSizeGrams}g Porcionada`
+                const portionCost = item.portioning.costPerPortion || (stockQty * unitCost) / item.portioning.portionCount
+
+                let portionedSupply = await tx.supply.findFirst({ where: { name: portionName } })
+                if (!portionedSupply) {
+                    portionedSupply = await tx.supply.create({
+                        data: { name: portionName, unit: 'UN', cost: portionCost, stock: 0, category: 'Porcionados / Carnes' }
+                    })
+                }
+                await registrarMovimento(tx, {
+                    ...comum,
+                    alvo: { tipo: 'SUPPLY', id: portionedSupply.id },
+                    quantidade: item.portioning.portionCount,
+                    custoUnitario: portionCost,
+                    custoNovo: portionCost,
+                    nota: `Porcionado: ${stockQty} ${item.supplierUnit} de ${item.supplierProductName}`,
+                })
+                // A peça bruta só tem o custo atualizado (ela entrou como porções)
+                if (item.targetType === 'SUPPLY' && unitCost > 0) {
+                    await tx.supply.update({ where: { id: item.targetId }, data: { cost: unitCost } })
+                }
+                totalStockAdded += item.portioning.portionCount
+            } else {
+                await registrarMovimento(tx, {
+                    ...comum,
+                    alvo: { tipo: item.targetType, id: item.targetId },
+                    quantidade: stockQty,
+                    custoUnitario: unitCost,
+                    custoNovo: unitCost,
+                })
+                totalStockAdded += stockQty
+            }
         }
-    })
+    }, { timeout: 60000, maxWait: 10000 })
 
     return reply.status(201).send({
-        message: 'Entrada de estoque realizada com sucesso e De-Para gravado.',
+        message: 'Entrada no estoque feita.',
         processedItems: items.length,
         totalStockAdded
     })
@@ -326,7 +328,7 @@ export async function postOpenInventorySession(request: FastifyRequest, reply: F
         // Congela o saldo atual de todos os insumos e produtos
         const [supplies, products] = await Promise.all([
             tx.supply.findMany({ where: { active: true } }),
-            tx.product.findMany({ where: { active: true, is_composite: false } })
+            tx.product.findMany({ where: { active: true, NOT: { AND: [{ is_composite: true }, { compositions: { some: {} } }] } } })
         ])
 
         const itemsData: any[] = [
@@ -402,84 +404,89 @@ export async function getInventorySessionDetails(request: FastifyRequest, reply:
     })
 }
 
+const MOTIVOS_DO_INVENTARIO = ['AJUSTE_NEGATIVO', 'AJUSTE_POSITIVO', 'QUEBRA', 'PERDA', 'CONSUMO_INTERNO'] as const
+type MotivoDoInventario = (typeof MOTIVOS_DO_INVENTARIO)[number]
+
+/** O motivo de cada diferença da contagem: o escolhido, se combina com a direção; senão, ajuste (+ ou -). */
+export function motivoDoInventario(diferenca: number, escolhido?: string | null): MotivoDoInventario {
+    if (diferenca > 0) return 'AJUSTE_POSITIVO'
+    if (escolhido === 'QUEBRA' || escolhido === 'PERDA' || escolhido === 'CONSUMO_INTERNO') return escolhido
+    return 'AJUSTE_NEGATIVO'
+}
+
+class SessaoFechada extends Error {}
+
+/**
+ * Aplica a contagem (etapa 4, 16/10/2026): cada diferença vira um movimento com quem contou, o motivo escolhido na tela (antes
+ * a tela pedia o motivo e não mandava; toda falta virava "quebra") e o saldo logo depois. Só os itens que mudaram são gravados.
+ */
 export async function postApplyInventorySession(request: FastifyRequest, reply: FastifyReply) {
     const applySchema = z.object({
         sessionId: z.string().uuid(),
         counts: z.array(z.object({
             itemId: z.string().uuid(),
-            countedQuantity: z.number().min(0)
+            countedQuantity: z.number().min(0),
+            reason: z.enum(MOTIVOS_DO_INVENTARIO).optional().nullable(),
         }))
     })
 
     const { sessionId, counts } = applySchema.parse(request.body)
+    const usuario = await usuarioDaRequisicao(request)
+    const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    let ajustados = 0
 
-    await prisma.$transaction(async (tx) => {
-        const session = await tx.inventorySession.findUnique({
-            where: { id: sessionId },
-            include: { items: true }
-        })
-
-        if (!session || session.status !== 'OPEN') {
-            throw new Error('Sessão de inventário não encontrada ou já finalizada.')
-        }
-
-        const countsMap = new Map(counts.map(c => [c.itemId, c.countedQuantity]))
-
-        for (const item of session.items) {
-            const counted = countsMap.get(item.id) ?? item.counted_quantity
-            const diff = counted - item.system_quantity
-            const totalDiffCost = diff * item.unit_cost
-
-            // Atualiza o item do inventário com o resultado final
-            await tx.inventoryItem.update({
-                where: { id: item.id },
-                data: {
-                    counted_quantity: counted,
-                    difference_quantity: diff,
-                    total_difference_cost: totalDiffCost
-                }
+    try {
+        await prisma.$transaction(async (tx) => {
+            const session = await tx.inventorySession.findUnique({
+                where: { id: sessionId },
+                include: { items: true }
             })
 
-            // Se houver divergência, gera movimentação de ajuste no Stock
-            if (diff !== 0) {
-                const operation = diff > 0 ? 'IN' : 'OUT'
-                const reason = diff > 0 ? 'AJUSTE_POSITIVO' : 'QUEBRA'
+            if (!session || session.status !== 'OPEN') {
+                throw new SessaoFechada()
+            }
 
-                await tx.stock.create({
-                    data: {
-                        operation,
-                        description: reason,
-                        quantity: Math.abs(diff),
-                        unit_cost: item.unit_cost,
-                        supply_id: item.supply_id,
-                        product_id: item.product_id,
-                    }
+            const countsMap = new Map(counts.map(c => [c.itemId, c]))
+
+            for (const item of session.items) {
+                const enviado = countsMap.get(item.id)
+                const counted = enviado?.countedQuantity ?? item.counted_quantity
+                const diff = Number((counted - item.system_quantity).toFixed(6))
+                if (!enviado && diff === 0) continue // nada mudou neste item
+
+                await tx.inventoryItem.update({
+                    where: { id: item.id },
+                    data: { counted_quantity: counted, difference_quantity: diff, total_difference_cost: diff * item.unit_cost }
                 })
 
-                // Atualiza o saldo real no cadastro para bater com o físico
-                if (item.supply_id) {
-                    await tx.supply.update({
-                        where: { id: item.supply_id },
-                        data: { stock: counted }
+                // Diferença na contagem: o saldo passa a ser o contado, com o movimento no histórico (quem contou e quando)
+                if (diff !== 0 && (item.supply_id || item.product_id)) {
+                    await registrarMovimento(tx, {
+                        alvo: item.supply_id ? { tipo: 'SUPPLY', id: item.supply_id } : { tipo: 'PRODUCT', id: item.product_id! },
+                        operacao: diff > 0 ? 'IN' : 'OUT',
+                        quantidade: Math.abs(diff),
+                        motivo: motivoDoInventario(diff, enviado?.reason),
+                        custoUnitario: item.unit_cost,
+                        saldoNovo: counted,
+                        usuario,
+                        nota: `Inventário de ${hoje}`,
                     })
-                } else if (item.product_id) {
-                    await tx.product.update({
-                        where: { id: item.product_id },
-                        data: { stock: counted }
-                    })
+                    ajustados++
                 }
             }
-        }
 
-        // Fecha a sessão
-        await tx.inventorySession.update({
-            where: { id: sessionId },
-            data: {
-                status: 'APPLIED',
-                closed_at: new Date()
-            }
-        })
+            await tx.inventorySession.update({
+                where: { id: sessionId },
+                data: { status: 'APPLIED', closed_at: new Date() }
+            })
+        }, { timeout: 120000, maxWait: 10000 })
+    } catch (err) {
+        if (err instanceof SessaoFechada) return reply.status(409).send({ message: 'Esta contagem já foi aplicada ou não existe mais. Abra a aba de novo.' })
+        throw err
+    }
+
+    return reply.status(200).send({
+        message: ajustados > 0 ? `Contagem aplicada: ${ajustados} item(ns) com o saldo corrigido.` : 'Contagem aplicada: nenhum saldo mudou.',
+        adjusted: ajustados,
     })
-
-    return reply.status(200).send({ message: 'Inventário aplicado e saldos atualizados com sucesso.' })
 }

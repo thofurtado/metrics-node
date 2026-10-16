@@ -10,6 +10,8 @@ import { hash } from 'bcryptjs'
 import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, cfopCoerente, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
 import { COBERTURA_MINIMA_DO_ESPELHO, INICIO_FAIXA_AFASTADOS, mesmoProduto, planoDoEspelho } from '../../services/codigo-do-sistema-da-loja'
 import { randomBytes } from 'node:crypto'
+import { registrarMovimento } from '@/modules/stock/services/movimento-de-estoque'
+import { destinoDoEstoque, notaDoEstorno } from '@/modules/stock/services/historico-do-estoque'
 
 export async function getProductsSync(request: FastifyRequest, reply: FastifyReply) {
     const querySchema = z.object({
@@ -350,27 +352,19 @@ export async function postStocksSync(request: FastifyRequest, reply: FastifyRepl
         }
 
         try {
-            await prisma.$transaction([
-                prisma.stock.create({
-                    data: {
-                        ...(codigo ? { id: codigo } : {}),
-                        product_id: product.id,
-                        quantity: mov.quantity,
-                        operation: mov.type,
-                        description: mov.reason as StockReason, // só chegam aqui motivos de APPLICABLE_REASONS
-                        created_at: mov.createdAt ? new Date(mov.createdAt) : new Date()
-                    }
-                }),
-                // Atualiza o saldo do produto
-                prisma.product.update({
-                    where: { id: product.id },
-                    data: {
-                        stock: mov.type === 'IN' 
-                            ? { increment: mov.quantity } 
-                            : { decrement: mov.quantity }
-                    }
-                }),
-            ])
+            // O saldo do produto e a linha de estoque mudam juntos; a linha guarda o saldo logo depois (histórico do produto)
+            await prisma.$transaction(async (tx) => {
+                await registrarMovimento(tx, {
+                    ...(codigo ? { id: codigo } : {}),
+                    alvo: { tipo: 'PRODUCT', id: product.id },
+                    operacao: mov.type,
+                    quantidade: mov.quantity,
+                    motivo: mov.reason as StockReason, // só chegam aqui motivos de APPLICABLE_REASONS
+                    custoUnitario: product.cost ?? null,
+                    nota: 'Lançado no PDV',
+                    criadoEm: mov.createdAt ? new Date(mov.createdAt) : new Date(),
+                })
+            })
             applied++
         } catch (err: any) {
             // Dois envios do mesmo movimento ao mesmo tempo: o segundo bate no código repetido e não mexe no estoque
@@ -930,24 +924,40 @@ export async function postProductsEspelhoSync(request: FastifyRequest, reply: Fa
 /**
  * Devolve ao estoque as baixas de um item vendido que foi cancelado, uma vez só (marca stock_restored no registro do
  * cancelamento). Só acha as baixas gravadas com sale_item_id (vendas recebidas a partir do backend 2.6.89).
+ * Cada devolução vira uma entrada "Estorno da venda #N" ligada ao item da venda e ao cancelamento, com quem cancelou e o saldo
+ * logo depois (decisão D12 do Thomás, 16/10/2026). "Desperdício" não devolve: a saída fica e o histórico mostra como perda.
  */
-async function estornarEstoqueDoItem(cancelamentoId: string, saleItemId: string, destino: string | null | undefined) {
+async function estornarEstoqueDoItem(canc: {
+    Uuid: string
+    PedidoUuid?: string | null
+    OrigemIdentificador?: string | null
+    UsuarioId?: string | null
+    UsuarioNome?: string | null
+    DataCancelamento?: string | null
+}, saleItemId: string, destino: string | null | undefined) {
     await prisma.$transaction(async (tx) => {
-        const registro = await tx.cancellationAudit.findUnique({ where: { id: cancelamentoId }, select: { stock_restored: true } })
+        const registro = await tx.cancellationAudit.findUnique({ where: { id: canc.Uuid }, select: { stock_restored: true } })
         if (!registro || !shouldReverseStock(destino, registro.stock_restored)) return
         const baixas = await tx.stock.findMany({ where: { sale_item_id: saleItemId, operation: 'OUT', description: 'VENDA' } })
+        const quando = canc.DataCancelamento ? new Date(canc.DataCancelamento) : new Date()
         for (const b of baixas) {
-            await tx.stock.create({
-                data: {
-                    quantity: b.quantity, operation: 'IN', description: 'DEVOLUCAO',
-                    product_id: b.product_id, supply_id: b.supply_id, unit_cost: b.unit_cost, sale_item_id: saleItemId,
-                }
+            const alvo = b.product_id ? { tipo: 'PRODUCT' as const, id: b.product_id } : b.supply_id ? { tipo: 'SUPPLY' as const, id: b.supply_id } : null
+            if (!alvo) continue
+            await registrarMovimento(tx, {
+                alvo,
+                operacao: 'IN',
+                quantidade: b.quantity,
+                motivo: 'DEVOLUCAO',
+                custoUnitario: b.unit_cost,
+                saleItemId,
+                usuario: { id: canc.UsuarioId, nome: canc.UsuarioNome },
+                nota: notaDoEstorno(canc.OrigemIdentificador, canc.PedidoUuid),
+                cancelamentoId: canc.Uuid,
+                criadoEm: Number.isNaN(quando.getTime()) ? new Date() : quando,
             })
-            if (b.product_id) await tx.product.update({ where: { id: b.product_id }, data: { stock: { increment: b.quantity } } })
-            else if (b.supply_id) await tx.supply.update({ where: { id: b.supply_id }, data: { stock: { increment: b.quantity } } })
         }
         if (baixas.length > 0) {
-            await tx.cancellationAudit.update({ where: { id: cancelamentoId }, data: { stock_restored: true } })
+            await tx.cancellationAudit.update({ where: { id: canc.Uuid }, data: { stock_restored: true } })
         }
     })
 }
@@ -986,7 +996,9 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                 where: { id: canc.Uuid },
                 update: {
                     reason: canc.Motivo,
-                    cancellation_type: canc.TipoCancelamento
+                    cancellation_type: canc.TipoCancelamento,
+                    // A escolha do estoque (ESTORNO/DESPERDICIO): a venda cancelada que sobe depois lê daqui (16/10/2026)
+                    stock_destination: destinoDoEstoque(canc.DestinoEstoque),
                 },
                 create: {
                     id: canc.Uuid,
@@ -1005,6 +1017,7 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                     reason: canc.Motivo,
                     user_id: canc.UsuarioId || null,
                     user_name: canc.UsuarioNome || null,
+                    stock_destination: destinoDoEstoque(canc.DestinoEstoque),
                     cancelled_at: canc.DataCancelamento ? new Date(canc.DataCancelamento) : new Date()
                 }
             })
@@ -1060,7 +1073,7 @@ export async function postCancellationsSync(request: FastifyRequest, reply: Fast
                 // Estoque segue a escolha do operador (decisão do Thomás, 25/09): "Devolver ao Estoque" desfaz as baixas
                 // deste item; "Registrar como Desperdício" mantém a saída.
                 if (canc.PedidoItemUuid) {
-                    await estornarEstoqueDoItem(canc.Uuid, canc.PedidoItemUuid, canc.DestinoEstoque)
+                    await estornarEstoqueDoItem(canc, canc.PedidoItemUuid, canc.DestinoEstoque)
                 }
             }
 

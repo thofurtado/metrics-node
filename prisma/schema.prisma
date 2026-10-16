@@ -252,7 +252,21 @@ model Stock {
   expiration_date DateTime?
   supplier_cnpj   String?
 
+  // Histórico do estoque (etapa 4 do Vendas e Estoque, 16/10/2026; ver modules/stock/services/movimento-de-estoque.ts).
+  // Vazios nos movimentos antigos: a web calcula o saldo a partir do saldo atual e mostra "—" em quem fez.
+  user_id         String?   // quem fez (usuário da web; no estorno, quem cancelou no PDV)
+  user_name       String?
+  balance_after   Float?    // saldo do produto/insumo logo depois deste movimento
+  note            String?   // "Estorno da venda #123", motivo do ajuste, "Inventário"
+  document_key    String?   // NF-e de compra da entrada (chave)
+  document_number String?
+  cancellation_id String?   // cancelamento do PDV que gerou o estorno (cancellation_audits.id)
+
   @@index([sale_item_id])
+  @@index([product_id, created_at])
+  @@index([supply_id, created_at])
+  @@index([created_at])
+  @@index([document_key])
   @@map("stocks")
 }
 
@@ -1277,10 +1291,13 @@ model CancellationAudit {
   user_id           String?
   user_name         String?
   stock_restored    Boolean   @default(false)
+  // Escolha do operador: ESTORNO (devolver ao estoque) ou DESPERDICIO (16/10/2026; vazio nos cancelamentos antigos)
+  stock_destination String?
   cancelled_at      DateTime  @default(now())
   created_at        DateTime  @default(now())
 
   @@index([cancelled_at])
+  @@index([item_id])
   @@index([sale_id])
   @@map("cancellation_audits")
 }
