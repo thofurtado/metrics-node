@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio } from './food99-pedido'
+import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio, totalDoPedido99 } from './food99-pedido'
 
 describe('endereço do pedido da 99', () => {
   it('o número vem de street_number e "casa" vira complemento (pedido real da Jessica, Katatau 13/10/2026)', () => {
@@ -50,5 +50,19 @@ describe('resultado do envio do cardápio para a 99 (Mergulho 10:N6)', () => {
     expect(r.falhas).toEqual(['itemUpload: item 12: preço inválido'])
     expect(resultadoDoEnvioDoCardapio({ status: 1, operationList: [{ operationType: 'x', errorList: [{ id: 3 }] }] }).ok).toBe(false)
     expect(resultadoDoEnvioDoCardapio(undefined)).toEqual({ taskId: null, ok: false, mensagem: '', falhas: [] })
+  })
+})
+
+describe('totalDoPedido99: valor da venda do pedido da 99 (15/10/2026)', () => {
+  it('pago na entrega: o que o cliente paga ao motoboy (real_pay_price), não o valor com o desconto da 99', () => {
+    // Katatau, 13/10/2026: real_price 2881, cliente pagou 1490 em dinheiro (a 99 bancou 13,91)
+    expect(totalDoPedido99({ order_price: 2990, real_price: 2881, real_pay_price: 1490 }, 2)).toBe(14.9)
+  })
+  it('pago no app: o real_price; sem ele, o order_price (modelo antigo)', () => {
+    expect(totalDoPedido99({ order_price: 2990, real_price: 2881, real_pay_price: 1490 }, 1)).toBe(28.81)
+    expect(totalDoPedido99({ order_price: 2990 }, 1)).toBe(29.9)
+  })
+  it('pago na entrega sem real_pay_price (pedido antigo de teste): cai no real_price', () => {
+    expect(totalDoPedido99({ order_price: 2990, real_price: 2881 }, 2)).toBe(28.81)
   })
 })

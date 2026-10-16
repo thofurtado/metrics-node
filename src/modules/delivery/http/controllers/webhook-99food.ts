@@ -6,7 +6,7 @@ import { sseManager } from '@/lib/sse-manager'
 import { env } from '@/env'
 import { intervaloDoDiaOperacional } from '@/lib/dia-operacional'
 import { chaveDoItem99 } from '../../services/food99-vinculos'
-import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio } from '../../services/food99-pedido'
+import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio, totalDoPedido99 } from '../../services/food99-pedido'
 import { produtoUnicoPeloNome } from '../../services/produto-por-nome'
 import { avancaSituacao } from '../../services/ifood-situacao'
 import { gravarValoresDaPlataforma, valoresDoPedido99 } from '../../services/valores-da-plataforma'
@@ -271,10 +271,10 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
         orderBy: { opened_at: 'desc' }
       })
 
-      // Valores (centavos). Total = o que a loja recebe (real_price nos modelos 2/3; order_price no modelo 1).
-      // A taxa de entrega só é da loja quando a entrega é da própria loja (delivery_type 2).
+      // Valores (centavos). Total = o que a loja recebe (real_price nos modelos 2/3; order_price no modelo 1), menos no pago na
+      // entrega: ver totalDoPedido99. A taxa de entrega só é da loja quando a entrega é da própria loja (delivery_type 2).
       const orderPrice = centavos(price.order_price)
-      const totalAmount = price.real_price != null ? centavos(price.real_price) : orderPrice
+      const totalAmount = totalDoPedido99(price, payMethod)
       const deliveryFee = deliveryType === 2 ? centavos(price.delivery_price) : 0
       const subtotal = Math.max(0, totalAmount - deliveryFee)
 

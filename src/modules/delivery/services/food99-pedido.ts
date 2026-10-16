@@ -88,3 +88,17 @@ export function resultadoDoEnvioDoCardapio(data: any): ResultadoDoEnvioDoCardapi
     falhas,
   }
 }
+
+/**
+ * Total do pedido da 99 em reais (15/10/2026). Pago no app: o `real_price` (o que a loja recebe; `order_price` no modelo antigo).
+ * PAGO NA ENTREGA (`pay_method` 2): o que o cliente paga ao motoboy, `real_pay_price` (= `customer_need_paying_money`). Antes ia
+ * o `real_price`, que inclui o desconto bancado pela 99: na Katatau o PDV registrou R$ 28,81 em dinheiro num pedido em que o
+ * cliente pagou R$ 14,90 (13/10; também 86,74 × 61,74 e 36,60 × 20,61). A parte que a 99 bancou não passa pela gaveta: vai para
+ * a conta corrente da plataforma (desconto da plataforma em pedido_valores_plataforma, a receber na conferência).
+ */
+export function totalDoPedido99(price: any, payMethod: number): number {
+  const reais = (v: unknown) => (Number(v) || 0) / 100
+  if (payMethod === 2 && price?.real_pay_price != null) return reais(price.real_pay_price)
+  if (price?.real_price != null) return reais(price.real_price)
+  return reais(price?.order_price)
+}
