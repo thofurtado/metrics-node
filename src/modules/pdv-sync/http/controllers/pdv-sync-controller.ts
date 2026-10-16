@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { StockReason } from '@prisma/client'
 import { codigoDoMovimento, splitStockMovements } from '../../services/stock-movement-rules'
 import { acceptsChanges, saleEntryTag, shouldReverseStock } from '../../services/cashier-sync-rules'
-import { funcionarioEntraNoPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
+import { funcionarioEntraNoPdv, funcionarioInativo, funcionarioInativoParaPdv, funcionarioParaConsumo, funcionarioParaPdv, usuarioParaPdv } from '../../services/equipe-do-pdv'
 import { categoriasDaMaquininha, tipoDoIdentificador } from '../../services/pagamentos-do-pdv'
 import { hash } from 'bcryptjs'
 import { fiscaisLimpos, cstIcmsValido, csosnValido, cfopValido, ncmValido, cestValido, cstPisCofinsValido, codigoBarrasValido } from '@/lib/codigos-fiscais'
@@ -102,7 +102,7 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
     // pede (2.5.8 em diante): o PDV antigo não sabe separar "só o app do garçom" e mostraria o garçom no login do caixa.
     // Desde 10/10/2026 vão TODOS os funcionários ativos: quem não entra em nada vai sem PIN e sem acesso, só para o consumo e
     // o vale (decisão de 25/09: a mesma lista do RH da web); o usuário ligado a um funcionário vai marcado como funcionário.
-    const { incluirFuncionarios } = (request.query ?? {}) as { incluirFuncionarios?: string }
+    const { incluirFuncionarios, incluirInativos } = (request.query ?? {}) as { incluirFuncionarios?: string; incluirInativos?: string }
     let usuariosFuncionarios = new Set<string>()
     if (incluirFuncionarios === '1') {
         try {
@@ -137,6 +137,27 @@ export async function getUsersSync(request: FastifyRequest, reply: FastifyReply)
         } catch (err) {
             // Banco desta loja ainda sem os grupos (sincronização pendente no SaaS Admin): vão só os usuários, como antes
             request.log.warn({ err }, '[pdv-sync] funcionários fora da lista de usuários (grupos ainda não criados neste banco)')
+        }
+    }
+
+    // Número do vendedor pela ordem de cadastro (16/10/2026): o PDV 2.5.58 em diante pede também os funcionários INATIVOS,
+    // com a data de cadastro, para o número de cada um nunca mudar (o inativo não vende, mas guarda o número dele).
+    if (incluirFuncionarios === '1' && incluirInativos === '1') {
+        try {
+            const inativos = await prisma.employee.findMany({
+                where: { isRegistered: false, user_id: null },
+                select: {
+                    id: true, name: true, pin: true, isRegistered: true, user_id: true, created_at: true,
+                    group: { select: { name: true, can_use_waiter_app: true, can_use_pdv: true } },
+                },
+            })
+            const protegerTexto = (texto: string) => hash(texto, 6)
+            const segredoAleatorio = () => randomBytes(24).toString('hex')
+            for (const f of inativos) {
+                if (funcionarioInativoParaPdv(f)) formatted.push(await funcionarioInativo(f, protegerTexto, segredoAleatorio))
+            }
+        } catch (err) {
+            request.log.warn({ err }, '[pdv-sync] funcionários inativos fora da lista de usuários')
         }
     }
 

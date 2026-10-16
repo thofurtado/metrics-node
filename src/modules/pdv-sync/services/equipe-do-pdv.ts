@@ -150,6 +150,40 @@ export async function funcionarioParaConsumo(
     }
 }
 
+/**
+ * Número do vendedor (decisão do Thomás, 16/10/2026, como no Athos): o PDV numera os funcionários pela ORDEM DE CADASTRO
+ * (o primeiro é 1, o segundo 2...) e guarda o número; o inativo não aparece na lista de vendedores, mas não perde nem libera
+ * o número dele. Para isso o PDV precisa saber também dos INATIVOS (com a data de cadastro), senão o 3 de hoje seria o
+ * 2 amanhã. Só vai para o PDV que pede (`incluirInativos=1`, PDV 2.5.58 em diante): o PDV antigo os apagaria ou guardaria
+ * sem saber o que fazer. O inativo vai sem PIN, sem senha que se acerte, sem acesso e fora do consumo/vale: não entra em
+ * lugar nenhum, só ocupa o número. Nada muda no banco da nuvem (sem coluna nova): é a mesma tabela de funcionários.
+ */
+export function funcionarioInativoParaPdv(f: FuncionarioComGrupo): boolean {
+    return !f.isRegistered && !f.user_id
+}
+
+export async function funcionarioInativo(
+    f: FuncionarioComGrupo,
+    protegerTexto: (texto: string) => Promise<string>,
+    segredoAleatorio: () => string,
+): Promise<PessoaParaPdv> {
+    return {
+        Uuid: f.id,
+        Name: f.name,
+        Email: emailDoFuncionario(f.id),
+        PasswordHash: await protegerTexto(segredoAleatorio()),
+        PinHash: null,
+        Role: 'MEMBER',
+        Active: false,
+        CreatedAt: f.created_at,
+        Origem: 'FUNCIONARIO',
+        Grupo: f.group?.name ?? null,
+        PodePdv: false,
+        PodeAppGarcom: false,
+        FuncionarioRh: false,
+    }
+}
+
 /** Nome do grupo como o cargo era digitado: sem espaços sobrando ("  Garçom  de salão " → "Garçom de salão"). */
 export function normalizarNomeDoGrupo(texto: string | null | undefined): string {
     return (texto ?? '').trim().replace(/\s+/g, ' ')

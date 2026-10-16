@@ -4,6 +4,8 @@ import {
     chaveDoGrupo,
     emailDoFuncionario,
     funcionarioEntraNoPdv,
+    funcionarioInativo,
+    funcionarioInativoParaPdv,
     funcionarioParaConsumo,
     funcionarioParaPdv,
     funcionarioSoParaConsumo,
@@ -94,6 +96,23 @@ describe('equipe que entra no PDV e no app do garçom', () => {
         const u = { id: 'u1', name: 'Gerente', email: 'g@loja.com', password_hash: '$2a$x', pin_hash: null, role: 'ADMIN', created_at: criadoEm }
         expect(usuarioParaPdv(u).FuncionarioRh).toBe(false)
         expect(usuarioParaPdv(u, true).FuncionarioRh).toBe(true)
+    })
+
+    it('número do vendedor (16/10/2026): o inativo vai com a data de cadastro, sem PIN, sem acesso e sem entrar em nada', async () => {
+        const saiu = funcionario({ isRegistered: false, created_at: new Date('2025-03-02T10:00:00Z') })
+        expect(funcionarioInativoParaPdv(saiu)).toBe(true)
+        expect(funcionarioInativoParaPdv(funcionario())).toBe(false) // ativo vai pelo caminho de sempre
+        expect(funcionarioInativoParaPdv(funcionario({ isRegistered: false, user_id: 'u1' }))).toBe(false) // entra como o usuário
+        const p = await funcionarioInativo(saiu, proteger, () => 'segredo')
+        expect(p).toMatchObject({
+            Uuid: saiu.id, Active: false, PinHash: null, PodePdv: false, PodeAppGarcom: false, FuncionarioRh: false,
+            Role: 'MEMBER', Origem: 'FUNCIONARIO', Grupo: 'Garçom', Email: emailDoFuncionario(saiu.id),
+        })
+        expect(p.CreatedAt).toEqual(new Date('2025-03-02T10:00:00Z'))
+        expect(await compare('', p.PasswordHash)).toBe(false)
+        expect(await compare('4821', p.PasswordHash)).toBe(false)
+        // Sem grupo também vai (só ocupa o número)
+        expect((await funcionarioInativo(funcionario({ isRegistered: false, group: null }), proteger, () => 's')).Grupo).toBeNull()
     })
 
     it('nome do grupo sem espaços sobrando', () => {
