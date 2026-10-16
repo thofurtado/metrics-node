@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { precoDaOpcao } from '../../observacao-rapida'
 
 export async function createComplementGroup(request: FastifyRequest, reply: FastifyReply) {
   const createBodySchema = z.object({
@@ -8,6 +9,8 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
     min_quantity: z.number().int().min(0).default(0),
     max_quantity: z.number().int().min(1).default(1),
     free_quantity: z.number().int().min(0).default(0),
+    // Observação rápida (só no salão), 16/10/2026: opções com preço zero e fora do cardápio online e do iFood/99
+    quick_note: z.boolean().default(false),
     options: z.array(
       z.object({
         name: z.string().min(1, 'Nome da opção é obrigatório'),
@@ -30,11 +33,12 @@ export async function createComplementGroup(request: FastifyRequest, reply: Fast
         min_quantity: data.min_quantity,
         max_quantity: data.max_quantity,
         free_quantity: data.free_quantity,
+        quick_note: data.quick_note,
         options: data.options?.length
           ? {
               create: data.options.map((opt) => ({
                 name: opt.name,
-                price: opt.price,
+                price: precoDaOpcao(data.quick_note, opt.price),
                 linked_product_id: opt.linked_product_id || null,
                 linked_supply_id: opt.linked_supply_id || null,
                 supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
@@ -139,6 +143,8 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
     max_quantity: z.number().int().min(1).optional(),
     free_quantity: z.number().int().min(0).optional(),
     active: z.boolean().optional(),
+    // Observação rápida (só no salão): ausente = fica como está
+    quick_note: z.boolean().optional(),
     options: z.array(
       z.object({
         id: z.string().optional(),
@@ -157,6 +163,13 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
   const data = updateBodySchema.parse(request.body)
 
   const group = await prisma.$transaction(async (tx) => {
+    // Observação rápida: vale o que veio da tela; sem o campo, o que o grupo já é (tela antiga não desmarca nada)
+    let observacaoRapida = data.quick_note
+    if (observacaoRapida === undefined) {
+      const atual = await tx.complementGroup.findUnique({ where: { id }, select: { quick_note: true } })
+      observacaoRapida = atual?.quick_note === true
+    }
+
     // Se enviou lista de opções, sincronizamos
     if (data.options) {
       const existingOptions = await tx.complementOption.findMany({
@@ -179,7 +192,7 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
             where: { id: opt.id },
             data: {
               name: opt.name,
-              price: opt.price,
+              price: precoDaOpcao(observacaoRapida, opt.price),
               // Campo que a tela não mandou fica como está: antes, salvar o grupo pela aba "Adicionais & Opcionais"
               // (que não mandava esses campos) apagava o produto ligado e o consumo por porção do insumo.
               ...(opt.linked_product_id !== undefined ? { linked_product_id: opt.linked_product_id || null } : {}),
@@ -195,7 +208,7 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
             data: {
               group_id: id,
               name: opt.name,
-              price: opt.price,
+              price: precoDaOpcao(observacaoRapida, opt.price),
               linked_product_id: opt.linked_product_id || null,
               linked_supply_id: opt.linked_supply_id || null,
               supply_quantity: opt.supply_quantity !== undefined && opt.supply_quantity !== null ? Number(opt.supply_quantity) : null,
@@ -204,6 +217,14 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
           })
         }
       }
+    }
+
+    // Grupo de observação rápida não fica com opção cobrada, nem com a que a tela não mandou (acabou de ser marcado)
+    if (observacaoRapida) {
+      await tx.complementOption.updateMany({
+        where: { group_id: id, price: { not: 0 } },
+        data: { price: 0 },
+      })
     }
 
     if (data.product_ids !== undefined) {
@@ -229,6 +250,7 @@ export async function updateComplementGroup(request: FastifyRequest, reply: Fast
         max_quantity: data.max_quantity,
         free_quantity: data.free_quantity,
         active: data.active,
+        quick_note: data.quick_note,
       },
       include: {
         options: {

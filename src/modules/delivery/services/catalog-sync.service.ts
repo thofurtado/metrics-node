@@ -65,6 +65,9 @@ export class CatalogSyncService {
 
     // Envio para a 99Food (v3). O token da loja vem da API (food99-api.service), nunca copiado do portal.
     // A loja é o app_shop_id cadastrado no portal para o app (parâmetro ou FOOD99_APP_SHOP_ID).
+    // Grupos de complementos NÃO vão à 99 (modifier_groups sai vazio em food99-api.service) nem ao iFood (o lojista cadastra
+    // o cardápio lá). Se um dia forem, passar por semObservacaoRapida (complements/observacao-rapida.ts): o grupo de
+    // observação rápida (só no salão, 16/10/2026) nunca sai no cardápio das plataformas. Teste em catalog-sync.spec.ts.
     let food99Result: any = { status: 'SKIPPED' }
     const appShopId = options.food99AppShopId || env.FOOD99_APP_SHOP_ID
     if (!env.FOOD99_APP_ID || !env.FOOD99_SECRET) {

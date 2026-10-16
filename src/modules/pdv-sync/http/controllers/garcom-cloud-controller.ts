@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { precoDaOpcao } from '@/modules/complements/observacao-rapida'
 
 /**
  * Endpoint de Catálogo Rápido para o App Garçom Móvel (Android / Kotlin)
@@ -51,11 +52,13 @@ export async function getGarcomCardapio(request: FastifyRequest, reply: FastifyR
             maximo: pg.group.max_quantity,
             gratis: pg.group.free_quantity,
             obrigatorio: pg.group.min_quantity > 0,
+            // Observação rápida (só no salão, 16/10/2026): o app mostra como botões com contador, sempre sem preço
+            observacaoRapida: pg.group.quick_note === true,
             opcoes: (pg.group?.options || []).map((opt: any, oIdx: number) => ({
                 id: oIdx + 1,
                 uuid: opt.id,
                 nome: opt.name,
-                preco: opt.price
+                preco: precoDaOpcao(pg.group.quick_note, opt.price)
             }))
         }))
 

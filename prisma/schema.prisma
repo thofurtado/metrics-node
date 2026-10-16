@@ -1016,6 +1016,9 @@ model ComplementGroup {
   max_quantity  Int                      @default(1)
   free_quantity Int                      @default(0)
   active        Boolean                  @default(true)
+  /// "Observação rápida (só no salão)", 16/10/2026: opções sempre com preço zero; nunca vai ao cardápio online nem ao
+  /// iFood/99; no PDV e no app do garçom vira botões de observação com contador (ver complements/observacao-rapida.ts).
+  quick_note    Boolean                  @default(false)
   created_at    DateTime                 @default(now())
   updated_at    DateTime                 @default(now()) @updatedAt
 

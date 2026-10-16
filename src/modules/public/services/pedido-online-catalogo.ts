@@ -1,16 +1,21 @@
 import type { PrismaClient } from '@prisma/client'
 import type { Catalogo, ItemEnviado, ProdutoCatalogo } from './pedido-online-regras'
+import { GRUPO_DO_CLIENTE, colunaObservacaoRapidaAusente } from '@/modules/complements/observacao-rapida'
 
 // Mergulho (06:C6): o que a nuvem precisa ler do cadastro para refazer o preço do pedido do cardápio online.
 // Lê também grupo/opção desativados: o preço continua sendo o cadastrado, e um cliente com o cardápio aberto antes da
 // mudança não fica travado (o cardápio só mostra os ativos).
-const SELECAO = {
+// Grupo de observação rápida (só no salão, 16/10/2026) NÃO entra: o cardápio online nunca o mostra, então uma opção dele
+// num pedido do cardápio é "complemento não encontrado" (pedido recusado, como item que saiu do cardápio).
+const selecao = (comColuna: boolean) => ({
     id: true,
     name: true,
     price: true,
     category_id: true,
     subcategory: { select: { accepts_fractions: true } },
     complementGroups: {
+        // Sem a coluna (banco antes do Sincronizar) nenhum grupo está marcado: a consulta é a de antes
+        ...(comColuna ? { where: { group: GRUPO_DO_CLIENTE } } : {}),
         select: {
             order: true,
             group: {
@@ -24,7 +29,7 @@ const SELECAO = {
         },
         orderBy: { order: 'asc' as const },
     },
-}
+})
 
 function paraProdutoCatalogo(p: any): ProdutoCatalogo {
     return {
@@ -61,7 +66,13 @@ export async function carregarCatalogoDoPedido(prisma: PrismaClient, itens: Item
     for (const nome of nomes) filtros.push({ name: { equals: nome, mode: 'insensitive' } })
     if (filtros.length === 0) return { porId: new Map(), fracionaveis: [] }
 
-    const produtos = await prisma.product.findMany({ where: { OR: filtros }, select: SELECAO })
+    let produtos: unknown[]
+    try {
+        produtos = await prisma.product.findMany({ where: { OR: filtros }, select: selecao(true) })
+    } catch (err) {
+        if (!colunaObservacaoRapidaAusente(err)) throw err
+        produtos = await prisma.product.findMany({ where: { OR: filtros }, select: selecao(false) })
+    }
     const lista = produtos.map(paraProdutoCatalogo)
     return {
         porId: new Map(lista.map((p) => [p.id, p])),
