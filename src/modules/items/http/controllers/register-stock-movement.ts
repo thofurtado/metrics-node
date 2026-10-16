@@ -2,6 +2,7 @@
 import { MakeRegisterStockMovementUseCase } from '@/modules/stock/use-cases/factories/make-register-stock-movement-use-case'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
+import { usuarioDaRequisicao } from '@/modules/stock/services/movimento-de-estoque'
 
 
 export async function registerStockMovement(request: FastifyRequest, reply: FastifyReply) {
@@ -20,6 +21,7 @@ export async function registerStockMovement(request: FastifyRequest, reply: Fast
     try {
 
         const registerStockMovementUseCase = MakeRegisterStockMovementUseCase()
+        const usuario = await usuarioDaRequisicao(request)
 
         const { stock_movement, new_balance } = await registerStockMovementUseCase.execute({
             item_id,
@@ -27,7 +29,9 @@ export async function registerStockMovement(request: FastifyRequest, reply: Fast
             quantity,
             operation,
             created_at: created_at ? created_at : undefined,
-            unit_cost
+            unit_cost,
+            user_id: usuario?.id ?? null,
+            user_name: usuario?.nome ?? null
         })
 
         return reply.status(200).send({

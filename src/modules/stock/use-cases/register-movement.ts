@@ -14,6 +14,9 @@ interface RegisterStockMovementUseCaseRequest {
     description?: string
     created_at?: Date
     unit_cost?: number
+    // Quem fez (histórico do estoque, 16/10/2026): o usuário da web que lançou o movimento
+    user_id?: string | null
+    user_name?: string | null
 }
 
 interface RegisterStockMovementUseCaseResponse {
@@ -34,7 +37,9 @@ export class RegisterStockMovementUseCase {
         operation,
         description,
         created_at,
-        unit_cost
+        unit_cost,
+        user_id,
+        user_name
     }: RegisterStockMovementUseCaseRequest): Promise<RegisterStockMovementUseCaseResponse> {
 
         if (quantity <= 0) throw new OnlyNaturalNumbersError()
@@ -52,17 +57,6 @@ export class RegisterStockMovementUseCase {
                 const currentCost = product.cost ?? product.product?.cost ?? 0
                 const costToRegister = unit_cost ?? currentCost
 
-                const stockData: any = {
-                    quantity,
-                    operation: operation as StockOperation,
-                    description: description as StockReason,
-                    created_at: created_at ?? new Date(),
-                    unit_cost: costToRegister,
-                    product_id: item_id
-                }
-
-                const stock_movement = await this.stocksRepository.create(stockData, tx)
-
                 const isEntry = operation === 'IN'
                 const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
 
@@ -70,6 +64,22 @@ export class RegisterStockMovementUseCase {
                 const newStock = isEntry
                     ? currentStock + quantity
                     : currentStock - quantity
+
+                // Quem fez e o saldo logo depois vão na linha (histórico do produto, 16/10/2026)
+                const stockData: any = {
+                    quantity,
+                    operation: operation as StockOperation,
+                    description: description as StockReason,
+                    created_at: created_at ?? new Date(),
+                    unit_cost: costToRegister,
+                    product_id: item_id,
+                    user_id: user_id ?? null,
+                    user_name: user_name ?? null,
+                    balance_after: newStock,
+                    note: 'Movimento lançado em Mercadorias'
+                }
+
+                const stock_movement = await this.stocksRepository.create(stockData, tx)
 
                 await this.productsRepository.update(item_id, {
                     stock: newStock,
@@ -88,23 +98,27 @@ export class RegisterStockMovementUseCase {
                 const currentCost = supply.cost ?? 0
                 const costToRegister = unit_cost ?? currentCost
 
-                const stockData: any = {
-                    quantity,
-                    operation: operation as StockOperation,
-                    description: description as StockReason,
-                    created_at: created_at ?? new Date(),
-                    unit_cost: costToRegister,
-                    supply_id: item_id
-                }
-
-                const stock_movement = await this.stocksRepository.create(stockData, tx)
-
                 const isEntry = operation === 'IN'
                 const costUpdate = (isEntry && unit_cost !== undefined) ? unit_cost : undefined
 
                 const newStock = isEntry
                     ? supply.stock + quantity
                     : supply.stock - quantity
+
+                const stockData: any = {
+                    quantity,
+                    operation: operation as StockOperation,
+                    description: description as StockReason,
+                    created_at: created_at ?? new Date(),
+                    unit_cost: costToRegister,
+                    supply_id: item_id,
+                    user_id: user_id ?? null,
+                    user_name: user_name ?? null,
+                    balance_after: newStock,
+                    note: 'Movimento lançado em Mercadorias'
+                }
+
+                const stock_movement = await this.stocksRepository.create(stockData, tx)
 
                 await this.suppliesRepository.update(item_id, {
                     stock: newStock,

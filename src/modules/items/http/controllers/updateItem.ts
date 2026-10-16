@@ -1,6 +1,36 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { makeUpdateItemUseCase } from '@/modules/items/use-cases/factories/make-update-item-use-case'
+import { prisma } from '@/lib/prisma'
+import { AlvoDoEstoque, registrarMovimento, usuarioDaRequisicao } from '@/modules/stock/services/movimento-de-estoque'
+
+/**
+ * Saldo mudado no cadastro do produto ou do insumo (16/10/2026): vira um AJUSTE no histórico, com quem mudou e o saldo, em vez
+ * de gravar o número por cima em silêncio. Antes, salvar o cadastro com a tela aberta havia horas regravava o saldo antigo e
+ * desfazia as baixas das vendas sem deixar rastro.
+ */
+async function ajustarSaldoPeloCadastro(request: FastifyRequest, id: string, novoSaldo: number) {
+    const produto = await prisma.product.findUnique({ where: { id }, select: { stock: true, cost: true } })
+    const insumo = produto ? null : await prisma.supply.findUnique({ where: { id }, select: { stock: true, cost: true } })
+    const atual = produto ?? insumo
+    if (!atual) return
+    const diferenca = Number((novoSaldo - (atual.stock ?? 0)).toFixed(6))
+    if (diferenca === 0) return
+    const alvo: AlvoDoEstoque = produto ? { tipo: 'PRODUCT', id } : { tipo: 'SUPPLY', id }
+    const usuario = await usuarioDaRequisicao(request)
+    await prisma.$transaction(async (tx) => {
+        await registrarMovimento(tx, {
+            alvo,
+            operacao: diferenca > 0 ? 'IN' : 'OUT',
+            quantidade: Math.abs(diferenca),
+            motivo: diferenca > 0 ? 'AJUSTE_POSITIVO' : 'AJUSTE_NEGATIVO',
+            custoUnitario: atual.cost ?? 0,
+            saldoNovo: novoSaldo,
+            usuario,
+            nota: 'Saldo mudado no cadastro',
+        })
+    })
+}
 
 export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
     const updateItemParamsSchema = z.object({
@@ -48,12 +78,13 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
         const { id } = updateItemParamsSchema.parse(request.params)
         const data = updateItemBodySchema.parse(request.body)
         const updateItemUseCase = makeUpdateItemUseCase()
+        // O saldo não é gravado pelo cadastro: a mudança (se houver) vira um ajuste no histórico, logo depois
         const { item } = await updateItemUseCase.execute({
             id,
             ...data,
             description: data.description ?? undefined,
             min_stock: data.min_stock ?? undefined,
-            stock: data.stock ?? undefined,
+            stock: undefined,
             barcode: data.barcode ?? undefined,
             category: data.category ?? undefined,
             estimated_time: data.estimated_time ?? undefined,
@@ -77,6 +108,9 @@ export async function updateItem(request: FastifyRequest, reply: FastifyReply) {
             cost: data.cost ?? undefined,
             price: data.price ?? undefined,
         })
+        if (typeof data.stock === 'number' && Number.isFinite(data.stock)) {
+            await ajustarSaldoPeloCadastro(request, id, data.stock)
+        }
         return reply.status(200).send(item)
     } catch (err) {
         console.error('[UpdateItem Error]:', err)
