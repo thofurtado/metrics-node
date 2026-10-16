@@ -12,6 +12,7 @@ import { montarPedidosOnline } from '@/modules/public/http/controllers/pedido-on
 import { eventoDeCancelado, FilaDePedidosNovos, MAX_TENTATIVAS_PEDIDO_NOVO, pedidosQueFalharam, situacaoMaisAdiantada } from './ifood-fila-pedidos'
 import { localizarTenantDaLoja } from './delivery-tenant-resolver'
 import { produtoUnicoPeloNome } from './produto-por-nome'
+import { gravarValoresDaPlataforma, valoresDoPedidoIfood } from './valores-da-plataforma'
 
 interface TokenStore {
   accessToken: string
@@ -498,6 +499,10 @@ export async function pollIfoodEvents(dbName = DEFAULT_TENANT): Promise<{ polled
 
           ordersCreated++
           console.log(`[iFood Polling] Pedido #${pedido.display_id} gravado em ${tenantDbName}! UUID: ${pedido.uuid}`)
+
+          // 7b. Valores do iFood (itens, frete, desconto da loja × do iFood, taxa de serviço), 15/10/2026: o pedido só guarda o
+          // total; o repasse da conferência e o PDV usam estes. Nunca derruba o pedido (sem a linha, a conferência faz como antes).
+          await gravarValoresDaPlataforma(prisma, pedido.id, valoresDoPedidoIfood(order))
 
           // 8. Transmissão SSE para os PDVs, no mesmo formato da lista de pendentes (endereço do pedido, bairro, CEP, taxa
           // de entrega e produto vinculado). Antes era um formato próprio, com o bairro sempre "Centro" e sem o produto.

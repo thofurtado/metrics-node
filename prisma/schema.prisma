@@ -1128,8 +1128,47 @@ model Pedido {
   plataforma          String?
 
   itens               PedidoItem[]
+  // Valores do iFood/99Food do jeito que a plataforma mandou (15/10/2026): só os pedidos dessas plataformas têm
+  valores_plataforma  PedidoValoresPlataforma?
 
   @@map("pedidos")
+}
+
+/// Valores do pedido do iFood e da 99Food (decisão do Thomás, 15/10/2026). A plataforma manda o pedido com tudo detalhado
+/// (itens, frete, desconto de quem, taxa de serviço), mas o pedido só guardava o total: o "a receber" da conferência saía
+/// menor que o real (o incentivo que a plataforma paga ficava de fora). Uma linha por pedido, gravada quando o pedido chega
+/// (services/valores-da-plataforma.ts); vai para o PDV como "platform_values". Nada aqui muda a venda nem o caixa.
+/// - expected_gross: o que a plataforma deve à loja ANTES da comissão e da taxa = itens + frete (só da entrega da loja) −
+///   desconto da loja. Inclui o incentivo da plataforma; não inclui a taxa de serviço (é da plataforma).
+/// - raw: o trecho dos valores exatamente como veio da plataforma, para nada se perder.
+/// - *_real: vazios por enquanto; virão do extrato ou da API financeira da plataforma.
+model PedidoValoresPlataforma {
+  id                String    @id @default(uuid())
+  pedido_id         Int       @unique
+  platform          String // 'IFOOD' | '99FOOD'
+  external_id       String // id do pedido na plataforma
+  items_value       Float?
+  delivery_fee      Float?
+  service_fee       Float?
+  discount_total    Float?
+  discount_store    Float?
+  discount_platform Float?
+  discount_other    Float?
+  customer_paid     Float?
+  paid_online       Boolean   @default(false)
+  own_delivery      Boolean? // nulo = não se sabe (ou retirada)
+  expected_gross    Float?
+  raw               Json?
+  commission_real   Float?
+  fee_real          Float?
+  payout_real       Float?
+  payout_date_real  DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @default(now()) @updatedAt
+  pedido            Pedido    @relation(fields: [pedido_id], references: [id], onDelete: Cascade)
+
+  @@unique([platform, external_id])
+  @@map("pedido_valores_plataforma")
 }
 
 model PedidoItem {

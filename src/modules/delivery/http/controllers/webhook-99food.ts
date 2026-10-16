@@ -9,6 +9,7 @@ import { chaveDoItem99 } from '../../services/food99-vinculos'
 import { avisoDa99, enderecoDa99, resultadoDoEnvioDoCardapio } from '../../services/food99-pedido'
 import { produtoUnicoPeloNome } from '../../services/produto-por-nome'
 import { avancaSituacao } from '../../services/ifood-situacao'
+import { gravarValoresDaPlataforma, valoresDoPedido99 } from '../../services/valores-da-plataforma'
 
 export interface DeliveryEventLog {
   id: string
@@ -365,6 +366,11 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
 
       console.log(`[99Food Webhook] Pedido #${pedido.display_id} (UUID: ${pedido.uuid}) gravado com sucesso em ${dbName}!`)
 
+      // Valores da 99 (itens, frete, desconto da loja × da 99, taxa de serviço), 15/10/2026: o objeto price inteiro e as
+      // promoções ficam no raw. Nunca derruba o pedido (sem a linha, a conferência faz como antes).
+      const valores99 = valoresDoPedido99(orderInfo, rawOrderId)
+      await gravarValoresDaPlataforma(prisma, pedido.id, valores99)
+
       // Transmissão via Server-Sent Events (SSE) para os PDVs
       try {
         const addrText = endereco99.linha
@@ -381,6 +387,8 @@ export async function webhook99FoodController(request: FastifyRequest, reply: Fa
           delivery_fee: pedido.valor_frete,
           observations: pedido.observacao || '',
           created_at: pedido.data_abertura,
+          // Mesmo objeto da lista de pendentes (contrato com o PDV, 15/10/2026); sem os valores, não vai
+          ...(valores99 ? { platform_values: valores99 } : {}),
           items: (pedido.itens || []).map((i: any) => ({
             id: i.uuid,
             product_id: i.produto_id || undefined,

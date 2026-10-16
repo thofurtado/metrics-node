@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { montarPedidosOnline } from './pedido-online-dto'
 
 // Banco de mentira: só o que montarPedidosOnline lê
@@ -90,5 +90,40 @@ describe('botão "Vincular" do PDV (12/10/2026)', () => {
     const [dto] = await montarPedidosOnline(bancoFalso(), [pedido()])
     expect(dto.platform).toBeNull()
     expect(dto.items[0].external_code).toBeNull()
+  })
+})
+
+describe('valores da plataforma para o PDV (15/10/2026, contrato fixo "platform_values")', () => {
+  const LINHA = {
+    pedido_id: 35, platform: 'IFOOD', external_id: '730621d7-eeec-42f9-8810-7d2e7df48597',
+    items_value: 55.9, delivery_fee: 9.99, service_fee: 1.4, discount_total: 13.97, discount_store: 5, discount_platform: 8.97,
+    discount_other: 0, customer_paid: 53.32, paid_online: true, own_delivery: true, expected_gross: 60.89,
+    raw: { total: { subTotal: 55.9 } }, commission_real: null, created_at: new Date(),
+  }
+
+  it('pedido com a linha leva o objeto com as 14 chaves; pedido sem a linha não leva', async () => {
+    const banco = bancoFalso()
+    banco.pedidoValoresPlataforma = { findMany: async () => [LINHA] }
+    const [comValores, semValores] = await montarPedidosOnline(banco, [
+      pedido({ id: 35, plataforma: 'IFOOD' }),
+      pedido({ id: 36, uuid: 'ped-2', plataforma: 'IFOOD' }),
+    ])
+    expect(comValores.platform_values).toEqual({
+      platform: 'IFOOD', external_id: '730621d7-eeec-42f9-8810-7d2e7df48597',
+      items_value: 55.9, delivery_fee: 9.99, service_fee: 1.4, discount_total: 13.97, discount_store: 5, discount_platform: 8.97,
+      discount_other: 0, customer_paid: 53.32, paid_online: true, own_delivery: true, expected_gross: 60.89,
+      raw: { total: { subTotal: 55.9 } },
+    })
+    expect('platform_values' in semValores).toBe(false)
+  })
+
+  it('loja sem a tabela ainda (antes do Sincronizar): a lista sai igual, sem o objeto', async () => {
+    const banco = bancoFalso()
+    banco.pedidoValoresPlataforma = { findMany: async () => { throw new Error('relation "pedido_valores_plataforma" does not exist') } }
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const [dto] = await montarPedidosOnline(banco, [pedido({ id: 35, plataforma: 'IFOOD' })])
+    expect(dto.id).toBe('ped-1')
+    expect('platform_values' in dto).toBe(false)
+    aviso.mockRestore()
   })
 })

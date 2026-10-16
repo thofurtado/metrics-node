@@ -1,4 +1,5 @@
 import { Address, Client, Pedido, PedidoItem, PrismaClient } from '@prisma/client'
+import { lerValoresDosPedidos, valoresParaOPdv, type LinhaDosValores } from '@/modules/delivery/services/valores-da-plataforma'
 
 type PedidoComItens = Pedido & { itens: PedidoItem[] }
 
@@ -29,7 +30,10 @@ export async function montarPedidosOnline(prisma: PrismaClient, pedidos: PedidoC
     });
     const productMap = new Map(products.map(pr => [pr.id, pr.name]));
 
-    return pedidos.map(p => pedidoOnlineDto(p, p.cliente_id ? clientMap.get(p.cliente_id) : null, addressMap, productMap));
+    // Valores do iFood/99 (15/10/2026): uma consulta só para a lista toda; tabela que ainda não existe = sem os valores
+    const valoresMap = await lerValoresDosPedidos(prisma, pedidos.map(p => p.id));
+
+    return pedidos.map(p => pedidoOnlineDto(p, p.cliente_id ? clientMap.get(p.cliente_id) : null, addressMap, productMap, valoresMap.get(p.id)));
 }
 
 /** Observação sem as partes de texto livre do cliente do iFood (ponto de referência e contato). */
@@ -50,6 +54,7 @@ export function pedidoOnlineDto(
     client: Pick<Client, 'name' | 'phone'> | null | undefined,
     addressMap: Map<string, Pick<Address, 'street' | 'number' | 'neighborhood' | 'city' | 'zipcode'> & { complement?: string | null }>,
     productMap: Map<string, string>,
+    valores?: LinhaDosValores | null,
 ) {
     const isTakeout =
         p.origem === 'Balcão' ||
@@ -107,6 +112,9 @@ export function pedidoOnlineDto(
         caixa_id: p.caixa_id || null,
         change_for: p.valor_troco ? Number(p.valor_troco) : undefined,
         created_at: p.data_abertura,
+        // Valores do iFood/99 do jeito que a plataforma mandou (contrato fixo com o PDV, 15/10/2026). Pedido sem os valores não
+        // manda o objeto; PDV antigo ignora.
+        ...(valores ? { platform_values: valoresParaOPdv(valores) } : {}),
         items: p.itens.map(i => {
             let complements: any[] = [];
             try {
