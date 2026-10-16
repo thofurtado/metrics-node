@@ -140,6 +140,48 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Decisão:** 16/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/NotaFiscalDaVenda.cs (MarcarMudancas, ParaEnviar)`, `Metrics.PDV/Metrics.Shared/Data/AppDbContext.cs (SaveChangesAsync)`, `Metrics.PDV/Metrics.Shared/Services/SyncManagerBackground.cs (SyncNotasDasVendasAsync)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-fiscal-sync-controller.ts`, `metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts (gravarNotaFiscal, ondeGravarANota)`
 
+### Uma conta só para o vendido e o recebido (Dashboard, Conferência de caixa e Vendas) (`regra-conta-unica-vendido-recebido`)
+- **Regra:** A nuvem calcula, para um caixa e/ou um período (dias operacionais) da loja: "Total vendido" = as vendas não canceladas (o total que o PDV fechou: itens − desconto + entrega + serviço + couvert) mais o que foi lançado no caixa da web sem venda registrada (loja sem PDV, sem a parte da caixinha); "Total recebido" = os pagamentos das formas que se contam (dinheiro, Pix, cartões, vale), por forma, com o banco/maquininha e o "Sem maquininha". A linha que explica a diferença: Vendido − a prazo (fiado, consumo de funcionário, permuta, cortesia) − aplicativos a receber (pago no app do iFood/99) + caixinha = Recebido; o que sobrar aparece como "venda sem pagamento registrado" ou "pagamento sem venda". As canceladas ficam fora dos dois totais e são contadas à parte. Sangria e suprimento são da gaveta e não entram.
+- **Por que é assim:** Antes cada tela somava do seu jeito (o cartão "Faturamento Total" da Conferência somava até suprimento e chamava o a prazo de "digital"), e os números não batiam entre si nem com o fechamento do PDV. A separação é a mesma do PDV (formas contadas × "Sem contagem física", ConferenciaDoFechamento): o dinheiro do a prazo e do aplicativo ainda não entrou, então não pode ser cobrado do caixa.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/sales/services/conta-das-vendas.ts`, `metrics-node/src/modules/sales/services/consultas-das-vendas.ts (carregarConta)`, `metrics/src/pages/app/cashier/components/LinhaDaConta.tsx`, `metrics/src/pages/app/cashier/dashboard/index.tsx`, `metrics/src/pages/app/cashier/session/[id]/index.tsx`, `Metrics.PDV/Metrics.Shared/Services/ConferenciaDoFechamento.cs`
+
+### O módulo "Vendas" substitui a "Conferência caixa" no menu, com cinco abas (`regra-modulo-vendas-cinco-abas`)
+- **Regra:** No menu da web o módulo chama "Vendas" (mesmo endereço /cashier e mesma permissão). Abas, nesta ordem: 1. Vendas (venda a venda, com filtros e o detalhe), 2. Conferência de caixa (a tela de sempre, com Salão ao vivo e Motoboys dentro dela), 3. Produtos vendidos, 4. Cancelamentos, 5. Vendedores. A aba e a venda aberta ficam no endereço (?aba=…&venda=…). O operador de caixa (CASHIER) abre na Conferência; os outros abrem em Vendas.
+- **Por que é assim:** Decisões D1 e D2: a venda e o caixa são a mesma amarração; a conferência fica em segundo. A antiga aba "Cancelamentos & Desperdício" mostrava exemplos fixos quando a consulta falhava (chamava uma rota que exige a chave do PDV): virou a aba Cancelamentos com os dados de verdade.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics/src/components/sidebar.tsx`, `metrics/src/pages/app/cashier/vendas/vendas-page.tsx`, `metrics/src/routes.tsx`
+
+### Venda cancelada continua na lista, riscada, fora dos totais (`regra-venda-cancelada-na-lista`)
+- **Regra:** Na aba Vendas a venda cancelada aparece riscada, com o selo "Cancelada", o motivo, quem e quando (do registro do cancelamento); fica fora do total da lista e da conta única. No detalhe, o item cancelado aparece riscado. A aba Cancelamentos junta vendas inteiras e itens, com filtro por motivo, pessoa e tipo, e diz se voltou ao estoque (stock_restored: a escolha "Devolver ao estoque" que foi aplicada).
+- **Por que é assim:** Decisão D12: esconder a cancelada apagaria a prova do que aconteceu no caixa; somar a cancelada inflaria o vendido.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/sales/services/relatorios-das-vendas.ts (linhaDaVenda, detalheDaVenda, relatorioDeCancelamentos)`, `metrics/src/pages/app/cashier/vendas/aba-cancelamentos.tsx`
+
+### De onde a venda veio: uma regra só (Balcão, Mesa, Comanda, Delivery, iFood, 99Food) (`regra-origem-da-venda`)
+- **Regra:** A origem vem do que o PDV manda: a origem do pedido (Balcao, Salao, Mesa, "Mesa 21 Conta B", Delivery, iFood, 99Food), a mesa/comanda (origin_identifier) e a plataforma dos pagamentos (platform_code, para o pedido do iFood/99 pago em dinheiro). "Balcao" com número é comanda (o PDV cobra a comanda como balcão); sem número é o balcão. A lista, o detalhe e o filtro usam a mesma regra.
+- **Por que é assim:** O PDV não manda o tipo do atendimento; sem uma regra única o filtro e a etiqueta da lista podiam discordar.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/sales/services/filtros-das-vendas.ts (origemDaVenda, ondeAOrigem)`
+
+### O período do módulo Vendas é em dias operacionais e pela data da venda (`regra-periodo-das-vendas`)
+- **Regra:** "Hoje", "Ontem", "7 dias", "Este mês", "Mês passado" e as datas escolhidas são dias operacionais (viram às 05:00 de Brasília): a venda das 02:00 do dia 17 é do dia 16. A venda entra no período pela hora em que foi fechada no PDV; o lançamento da web sem venda, pela própria hora. Só o caixa (sem datas) = o caixa inteiro. No máximo um ano por consulta.
+- **Por que é assim:** Mesma virada do caixa e do PDV. Num dia normal (um caixa por dia) a aba Vendas do dia e a Conferência daquele caixa mostram o mesmo total; caixa que fica aberto de um dia para o outro aparece inteiro na Conferência e dividido por dia em Vendas.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/sales/services/filtros-das-vendas.ts (intervaloDosDias)`, `metrics/src/utils/vendas/formatos.ts`
+
+### Custo e margem só para quem já vê o custo hoje (`regra-custo-e-margem-quem-ve`)
+- **Regra:** Custo (o congelado na hora da venda) e margem aparecem no detalhe, em Produtos vendidos e no CSV/PDF só para quem pode usar Mercadorias, Controle de Estoque ou Financeiro (ADMIN vê). O operador de caixa (CASHIER) não vê: a nuvem nem manda. O operador de caixa só vê as vendas dos caixas dele, como na lista de caixas da Conferência. Item sem custo congelado (venda antiga) entra no faturamento e fica fora da margem.
+- **Por que é assim:** Decisão D9: as permissões por grupo ficam para depois; até lá vale a regra de acesso de hoje, em que o custo só aparece em Mercadorias e no Estoque.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/sales/services/consultas-das-vendas.ts (acessoDoUsuario)`, `metrics-node/src/modules/sales/services/relatorios-das-vendas.ts`
+
+### A venda guarda na nuvem o número do pedido, a senha do dia e o cliente (`regra-numero-senha-cliente-da-venda`)
+- **Regra:** O PDV sempre mandou DisplayId, NumeroDiario e ClienteUuid; desde o módulo Vendas a nuvem guarda em sales.display_id, sales.daily_number e sales.client_id (o cliente só se já está na nuvem; senão fica vazio e a venda passa). Reenvio só completa o vazio, até em caixa conferido (não mexe em dinheiro). Venda antiga fica com "—" até o PDV reenviar.
+- **Por que é assim:** A lista "venda a venda" precisa do número e da senha que o caixa conhece (D2, D3), e o detalhe mostra o cliente.
+- **Decisão:** 16/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts (numeracaoDaVenda, numeracaoQueFalta)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/prisma/migrations/20261016220000_modulo_vendas/migration.sql`
+
 ## Funções de Negócio
 
 ### `AbrirTurnoCaixa`
@@ -230,6 +272,54 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Usada por:** ['PDV (sincronia de 5 em 5 minutos)']
 - **Tabelas afetadas:** `nuvem:Sale`, `pdv:Pedido`
 
+### `ContaDasVendas`
+- **O que faz:** Calcula o Total vendido, o Total recebido (por forma e maquininha) e a linha que explica a diferença de um caixa e/ou período.
+- **Motivo de negócio:** Uma conta só para o Dashboard, a Conferência de caixa e o módulo Vendas (D11), com a mesma separação do fechamento do PDV.
+- **Entradas:** de, ate (dias operacionais), caixa
+- **Saídas:** vendido (total, itens, taxas, descontos, lançado sem venda, ticket médio), recebido (dinheiro, eletrônico, por forma com maquininhas), semContagem (a prazo e aplicativos), caixinha, cancelados, diferenca (a linha em palavras)
+- **Usada por:** ['Web: Conferência de caixa (cartões do mês), página do caixa, aba Vendas, Produtos vendidos']
+- **Tabelas afetadas:** `nuvem:Sale`, `nuvem:CashierEntry`, `nuvem:Payment`, `nuvem:PaymentIdentifier`
+
+### `ListarVendas`
+- **O que faz:** Lista as vendas venda a venda, paginada, com filtros (período, caixa, origem, forma, vendedor, produto, situação e busca por número, senha, mesa, produto, cliente ou código).
+- **Motivo de negócio:** Ver na web venda por venda o que o PDV vendeu (D2, aba 1); o CSV e o PDF usam a mesma lista (D10).
+- **Entradas:** filtros, pagina, porPagina (até 500)
+- **Saídas:** vendas (dia e hora, número/senha, origem, caixa e computador, formas, nota, total, cancelada com motivo), total, totais (vendas, canceladas, valor sem as canceladas)
+- **Usada por:** ['Web: Vendas › Vendas']
+- **Tabelas afetadas:** `nuvem:Sale`, `nuvem:CashierEntry`, `nuvem:CashierSession`, `nuvem:CancellationAudit`
+
+### `DetalharVenda`
+- **O que faz:** Mostra tudo de uma venda: cabeçalho, itens (nome como vendido, complementos, observação, vendedor, custo e margem), pagamentos (tipo e pessoa do a prazo, maquininha, caixinha), nota fiscal, baixas do estoque e cancelamentos.
+- **Motivo de negócio:** Decisão D3: o detalhe mostra tudo, para conferir uma venda sem ir ao PDV.
+- **Entradas:** id da venda
+- **Saídas:** o detalhe completo (venda antiga: "—" no que não tem)
+- **Usada por:** ['Web: Vendas (tocar numa venda), Cancelamentos (Abrir a venda)']
+- **Tabelas afetadas:** `nuvem:Sale`, `nuvem:SaleItem`, `nuvem:CashierEntry`, `nuvem:Stock`, `nuvem:CancellationAudit`, `nuvem:CashierSession`
+
+### `SomarProdutosVendidos`
+- **O que faz:** Soma produto a produto no período: quantidade, em quantas vendas, faturamento, custo congelado, margem e participação; filtros de origem, caixa, vendedor e produto.
+- **Motivo de negócio:** Aba Produtos vendidos (D2) e o CSV/PDF dela (D10).
+- **Entradas:** de, ate, origem, caixa, vendedor, produto
+- **Saídas:** produtos, totais, conta (rodapé: itens − descontos + taxas = Total vendido)
+- **Usada por:** ['Web: Vendas › Produtos vendidos']
+- **Tabelas afetadas:** `nuvem:SaleItem`, `nuvem:Sale`, `nuvem:Product`
+
+### `SomarPorVendedor`
+- **O que faz:** Soma quanto cada vendedor vendeu no período, item por item, com os produtos de cada um; itens sem vendedor ficam em "Sem vendedor".
+- **Motivo de negócio:** Aba Vendedores (D2); o vendedor é de cada item (D4).
+- **Entradas:** de, ate, caixa, origem
+- **Saídas:** vendedores (itens, vendas, faturamento, participação, produtos)
+- **Usada por:** ['Web: Vendas › Vendedores']
+- **Tabelas afetadas:** `nuvem:SaleItem`, `nuvem:Employee`
+
+### `ListarCancelamentos`
+- **O que faz:** Lista as vendas e os itens cancelados no período, com motivo, quem, quando, se voltou ao estoque e a venda ligada; filtros por motivo, pessoa e tipo.
+- **Motivo de negócio:** Aba Cancelamentos (D12), no lugar da antiga com exemplos fixos.
+- **Entradas:** de, ate, motivo, pessoa, tipo (vendas, itens)
+- **Saídas:** cancelamentos, totais, motivos e pessoas do período (para os filtros)
+- **Usada por:** ['Web: Vendas › Cancelamentos']
+- **Tabelas afetadas:** `nuvem:CancellationAudit`, `nuvem:Sale`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Caixa do servidor visto pelo terminal — Ok
@@ -275,9 +365,9 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 ### Venda (`sales`)
 
 - **Origem:** Nuvem (metrics-node)
-- **O que é:** Uma venda fechada no PDV: balcão, mesa ou salão. Tem o mesmo código do pedido no PDV. Guarda total, desconto, situação, origem, a mesa ou comanda de onde veio, frete, taxa de serviço e couvert.
+- **O que é:** Uma venda fechada no PDV: balcão, mesa ou salão. Tem o mesmo código do pedido no PDV. Guarda total, desconto, situação, origem, a mesa ou comanda de onde veio, frete, taxa de serviço e couvert. Desde o módulo Vendas (16/10/2026) guarda também o número do pedido no PDV, a senha do dia e o cliente da venda.
 - **Quem grava:** O PDV, na hora do pagamento e no ciclo de 5 minutos. A nuvem recusa com motivo venda sem caixa, de caixa desconhecido ou de caixa conferido.
-- **Quem lê:** Custo da mercadoria vendida (CMV) e os relatórios que vão ser feitos.
+- **Quem lê:** O módulo Vendas da web (lista venda a venda, detalhe, produtos vendidos, vendedores, cancelamentos), a conta única (Total vendido × Total recebido) do Dashboard e da Conferência de caixa, e o custo da mercadoria vendida (CMV).
 - **Cresce:** 200 por dia (~73 mil por ano) no exemplo.
 - **Espelho no PDV/nuvem:** Pedido (PDV) (`pedidos`)
 
@@ -400,3 +490,4 @@ Regras e decisões do caixa e da sincronia: skill metrics-regras-negocio e Metri
 - Rodar npm run migrate:all antes de publicar o backend 2.6.89.
 - Vendas e baixas de estoque recebidas antes do 2.6.89 não têm sale_item_id: o estorno do cancelamento só vale para as novas.
 - Fiado (pergunta 5) e vale do funcionário (pergunta 4).
+- Módulo Vendas (16/10/2026): rodar a migration 20261016220000_modulo_vendas (Sincronizar no SaaS Admin) logo depois de publicar a nuvem; até rodar, a subida de vendas do PDV dá erro e o PDV tenta de novo depois (nada se perde). O troco não sobe do PDV (o detalhe mostra "—").

@@ -1,9 +1,9 @@
 {
- "gerado_em": "2026-10-16T19:29:55",
+ "gerado_em": "2026-10-16T20:42:31",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "35a0cdd 2026-10-16",
+   "versao": "682c4d8 2026-10-16",
    "tabelas": 68
   },
   "saas": {
@@ -13,7 +13,7 @@
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "f44b0fb 2026-10-16",
+   "versao": "462f077 2026-10-16",
    "tabelas": 46
   }
  },
@@ -337,6 +337,16 @@
     {
      "campo": "clientTabs",
      "alvo": "nuvem:ClientTab",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "sales",
+     "alvo": "nuvem:Sale",
      "lista": true,
      "opcional": false,
      "fks": [],
@@ -5673,6 +5683,39 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "display_id",
+     "coluna": "display_id",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Número do pedido no PDV (display_id), a senha do dia (numero_diario) e o cliente da venda (Vendas, etapa 3, 16/10/2026): o PDV já mandava, a nuvem não guardava. Vazio = venda antiga (\"—\" na web)."
+    },
+    {
+     "nome": "daily_number",
+     "coluna": "daily_number",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "client_id",
+     "coluna": "client_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -5722,6 +5765,20 @@
       "id"
      ],
      "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "client",
+     "alvo": "nuvem:Client",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "client_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
      "nome": null
     }
    ]
@@ -15662,6 +15719,28 @@
      "nome": "NfceRecusa",
      "coluna": "nfce_recusa",
      "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "NfceAlteradaEm",
+     "coluna": "nfce_alterada_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "NfceNaNuvemEm",
+     "coluna": "nfce_na_nuvem_em",
+     "tipo": "DateTime",
      "enum": false,
      "opcional": true,
      "chave": false,

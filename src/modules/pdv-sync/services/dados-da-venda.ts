@@ -184,3 +184,38 @@ export async function funcionarioDoVendedor(db: ClienteDoFuncionario, vendedorId
     achados.set(id, f?.id ?? null)
     return f?.id ?? null
 }
+
+/**
+ * O número do pedido no PDV, a senha do dia e o cliente da venda (Vendas, etapa 3, 16/10/2026). O PDV já mandava DisplayId,
+ * NumeroDiario e ClienteUuid; a nuvem não guardava, e a lista "venda a venda" precisa do número e da senha. Só vai o que veio
+ * (PDV antigo sem o campo não apaga nada). O cliente só se já existe na nuvem (os clientes sobem antes das vendas no ciclo).
+ */
+export type NumeracaoDaVenda = { display_id?: number; daily_number?: number; client_id?: string }
+
+type ClienteDaNumeracao = { client: { findUnique: (args: any) => Promise<{ id: string } | null> } }
+
+export async function numeracaoDaVenda(
+    db: ClienteDaNumeracao,
+    venda: { DisplayId?: number | null; NumeroDiario?: number | null; ClienteUuid?: string | null },
+): Promise<NumeracaoDaVenda> {
+    const campos: NumeracaoDaVenda = {}
+    if (venda.DisplayId && venda.DisplayId > 0) campos.display_id = venda.DisplayId
+    if (venda.NumeroDiario && venda.NumeroDiario > 0) campos.daily_number = venda.NumeroDiario
+    if (venda.ClienteUuid) {
+        const cliente = await db.client.findUnique({ where: { id: venda.ClienteUuid }, select: { id: true } })
+        if (cliente) campos.client_id = cliente.id
+    }
+    return campos
+}
+
+/** O que falta na venda que já está na nuvem: só completa o vazio (o número e a senha da venda não mudam depois). */
+export function numeracaoQueFalta(
+    guardada: { display_id?: number | null; daily_number?: number | null; client_id?: string | null },
+    nova: NumeracaoDaVenda,
+): NumeracaoDaVenda {
+    const faltam: NumeracaoDaVenda = {}
+    if (nova.display_id && guardada.display_id == null) faltam.display_id = nova.display_id
+    if (nova.daily_number && guardada.daily_number == null) faltam.daily_number = nova.daily_number
+    if (nova.client_id && guardada.client_id == null) faltam.client_id = nova.client_id
+    return faltam
+}

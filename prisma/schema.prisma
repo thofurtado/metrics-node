@@ -42,6 +42,7 @@ model Client {
   treatments     Treatment[]
   cashierEntries CashierEntry[]
   clientTabs     ClientTab[]
+  sales          Sale[]
   group_id       String?
   group          ClientGroup?   @relation(fields: [group_id], references: [id])
 
@@ -734,11 +735,21 @@ model Sale {
   nfce_reason      String?
   nfce_changed_at  DateTime?
 
+  // Número do pedido no PDV (display_id), a senha do dia (numero_diario) e o cliente da venda (Vendas, etapa 3, 16/10/2026):
+  // o PDV já mandava, a nuvem não guardava. Vazio = venda antiga ("—" na web).
+  display_id   Int?
+  daily_number Int?
+  client_id    String?
+
   items          SaleItem[]
   entries        CashierEntry[]
   treatment      Treatment?      @relation(fields: [treatment_id], references: [id])
   cashierSession CashierSession? @relation(fields: [cashier_session_id], references: [id])
+  client         Client?         @relation(fields: [client_id], references: [id], onDelete: SetNull)
 
+  @@index([created_at])
+  @@index([cashier_session_id])
+  @@index([client_id])
   @@map("sales")
 }
 
@@ -777,6 +788,8 @@ model SaleItem {
   stocks  Stock[]
 
   @@index([seller_employee_id])
+  @@index([sale_id])
+  @@index([product_id])
   @@map("sale_items")
 }
 
@@ -950,6 +963,7 @@ model CashierEntry {
   sale     Sale?          @relation(fields: [sale_id], references: [id], onDelete: SetNull)
 
   @@index([sale_id])
+  @@index([cashier_session_id])
   @@map("cashier_entries")
 }
 
@@ -1266,6 +1280,8 @@ model CancellationAudit {
   cancelled_at      DateTime  @default(now())
   created_at        DateTime  @default(now())
 
+  @@index([cancelled_at])
+  @@index([sale_id])
   @@map("cancellation_audits")
 }
 
