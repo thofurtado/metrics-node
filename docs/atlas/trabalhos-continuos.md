@@ -1,6 +1,6 @@
 # Trabalhos que rodam o tempo todo
 
-> Gerado por `atlas.py` em 15/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
+> Gerado por `atlas.py` em 16/10/2026 a partir de `modulos/*.json` (campo `trabalhos`) e de `trabalhos-servidor.json`. Não edite este arquivo.
 
 Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens (perguntar de tantos em tantos segundos), conexões ao vivo, sincronias e tarefas agendadas. Cada ficha diz onde roda, o que chama, de quanto em quanto tempo, quantas cópias rodam juntas, o que custa, por que existe e o que acontece se espaçar. Numa crise de CPU da nuvem, olhe nesta ordem: (1) o servidor, que gasta CPU sem ninguém ver; (2) o que chama a nuvem com intervalo curto e se multiplica por loja e por aba; (3) o que fica só na rede da loja não pesa no servidor da nuvem. Levantamento de 08/10/2026; toda mudança nesses trabalhos atualiza esta lista na mesma tarefa.
 
@@ -52,7 +52,7 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Ok | **Troca de servidor: cópia do banco** (Empresa, usuários e configuração) | Core Service de todo computador da ordem → `Postgres da loja (rede local)` | a cada 1 s (2 s fora do servidor) |  |  |
 | Ok | **Página de diagnóstico do iFood** (Delivery e pedidos online) | Navegador com /delivery/ifood/diag aberto (equipe) → `Nuvem: /delivery/ifood/diag/data (até 400 linhas do diário)` | a cada 3 s enquanto aberta | Só quando alguém da equipe deixa a página aberta |  |
 | Ok | **Comandas em modo gráfico** (Impressão e registro da operação) | PDV do servidor com o modo gráfico ligado → `Banco da loja e impressoras` | a cada 3 s |  |  |
-| Ok | **Tela da cozinha (KDS): itens** (Impressão e registro da operação) | TV ou box da cozinha → `Core Service da loja: /api/kds/items` | a cada 5 s | 1 por tela de cozinha |  |
+| Ok | **Tela da cozinha (KDS): itens** (Impressão e registro da operação) | TV ou box da cozinha → `Core Service da loja: /api/kds/items (e, no app novo, os toques guardados em POST /api/kds/items/{id}/status e os cancelados em /api/kds/cancelados)` | a cada 5 s | 1 por tela de cozinha |  |
 | Ok | **Ligação do terminal com o servidor** (Empresa, usuários e configuração) | PDV de terminal → `Banco do servidor da loja` | a cada 5 s (dados da loja a cada 1 min) |  |  |
 | Ok | **Situação da troca de servidor no PDV** (Empresa, usuários e configuração) | Todo PDV aberto → `Core Service local: /api/cluster/situacao` | a cada 5 s (avisos do banco a cada 15 s) |  |  |
 | Ok | **Situação da atualização no PDV** (Empresa, usuários e configuração) | Todo PDV aberto → `Core Service local: /api/update/status` | a cada 5 s |  |  |
@@ -66,13 +66,17 @@ Tudo o que roda sozinho e sem parar: checagens de saúde do servidor, sondagens 
 | Ok | **Entrega do "caixa sem servidor"** (Caixa e vendas) | Core Service de todo computador da loja → `Core Service do servidor (não chama a nuvem)` | a cada 15 s, só se houver fila |  |  |
 | Ok | **App do garçom: lista de mesas** (Mesas e salão) | Celular do garçom → `Core Service da loja: /api/garcom/mesas, /impressoras, /equipe (não chama a nuvem)` | a cada 15 s (equipe a cada 60 s) | 1 por celular |  |
 | Ok | **App do garçom: mesa aberta na tela** (Mesas e salão) | Celular do garçom → `Core Service da loja: /api/garcom/mesas/{id}` | a cada 15 s | 1 por celular com uma mesa aberta |  |
+| Ok | **App do garçom: versão do cardápio (só o que mudou)** (Mesas e salão) | Celular do garçom → `Core Service da loja: cabeçalho X-Cardapio-Versao em toda resposta; /api/garcom/cardapio/mudancas?desde=X só quando a versão mudou (não chama a nuvem)` | junto das chamadas que o app já faz (a lista de mesas a cada 15 s); a pergunta das mudanças só quando a versão muda | 1 por celular |  |
 | Ok | **Vigia das impressoras** (Impressão e registro da operação) | Core Service do servidor da loja → `Impressoras (rede) e banco da loja` | a cada 15 s |  |  |
 | Ok | **Presença do computador no banco** (Empresa, usuários e configuração) | Core Service de todo computador → `Banco da loja (computadores_loja)` | a cada 15 s |  |  |
 | Ok | **Salão do PDV (mesas ociosas e recarga)** (Mesas e salão) | PDV com o Salão aberto → `Banco da loja (não chama a nuvem)` | a cada 20 s | 1 por Salão aberto |  |
+| Ok | **Versão do cardápio do celular (Serviço do PDV)** (Cardápio e produtos) | Core Service do computador servidor da loja → `Banco da loja (produtos, grupos, opções, departamentos; tabela cardapio_marcas)` | a cada 20 s (e em cada /api/garcom/cardapio) | 1 por loja (só no servidor) |  |
+| Ok | **Nova tentativa do pedido novo do iFood que falhou ao gravar** (Delivery e pedidos online) | Nuvem (metrics-node), dentro do polling do iFood → `iFood (detalhe do pedido) e o banco da loja; ao subir a nuvem, o diário (ifood_api_logs)` | a cada volta do polling (30 s), até 20 vezes por pedido; 1 leitura do diário ao subir a nuvem | Só os pedidos novos que falharam ao gravar, na fila da própria loja (no diário de 14/09 a 15/10/2026: nenhum, os 34 entraram de primeira) |  |
 | Ok | **Relógio de ponto: envio de batidas** (RH e ponto) | Computador do Metrics.Ponto → `Nuvem: POST /hr/time-clock/sync-offline (normalmente nenhuma chamada)` | a cada 30 s, só se houver batida não enviada |  |  |
 | Ok | **Contingência da NFC-e** (Fiscal (NFC-e)) | Core Service do servidor da loja → `Banco da loja; SEFAZ só com pendência` | a cada 30 s; SEFAZ só se houver nota pendente |  |  |
 | Ok | **Checagens de saúde do próprio Coolify (coolify, coolify-db, coolify-redis)** (Servidor da nuvem (Hostinger + Coolify)) | Servidor (Docker) | a cada 60 s (rápida só na partida), desde 09/10/2026 |  |  |
 | Ok | **App do garçom: lista de servidores da loja** (Mesas e salão) | Celular do garçom → `Core Service da loja: /api/cluster/servidores` | a cada 60 s | 1 por celular |  |
+| Ok | **Aviso de notas em contingência paradas** (Fiscal (NFC-e)) | PDV do computador servidor (com alguém logado) → `Banco da loja (só leitura: conta pedidos em contingência pendentes)` | a cada 1 min (dentro do relógio de 10 s dos sinais do PDV) | 1 por PDV do servidor aberto |  |
 | Ok | **Publicação dos dados da loja** (Empresa, usuários e configuração) | Core Service do servidor → `Banco da loja` | a cada 1 min |  |  |
 | Ok | **Envio de vendas, caixas e cancelamentos para a nuvem** (Caixa e vendas) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: /api/pdv/sync/sales, /sync/cashier/open\|movements\|close, /sync/cancellations` | venda: na hora; o resto a cada 5 min (sincronia geral do PDV), só se houver pendência | 1 por loja |  |
 | Ok | **Produtos que mudaram (PDV) e o carimbo de mudança** (Cardápio e produtos) | Core Service do computador servidor da loja (sincronia geral) → `Nuvem: GET /api/pdv/sync/status (4 contas) e, só se mudou, GET /api/pdv/products?lastSync=` | a cada 5 min (sincronia geral do PDV) | 1 por loja | Baixar a foto só quando a foto mudou (melhoria pequena). |
@@ -196,15 +200,15 @@ Serviços sempre ligados que não são trabalhos periódicos: API (metrics-node)
 As fichas completas de cada módulo ficam no `.md` do módulo, na seção "Trabalhos que rodam o tempo todo".
 
 - [Caixa e vendas](caixa-vendas.md): 3
-- [Mesas e salão](mesas.md): 6
-- [Delivery e pedidos online](delivery.md): 10
-- [Cardápio e produtos](cardapio.md): 6
+- [Mesas e salão](mesas.md): 7
+- [Delivery e pedidos online](delivery.md): 11
+- [Cardápio e produtos](cardapio.md): 7
 - [Estoque e compras](estoque.md): 1
 - [Financeiro](financeiro.md): 1
 - [Clientes](clientes.md): 2
 - [Ordens de serviço](servicos.md): 4
 - [RH e ponto](rh.md): 3
-- [Fiscal (NFC-e)](fiscal.md): 4
+- [Fiscal (NFC-e)](fiscal.md): 5
 - [Impressão e registro da operação](impressao.md): 5
 - [Empresa, usuários e configuração](empresa.md): 16
 - [SaaS (banco master)](saas.md): 3

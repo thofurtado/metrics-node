@@ -2,14 +2,14 @@
 
 Todas as tabelas do Metrics, divididas em módulos: o que cada uma guarda, como se ligam, quem grava e quem lê. Os desenhos saem direto do código (Prisma da nuvem, modelos do PDV e banco master do SaaS); o que só as pessoas sabem fica nos arquivos de cada módulo.
 
-Gerado em 13/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o manual.
+Gerado em 16/10/2026. Abra `atlas.html` no navegador para ver os desenhos e o manual.
 
 | Módulo | Tabelas | Arquivo |
 |---|---|---|
 | Caixa e vendas | 15 | [caixa-vendas.md](caixa-vendas.md) |
-| Mesas e salão | 5 | [mesas.md](mesas.md) |
+| Mesas e salão | 6 | [mesas.md](mesas.md) |
 | Delivery e pedidos online | 7 | [delivery.md](delivery.md) |
-| Cardápio e produtos | 16 | [cardapio.md](cardapio.md) |
+| Cardápio e produtos | 17 | [cardapio.md](cardapio.md) |
 | Estoque e compras | 10 | [estoque.md](estoque.md) |
 | Financeiro | 19 | [financeiro.md](financeiro.md) |
 | Clientes | 5 | [clientes.md](clientes.md) |
@@ -30,3 +30,7 @@ Numa crise de lentidão ou de CPU, comece por [trabalhos-continuos.md](trabalhos
 1. Mudou tabela ou coluna no código: rode `atlas.py tudo` (skill metrics-atlas).
 2. Aprendeu algo sobre uma tabela, regra ou função: edite `modulos/<id>.json` e rode `atlas.py gerar`.
 3. Não edite `atlas.html`, `README.md` nem os `.md` dos módulos à mão: são gerados.
+
+## O que falta no atlas e manual
+
+- **5 tabela(s) sem módulo: nuvem:CourierPayable, nuvem:DeliveryCourier, nuvem:DeliveryPlatform, nuvem:PedidoValoresPlataforma, pdv:PedidoValoresPlataforma**

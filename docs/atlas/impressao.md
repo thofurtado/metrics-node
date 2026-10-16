@@ -1,6 +1,6 @@
 # Impressão e registro da operação
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/impressao.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/impressao.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -23,10 +23,11 @@ Fica no banco do servidor da loja (PDV). O vigia das impressoras confere cada um
 
 ### Tela da cozinha (KDS): itens — Ok
 - **Frequência:** a cada 5 s
-- **Onde roda:** TV ou box da cozinha → `Core Service da loja: /api/kds/items`
+- **Onde roda:** TV ou box da cozinha → `Core Service da loja: /api/kds/items (e, no app novo, os toques guardados em POST /api/kds/items/{id}/status e os cancelados em /api/kds/cancelados)`
 - **Quantos:** 1 por tela de cozinha
-- **Por que existe:** Mostrar na cozinha os itens a preparar.
-- **Onde no código:** `metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74`
+- **A cada vez:** Mergulho 05:K5, K7, K8 (15/10/2026): a cada volta, primeiro envia os toques guardados no aparelho (fila no SharedPreferences, na ordem, com a hora do toque), depois busca os itens e os cancelados dos últimos 15 min (só leitura da tabela itens_cancelados). Sem rede, a última lista fica na tela com a faixa 'Sem conexão'.
+- **Por que existe:** Mostrar na cozinha os itens a preparar, sem perder o toque do cozinheiro quando o Wi-Fi oscila e avisando o prato cancelado no PDV.
+- **Onde no código:** `metrics-kds/app/src/main/java/com/example/metrics_kdv/MainActivity.kt:74`, `metrics-kds/app/src/main/java/com/example/metrics_kdv/DatabaseManager.kt:196`, `Metrics.PDV/Metrics.CoreService/Program.cs:305`
 
 ### Impressão por departamento (comandas) — Ok
 - **Frequência:** aviso instantâneo do banco + conferência a cada 10 s

@@ -1,6 +1,6 @@
 # Fiscal (NFC-e)
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/fiscal.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/fiscal.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -28,6 +28,14 @@ A NFC-e é emitida só pelo PDV: o XML de cada nota, a inutilização de numera�
 - **Onde roda:** Core Service do servidor da loja → `Banco da loja; SEFAZ só com pendência`
 - **Por que existe:** Transmitir as notas emitidas em contingência assim que a SEFAZ volta.
 - **Onde no código:** `Metrics.PDV/Metrics.CoreService/ContingencyWatcherBackgroundService.cs:31`
+
+### Aviso de notas em contingência paradas — Ok
+- **Frequência:** a cada 1 min (dentro do relógio de 10 s dos sinais do PDV)
+- **Onde roda:** PDV do computador servidor (com alguém logado) → `Banco da loja (só leitura: conta pedidos em contingência pendentes)`
+- **Quantos:** 1 por PDV do servidor aberto
+- **A cada vez:** Mergulho 12:F2 (15/10/2026): conta as notas em contingência ainda Pendente (ou CancelarAposEnvio) fechadas há mais de 20 min e mostra o aviso de atenção em Notificações.
+- **Por que existe:** Quem transmite a contingência é o Serviço do PDV; parado, as notas acumulavam sem ninguém ver.
+- **Onde no código:** `Metrics.PDV/Metrics.PDV/MainWindow.xaml.cs:1806`, `Metrics.PDV/Metrics.PDV/MainWindow.Avisos.cs:126`
 
 ### Tabela de impostos aproximados (IBPT) — Ok
 - **Frequência:** no máximo a cada 6 h (30 min se faltar algum NCM)

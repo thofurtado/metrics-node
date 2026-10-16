@@ -1,6 +1,6 @@
 # Mesas e salão
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/mesas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/mesas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -39,6 +39,16 @@ Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem ex
 - **Quantos:** 1 por celular com uma mesa aberta
 - **Por que existe:** Ver na hora o que foi lançado na mesa por outra pessoa.
 - **Onde no código:** `metrics-garcom/app/src/main/java/com/example/metricsgarcom/ui/atendimento/MesaDetalhesScreen.kt:69`
+
+### App do garçom: versão do cardápio (só o que mudou) — Ok
+- **Frequência:** junto das chamadas que o app já faz (a lista de mesas a cada 15 s); a pergunta das mudanças só quando a versão muda
+- **Onde roda:** Celular do garçom → `Core Service da loja: cabeçalho X-Cardapio-Versao em toda resposta; /api/garcom/cardapio/mudancas?desde=X só quando a versão mudou (não chama a nuvem)`
+- **Quantos:** 1 por celular
+- **A cada vez:** Compara um número; quando muda, baixa só os produtos que mudaram
+- **Por que existe:** O celular com cardápio velho mostrava preço velho (o servidor cobrava o do celular até 16/10/2026). Agora o servidor cobra pelo cadastro e o celular atualiza sozinho.
+- **Se espaçar:** O celular mostra preço ou opção velha por mais tempo (o servidor continua cobrando certo e avisa).
+- **Desde:** 16/10/2026 (PDV 2.5.59.0, app do garçom 2.7.0)
+- **Onde no código:** `Metrics.PDV/Metrics.CoreService/Endpoints/GarcomEndpoints.cs:115`
 
 ### Salão do PDV (mesas ociosas e recarga) — Ok
 - **Frequência:** a cada 20 s
@@ -91,6 +101,14 @@ Mesa e comanda abertas. No PDV a mesa é um atendimento com pedidos; na nuvem ex
 - **Quem grava:** Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom).
 - **Quem lê:** O mesmo serviço, a cada lançamento, para saber se aquela chave já chegou.
 - **Cresce:** Uma linha por lançamento do app; o servidor apaga as de mais de 2 dias (limpeza automática).
+
+### Pedido do celular que chegou depois (`garcom_pendencias`)
+
+- **Origem:** PDV local (Metrics.PDV)
+- **O que é:** Lançamento do app do garçom que chegou para uma mesa já fechada, ou feito numa ocupação anterior da mesa (antes da abertura atual). Não entra na conta, não imprime e não reabre a mesa: fica aqui até o caixa decidir no Salão ("Pedidos do celular que chegaram depois"): lançar na mesa atual, em outra mesa ou comanda, ou descartar com motivo. Decisão do Thomás de 16/10/2026 (só o PDV reabre mesa).
+- **Quem grava:** Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom → PendenciasDoCelular.CriarAsync); o PDV (Salão), ao lançar ou descartar (situação, quem e quando).
+- **Quem lê:** PDV, tela Salão (tecla âmbar "Celular: N pedidos F10" e a janela das pendências); o app do garçom pela rota /api/garcom/pendencias/{id}.
+- **Cresce:** Uma linha por lançamento atrasado do celular (raro: só com o celular sem Wi-Fi ou sem servidor e a mesa fechada no meio-tempo). Não é apagada (é registro).
 
 ## Do PDV para a nuvem
 

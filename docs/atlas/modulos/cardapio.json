@@ -85,6 +85,10 @@
         "pdv:DepartamentoImpressaoProduto": {
           "col": 4,
           "linha": 2
+        },
+        "pdv:CardapioMarca": {
+          "col": 5,
+          "linha": 1
         }
       }
     }
@@ -159,7 +163,7 @@
     },
     "pdv:GrupoComplemento": {
       "nome": "Grupo de adicionais (PDV)",
-      "o_que_e": "Cópia local do grupo de adicionais.",
+      "o_que_e": "Cópia local do grupo de adicionais. Desde 16/10/2026 traz a marca observacao_rapida (grupo \"Observação rápida (só no salão)\" da nuvem): no PDV e no app do garçom vira botões de observação com contador e sai na cozinha como observação.",
       "espelho": "nuvem:ComplementGroup"
     },
     "pdv:OpcaoComplemento": {
@@ -181,6 +185,18 @@
       "nome": "Produto × departamento (PDV)",
       "o_que_e": "Cópia local da ligação.",
       "espelho": "nuvem:ProductPrintDepartment"
+    },
+    "pdv:CardapioMarca": {
+      "nome": "Marca do cardápio do celular",
+      "o_que_e": "A \"impressão digital\" de cada produto como o app do garçom o recebe (nome, preço, código, departamento, grupos e opções, a marca de observação rápida) e a versão do cardápio em que mudou pela última vez. Com ela o servidor sabe o que mudou desde a versão que o celular tem e manda só isso. Uma linha \"setores\" para a lista de setores. A versão atual e a do começo ficam nas configurações (cardapio.versao.atual e cardapio.versao.base).",
+      "quem_grava": "Serviço do servidor da loja: o vigia da versão do cardápio (a cada 20 s) e as rotas /api/garcom/cardapio e /cardapio/mudancas (VersaoDoCardapio).",
+      "quem_le": "As mesmas rotas, para responder o que mudou ao app do garçom.",
+      "cresce": "Uma linha por produto ativo (ex.: 300 produtos = 300 linhas); produto que sai fica marcado como removido.",
+      "mostrar": [
+        "chave",
+        "versao",
+        "removido"
+      ]
     }
   },
   "ligacoes": [
@@ -344,6 +360,23 @@
         "Metrics.Sync/Services/SyncOrchestrator.cs:205",
         "Metrics.Sync/Models/SyncConfig.cs:18",
         "metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497"
+      ]
+    },
+    {
+      "id": "pdv-versao-cardapio",
+      "nome": "Versão do cardápio do celular (Serviço do PDV)",
+      "ondeRoda": "Core Service do computador servidor da loja",
+      "chama": "Banco da loja (produtos, grupos, opções, departamentos; tabela cardapio_marcas)",
+      "frequencia": "a cada 20 s (e em cada /api/garcom/cardapio)",
+      "segundos": 20,
+      "quantos": "1 por loja (só no servidor)",
+      "faz": "Monta o cardápio do celular, calcula a marca de cada produto e sobe a versão uma vez se algo mudou",
+      "porque": "Cardápio incremental do app do garçom: o celular baixa só o que mudou e nunca fica com preço velho por muito tempo.",
+      "seEspacar": "O cabeçalho X-Cardapio-Versao demora mais para mudar depois de uma alteração no cardápio (o pedido continua sendo cobrado pelo cadastro).",
+      "situacao": "ok",
+      "desde": "16/10/2026 (PDV 2.5.59.0)",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.Shared/Services/VersaoDoCardapioBackgroundService.cs:16"
       ]
     }
   ]

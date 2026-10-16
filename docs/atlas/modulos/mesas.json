@@ -50,6 +50,10 @@
         "pdv:GarcomIdempotencia": {
           "col": 2,
           "linha": 2
+        },
+        "pdv:PendenciaDoCelular": {
+          "col": 1,
+          "linha": 3
         }
       },
       "legenda": "Pedido é do módulo Caixa e vendas: a mesa (atendimento) tem pedidos, e a transferência registra o pedido de origem e o de destino."
@@ -113,6 +117,20 @@
         "chave",
         "atendimento_id",
         "criada_em"
+      ]
+    },
+    "pdv:PendenciaDoCelular": {
+      "nome": "Pedido do celular que chegou depois",
+      "o_que_e": "Lançamento do app do garçom que chegou para uma mesa já fechada, ou feito numa ocupação anterior da mesa (antes da abertura atual). Não entra na conta, não imprime e não reabre a mesa: fica aqui até o caixa decidir no Salão (\"Pedidos do celular que chegaram depois\"): lançar na mesa atual, em outra mesa ou comanda, ou descartar com motivo. Decisão do Thomás de 16/10/2026 (só o PDV reabre mesa).",
+      "quem_grava": "Serviço do servidor da loja, ao receber o lançamento do app do garçom (LancamentoDoGarcom → PendenciasDoCelular.CriarAsync); o PDV (Salão), ao lançar ou descartar (situação, quem e quando).",
+      "quem_le": "PDV, tela Salão (tecla âmbar \"Celular: N pedidos F10\" e a janela das pendências); o app do garçom pela rota /api/garcom/pendencias/{id}.",
+      "cresce": "Uma linha por lançamento atrasado do celular (raro: só com o celular sem Wi-Fi ou sem servidor e a mesa fechada no meio-tempo). Não é apagada (é registro).",
+      "mostrar": [
+        "mesa_identificador",
+        "motivo",
+        "lancado_em",
+        "situacao",
+        "resolucao"
       ]
     }
   },
@@ -234,6 +252,23 @@
       "situacao": "ok",
       "ondeNoCodigo": [
         "metrics-garcom/app/src/main/java/com/example/metricsgarcom/data/api/GarcomApiClient.kt:266"
+      ]
+    },
+    {
+      "id": "garcom-cardapio-versao",
+      "nome": "App do garçom: versão do cardápio (só o que mudou)",
+      "ondeRoda": "Celular do garçom",
+      "chama": "Core Service da loja: cabeçalho X-Cardapio-Versao em toda resposta; /api/garcom/cardapio/mudancas?desde=X só quando a versão mudou (não chama a nuvem)",
+      "frequencia": "junto das chamadas que o app já faz (a lista de mesas a cada 15 s); a pergunta das mudanças só quando a versão muda",
+      "segundos": 15,
+      "quantos": "1 por celular",
+      "faz": "Compara um número; quando muda, baixa só os produtos que mudaram",
+      "porque": "O celular com cardápio velho mostrava preço velho (o servidor cobrava o do celular até 16/10/2026). Agora o servidor cobra pelo cadastro e o celular atualiza sozinho.",
+      "seEspacar": "O celular mostra preço ou opção velha por mais tempo (o servidor continua cobrando certo e avisa).",
+      "situacao": "ok",
+      "desde": "16/10/2026 (PDV 2.5.59.0, app do garçom 2.7.0)",
+      "ondeNoCodigo": [
+        "Metrics.PDV/Metrics.CoreService/Endpoints/GarcomEndpoints.cs:115"
       ]
     }
   ]

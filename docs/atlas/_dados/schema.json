@@ -1,20 +1,20 @@
 {
- "gerado_em": "2026-10-13T08:15:13",
+ "gerado_em": "2026-10-16T02:45:57",
  "origens": {
   "nuvem": {
    "arquivo": "metrics-node/prisma/schema.prisma",
-   "versao": "caeaeb9 2026-10-13",
-   "tabelas": 64
+   "versao": "a089b1f 2026-10-16",
+   "tabelas": 68
   },
   "saas": {
    "arquivo": "metrics-saas-admin/prisma/schema.prisma",
-   "versao": "8f4bb7a 2026-10-12",
+   "versao": "3c95807 2026-10-15",
    "tabelas": 2
   },
   "pdv": {
    "arquivo": "Metrics.PDV/Metrics.Shared/Models",
-   "versao": "2fafde3 2026-10-13",
-   "tabelas": 43
+   "versao": "d828f3f 2026-10-16",
+   "tabelas": 46
   }
  },
  "tabelas": {
@@ -2455,6 +2455,17 @@
      "comentario": null
     },
     {
+     "nome": "kind",
+     "coluna": "kind",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Tipo da forma (15/10/2026): nulo = forma comum; \"PLATAFORMA\" = paga no app do iFood/99 (a plataforma repassa depois, com a comissão descontada). A plataforma de cada venda vem do identificador (payment_identifiers.platform_id)."
+    },
+    {
      "nome": "created_at",
      "coluna": "created_at",
      "tipo": "DateTime",
@@ -2825,6 +2836,16 @@
     {
      "campo": "adjustments",
      "alvo": "nuvem:AccountAdjustment",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "deliveryPlatforms",
+     "alvo": "nuvem:DeliveryPlatform",
      "lista": true,
      "opcional": false,
      "fks": [],
@@ -3345,9 +3366,45 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "platform_id",
+     "coluna": "platform_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Plataforma de entrega (15/10/2026): o repasse (receita) e a comissão (despesa) que a conferência do caixa cria para o iFood/99 levam a plataforma, para a Liquidação achar o par. platform_settlement_id junta o que foi baixado de uma vez (repasse, comissões e o ajuste da diferença), para desfazer a liquidação inteira."
+    },
+    {
+     "nome": "platform_settlement_id",
+     "coluna": "platform_settlement_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
+    {
+     "campo": "platform",
+     "alvo": "nuvem:DeliveryPlatform",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "platform_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    },
     {
      "campo": "treatments",
      "alvo": "nuvem:Treatment",
@@ -5994,6 +6051,17 @@
      "comentario": null
     },
     {
+     "nome": "platform_id",
+     "coluna": "platform_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Plataforma de entrega do identificador da forma \"Pago na plataforma\" (iFood, 99Food), 15/10/2026"
+    },
+    {
      "nome": "created_at",
      "coluna": "created_at",
      "tipo": "DateTime",
@@ -6024,6 +6092,20 @@
      "opcional": true,
      "fks": [
       "payment_method_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    },
+    {
+     "campo": "platform",
+     "alvo": "nuvem:DeliveryPlatform",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "platform_id"
      ],
      "refs": [
       "id"
@@ -6936,6 +7018,28 @@
      "unico": false,
      "padrao": null,
      "comentario": "Venda que gerou o lançamento (antes só pelo texto \"Balcao - Pedido #1f9408ee\")"
+    },
+    {
+     "nome": "platform_code",
+     "coluna": "platform_code",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Venda de pedido do iFood/99 (15/10/2026, vem do PDV: PlataformaCodigo e EntregaPropria), paga no app OU em dinheiro: a conferência lança a comissão da plataforma. Nulo = venda comum ou PDV antigo."
+    },
+    {
+     "nome": "platform_own_delivery",
+     "coluna": "platform_own_delivery",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -7659,6 +7763,17 @@
      "unico": false,
      "padrao": "true",
      "comentario": null
+    },
+    {
+     "nome": "quick_note",
+     "coluna": "quick_note",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": "\"Observação rápida (só no salão)\", 16/10/2026: opções sempre com preço zero; nunca vai ao cardápio online nem ao iFood/99; no PDV e no app do garçom vira botões de observação com contador (ver complements/observacao-rapida.ts)."
     },
     {
      "nome": "created_at",
@@ -8534,6 +8649,281 @@
      "fks": [],
      "refs": [],
      "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "valores_plataforma",
+     "alvo": "nuvem:PedidoValoresPlataforma",
+     "lista": false,
+     "opcional": true,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    }
+   ]
+  },
+  "nuvem:PedidoValoresPlataforma": {
+   "origem": "nuvem",
+   "modelo": "PedidoValoresPlataforma",
+   "tabela": "pedido_valores_plataforma",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": "uuid()",
+     "comentario": null
+    },
+    {
+     "nome": "pedido_id",
+     "coluna": "pedido_id",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": true,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "platform",
+     "coluna": "platform",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "'IFOOD' | '99FOOD'"
+    },
+    {
+     "nome": "external_id",
+     "coluna": "external_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "id do pedido na plataforma"
+    },
+    {
+     "nome": "items_value",
+     "coluna": "items_value",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "delivery_fee",
+     "coluna": "delivery_fee",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "service_fee",
+     "coluna": "service_fee",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "discount_total",
+     "coluna": "discount_total",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "discount_store",
+     "coluna": "discount_store",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "discount_platform",
+     "coluna": "discount_platform",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "discount_other",
+     "coluna": "discount_other",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "customer_paid",
+     "coluna": "customer_paid",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "paid_online",
+     "coluna": "paid_online",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "false",
+     "comentario": null
+    },
+    {
+     "nome": "own_delivery",
+     "coluna": "own_delivery",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "nulo = não se sabe (ou retirada)"
+    },
+    {
+     "nome": "expected_gross",
+     "coluna": "expected_gross",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "raw",
+     "coluna": "raw",
+     "tipo": "Json",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "commission_real",
+     "coluna": "commission_real",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "fee_real",
+     "coluna": "fee_real",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "payout_real",
+     "coluna": "payout_real",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "payout_date_real",
+     "coluna": "payout_date_real",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": [
+    {
+     "campo": "pedido",
+     "alvo": "nuvem:Pedido",
+     "lista": false,
+     "opcional": false,
+     "fks": [
+      "pedido_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "Cascade",
      "nome": null
     }
    ]
@@ -9838,6 +10228,531 @@
    ],
    "relacoes": []
   },
+  "nuvem:DeliveryPlatform": {
+   "origem": "nuvem",
+   "modelo": "DeliveryPlatform",
+   "tabela": "delivery_platforms",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": "uuid()",
+     "comentario": null
+    },
+    {
+     "nome": "code",
+     "coluna": "code",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": true,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "name",
+     "coluna": "name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "account_id",
+     "coluna": "account_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "commission_own_delivery_pct",
+     "coluna": "commission_own_delivery_pct",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "commission_platform_delivery_pct",
+     "coluna": "commission_platform_delivery_pct",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "online_payment_fee_pct",
+     "coluna": "online_payment_fee_pct",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "monthly_fee",
+     "coluna": "monthly_fee",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "payout_weeks_after",
+     "coluna": "payout_weeks_after",
+     "tipo": "Int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "1",
+     "comentario": null
+    },
+    {
+     "nome": "active",
+     "coluna": "active",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "true",
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": [
+    {
+     "campo": "account",
+     "alvo": "nuvem:Account",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "account_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    },
+    {
+     "campo": "identifiers",
+     "alvo": "nuvem:PaymentIdentifier",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    },
+    {
+     "campo": "transactions",
+     "alvo": "nuvem:Transaction",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    }
+   ]
+  },
+  "nuvem:DeliveryCourier": {
+   "origem": "nuvem",
+   "modelo": "DeliveryCourier",
+   "tabela": "delivery_couriers",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "name",
+     "coluna": "name",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "phone",
+     "coluna": "phone",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "earning_mode",
+     "coluna": "earning_mode",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"FIXO\"",
+     "comentario": null
+    },
+    {
+     "nome": "value_per_delivery",
+     "coluna": "value_per_delivery",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "daily_rate",
+     "coluna": "daily_rate",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "active",
+     "coluna": "active",
+     "tipo": "Boolean",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "true",
+     "comentario": null
+    },
+    {
+     "nome": "earning_since",
+     "coluna": "earning_since",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": [
+    {
+     "campo": "payables",
+     "alvo": "nuvem:CourierPayable",
+     "lista": true,
+     "opcional": false,
+     "fks": [],
+     "refs": [],
+     "on_delete": null,
+     "nome": null
+    }
+   ]
+  },
+  "nuvem:CourierPayable": {
+   "origem": "nuvem",
+   "modelo": "CourierPayable",
+   "tabela": "courier_payables",
+   "campos": [
+    {
+     "nome": "id",
+     "coluna": "id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "courier_uuid",
+     "coluna": "courier_uuid",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "courier_id",
+     "coluna": "courier_id",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "kind",
+     "coluna": "kind",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "order_uuid",
+     "coluna": "order_uuid",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "occurred_at",
+     "coluna": "occurred_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "day",
+     "coluna": "day",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "description",
+     "coluna": "description",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "fee_charged",
+     "coluna": "fee_charged",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "fee_table",
+     "coluna": "fee_table",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": "Taxa da tabela do bairro (base do ganho por porcentagem, PDV 15/10/2026). Null = linha de antes da regra ou PDV antigo."
+    },
+    {
+     "nome": "amount_due",
+     "coluna": "amount_due",
+     "tipo": "Float",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "0",
+     "comentario": null
+    },
+    {
+     "nome": "status",
+     "coluna": "status",
+     "tipo": "String",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "\"PENDENTE\"",
+     "comentario": null
+    },
+    {
+     "nome": "reason",
+     "coluna": "reason",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "settlement_uuid",
+     "coluna": "settlement_uuid",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "paid_at",
+     "coluna": "paid_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "payment_method",
+     "coluna": "payment_method",
+     "tipo": "String",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "created_at",
+     "coluna": "created_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    },
+    {
+     "nome": "updated_at",
+     "coluna": "updated_at",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": "now()",
+     "comentario": null
+    }
+   ],
+   "relacoes": [
+    {
+     "campo": "courier",
+     "alvo": "nuvem:DeliveryCourier",
+     "lista": false,
+     "opcional": true,
+     "fks": [
+      "courier_id"
+     ],
+     "refs": [
+      "id"
+     ],
+     "on_delete": "SetNull",
+     "nome": null
+    }
+   ]
+  },
   "saas:SaaSIntegrationConfig": {
    "origem": "saas",
    "modelo": "SaaSIntegrationConfig",
@@ -10633,6 +11548,28 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "FormaPagamento",
+     "coluna": "forma_pagamento",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Categoria",
+     "coluna": "categoria",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -10652,6 +11589,70 @@
     }
    ],
    "arquivo": "CaixaTransacao.cs"
+  },
+  "pdv:CardapioMarca": {
+   "origem": "pdv",
+   "modelo": "CardapioMarca",
+   "tabela": "cardapio_marcas",
+   "campos": [
+    {
+     "nome": "Chave",
+     "coluna": "chave",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Hash",
+     "coluna": "hash",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Versao",
+     "coluna": "versao",
+     "tipo": "long",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Removido",
+     "coluna": "removido",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtualizadoEm",
+     "coluna": "atualizado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "CardapioMarca.cs"
   },
   "pdv:Cliente": {
    "origem": "pdv",
@@ -11498,6 +12499,94 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "FormaPagamento",
+     "coluna": "forma_pagamento",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ParteDeId",
+     "coluna": "parte_de_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TaxaDaTabela",
+     "coluna": "taxa_da_tabela",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TrocadaEm",
+     "coluna": "trocada_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SincronizadoWeb",
+     "coluna": "sincronizado_web",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [],
@@ -11815,6 +12904,17 @@
      "comentario": null
     },
     {
+     "nome": "TipoDaForma",
+     "coluna": "tipo_forma",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "BancoId",
      "coluna": "banco_id",
      "tipo": "int",
@@ -12067,6 +13167,17 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "ObservacaoRapida",
+     "coluna": "observacao_rapida",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [
@@ -12300,6 +13411,17 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PlataformaCodigo",
+     "coluna": "plataforma_codigo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,
@@ -13342,6 +14464,50 @@
      "unico": false,
      "padrao": null,
      "comentario": null
+    },
+    {
+     "nome": "SincronizadoWeb",
+     "coluna": "sincronizado_web",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncTentativas",
+     "coluna": "sync_tentativas",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncUltimoErro",
+     "coluna": "sync_ultimo_erro",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "SyncProximaTentativa",
+     "coluna": "sync_proxima_tentativa",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
     }
    ],
    "relacoes": [],
@@ -14150,6 +15316,17 @@
      "comentario": null
     },
     {
+     "nome": "MotoboyId",
+     "coluna": "motoboy_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
      "nome": "Observacao",
      "coluna": "observacao",
      "tipo": "string",
@@ -14163,6 +15340,17 @@
     {
      "nome": "HoraSaidaRota",
      "coluna": "hora_saida_rota",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "HoraPronto",
+     "coluna": "hora_pronto",
      "tipo": "DateTime",
      "enum": false,
      "opcional": true,
@@ -14449,6 +15637,17 @@
     {
      "nome": "SincronizadoWeb",
      "coluna": "sincronizado_web",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CupomClienteImpresso",
+     "coluna": "cupom_cliente_impresso",
      "tipo": "bool",
      "enum": false,
      "opcional": false,
@@ -15070,6 +16269,497 @@
     }
    ],
    "arquivo": "PedidoPagamento.cs"
+  },
+  "pdv:PedidoValoresPlataforma": {
+   "origem": "pdv",
+   "modelo": "PedidoValoresPlataforma",
+   "tabela": "pedido_valores_plataforma",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PedidoId",
+     "coluna": "pedido_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Plataforma",
+     "coluna": "plataforma",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "IdExterno",
+     "coluna": "id_externo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ValorItens",
+     "coluna": "valor_itens",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ValorFrete",
+     "coluna": "valor_frete",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TaxaServico",
+     "coluna": "taxa_servico",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DescontoTotal",
+     "coluna": "desconto_total",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DescontoLoja",
+     "coluna": "desconto_loja",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DescontoPlataforma",
+     "coluna": "desconto_plataforma",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DescontoOutros",
+     "coluna": "desconto_outros",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ClientePagou",
+     "coluna": "cliente_pagou",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "PagoOnline",
+     "coluna": "pago_online",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "EntregaPropria",
+     "coluna": "entrega_propria",
+     "tipo": "bool",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "RepassePrevistoBruto",
+     "coluna": "repasse_previsto_bruto",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "OriginalJson",
+     "coluna": "original_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ComissaoReal",
+     "coluna": "comissao_real",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "TaxaReal",
+     "coluna": "taxa_real",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "RepasseReal",
+     "coluna": "repasse_real",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DataRepasseReal",
+     "coluna": "data_repasse_real",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CriadoEm",
+     "coluna": "criado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtualizadoEm",
+     "coluna": "atualizado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "PedidoValoresPlataforma.cs"
+  },
+  "pdv:PendenciaDoCelular": {
+   "origem": "pdv",
+   "modelo": "PendenciaDoCelular",
+   "tabela": "garcom_pendencias",
+   "campos": [
+    {
+     "nome": "Id",
+     "coluna": "id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": false,
+     "chave": true,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Uuid",
+     "coluna": "uuid",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "CriadaEm",
+     "coluna": "criada_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "AtendimentoId",
+     "coluna": "atendimento_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "MesaTipo",
+     "coluna": "mesa_tipo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "MesaIdentificador",
+     "coluna": "mesa_identificador",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Rotulo",
+     "coluna": "rotulo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Motivo",
+     "coluna": "motivo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "LancadoEm",
+     "coluna": "lancado_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "GarcomNome",
+     "coluna": "garcom_nome",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "UsuarioId",
+     "coluna": "usuario_id",
+     "tipo": "Guid",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Aparelho",
+     "coluna": "aparelho",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Chave",
+     "coluna": "chave",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "RequisicaoJson",
+     "coluna": "requisicao_json",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Resumo",
+     "coluna": "resumo",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Total",
+     "coluna": "total",
+     "tipo": "decimal",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Situacao",
+     "coluna": "situacao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ResolvidaEm",
+     "coluna": "resolvida_em",
+     "tipo": "DateTime",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "ResolvidaPor",
+     "coluna": "resolvida_por",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "Resolucao",
+     "coluna": "resolucao",
+     "tipo": "string",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "DestinoAtendimentoId",
+     "coluna": "destino_atendimento_id",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    }
+   ],
+   "relacoes": [],
+   "arquivo": "PendenciaDoCelular.cs"
   },
   "pdv:Produto": {
    "origem": "pdv",
@@ -15930,6 +17620,17 @@
      "tipo": "bool",
      "enum": false,
      "opcional": false,
+     "chave": false,
+     "unico": false,
+     "padrao": null,
+     "comentario": null
+    },
+    {
+     "nome": "NumeroVendedor",
+     "coluna": "numero_vendedor",
+     "tipo": "int",
+     "enum": false,
+     "opcional": true,
      "chave": false,
      "unico": false,
      "padrao": null,

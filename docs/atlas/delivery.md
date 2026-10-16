@@ -1,6 +1,6 @@
 # Delivery e pedidos online
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/delivery.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/delivery.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -53,11 +53,11 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Frequência:** a cada 30 s
 - **Onde roda:** Nuvem (metrics-node), dentro do processo da API → `iFood (events:polling) e o banco de cada loja`
 - **Quantos:** Percorre todas as lojas ativas (~14), uma de cada vez
-- **A cada vez:** Loja sem token do iFood: 1 consulta ao perfil a cada volta (o "sem token" nunca fica guardado). Loja com token: 1 chamada ao iFood e 1 linha no diário (ifood_api_logs), mesmo vazia: ~2.880 linhas por dia por loja, e nada apaga esse diário. Com evento: confirma, grava e avisa. Liga em qualquer computador que rode a API, inclusive em teste local (consumiria eventos reais).
+- **A cada vez:** Loja sem token do iFood: 1 consulta ao perfil a cada volta (o "sem token" nunca fica guardado). Loja com token: 1 chamada ao iFood e 1 linha no diário (ifood_api_logs), mesmo vazia: ~2.880 linhas por dia por loja, e nada apaga esse diário. Com evento: confirma, grava e avisa. Liga em qualquer computador que rode a API, inclusive em teste local (consumiria eventos reais). Desde 15/10/2026 (Mergulho 09:F2) toda chamada ao iFood tem tempo-limite de 20 s: antes uma conexão pendurada segurava a trava do polling, que é uma só para todas as lojas, por até 5 minutos.
 - **Por que existe:** Exigência da homologação do iFood: consultar a cada 30 s e confirmar (ACK) os eventos na hora. Sem isso o pedido não chega e o iFood pode descredenciar.
 - **Se espaçar:** NÃO pode espaçar para loja com iFood.
 - **Proposta:** Pular lojas sem token; limpeza do diário (ex.: 30 dias), mantendo os eventos de cancelamento da homologação; não ligar fora do servidor de produção.
-- **Onde no código:** `metrics-node/src/modules/delivery/services/ifood-poller.ts:536`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:61`, `metrics-node/src/modules/delivery/services/ifood-api.service.ts:109`
+- **Onde no código:** `metrics-node/src/modules/delivery/services/ifood-poller.ts:598`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:149`, `metrics-node/src/modules/delivery/services/ifood-api.service.ts:108`
 
 ### Avisos ao vivo de pedido (nuvem → PDVs e caixas da web) — Atenção
 - **Frequência:** a cada evento (pedido novo, status, cancelamento, exclusão)
@@ -86,6 +86,16 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Por que existe:** Acompanhar o diário do iFood ao vivo durante testes e homologação.
 - **Se espaçar:** Fechar a página quando não estiver usando.
 - **Onde no código:** `metrics-node/src/modules/delivery/http/controllers/ifood-diagnostic.ts:298`
+
+### Nova tentativa do pedido novo do iFood que falhou ao gravar — Ok
+- **Frequência:** a cada volta do polling (30 s), até 20 vezes por pedido; 1 leitura do diário ao subir a nuvem
+- **Onde roda:** Nuvem (metrics-node), dentro do polling do iFood → `iFood (detalhe do pedido) e o banco da loja; ao subir a nuvem, o diário (ifood_api_logs)`
+- **Quantos:** Só os pedidos novos que falharam ao gravar, na fila da própria loja (no diário de 14/09 a 15/10/2026: nenhum, os 34 entraram de primeira)
+- **A cada vez:** Por pedido na fila: 1 leitura dos eventos dele no diário, 1 chamada ao iFood (detalhe) e a gravação. Ao subir: 1 consulta ao diário das últimas 24 h (pedidos novos cuja última tentativa falhou).
+- **Por que existe:** O ACK sai logo depois do polling (exigência da homologação), então o iFood não manda o evento de novo: se o pedido falha ao gravar (banco fora, erro passageiro), só esta fila o salva. Nada pode impedir um pedido de entrar.
+- **Se espaçar:** Menos tentativas = pedido perdido numa queda curta do banco. O pedido já gravado nunca duplica (o polling confere antes); o cancelado no iFood enquanto não entrava não é gravado.
+- **Desde:** 15/10/2026 (Mergulho 09:F3): antes era uma fila só para todas as lojas (a loja seguinte pegava o pedido da outra), recomeçava a contagem depois de 5 tentativas e vivia só na memória (a publicação perdia o pedido)
+- **Onde no código:** `metrics-node/src/modules/delivery/services/ifood-fila-pedidos.ts:1`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:68`, `metrics-node/src/modules/delivery/services/ifood-poller.ts:232`
 
 ### Conferência dos pedidos de dias anteriores ainda abertos no PDV — Ok
 - **Frequência:** ao ligar e depois no máximo a cada 10 min (só quando há pedido de dia anterior aberto)

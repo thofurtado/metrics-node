@@ -1,6 +1,6 @@
 # Cardápio e produtos
 
-> Gerado por `atlas.py` em 13/10/2026 a partir do código e de `modulos/cardapio.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/cardapio.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -54,6 +54,16 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Por que existe:** Manter o cardápio da nuvem igual ao do sistema antigo da loja (ERP).
 - **Proposta:** Na nuvem, buscar os produtos da loja uma vez só e comparar na memória (o envio manual completo ainda faz uma busca sem índice por produto).
 - **Onde no código:** `Metrics.Sync/Services/EnvioIncremental.cs:22`, `Metrics.Sync/Services/SyncOrchestrator.cs:205`, `Metrics.Sync/Models/SyncConfig.cs:18`, `metrics-node/src/modules/pdv-sync/http/controllers/pdv-sync-controller.ts:497`
+
+### Versão do cardápio do celular (Serviço do PDV) — Ok
+- **Frequência:** a cada 20 s (e em cada /api/garcom/cardapio)
+- **Onde roda:** Core Service do computador servidor da loja → `Banco da loja (produtos, grupos, opções, departamentos; tabela cardapio_marcas)`
+- **Quantos:** 1 por loja (só no servidor)
+- **A cada vez:** Monta o cardápio do celular, calcula a marca de cada produto e sobe a versão uma vez se algo mudou
+- **Por que existe:** Cardápio incremental do app do garçom: o celular baixa só o que mudou e nunca fica com preço velho por muito tempo.
+- **Se espaçar:** O cabeçalho X-Cardapio-Versao demora mais para mudar depois de uma alteração no cardápio (o pedido continua sendo cobrado pelo cadastro).
+- **Desde:** 16/10/2026 (PDV 2.5.59.0)
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/VersaoDoCardapioBackgroundService.cs:16`
 
 ### Produtos que mudaram (PDV) e o carimbo de mudança — Ok
 - **Frequência:** a cada 5 min (sincronia geral do PDV)
@@ -128,7 +138,7 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 ### Grupo de adicionais (PDV) (`grupos_complemento`)
 
 - **Origem:** PDV local (Metrics.PDV)
-- **O que é:** Cópia local do grupo de adicionais.
+- **O que é:** Cópia local do grupo de adicionais. Desde 16/10/2026 traz a marca observacao_rapida (grupo "Observação rápida (só no salão)" da nuvem): no PDV e no app do garçom vira botões de observação com contador e sai na cozinha como observação.
 - **Espelho no PDV/nuvem:** Grupo de adicionais (`complement_groups`)
 
 ### Opção de adicional (PDV) (`opcoes_complemento`)
@@ -154,6 +164,14 @@ Produtos, categorias, grupos de adicionais e seus itens, e os departamentos de i
 - **Origem:** PDV local (Metrics.PDV)
 - **O que é:** Cópia local da ligação.
 - **Espelho no PDV/nuvem:** Produto × departamento (`product_print_departments`)
+
+### Marca do cardápio do celular (`cardapio_marcas`)
+
+- **Origem:** PDV local (Metrics.PDV)
+- **O que é:** A "impressão digital" de cada produto como o app do garçom o recebe (nome, preço, código, departamento, grupos e opções, a marca de observação rápida) e a versão do cardápio em que mudou pela última vez. Com ela o servidor sabe o que mudou desde a versão que o celular tem e manda só isso. Uma linha "setores" para a lista de setores. A versão atual e a do começo ficam nas configurações (cardapio.versao.atual e cardapio.versao.base).
+- **Quem grava:** Serviço do servidor da loja: o vigia da versão do cardápio (a cada 20 s) e as rotas /api/garcom/cardapio e /cardapio/mudancas (VersaoDoCardapio).
+- **Quem lê:** As mesmas rotas, para responder o que mudou ao app do garçom.
+- **Cresce:** Uma linha por produto ativo (ex.: 300 produtos = 300 linhas); produto que sai fica marcado como removido.
 
 ## Do PDV para a nuvem
 
