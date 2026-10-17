@@ -6,6 +6,20 @@
 
 Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do PDV, o vínculo dos itens das plataformas com os produtos do Metrics e o diário de eventos do iFood. Pela decisão R2/R3, com PDV o delivery sobe como venda do caixa que deu a baixa.
 
+## Regras de Negócio e Porquês
+
+### O "Sincronizar API agora" do PDV baixa os setores de entrega da web (`regra-setores-no-sincronizar-api`)
+- **Regra:** Configurações › Sincronizar API agora baixa os setores de entrega e a taxa padrão do perfil da web (/public/profile) para a tabela taxas_entrega do PDV, além de acionar a sincronização do CoreService. A cópia acha o setor pelo código da web (id) e, sem ele, pelo nome; lê a taxa em número ou texto como a nuvem (lerTaxa); ignora a entrada de configuração (_type neighborhood_policy); o setor que veio da web e sumiu dela sai do PDV, e o criado no próprio PDV (tela Delivery) fica. A instalação e o Forçar sincronização usam a mesma cópia.
+- **Por que é assim:** O acerto do motoboy da Katatau dizia "bairro fora da tabela" com bairros que estavam nos setores da web: o PDV só baixava os setores na instalação, e a tabela local ficou velha.
+- **Decisão:** 17/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/TabelaDeEntrega.cs (AplicarSetoresDaWebAsync, LerTaxa)`, `Metrics.PDV/Metrics.Shared/Services/TenantBootstrapService.cs (BaixarSetoresDeEntregaAsync)`, `Metrics.PDV/Metrics.PDV/Views/ConfiguracoesView.xaml.cs (BtnSincronizar_Click)`
+
+### Taxa de uma entrega não paga se corrige à mão na tela dos motoboys (`regra-taxa-da-entrega-corrigida-a-mao`)
+- **Regra:** Na tela dos motoboys do PDV, o lápis da entrega abre a taxa daquela entrega. Só para a entrega ainda não paga (pendente, ou não paga que o caixa pode incluir); paga, diária e resto de pagamento em parte não têm lápis. A taxa nova vira a base do ganho (taxa_da_tabela) e o valor a pagar é refeito pela regra do motoboy (no ganho fixo o valor não muda). A linha passa a dizer "Taxa ajustada à mão", o registro de operações guarda de quanto para quanto e quem, e a entrega sobe de novo para a nuvem. A troca de motoboy mantém a taxa corrigida.
+- **Por que é assim:** Com a tabela de setores velha, entregas saíram com taxa errada (R$ 0,00 ou o frete cobrado); o caixa precisa acertar o motoboy sem esperar a correção da tabela.
+- **Decisão:** 17/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/AcertoMotoboy.cs (PodeAjustarTaxa, AjustarTaxaDaEntregaAsync)`, `Metrics.PDV/Metrics.PDV/Views/TaxaDaEntregaWindow.xaml(.cs)`, `Metrics.PDV/Metrics.PDV/Views/ModalGerenciarMotoboysWindow.xaml.cs (BtnAjustarTaxa_Click)`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Vigia de pedidos online do PDV (reserva do canal ao vivo) — Defeito
