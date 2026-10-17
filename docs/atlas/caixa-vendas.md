@@ -1,6 +1,6 @@
 # Caixa e vendas
 
-> Gerado por `atlas.py` em 16/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
+> Gerado por `atlas.py` em 17/10/2026 a partir do código e de `modulos/caixa-vendas.json`. Não edite este arquivo: edite o JSON do módulo e rode `atlas.py gerar`.
 
 ## Para que serve
 
@@ -181,6 +181,12 @@ O módulo de Caixa e Vendas é o núcleo financeiro e operacional do restaurante
 - **Por que é assim:** A lista "venda a venda" precisa do número e da senha que o caixa conhece (D2, D3), e o detalhe mostra o cliente.
 - **Decisão:** 16/10/2026 por Thomás Furtado
 - **Onde no código:** `metrics-node/src/modules/pdv-sync/services/dados-da-venda.ts (numeracaoDaVenda, numeracaoQueFalta)`, `metrics-node/src/modules/pdv-sync/http/controllers/sales-sync-controller.ts`, `metrics-node/prisma/migrations/20261016220000_modulo_vendas/migration.sql`
+
+### Item tirado da comanda no Caixa: motivo, cancelado na comanda e ela fecha normalmente (`regra-item-tirado-da-comanda-no-caixa`)
+- **Regra:** No Caixa do PDV (comanda puxada pelo Home), tirar um item da comanda com outros itens na venda pede o motivo: Cliente não consumiu, Cliente desistiu do pedido, Erro de lançamento do operador, Demora no preparo da cozinha, Item incorreto / trocado, ou Deixar na comanda. Com um motivo, ao cobrar a venda o item é cancelado na comanda (itens_cancelados, ligado à venda, estoque devolvido, sem papel na cozinha, sem PIN; sobe para a nuvem e aparece em Vendas › Cancelamentos) e a comanda que fica vazia é liberada. "Deixar na comanda" tira só desta venda e o item continua nela para pagar depois. Nada muda antes de cobrar: Limpar, Desfazer e puxar de novo desfazem o motivo.
+- **Por que é assim:** Na Katatau o cliente contesta um item no caixa ("a Coca não teve"); antes o caixa tirava o item, cobrava, e a comanda ficava aberta no Salão com a Coca. A comanda não precisa fechar com todos os itens para estar correta.
+- **Decisão:** 17/10/2026 por Thomás Furtado
+- **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/Comandas.cs (ItemTirado, MotivosAoTirar, FecharNaVendaAsync)`, `Metrics.PDV/Metrics.Shared/Services/AcoesDaMesa.cs (RegistrarCancelamento)`, `Metrics.PDV/Metrics.PDV/Views/CaixaView.xaml.cs (RemoverLinhaComDesfazer, PerguntarMotivoDeTirar)`, `Metrics.PDV/Metrics.PDV/Views/PagamentoView.xaml.cs (ItensTiradosDasComandas)`
 
 ## Funções de Negócio
 
