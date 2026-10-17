@@ -2,6 +2,9 @@ import { env } from '@/env'
 import { writeJournal } from './ifood-events.service'
 import { parseJsonKeepingLongIds } from '@/lib/json-safe-ids'
 import { urlDaAutorizacao } from './food99-loja'
+import { corpoDaSaida99, SaidaDaEntrega99 } from './food99-saida'
+export { corpoDaSaida99, telefoneDaLojaPara99 } from './food99-saida'
+export type { SaidaDaEntrega99 } from './food99-saida'
 
 /**
  * Cliente da OpenAPI da 99Food (https://openapi.99food.com).
@@ -225,6 +228,11 @@ export const food99Api = {
   readyOrder: (appShopId: string, orderId: string) => orderCall(appShopId, '/v1/order/order/ready', orderId),
   /** Entrega concluída (somente entrega própria da loja, delivery_type 2). */
   deliveredOrder: (appShopId: string, orderId: string) => orderCall(appShopId, '/v1/order/order/delivered', orderId),
+  /** Saiu para entrega, na entrega da própria loja (Logistics API › Order Dispatched). */
+  selfDeliveryDispatch: (appShopId: string, orderId: string, saida: SaidaDaEntrega99) =>
+    orderCall(appShopId, '/v1/order/selfdelivery/dispatch', orderId, corpoDaSaida99(saida)),
+  /** Entregue, na entrega da própria loja (Logistics API › Order Delivered): reserva do deliveredOrder. */
+  selfDeliveryDelivered: (appShopId: string, orderId: string) => orderCall(appShopId, '/v1/order/selfdelivery/delivered', orderId),
   /** Cancela/recusa. reasonId da lista da 99Food (1010, 1020, 1030, 1040, 1050, 1060, 1070, 1071, 1072, 1073, 1074, 1080). */
   cancelOrder: (appShopId: string, orderId: string, reasonId: number, reason?: string) =>
     orderCall(appShopId, '/v1/order/order/cancel', orderId, { reason_id: reasonId, ...(reason ? { reason } : {}) }),

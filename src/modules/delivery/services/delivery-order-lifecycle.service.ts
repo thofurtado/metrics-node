@@ -19,7 +19,14 @@ interface LifecycleOptions {
   /** Motivo de cancelamento escolhido pelo operador (código vindo de /cancellationReasons). */
   cancelCode?: string
   cancelReason?: string
+  /** Despacho da entrega da loja na 99 (17/10/2026): nome do motoboy que saiu. */
+  entregador?: string | null
+  /** Despacho da entrega da loja na 99 (17/10/2026): telefone da loja, já no formato da 99 (telefoneDaLojaPara99). */
+  telefoneDaLoja?: string | null
 }
+
+/** Minutos previstos da saída do motoboy até o cliente, informados à 99 no "saiu para entrega". */
+export const MINUTOS_DA_SAIDA_ATE_O_CLIENTE = 30
 
 /** Pedido da 99Food: id do pedido e a loja (app_shop_id) gravados na observação pelo webhook. */
 export function extractFood99Order(observacao?: string | null): { orderId: string; appShopId: string | null } | null {
@@ -166,9 +173,23 @@ export async function handleDeliveryOrderStatusChange(
     if (newStatus === 'dispatched' && propria) {
       const r = await food99Api.readyOrder(food99.appShopId, food99.orderId)
       console.log(`[99Food Lifecycle] Pedido ${food99.orderId} saiu (entrega da loja), "pronto" na 99: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
-      // Pedido que ficou pronto antes desta versão já recebeu o "pronto" na Conferência e a 99 recusa o segundo aviso: não é erro
-      // para o caixa (a recusa fica no diário da 99).
-      return true
+      // Pedido já marcado "Pronto" (no app da 99 ou antes desta versão) recebe a recusa ou um "ok" sem efeito: não é erro para o
+      // caixa (fica no diário da 99).
+      // 17/10/2026 (Katatau, pedido Nº 5): só o "pronto" deixava o pedido "Pronto" na 99 depois do despacho. O "saiu para entrega"
+      // da entrega da loja é outra chamada, com o motoboy e os horários (food99Api.selfDeliveryDispatch).
+      if (!options.telefoneDaLoja) {
+        console.error(`[99Food Lifecycle] Pedido ${food99.orderId}: sem o telefone da loja (perfil da empresa › WhatsApp), a 99 não aceita o "saiu para entrega".`)
+        return false
+      }
+      const agora = new Date()
+      const saida = await food99Api.selfDeliveryDispatch(food99.appShopId, food99.orderId, {
+        nomeDoEntregador: options.entregador,
+        telefone: options.telefoneDaLoja,
+        saidaEm: agora,
+        chegadaPrevista: new Date(agora.getTime() + MINUTOS_DA_SAIDA_ATE_O_CLIENTE * 60_000),
+      })
+      console.log(`[99Food Lifecycle] Pedido ${food99.orderId} "saiu para entrega" na 99: ok=${saida.ok} errno=${saida.errno ?? '-'} ${saida.errmsg ?? ''}`)
+      return saida.ok
     }
     // Fase 4 do Mergulho (10:N1): entrega da própria loja concluída no PDV avisa a 99 (POST /v1/order/order/delivered). Antes
     // ninguém avisava: no diário, 4 dos 16 pedidos de entrega própria da Katatau (13 e 14/10/2026) só foram concluídos pela
@@ -186,7 +207,11 @@ export async function handleDeliveryOrderStatusChange(
       }
       const r = await food99Api.deliveredOrder(food99.appShopId, food99.orderId)
       console.log(`[99Food Lifecycle] Pedido ${food99.orderId} entregue: ok=${r.ok} errno=${r.errno ?? '-'} ${r.errmsg ?? ''}`)
-      return r.ok
+      if (r.ok) return true
+      // Depois do "saiu para entrega" (17/10/2026), a 99 pode querer o "entregue" da logística da loja: tenta por ele.
+      const reserva = await food99Api.selfDeliveryDelivered(food99.appShopId, food99.orderId)
+      console.log(`[99Food Lifecycle] Pedido ${food99.orderId} entregue (logística da loja): ok=${reserva.ok} errno=${reserva.errno ?? '-'} ${reserva.errmsg ?? ''}`)
+      return reserva.ok
     }
   }
 

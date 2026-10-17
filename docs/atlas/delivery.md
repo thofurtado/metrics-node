@@ -20,6 +20,12 @@ Pedidos que nascem na nuvem (cardápio online, iFood, 99Food) ou no delivery do 
 - **Decisão:** 17/10/2026 por Thomás Furtado
 - **Onde no código:** `Metrics.PDV/Metrics.Shared/Services/AcertoMotoboy.cs (PodeAjustarTaxa, AjustarTaxaDaEntregaAsync)`, `Metrics.PDV/Metrics.PDV/Views/TaxaDaEntregaWindow.xaml(.cs)`, `Metrics.PDV/Metrics.PDV/Views/ModalGerenciarMotoboysWindow.xaml.cs (BtnAjustarTaxa_Click)`
 
+### Despacho da entrega da loja avisa a 99 que o pedido saiu para entrega (`regra-99-saiu-para-entrega`)
+- **Regra:** No pedido da 99 com entrega da própria loja, o despacho no PDV (Na rua) manda à 99 o "pronto" e, em seguida, o "saiu para entrega" (POST /v1/order/selfdelivery/dispatch) com o nome do motoboy, o telefone da loja (WhatsApp do perfil da empresa, +55) como telefone do entregador, moto como veículo, a saída agora e a chegada prevista em 30 minutos. Sem o telefone da loja a 99 não aceita: o caixa recebe o aviso de que a plataforma não confirmou. A recusa do "pronto" (pedido já marcado Pronto) não é erro. Na conclusão, se a 99 recusar o "entregue" comum (/v1/order/order/delivered), tenta o da logística da loja (/v1/order/selfdelivery/delivered). A entrega pelo entregador da 99 e a retirada não mudam.
+- **Por que é assim:** Na Katatau o pedido Nº 5 da 99 de 17/10/2026 ficou "Pronto" na 99 depois do despacho: o Metrics só mandava o "pronto", e o "saiu para entrega" da entrega da loja é outra chamada da 99 (Logistics API › Order Dispatched, documentação oficial lida em 17/10/2026). O telefone é o da loja para o cliente falar com a loja, não com o celular do motoboy.
+- **Decisão:** 17/10/2026 por Thomás Furtado
+- **Onde no código:** `metrics-node/src/modules/delivery/services/delivery-order-lifecycle.service.ts (handleDeliveryOrderStatusChange, MINUTOS_DA_SAIDA_ATE_O_CLIENTE)`, `metrics-node/src/modules/delivery/services/food99-api.service.ts (selfDeliveryDispatch, selfDeliveryDelivered, corpoDaSaida99, telefoneDaLojaPara99)`, `metrics-node/src/modules/public/http/controllers/update-online-order-status.ts (telefone da loja no despacho)`
+
 ## Trabalhos que rodam o tempo todo
 
 ### Vigia de pedidos online do PDV (reserva do canal ao vivo) — Defeito

@@ -1,4 +1,5 @@
 import { cancelDeliveryOrderOnPlatform, extractIfoodOrderId, handleDeliveryOrderStatusChange } from '@/modules/delivery/services/delivery-order-lifecycle.service'
+import { telefoneDaLojaPara99 } from '@/modules/delivery/services/food99-saida'
 import { writeJournal } from '@/modules/delivery/services/ifood-events.service'
 import { webPushManager } from '@/lib/web-push-manager'
 import { FastifyReply, FastifyRequest } from 'fastify'
@@ -136,7 +137,22 @@ export async function updateOnlineOrderStatus(request: FastifyRequest, reply: Fa
         // resposta continua 200, porque a situação na nuvem mudou de verdade (o PDV antigo não lê esses campos).
         let platformOk: boolean | null = null
         if (existingPedido.origem === 'Delivery' && status !== 'cancelled') {
-            const avisoDaPlataforma = handleDeliveryOrderStatusChange(existingPedido, status, { dbName: tenantDbName }).catch(e => {
+            // Despacho (17/10/2026): a 99 quer o motoboy e um telefone no "saiu para entrega" da entrega da loja; vai o telefone da
+            // loja (WhatsApp do perfil da empresa), decisão do Thomás.
+            let telefoneDaLoja: string | null = null
+            if (status === 'dispatched') {
+                try {
+                    const perfil = await (prisma as any).companyProfile.findFirst({ select: { whatsappNumber: true } })
+                    telefoneDaLoja = telefoneDaLojaPara99(perfil?.whatsappNumber)
+                } catch (e) {
+                    console.error('[Delivery Lifecycle] Telefone da loja não lido:', e)
+                }
+            }
+            const avisoDaPlataforma = handleDeliveryOrderStatusChange(existingPedido, status, {
+                dbName: tenantDbName,
+                entregador: delivery_man ?? existingPedido.entregador,
+                telefoneDaLoja,
+            }).catch(e => {
                 console.error('[Delivery Lifecycle Hook Error]:', e)
                 return false
             })
