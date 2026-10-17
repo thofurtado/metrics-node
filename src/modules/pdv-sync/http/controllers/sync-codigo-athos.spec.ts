@@ -5,7 +5,7 @@ const db: any = vi.hoisted(() => ({}))
 vi.mock('@/lib/prisma', () => ({ prisma: db }))
 
 import { postProductsBulkSync, postProductsEspelhoSync } from './pdv-sync-controller'
-import { mesmoProduto, planoDoEspelho } from '../../services/codigo-do-sistema-da-loja'
+import { ehDaFaixaDasPlataformas, mesmoProduto, planoDoEspelho } from '../../services/codigo-do-sistema-da-loja'
 
 function resposta() {
     const r: any = { code: 0, body: null }
@@ -282,6 +282,21 @@ describe('mesmo produto ou outro produto no código', () => {
 
     it('o mesmo código de barras é o mesmo produto, mesmo com outro nome', () => {
         expect(mesmoProduto('REFRI LATA', '7894900011517', 'COCA COLA LATA 350ML', '7894900011517')).toBe(true)
+    })
+
+    it('plano do espelho: produto só das plataformas (faixa 800.000) não é desativado nem conta na trava', () => {
+        const naNuvem = [
+            { id: 'a', display_id: 1, name: 'PAO FRANCES', active: true },
+            { id: 'b', display_id: 800001, name: 'PAO FRANCES 10 UNID', active: true },
+            { id: 'c', display_id: 900001, name: 'COPIA', active: true },
+            { id: 'd', display_id: 899999, name: 'ULTIMO DA FAIXA', active: true },
+        ]
+        const plano = planoDoEspelho(naNuvem, [{ codigo: 1, ativo: true }])
+        expect(plano.foraDoSistema.map((p) => p.display_id)).toEqual([900001])
+        expect(plano).toMatchObject({ ativosNaNuvem: 2, cobertos: 1 })
+        expect(ehDaFaixaDasPlataformas(800000)).toBe(true)
+        expect(ehDaFaixaDasPlataformas(799999)).toBe(false)
+        expect(ehDaFaixaDasPlataformas(900000)).toBe(false)
     })
 
     it('plano do espelho: produto sem situação (null) conta como ativo', () => {

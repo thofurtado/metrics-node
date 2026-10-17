@@ -12,6 +12,16 @@
 /** Faixa para onde vai o produto JÁ USADO que sai do código do Athos (fica inativo, com o histórico). */
 export const INICIO_FAIXA_AFASTADOS = 900000
 
+/**
+ * Faixa dos produtos criados direto no Metrics só para as plataformas (iFood/99) e que não existem no sistema da loja (17/10/2026,
+ * Katatau: pacotes de pão, frios de 100 g, omeletes por sabor; regra do Thomás: um produto do Metrics = um item em cada plataforma).
+ * O espelho não desativa nem conta esses códigos; o Athos numera bem abaixo e o 900.000 é dos afastados.
+ */
+export const FAIXA_DAS_PLATAFORMAS = { de: 800000, ate: 899999 } as const
+
+/** O código é da faixa dos produtos só das plataformas (o espelho do Athos não mexe nele). */
+export const ehDaFaixaDasPlataformas = (codigo: number): boolean => codigo >= FAIXA_DAS_PLATAFORMAS.de && codigo <= FAIXA_DAS_PLATAFORMAS.ate
+
 /** Trava do espelho: a lista do Athos tem que ter o código de pelo menos 80% dos produtos ativos da nuvem. */
 export const COBERTURA_MINIMA_DO_ESPELHO = 0.8
 
@@ -120,12 +130,14 @@ export interface PlanoDoEspelho {
  * O que o espelho do Athos faz na nuvem: produto ATIVO da nuvem cujo código não está na lista completa do Athos, ou está
  * inativo lá, vai para inativo. Nunca apaga (o PDV só enxerga o que muda por updated_at, e as vendas apontam para o produto)
  * e nunca ativa (quem ativa é o envio do produto). Produto já inativo na nuvem fica como está.
+ * Produto da faixa das plataformas (FAIXA_DAS_PLATAFORMAS) não entra: ele não existe no Athos de propósito.
  */
 export function planoDoEspelho(naNuvem: ProdutoDaNuvemNoEspelho[], lista: CodigoDoSistemaDaLoja[]): PlanoDoEspelho {
     const ativoNoSistema = new Map<number, boolean>()
     for (const c of lista) ativoNoSistema.set(c.codigo, (ativoNoSistema.get(c.codigo) ?? false) || c.ativo)
 
-    const ativos = naNuvem.filter((p) => p.active !== false)
+    // Produto só das plataformas (faixa 800.000) não existe no Athos de propósito: fica fora do espelho e da conta da trava
+    const ativos = naNuvem.filter((p) => p.active !== false && !ehDaFaixaDasPlataformas(p.display_id))
     const foraDoSistema = ativos.filter((p) => !ativoNoSistema.has(p.display_id))
     const inativosNoSistema = ativos.filter((p) => ativoNoSistema.get(p.display_id) === false)
     const cobertos = ativos.length - foraDoSistema.length

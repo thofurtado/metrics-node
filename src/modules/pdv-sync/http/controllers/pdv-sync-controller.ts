@@ -860,6 +860,8 @@ export async function postProductsBulkSync(request: FastifyRequest, reply: Fasti
  * - `simular: true` devolve o que mudaria, sem gravar nada.
  * - A nuvem não guarda a origem do produto (não há marca de "criado na web"): TODO produto entra no espelho. Loja com Sync do
  *   Athos não deve cadastrar produto pela web (ele seria desativado); na Katatau todos vieram do Athos.
+ * - Exceção (17/10/2026): produto com código da faixa das plataformas (800.000 a 899.999) não entra no espelho: é criado no
+ *   Metrics só para o iFood/99 (pacotes, frios de 100 g) e não existe no Athos de propósito.
  */
 export async function postProductsEspelhoSync(request: FastifyRequest, reply: FastifyReply) {
     const schema = z.object({
